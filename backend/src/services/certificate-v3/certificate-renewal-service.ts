@@ -35,12 +35,19 @@ import {
 } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { extractSubjectAltNames } from "@app/services/certificate-common/certificate-csr-utils";
+import { certificateNotFoundError } from "@app/services/certificate-common/certificate-errors";
 import {
   TProfileCustomExtension,
   TResolvedCustomExtension
 } from "@app/services/certificate-common/certificate-extension-fns";
+import { assertPkiResourceInActorOrg } from "@app/services/certificate-common/pki-org-scope-fns";
+import { describePolicyViolations } from "@app/services/certificate-policy/certificate-policy-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
+import {
+  profileHasNoCaError,
+  profilePolicyMissingError
+} from "@app/services/certificate-profile/certificate-profile-errors";
 import {
   ENROLLMENT_TYPE_NAME_MAP,
   EnrollmentType,
@@ -685,7 +692,7 @@ export const certificateRenewalServiceFactory = ({
   ) => {
     const originalCert = await certificateDAL.findByIdForUpdate(certificateId, tx);
     if (!originalCert) {
-      throw new NotFoundError({ message: "Certificate not found" });
+      throw certificateNotFoundError({ id: certificateId });
     }
 
     if (!originalCert.profileId) {
@@ -697,7 +704,10 @@ export const certificateRenewalServiceFactory = ({
 
     const profile = await certificateProfileDAL.findByIdWithConfigs(originalCert.profileId, tx);
     if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+      throw new NotFoundError({
+        message:
+          "The certificate profile this certificate was issued from no longer exists, so it cannot be renewed. Issue a new certificate instead."
+      });
     }
 
     const originatingRequest = await certificateDAL.getOriginatingRequestByCertId(originalCert.id, tx);
@@ -827,19 +837,16 @@ export const certificateRenewalServiceFactory = ({
     if (issuerType === IssuerType.CA) {
       const caId = profile.caId || originalCert.caId;
       if (!caId) {
-        throw new NotFoundError({ message: "Certificate Authority ID not found" });
+        throw profileHasNoCaError(profile.slug);
       }
 
       ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
-      if (!ca) {
-        throw new NotFoundError({ message: "Certificate Authority not found" });
-      }
 
       assertCaInProfileProject(ca, profile);
 
       const eligibilityCheck = validateRenewalEligibility(originalCert, ca, requestedTtl);
       if (!eligibilityCheck.isEligible) {
-        throw new RenewalBlockedError(`Certificate is not eligible for renewal: ${eligibilityCheck.errors.join(", ")}`);
+        throw new RenewalBlockedError(`Certificate is not eligible for renewal: ${eligibilityCheck.errors.join("; ")}`);
       }
 
       caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
@@ -852,7 +859,7 @@ export const certificateRenewalServiceFactory = ({
     const policy = policyId ? await certificatePolicyService.getPolicyById({ actor, policyId, internal }) : null;
 
     if (!policy) {
-      throw new NotFoundError({ message: "Certificate policy not found for this profile" });
+      throw profilePolicyMissingError();
     }
 
     return { issuerType, ca, caType, policy };
@@ -929,7 +936,7 @@ export const certificateRenewalServiceFactory = ({
       profileCustomExtensions
     });
     if (!validationResult.isValid) {
-      throw new RenewalBlockedError(`Certificate renewal failed. Errors: ${validationResult.errors.join(", ")}`);
+      throw new RenewalBlockedError(describePolicyViolations(validationResult.errors));
     }
 
     return {
@@ -1547,7 +1554,15 @@ export const certificateRenewalServiceFactory = ({
     // Redis and the License Server, and the renewal transaction must hold no network call.
     const certForLicenseChecks = await certificateDAL.findById(certificateId);
     if (!certForLicenseChecks) {
-      throw new NotFoundError({ message: "Certificate not found" });
+      throw certificateNotFoundError({ id: certificateId });
+    }
+    if (!internal) {
+      await assertPkiResourceInActorOrg({
+        projectDAL,
+        projectId: certForLicenseChecks.projectId,
+        actorOrgId: actorCtx.actorOrgId,
+        notFoundError: () => certificateNotFoundError({ id: certificateId })
+      });
     }
 
     // Without the private key, reusing the key pair means renewing from the CSR Infisical holds for it, so
@@ -2100,8 +2115,14 @@ export const certificateRenewalServiceFactory = ({
   }) => {
     const certificate = await certificateDAL.findById(certificateId);
     if (!certificate) {
-      throw new NotFoundError({ message: "Certificate not found" });
+      throw certificateNotFoundError({ id: certificateId });
     }
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: certificate.projectId,
+      actorOrgId: actor.org.id,
+      notFoundError: () => certificateNotFoundError({ id: certificateId })
+    });
 
     await assertCanEditCertificate({
       certificate,

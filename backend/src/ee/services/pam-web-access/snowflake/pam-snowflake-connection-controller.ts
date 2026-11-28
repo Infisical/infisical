@@ -1,7 +1,7 @@
 import snowflake from "snowflake-sdk";
 
 import { logger } from "@app/lib/logger";
-import { executeSnowflakeSql } from "@app/services/app-connection/snowflake";
+import { assertNotSnowflakeFileTransferStatement, executeSnowflakeSql } from "@app/services/app-connection/snowflake";
 
 import { type ControllerParams } from "../pam-data-explorer-session-handler";
 import {
@@ -78,6 +78,7 @@ export const createSnowflakeConnectionController = async (params: ControllerPara
 
   const execute = (sqlText: string): Promise<snowflake.RowStatement> =>
     new Promise((resolve, reject) => {
+      assertNotSnowflakeFileTransferStatement(sqlText, "PUT and GET file transfers are not supported in web access");
       runningStatement = client.execute({
         sqlText,
         streamResult: true,

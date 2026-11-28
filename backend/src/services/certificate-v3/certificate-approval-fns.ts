@@ -31,9 +31,15 @@ import {
   TRequestCustomExtension,
   TResolvedCustomExtension
 } from "@app/services/certificate-common/certificate-extension-fns";
+import { describePolicyViolations } from "@app/services/certificate-policy/certificate-policy-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateRequest } from "@app/services/certificate-policy/certificate-policy-types";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
+import {
+  certificateProfileNotFoundError,
+  profileHasNoCaError,
+  selfSignedProfileCannotSignCsrError
+} from "@app/services/certificate-profile/certificate-profile-errors";
 import {
   EnrollmentType,
   ISSUER_NAMED_ENROLLMENT_TYPES,
@@ -274,9 +280,8 @@ export const certificateApprovalServiceFactory = (
   const $getProfile = async (profileId: string) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+      throw certificateProfileNotFoundError(profileId);
     }
-
     return profile;
   };
 
@@ -356,15 +361,10 @@ export const certificateApprovalServiceFactory = (
     const profile = await $getProfile(profileId);
 
     if (!profile.caId) {
-      throw new BadRequestError({
-        message: "Self-signed certificates are not supported for CSR signing"
-      });
+      throw selfSignedProfileCannotSignCsrError(profile.slug);
     }
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
-    if (!ca) {
-      throw new NotFoundError({ message: "Certificate Authority not found" });
-    }
 
     assertCaInProfileProject(ca, profile);
 
@@ -375,10 +375,6 @@ export const certificateApprovalServiceFactory = (
       policyId: profile.certificatePolicyId,
       internal: true
     });
-
-    if (!certPolicy) {
-      throw new NotFoundError({ message: "Certificate policy not found for this profile" });
-    }
 
     validateAlgorithmCompatibility(ca, certPolicy);
 
@@ -484,7 +480,7 @@ export const certificateApprovalServiceFactory = (
     );
     if (!revalidationResult.isValid) {
       throw new BadRequestError({
-        message: `Certificate request validation failed: ${revalidationResult.errors.join(", ")}`
+        message: describePolicyViolations(revalidationResult.errors)
       });
     }
     const subjectOverride = buildIssuanceSubject(csr || "", reconstructedRequest, issuerNameOverride);
@@ -704,7 +700,7 @@ export const certificateApprovalServiceFactory = (
     );
     if (!revalidationResult.isValid) {
       throw new BadRequestError({
-        message: `Certificate request validation failed: ${revalidationResult.errors.join(", ")}`
+        message: describePolicyViolations(revalidationResult.errors)
       });
     }
 
@@ -909,13 +905,10 @@ export const certificateApprovalServiceFactory = (
     customExtensions?: TResolvedCustomExtension[]
   ): Promise<TCertificateIssuanceResponse> => {
     if (!profile.caId) {
-      throw new NotFoundError({ message: "Certificate Authority ID not found" });
+      throw profileHasNoCaError(profile.slug);
     }
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
-    if (!ca) {
-      throw new NotFoundError({ message: "Certificate Authority not found" });
-    }
 
     assertCaInProfileProject(ca, profile);
 
@@ -1049,7 +1042,7 @@ export const certificateApprovalServiceFactory = (
   const issueCertificate = async (certificateRequestId: string): Promise<TCertificateIssuanceResponse> => {
     const certRequest = await certificateRequestDAL.findById(certificateRequestId);
     if (!certRequest) {
-      throw new NotFoundError({ message: "Certificate request not found" });
+      throw new NotFoundError({ message: `Certificate request with ID '${certificateRequestId}' not found` });
     }
 
     if (certRequest.status !== CertificateRequestStatus.PENDING) {
@@ -1127,10 +1120,6 @@ export const certificateApprovalServiceFactory = (
         internal: true
       });
 
-      if (!certPolicy) {
-        throw new NotFoundError({ message: "Certificate policy not found for this profile" });
-      }
-
       const validationResult = await certificatePolicyService.validateCertificateRequest(
         targetProfile.certificatePolicyId,
         mappedCertificateRequest
@@ -1138,7 +1127,7 @@ export const certificateApprovalServiceFactory = (
 
       if (!validationResult.isValid) {
         throw new BadRequestError({
-          message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
+          message: describePolicyViolations(validationResult.errors)
         });
       }
 

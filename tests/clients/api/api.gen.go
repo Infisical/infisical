@@ -101994,6 +101994,114 @@ func (e GetBillingUsageBreakdown500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for GetBillingCatalog200JSONResponseBodyProductsPlansDimsBandsMode.
+const (
+	GetBillingCatalog200JSONResponseBodyProductsPlansDimsBandsModeGraduated GetBillingCatalog200JSONResponseBodyProductsPlansDimsBandsMode = "graduated"
+	GetBillingCatalog200JSONResponseBodyProductsPlansDimsBandsModeVolume    GetBillingCatalog200JSONResponseBodyProductsPlansDimsBandsMode = "volume"
+)
+
+// Valid indicates whether the value is a known member of the GetBillingCatalog200JSONResponseBodyProductsPlansDimsBandsMode enum.
+func (e GetBillingCatalog200JSONResponseBodyProductsPlansDimsBandsMode) Valid() bool {
+	switch e {
+	case GetBillingCatalog200JSONResponseBodyProductsPlansDimsBandsModeGraduated:
+		return true
+	case GetBillingCatalog200JSONResponseBodyProductsPlansDimsBandsModeVolume:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingCatalog400JSONResponseBodyStatusCode.
+const (
+	GetBillingCatalog400JSONResponseBodyStatusCodeN400 GetBillingCatalog400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetBillingCatalog400JSONResponseBodyStatusCode enum.
+func (e GetBillingCatalog400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingCatalog400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingCatalog401JSONResponseBodyStatusCode.
+const (
+	GetBillingCatalog401JSONResponseBodyStatusCodeN401 GetBillingCatalog401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetBillingCatalog401JSONResponseBodyStatusCode enum.
+func (e GetBillingCatalog401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingCatalog401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingCatalog403JSONResponseBodyStatusCode.
+const (
+	GetBillingCatalog403JSONResponseBodyStatusCodeN403 GetBillingCatalog403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetBillingCatalog403JSONResponseBodyStatusCode enum.
+func (e GetBillingCatalog403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingCatalog403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingCatalog404JSONResponseBodyStatusCode.
+const (
+	GetBillingCatalog404JSONResponseBodyStatusCodeN404 GetBillingCatalog404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetBillingCatalog404JSONResponseBodyStatusCode enum.
+func (e GetBillingCatalog404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingCatalog404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingCatalog422JSONResponseBodyStatusCode.
+const (
+	GetBillingCatalog422JSONResponseBodyStatusCodeN422 GetBillingCatalog422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetBillingCatalog422JSONResponseBodyStatusCode enum.
+func (e GetBillingCatalog422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingCatalog422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingCatalog500JSONResponseBodyStatusCode.
+const (
+	GetBillingCatalog500JSONResponseBodyStatusCodeN500 GetBillingCatalog500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetBillingCatalog500JSONResponseBodyStatusCode enum.
+func (e GetBillingCatalog500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingCatalog500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListBillableOrganizations400JSONResponseBodyStatusCode.
 const (
 	ListBillableOrganizations400JSONResponseBodyStatusCodeN400 ListBillableOrganizations400JSONResponseBodyStatusCode = 400
@@ -102078,6 +102186,1389 @@ const (
 func (e ListBillableOrganizations500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case ListBillableOrganizations500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingOverview200JSONResponseBodyOverviewBillingNextChargeCadence.
+const (
+	GetBillingOverview200JSONResponseBodyOverviewBillingNextChargeCadenceAnnual  GetBillingOverview200JSONResponseBodyOverviewBillingNextChargeCadence = "annual"
+	GetBillingOverview200JSONResponseBodyOverviewBillingNextChargeCadenceMonthly GetBillingOverview200JSONResponseBodyOverviewBillingNextChargeCadence = "monthly"
+)
+
+// Valid indicates whether the value is a known member of the GetBillingOverview200JSONResponseBodyOverviewBillingNextChargeCadence enum.
+func (e GetBillingOverview200JSONResponseBodyOverviewBillingNextChargeCadence) Valid() bool {
+	switch e {
+	case GetBillingOverview200JSONResponseBodyOverviewBillingNextChargeCadenceAnnual:
+		return true
+	case GetBillingOverview200JSONResponseBodyOverviewBillingNextChargeCadenceMonthly:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingOverview200JSONResponseBodyOverviewEntitlementsCadence.
+const (
+	GetBillingOverview200JSONResponseBodyOverviewEntitlementsCadenceAnnual  GetBillingOverview200JSONResponseBodyOverviewEntitlementsCadence = "annual"
+	GetBillingOverview200JSONResponseBodyOverviewEntitlementsCadenceMonthly GetBillingOverview200JSONResponseBodyOverviewEntitlementsCadence = "monthly"
+)
+
+// Valid indicates whether the value is a known member of the GetBillingOverview200JSONResponseBodyOverviewEntitlementsCadence enum.
+func (e GetBillingOverview200JSONResponseBodyOverviewEntitlementsCadence) Valid() bool {
+	switch e {
+	case GetBillingOverview200JSONResponseBodyOverviewEntitlementsCadenceAnnual:
+		return true
+	case GetBillingOverview200JSONResponseBodyOverviewEntitlementsCadenceMonthly:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingOverview200JSONResponseBodyOverviewEntitlementsDeprecationKind.
+const (
+	Plan    GetBillingOverview200JSONResponseBodyOverviewEntitlementsDeprecationKind = "plan"
+	Product GetBillingOverview200JSONResponseBodyOverviewEntitlementsDeprecationKind = "product"
+)
+
+// Valid indicates whether the value is a known member of the GetBillingOverview200JSONResponseBodyOverviewEntitlementsDeprecationKind enum.
+func (e GetBillingOverview200JSONResponseBodyOverviewEntitlementsDeprecationKind) Valid() bool {
+	switch e {
+	case Plan:
+		return true
+	case Product:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsBandsMode.
+const (
+	GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsBandsModeGraduated GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsBandsMode = "graduated"
+	GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsBandsModeVolume    GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsBandsMode = "volume"
+)
+
+// Valid indicates whether the value is a known member of the GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsBandsMode enum.
+func (e GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsBandsMode) Valid() bool {
+	switch e {
+	case GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsBandsModeGraduated:
+		return true
+	case GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsBandsModeVolume:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsCadence.
+const (
+	GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsCadenceAnnual  GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsCadence = "annual"
+	GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsCadenceMonthly GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsCadence = "monthly"
+)
+
+// Valid indicates whether the value is a known member of the GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsCadence enum.
+func (e GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsCadence) Valid() bool {
+	switch e {
+	case GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsCadenceAnnual:
+		return true
+	case GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsCadenceMonthly:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingOverview200JSONResponseBodyOverviewMode.
+const (
+	Managed   GetBillingOverview200JSONResponseBodyOverviewMode = "managed"
+	SelfServe GetBillingOverview200JSONResponseBodyOverviewMode = "self-serve"
+)
+
+// Valid indicates whether the value is a known member of the GetBillingOverview200JSONResponseBodyOverviewMode enum.
+func (e GetBillingOverview200JSONResponseBodyOverviewMode) Valid() bool {
+	switch e {
+	case Managed:
+		return true
+	case SelfServe:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingOverview200JSONResponseBodyOverviewPaymentAlertState.
+const (
+	GetBillingOverview200JSONResponseBodyOverviewPaymentAlertStateFailed      GetBillingOverview200JSONResponseBodyOverviewPaymentAlertState = "failed"
+	GetBillingOverview200JSONResponseBodyOverviewPaymentAlertStateNeedsAction GetBillingOverview200JSONResponseBodyOverviewPaymentAlertState = "needs_action"
+)
+
+// Valid indicates whether the value is a known member of the GetBillingOverview200JSONResponseBodyOverviewPaymentAlertState enum.
+func (e GetBillingOverview200JSONResponseBodyOverviewPaymentAlertState) Valid() bool {
+	switch e {
+	case GetBillingOverview200JSONResponseBodyOverviewPaymentAlertStateFailed:
+		return true
+	case GetBillingOverview200JSONResponseBodyOverviewPaymentAlertStateNeedsAction:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingOverview200JSONResponseBodyOverviewSubState.
+const (
+	GetBillingOverview200JSONResponseBodyOverviewSubStateActive         GetBillingOverview200JSONResponseBodyOverviewSubState = "active"
+	GetBillingOverview200JSONResponseBodyOverviewSubStateNoSubscription GetBillingOverview200JSONResponseBodyOverviewSubState = "no-subscription"
+	GetBillingOverview200JSONResponseBodyOverviewSubStatePastDue        GetBillingOverview200JSONResponseBodyOverviewSubState = "past-due"
+	GetBillingOverview200JSONResponseBodyOverviewSubStateSuspended      GetBillingOverview200JSONResponseBodyOverviewSubState = "suspended"
+	GetBillingOverview200JSONResponseBodyOverviewSubStateTrialing       GetBillingOverview200JSONResponseBodyOverviewSubState = "trialing"
+)
+
+// Valid indicates whether the value is a known member of the GetBillingOverview200JSONResponseBodyOverviewSubState enum.
+func (e GetBillingOverview200JSONResponseBodyOverviewSubState) Valid() bool {
+	switch e {
+	case GetBillingOverview200JSONResponseBodyOverviewSubStateActive:
+		return true
+	case GetBillingOverview200JSONResponseBodyOverviewSubStateNoSubscription:
+		return true
+	case GetBillingOverview200JSONResponseBodyOverviewSubStatePastDue:
+		return true
+	case GetBillingOverview200JSONResponseBodyOverviewSubStateSuspended:
+		return true
+	case GetBillingOverview200JSONResponseBodyOverviewSubStateTrialing:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingOverview400JSONResponseBodyStatusCode.
+const (
+	GetBillingOverview400JSONResponseBodyStatusCodeN400 GetBillingOverview400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetBillingOverview400JSONResponseBodyStatusCode enum.
+func (e GetBillingOverview400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingOverview400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingOverview401JSONResponseBodyStatusCode.
+const (
+	GetBillingOverview401JSONResponseBodyStatusCodeN401 GetBillingOverview401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetBillingOverview401JSONResponseBodyStatusCode enum.
+func (e GetBillingOverview401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingOverview401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingOverview403JSONResponseBodyStatusCode.
+const (
+	GetBillingOverview403JSONResponseBodyStatusCodeN403 GetBillingOverview403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetBillingOverview403JSONResponseBodyStatusCode enum.
+func (e GetBillingOverview403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingOverview403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingOverview404JSONResponseBodyStatusCode.
+const (
+	GetBillingOverview404JSONResponseBodyStatusCodeN404 GetBillingOverview404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetBillingOverview404JSONResponseBodyStatusCode enum.
+func (e GetBillingOverview404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingOverview404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingOverview422JSONResponseBodyStatusCode.
+const (
+	GetBillingOverview422JSONResponseBodyStatusCodeN422 GetBillingOverview422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetBillingOverview422JSONResponseBodyStatusCode enum.
+func (e GetBillingOverview422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingOverview422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetBillingOverview500JSONResponseBodyStatusCode.
+const (
+	GetBillingOverview500JSONResponseBodyStatusCodeN500 GetBillingOverview500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetBillingOverview500JSONResponseBodyStatusCode enum.
+func (e GetBillingOverview500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetBillingOverview500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RefreshBillingOverview400JSONResponseBodyStatusCode.
+const (
+	RefreshBillingOverview400JSONResponseBodyStatusCodeN400 RefreshBillingOverview400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the RefreshBillingOverview400JSONResponseBodyStatusCode enum.
+func (e RefreshBillingOverview400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RefreshBillingOverview400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RefreshBillingOverview401JSONResponseBodyStatusCode.
+const (
+	RefreshBillingOverview401JSONResponseBodyStatusCodeN401 RefreshBillingOverview401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the RefreshBillingOverview401JSONResponseBodyStatusCode enum.
+func (e RefreshBillingOverview401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RefreshBillingOverview401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RefreshBillingOverview403JSONResponseBodyStatusCode.
+const (
+	RefreshBillingOverview403JSONResponseBodyStatusCodeN403 RefreshBillingOverview403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the RefreshBillingOverview403JSONResponseBodyStatusCode enum.
+func (e RefreshBillingOverview403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RefreshBillingOverview403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RefreshBillingOverview404JSONResponseBodyStatusCode.
+const (
+	RefreshBillingOverview404JSONResponseBodyStatusCodeN404 RefreshBillingOverview404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the RefreshBillingOverview404JSONResponseBodyStatusCode enum.
+func (e RefreshBillingOverview404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RefreshBillingOverview404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RefreshBillingOverview422JSONResponseBodyStatusCode.
+const (
+	RefreshBillingOverview422JSONResponseBodyStatusCodeN422 RefreshBillingOverview422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the RefreshBillingOverview422JSONResponseBodyStatusCode enum.
+func (e RefreshBillingOverview422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RefreshBillingOverview422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RefreshBillingOverview500JSONResponseBodyStatusCode.
+const (
+	RefreshBillingOverview500JSONResponseBodyStatusCodeN500 RefreshBillingOverview500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the RefreshBillingOverview500JSONResponseBodyStatusCode enum.
+func (e RefreshBillingOverview500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RefreshBillingOverview500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateBillingPaymentMethodSession400JSONResponseBodyStatusCode.
+const (
+	CreateBillingPaymentMethodSession400JSONResponseBodyStatusCodeN400 CreateBillingPaymentMethodSession400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateBillingPaymentMethodSession400JSONResponseBodyStatusCode enum.
+func (e CreateBillingPaymentMethodSession400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateBillingPaymentMethodSession400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateBillingPaymentMethodSession401JSONResponseBodyStatusCode.
+const (
+	CreateBillingPaymentMethodSession401JSONResponseBodyStatusCodeN401 CreateBillingPaymentMethodSession401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateBillingPaymentMethodSession401JSONResponseBodyStatusCode enum.
+func (e CreateBillingPaymentMethodSession401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateBillingPaymentMethodSession401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateBillingPaymentMethodSession403JSONResponseBodyStatusCode.
+const (
+	CreateBillingPaymentMethodSession403JSONResponseBodyStatusCodeN403 CreateBillingPaymentMethodSession403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateBillingPaymentMethodSession403JSONResponseBodyStatusCode enum.
+func (e CreateBillingPaymentMethodSession403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateBillingPaymentMethodSession403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateBillingPaymentMethodSession404JSONResponseBodyStatusCode.
+const (
+	CreateBillingPaymentMethodSession404JSONResponseBodyStatusCodeN404 CreateBillingPaymentMethodSession404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateBillingPaymentMethodSession404JSONResponseBodyStatusCode enum.
+func (e CreateBillingPaymentMethodSession404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateBillingPaymentMethodSession404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateBillingPaymentMethodSession422JSONResponseBodyStatusCode.
+const (
+	CreateBillingPaymentMethodSession422JSONResponseBodyStatusCodeN422 CreateBillingPaymentMethodSession422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateBillingPaymentMethodSession422JSONResponseBodyStatusCode enum.
+func (e CreateBillingPaymentMethodSession422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateBillingPaymentMethodSession422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateBillingPaymentMethodSession500JSONResponseBodyStatusCode.
+const (
+	CreateBillingPaymentMethodSession500JSONResponseBodyStatusCodeN500 CreateBillingPaymentMethodSession500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateBillingPaymentMethodSession500JSONResponseBodyStatusCode enum.
+func (e CreateBillingPaymentMethodSession500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateBillingPaymentMethodSession500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateBillingPortalSession400JSONResponseBodyStatusCode.
+const (
+	CreateBillingPortalSession400JSONResponseBodyStatusCodeN400 CreateBillingPortalSession400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateBillingPortalSession400JSONResponseBodyStatusCode enum.
+func (e CreateBillingPortalSession400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateBillingPortalSession400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateBillingPortalSession401JSONResponseBodyStatusCode.
+const (
+	CreateBillingPortalSession401JSONResponseBodyStatusCodeN401 CreateBillingPortalSession401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateBillingPortalSession401JSONResponseBodyStatusCode enum.
+func (e CreateBillingPortalSession401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateBillingPortalSession401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateBillingPortalSession403JSONResponseBodyStatusCode.
+const (
+	CreateBillingPortalSession403JSONResponseBodyStatusCodeN403 CreateBillingPortalSession403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateBillingPortalSession403JSONResponseBodyStatusCode enum.
+func (e CreateBillingPortalSession403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateBillingPortalSession403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateBillingPortalSession404JSONResponseBodyStatusCode.
+const (
+	CreateBillingPortalSession404JSONResponseBodyStatusCodeN404 CreateBillingPortalSession404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateBillingPortalSession404JSONResponseBodyStatusCode enum.
+func (e CreateBillingPortalSession404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateBillingPortalSession404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateBillingPortalSession422JSONResponseBodyStatusCode.
+const (
+	CreateBillingPortalSession422JSONResponseBodyStatusCodeN422 CreateBillingPortalSession422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateBillingPortalSession422JSONResponseBodyStatusCode enum.
+func (e CreateBillingPortalSession422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateBillingPortalSession422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateBillingPortalSession500JSONResponseBodyStatusCode.
+const (
+	CreateBillingPortalSession500JSONResponseBodyStatusCodeN500 CreateBillingPortalSession500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateBillingPortalSession500JSONResponseBodyStatusCode enum.
+func (e CreateBillingPortalSession500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateBillingPortalSession500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ChangeBillingCommitments200JSONResponseBodyOutcome.
+const (
+	ChangeBillingCommitments200JSONResponseBodyOutcomeCheckoutCreated       ChangeBillingCommitments200JSONResponseBodyOutcome = "checkout_created"
+	ChangeBillingCommitments200JSONResponseBodyOutcomePaymentActionRequired ChangeBillingCommitments200JSONResponseBodyOutcome = "payment_action_required"
+	ChangeBillingCommitments200JSONResponseBodyOutcomeSubscriptionUpdated   ChangeBillingCommitments200JSONResponseBodyOutcome = "subscription_updated"
+)
+
+// Valid indicates whether the value is a known member of the ChangeBillingCommitments200JSONResponseBodyOutcome enum.
+func (e ChangeBillingCommitments200JSONResponseBodyOutcome) Valid() bool {
+	switch e {
+	case ChangeBillingCommitments200JSONResponseBodyOutcomeCheckoutCreated:
+		return true
+	case ChangeBillingCommitments200JSONResponseBodyOutcomePaymentActionRequired:
+		return true
+	case ChangeBillingCommitments200JSONResponseBodyOutcomeSubscriptionUpdated:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ChangeBillingCommitments400JSONResponseBodyStatusCode.
+const (
+	ChangeBillingCommitments400JSONResponseBodyStatusCodeN400 ChangeBillingCommitments400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ChangeBillingCommitments400JSONResponseBodyStatusCode enum.
+func (e ChangeBillingCommitments400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ChangeBillingCommitments400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ChangeBillingCommitments401JSONResponseBodyStatusCode.
+const (
+	ChangeBillingCommitments401JSONResponseBodyStatusCodeN401 ChangeBillingCommitments401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ChangeBillingCommitments401JSONResponseBodyStatusCode enum.
+func (e ChangeBillingCommitments401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ChangeBillingCommitments401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ChangeBillingCommitments403JSONResponseBodyStatusCode.
+const (
+	ChangeBillingCommitments403JSONResponseBodyStatusCodeN403 ChangeBillingCommitments403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ChangeBillingCommitments403JSONResponseBodyStatusCode enum.
+func (e ChangeBillingCommitments403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ChangeBillingCommitments403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ChangeBillingCommitments404JSONResponseBodyStatusCode.
+const (
+	ChangeBillingCommitments404JSONResponseBodyStatusCodeN404 ChangeBillingCommitments404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ChangeBillingCommitments404JSONResponseBodyStatusCode enum.
+func (e ChangeBillingCommitments404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ChangeBillingCommitments404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ChangeBillingCommitments422JSONResponseBodyStatusCode.
+const (
+	ChangeBillingCommitments422JSONResponseBodyStatusCodeN422 ChangeBillingCommitments422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ChangeBillingCommitments422JSONResponseBodyStatusCode enum.
+func (e ChangeBillingCommitments422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ChangeBillingCommitments422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ChangeBillingCommitments500JSONResponseBodyStatusCode.
+const (
+	ChangeBillingCommitments500JSONResponseBodyStatusCodeN500 ChangeBillingCommitments500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ChangeBillingCommitments500JSONResponseBodyStatusCode enum.
+func (e ChangeBillingCommitments500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ChangeBillingCommitments500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PreviewBillingSubscriptionChangeJSONBodyCadence.
+const (
+	PreviewBillingSubscriptionChangeJSONBodyCadenceAnnual  PreviewBillingSubscriptionChangeJSONBodyCadence = "annual"
+	PreviewBillingSubscriptionChangeJSONBodyCadenceMonthly PreviewBillingSubscriptionChangeJSONBodyCadence = "monthly"
+)
+
+// Valid indicates whether the value is a known member of the PreviewBillingSubscriptionChangeJSONBodyCadence enum.
+func (e PreviewBillingSubscriptionChangeJSONBodyCadence) Valid() bool {
+	switch e {
+	case PreviewBillingSubscriptionChangeJSONBodyCadenceAnnual:
+		return true
+	case PreviewBillingSubscriptionChangeJSONBodyCadenceMonthly:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PreviewBillingSubscriptionChange400JSONResponseBodyStatusCode.
+const (
+	PreviewBillingSubscriptionChange400JSONResponseBodyStatusCodeN400 PreviewBillingSubscriptionChange400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the PreviewBillingSubscriptionChange400JSONResponseBodyStatusCode enum.
+func (e PreviewBillingSubscriptionChange400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case PreviewBillingSubscriptionChange400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PreviewBillingSubscriptionChange401JSONResponseBodyStatusCode.
+const (
+	PreviewBillingSubscriptionChange401JSONResponseBodyStatusCodeN401 PreviewBillingSubscriptionChange401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the PreviewBillingSubscriptionChange401JSONResponseBodyStatusCode enum.
+func (e PreviewBillingSubscriptionChange401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case PreviewBillingSubscriptionChange401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PreviewBillingSubscriptionChange403JSONResponseBodyStatusCode.
+const (
+	PreviewBillingSubscriptionChange403JSONResponseBodyStatusCodeN403 PreviewBillingSubscriptionChange403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the PreviewBillingSubscriptionChange403JSONResponseBodyStatusCode enum.
+func (e PreviewBillingSubscriptionChange403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case PreviewBillingSubscriptionChange403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PreviewBillingSubscriptionChange404JSONResponseBodyStatusCode.
+const (
+	PreviewBillingSubscriptionChange404JSONResponseBodyStatusCodeN404 PreviewBillingSubscriptionChange404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the PreviewBillingSubscriptionChange404JSONResponseBodyStatusCode enum.
+func (e PreviewBillingSubscriptionChange404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case PreviewBillingSubscriptionChange404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PreviewBillingSubscriptionChange422JSONResponseBodyStatusCode.
+const (
+	PreviewBillingSubscriptionChange422JSONResponseBodyStatusCodeN422 PreviewBillingSubscriptionChange422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the PreviewBillingSubscriptionChange422JSONResponseBodyStatusCode enum.
+func (e PreviewBillingSubscriptionChange422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case PreviewBillingSubscriptionChange422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PreviewBillingSubscriptionChange500JSONResponseBodyStatusCode.
+const (
+	PreviewBillingSubscriptionChange500JSONResponseBodyStatusCodeN500 PreviewBillingSubscriptionChange500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the PreviewBillingSubscriptionChange500JSONResponseBodyStatusCode enum.
+func (e PreviewBillingSubscriptionChange500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case PreviewBillingSubscriptionChange500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BuyBillingProductJSONBodyCadence.
+const (
+	BuyBillingProductJSONBodyCadenceAnnual  BuyBillingProductJSONBodyCadence = "annual"
+	BuyBillingProductJSONBodyCadenceMonthly BuyBillingProductJSONBodyCadence = "monthly"
+)
+
+// Valid indicates whether the value is a known member of the BuyBillingProductJSONBodyCadence enum.
+func (e BuyBillingProductJSONBodyCadence) Valid() bool {
+	switch e {
+	case BuyBillingProductJSONBodyCadenceAnnual:
+		return true
+	case BuyBillingProductJSONBodyCadenceMonthly:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BuyBillingProduct200JSONResponseBodyOutcome.
+const (
+	BuyBillingProduct200JSONResponseBodyOutcomeCheckoutCreated       BuyBillingProduct200JSONResponseBodyOutcome = "checkout_created"
+	BuyBillingProduct200JSONResponseBodyOutcomePaymentActionRequired BuyBillingProduct200JSONResponseBodyOutcome = "payment_action_required"
+	BuyBillingProduct200JSONResponseBodyOutcomeSubscriptionUpdated   BuyBillingProduct200JSONResponseBodyOutcome = "subscription_updated"
+)
+
+// Valid indicates whether the value is a known member of the BuyBillingProduct200JSONResponseBodyOutcome enum.
+func (e BuyBillingProduct200JSONResponseBodyOutcome) Valid() bool {
+	switch e {
+	case BuyBillingProduct200JSONResponseBodyOutcomeCheckoutCreated:
+		return true
+	case BuyBillingProduct200JSONResponseBodyOutcomePaymentActionRequired:
+		return true
+	case BuyBillingProduct200JSONResponseBodyOutcomeSubscriptionUpdated:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BuyBillingProduct400JSONResponseBodyStatusCode.
+const (
+	BuyBillingProduct400JSONResponseBodyStatusCodeN400 BuyBillingProduct400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the BuyBillingProduct400JSONResponseBodyStatusCode enum.
+func (e BuyBillingProduct400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BuyBillingProduct400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BuyBillingProduct401JSONResponseBodyStatusCode.
+const (
+	BuyBillingProduct401JSONResponseBodyStatusCodeN401 BuyBillingProduct401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the BuyBillingProduct401JSONResponseBodyStatusCode enum.
+func (e BuyBillingProduct401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BuyBillingProduct401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BuyBillingProduct403JSONResponseBodyStatusCode.
+const (
+	BuyBillingProduct403JSONResponseBodyStatusCodeN403 BuyBillingProduct403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the BuyBillingProduct403JSONResponseBodyStatusCode enum.
+func (e BuyBillingProduct403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BuyBillingProduct403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BuyBillingProduct404JSONResponseBodyStatusCode.
+const (
+	BuyBillingProduct404JSONResponseBodyStatusCodeN404 BuyBillingProduct404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the BuyBillingProduct404JSONResponseBodyStatusCode enum.
+func (e BuyBillingProduct404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BuyBillingProduct404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BuyBillingProduct422JSONResponseBodyStatusCode.
+const (
+	BuyBillingProduct422JSONResponseBodyStatusCodeN422 BuyBillingProduct422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the BuyBillingProduct422JSONResponseBodyStatusCode enum.
+func (e BuyBillingProduct422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BuyBillingProduct422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BuyBillingProduct500JSONResponseBodyStatusCode.
+const (
+	BuyBillingProduct500JSONResponseBodyStatusCodeN500 BuyBillingProduct500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the BuyBillingProduct500JSONResponseBodyStatusCode enum.
+func (e BuyBillingProduct500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case BuyBillingProduct500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveBillingProduct400JSONResponseBodyStatusCode.
+const (
+	RemoveBillingProduct400JSONResponseBodyStatusCodeN400 RemoveBillingProduct400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the RemoveBillingProduct400JSONResponseBodyStatusCode enum.
+func (e RemoveBillingProduct400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveBillingProduct400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveBillingProduct401JSONResponseBodyStatusCode.
+const (
+	RemoveBillingProduct401JSONResponseBodyStatusCodeN401 RemoveBillingProduct401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the RemoveBillingProduct401JSONResponseBodyStatusCode enum.
+func (e RemoveBillingProduct401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveBillingProduct401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveBillingProduct403JSONResponseBodyStatusCode.
+const (
+	RemoveBillingProduct403JSONResponseBodyStatusCodeN403 RemoveBillingProduct403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the RemoveBillingProduct403JSONResponseBodyStatusCode enum.
+func (e RemoveBillingProduct403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveBillingProduct403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveBillingProduct404JSONResponseBodyStatusCode.
+const (
+	RemoveBillingProduct404JSONResponseBodyStatusCodeN404 RemoveBillingProduct404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the RemoveBillingProduct404JSONResponseBodyStatusCode enum.
+func (e RemoveBillingProduct404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveBillingProduct404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveBillingProduct422JSONResponseBodyStatusCode.
+const (
+	RemoveBillingProduct422JSONResponseBodyStatusCodeN422 RemoveBillingProduct422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the RemoveBillingProduct422JSONResponseBodyStatusCode enum.
+func (e RemoveBillingProduct422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveBillingProduct422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveBillingProduct500JSONResponseBodyStatusCode.
+const (
+	RemoveBillingProduct500JSONResponseBodyStatusCodeN500 RemoveBillingProduct500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the RemoveBillingProduct500JSONResponseBodyStatusCode enum.
+func (e RemoveBillingProduct500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveBillingProduct500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpgradeBillingProduct200JSONResponseBodyOutcome.
+const (
+	UpgradeBillingProduct200JSONResponseBodyOutcomePaymentActionRequired UpgradeBillingProduct200JSONResponseBodyOutcome = "payment_action_required"
+	UpgradeBillingProduct200JSONResponseBodyOutcomeUpgraded              UpgradeBillingProduct200JSONResponseBodyOutcome = "upgraded"
+)
+
+// Valid indicates whether the value is a known member of the UpgradeBillingProduct200JSONResponseBodyOutcome enum.
+func (e UpgradeBillingProduct200JSONResponseBodyOutcome) Valid() bool {
+	switch e {
+	case UpgradeBillingProduct200JSONResponseBodyOutcomePaymentActionRequired:
+		return true
+	case UpgradeBillingProduct200JSONResponseBodyOutcomeUpgraded:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpgradeBillingProduct400JSONResponseBodyStatusCode.
+const (
+	UpgradeBillingProduct400JSONResponseBodyStatusCodeN400 UpgradeBillingProduct400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpgradeBillingProduct400JSONResponseBodyStatusCode enum.
+func (e UpgradeBillingProduct400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpgradeBillingProduct400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpgradeBillingProduct401JSONResponseBodyStatusCode.
+const (
+	UpgradeBillingProduct401JSONResponseBodyStatusCodeN401 UpgradeBillingProduct401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpgradeBillingProduct401JSONResponseBodyStatusCode enum.
+func (e UpgradeBillingProduct401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpgradeBillingProduct401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpgradeBillingProduct403JSONResponseBodyStatusCode.
+const (
+	UpgradeBillingProduct403JSONResponseBodyStatusCodeN403 UpgradeBillingProduct403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpgradeBillingProduct403JSONResponseBodyStatusCode enum.
+func (e UpgradeBillingProduct403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpgradeBillingProduct403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpgradeBillingProduct404JSONResponseBodyStatusCode.
+const (
+	UpgradeBillingProduct404JSONResponseBodyStatusCodeN404 UpgradeBillingProduct404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpgradeBillingProduct404JSONResponseBodyStatusCode enum.
+func (e UpgradeBillingProduct404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpgradeBillingProduct404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpgradeBillingProduct422JSONResponseBodyStatusCode.
+const (
+	UpgradeBillingProduct422JSONResponseBodyStatusCodeN422 UpgradeBillingProduct422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpgradeBillingProduct422JSONResponseBodyStatusCode enum.
+func (e UpgradeBillingProduct422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpgradeBillingProduct422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpgradeBillingProduct500JSONResponseBodyStatusCode.
+const (
+	UpgradeBillingProduct500JSONResponseBodyStatusCodeN500 UpgradeBillingProduct500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpgradeBillingProduct500JSONResponseBodyStatusCode enum.
+func (e UpgradeBillingProduct500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpgradeBillingProduct500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StartBillingTrial200JSONResponseBodyOutcome.
+const (
+	AwaitingCard StartBillingTrial200JSONResponseBodyOutcome = "awaiting_card"
+	TrialStarted StartBillingTrial200JSONResponseBodyOutcome = "trial_started"
+)
+
+// Valid indicates whether the value is a known member of the StartBillingTrial200JSONResponseBodyOutcome enum.
+func (e StartBillingTrial200JSONResponseBodyOutcome) Valid() bool {
+	switch e {
+	case AwaitingCard:
+		return true
+	case TrialStarted:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StartBillingTrial400JSONResponseBodyStatusCode.
+const (
+	StartBillingTrial400JSONResponseBodyStatusCodeN400 StartBillingTrial400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the StartBillingTrial400JSONResponseBodyStatusCode enum.
+func (e StartBillingTrial400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case StartBillingTrial400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StartBillingTrial401JSONResponseBodyStatusCode.
+const (
+	StartBillingTrial401JSONResponseBodyStatusCodeN401 StartBillingTrial401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the StartBillingTrial401JSONResponseBodyStatusCode enum.
+func (e StartBillingTrial401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case StartBillingTrial401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StartBillingTrial403JSONResponseBodyStatusCode.
+const (
+	StartBillingTrial403JSONResponseBodyStatusCodeN403 StartBillingTrial403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the StartBillingTrial403JSONResponseBodyStatusCode enum.
+func (e StartBillingTrial403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case StartBillingTrial403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StartBillingTrial404JSONResponseBodyStatusCode.
+const (
+	StartBillingTrial404JSONResponseBodyStatusCodeN404 StartBillingTrial404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the StartBillingTrial404JSONResponseBodyStatusCode enum.
+func (e StartBillingTrial404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case StartBillingTrial404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StartBillingTrial422JSONResponseBodyStatusCode.
+const (
+	StartBillingTrial422JSONResponseBodyStatusCodeN422 StartBillingTrial422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the StartBillingTrial422JSONResponseBodyStatusCode enum.
+func (e StartBillingTrial422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case StartBillingTrial422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StartBillingTrial500JSONResponseBodyStatusCode.
+const (
+	StartBillingTrial500JSONResponseBodyStatusCodeN500 StartBillingTrial500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the StartBillingTrial500JSONResponseBodyStatusCode enum.
+func (e StartBillingTrial500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case StartBillingTrial500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelBillingTrial200JSONResponseBodyOutcome.
+const (
+	TrialCompleted CancelBillingTrial200JSONResponseBodyOutcome = "trial_completed"
+)
+
+// Valid indicates whether the value is a known member of the CancelBillingTrial200JSONResponseBodyOutcome enum.
+func (e CancelBillingTrial200JSONResponseBodyOutcome) Valid() bool {
+	switch e {
+	case TrialCompleted:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelBillingTrial400JSONResponseBodyStatusCode.
+const (
+	CancelBillingTrial400JSONResponseBodyStatusCodeN400 CancelBillingTrial400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CancelBillingTrial400JSONResponseBodyStatusCode enum.
+func (e CancelBillingTrial400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CancelBillingTrial400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelBillingTrial401JSONResponseBodyStatusCode.
+const (
+	CancelBillingTrial401JSONResponseBodyStatusCodeN401 CancelBillingTrial401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CancelBillingTrial401JSONResponseBodyStatusCode enum.
+func (e CancelBillingTrial401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CancelBillingTrial401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelBillingTrial403JSONResponseBodyStatusCode.
+const (
+	CancelBillingTrial403JSONResponseBodyStatusCodeN403 CancelBillingTrial403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CancelBillingTrial403JSONResponseBodyStatusCode enum.
+func (e CancelBillingTrial403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CancelBillingTrial403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelBillingTrial404JSONResponseBodyStatusCode.
+const (
+	CancelBillingTrial404JSONResponseBodyStatusCodeN404 CancelBillingTrial404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CancelBillingTrial404JSONResponseBodyStatusCode enum.
+func (e CancelBillingTrial404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CancelBillingTrial404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelBillingTrial422JSONResponseBodyStatusCode.
+const (
+	CancelBillingTrial422JSONResponseBodyStatusCodeN422 CancelBillingTrial422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CancelBillingTrial422JSONResponseBodyStatusCode enum.
+func (e CancelBillingTrial422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CancelBillingTrial422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancelBillingTrial500JSONResponseBodyStatusCode.
+const (
+	CancelBillingTrial500JSONResponseBodyStatusCodeN500 CancelBillingTrial500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CancelBillingTrial500JSONResponseBodyStatusCode enum.
+func (e CancelBillingTrial500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CancelBillingTrial500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ConfirmBillingTrialPayment200JSONResponseBodyOutcome.
+const (
+	ConfirmBillingTrialPayment200JSONResponseBodyOutcomeCheckoutCreated       ConfirmBillingTrialPayment200JSONResponseBodyOutcome = "checkout_created"
+	ConfirmBillingTrialPayment200JSONResponseBodyOutcomePaymentActionRequired ConfirmBillingTrialPayment200JSONResponseBodyOutcome = "payment_action_required"
+	ConfirmBillingTrialPayment200JSONResponseBodyOutcomeUpgraded              ConfirmBillingTrialPayment200JSONResponseBodyOutcome = "upgraded"
+)
+
+// Valid indicates whether the value is a known member of the ConfirmBillingTrialPayment200JSONResponseBodyOutcome enum.
+func (e ConfirmBillingTrialPayment200JSONResponseBodyOutcome) Valid() bool {
+	switch e {
+	case ConfirmBillingTrialPayment200JSONResponseBodyOutcomeCheckoutCreated:
+		return true
+	case ConfirmBillingTrialPayment200JSONResponseBodyOutcomePaymentActionRequired:
+		return true
+	case ConfirmBillingTrialPayment200JSONResponseBodyOutcomeUpgraded:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ConfirmBillingTrialPayment400JSONResponseBodyStatusCode.
+const (
+	ConfirmBillingTrialPayment400JSONResponseBodyStatusCodeN400 ConfirmBillingTrialPayment400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ConfirmBillingTrialPayment400JSONResponseBodyStatusCode enum.
+func (e ConfirmBillingTrialPayment400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ConfirmBillingTrialPayment400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ConfirmBillingTrialPayment401JSONResponseBodyStatusCode.
+const (
+	ConfirmBillingTrialPayment401JSONResponseBodyStatusCodeN401 ConfirmBillingTrialPayment401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ConfirmBillingTrialPayment401JSONResponseBodyStatusCode enum.
+func (e ConfirmBillingTrialPayment401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ConfirmBillingTrialPayment401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ConfirmBillingTrialPayment403JSONResponseBodyStatusCode.
+const (
+	ConfirmBillingTrialPayment403JSONResponseBodyStatusCodeN403 ConfirmBillingTrialPayment403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ConfirmBillingTrialPayment403JSONResponseBodyStatusCode enum.
+func (e ConfirmBillingTrialPayment403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ConfirmBillingTrialPayment403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ConfirmBillingTrialPayment404JSONResponseBodyStatusCode.
+const (
+	ConfirmBillingTrialPayment404JSONResponseBodyStatusCodeN404 ConfirmBillingTrialPayment404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ConfirmBillingTrialPayment404JSONResponseBodyStatusCode enum.
+func (e ConfirmBillingTrialPayment404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ConfirmBillingTrialPayment404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ConfirmBillingTrialPayment422JSONResponseBodyStatusCode.
+const (
+	ConfirmBillingTrialPayment422JSONResponseBodyStatusCodeN422 ConfirmBillingTrialPayment422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ConfirmBillingTrialPayment422JSONResponseBodyStatusCode enum.
+func (e ConfirmBillingTrialPayment422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ConfirmBillingTrialPayment422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ConfirmBillingTrialPayment500JSONResponseBodyStatusCode.
+const (
+	ConfirmBillingTrialPayment500JSONResponseBodyStatusCodeN500 ConfirmBillingTrialPayment500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ConfirmBillingTrialPayment500JSONResponseBodyStatusCode enum.
+func (e ConfirmBillingTrialPayment500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ConfirmBillingTrialPayment500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -102186,6 +103677,96 @@ const (
 func (e GetOrganizationPlan500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case GetOrganizationPlan500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListOrganizationPlans400JSONResponseBodyStatusCode.
+const (
+	ListOrganizationPlans400JSONResponseBodyStatusCodeN400 ListOrganizationPlans400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListOrganizationPlans400JSONResponseBodyStatusCode enum.
+func (e ListOrganizationPlans400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListOrganizationPlans400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListOrganizationPlans401JSONResponseBodyStatusCode.
+const (
+	ListOrganizationPlans401JSONResponseBodyStatusCodeN401 ListOrganizationPlans401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListOrganizationPlans401JSONResponseBodyStatusCode enum.
+func (e ListOrganizationPlans401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListOrganizationPlans401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListOrganizationPlans403JSONResponseBodyStatusCode.
+const (
+	ListOrganizationPlans403JSONResponseBodyStatusCodeN403 ListOrganizationPlans403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListOrganizationPlans403JSONResponseBodyStatusCode enum.
+func (e ListOrganizationPlans403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListOrganizationPlans403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListOrganizationPlans404JSONResponseBodyStatusCode.
+const (
+	ListOrganizationPlans404JSONResponseBodyStatusCodeN404 ListOrganizationPlans404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListOrganizationPlans404JSONResponseBodyStatusCode enum.
+func (e ListOrganizationPlans404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListOrganizationPlans404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListOrganizationPlans422JSONResponseBodyStatusCode.
+const (
+	ListOrganizationPlans422JSONResponseBodyStatusCodeN422 ListOrganizationPlans422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListOrganizationPlans422JSONResponseBodyStatusCode enum.
+func (e ListOrganizationPlans422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListOrganizationPlans422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListOrganizationPlans500JSONResponseBodyStatusCode.
+const (
+	ListOrganizationPlans500JSONResponseBodyStatusCodeN500 ListOrganizationPlans500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListOrganizationPlans500JSONResponseBodyStatusCode enum.
+func (e ListOrganizationPlans500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListOrganizationPlans500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -195221,6 +196802,41 @@ type GetBillingUsageBreakdown422JSONResponseBodyStatusCode float32
 // GetBillingUsageBreakdown500JSONResponseBodyStatusCode defines parameters for GetBillingUsageBreakdown.
 type GetBillingUsageBreakdown500JSONResponseBodyStatusCode float32
 
+// GetBillingCatalog200JSONResponseBodyProductsCompareCells0 defines parameters for GetBillingCatalog.
+type GetBillingCatalog200JSONResponseBodyProductsCompareCells0 = string
+
+// GetBillingCatalog200JSONResponseBodyProductsCompareCells1 defines parameters for GetBillingCatalog.
+type GetBillingCatalog200JSONResponseBodyProductsCompareCells1 = float32
+
+// GetBillingCatalog200JSONResponseBodyProductsCompareCells2 defines parameters for GetBillingCatalog.
+type GetBillingCatalog200JSONResponseBodyProductsCompareCells2 = bool
+
+// GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties defines parameters for GetBillingCatalog.
+type GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties struct {
+	union json.RawMessage
+}
+
+// GetBillingCatalog200JSONResponseBodyProductsPlansDimsBandsMode defines parameters for GetBillingCatalog.
+type GetBillingCatalog200JSONResponseBodyProductsPlansDimsBandsMode string
+
+// GetBillingCatalog400JSONResponseBodyStatusCode defines parameters for GetBillingCatalog.
+type GetBillingCatalog400JSONResponseBodyStatusCode float32
+
+// GetBillingCatalog401JSONResponseBodyStatusCode defines parameters for GetBillingCatalog.
+type GetBillingCatalog401JSONResponseBodyStatusCode float32
+
+// GetBillingCatalog403JSONResponseBodyStatusCode defines parameters for GetBillingCatalog.
+type GetBillingCatalog403JSONResponseBodyStatusCode float32
+
+// GetBillingCatalog404JSONResponseBodyStatusCode defines parameters for GetBillingCatalog.
+type GetBillingCatalog404JSONResponseBodyStatusCode float32
+
+// GetBillingCatalog422JSONResponseBodyStatusCode defines parameters for GetBillingCatalog.
+type GetBillingCatalog422JSONResponseBodyStatusCode float32
+
+// GetBillingCatalog500JSONResponseBodyStatusCode defines parameters for GetBillingCatalog.
+type GetBillingCatalog500JSONResponseBodyStatusCode float32
+
 // ListBillableOrganizationsParams defines parameters for ListBillableOrganizations.
 type ListBillableOrganizationsParams struct {
 	// Search Match root organizations whose name or slug contains this.
@@ -195251,6 +196867,338 @@ type ListBillableOrganizations422JSONResponseBodyStatusCode float32
 // ListBillableOrganizations500JSONResponseBodyStatusCode defines parameters for ListBillableOrganizations.
 type ListBillableOrganizations500JSONResponseBodyStatusCode float32
 
+// GetBillingOverview200JSONResponseBodyOverviewBillingNextChargeCadence defines parameters for GetBillingOverview.
+type GetBillingOverview200JSONResponseBodyOverviewBillingNextChargeCadence string
+
+// GetBillingOverview200JSONResponseBodyOverviewEntitlementsCadence defines parameters for GetBillingOverview.
+type GetBillingOverview200JSONResponseBodyOverviewEntitlementsCadence string
+
+// GetBillingOverview200JSONResponseBodyOverviewEntitlementsDeprecationKind defines parameters for GetBillingOverview.
+type GetBillingOverview200JSONResponseBodyOverviewEntitlementsDeprecationKind string
+
+// GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsBandsMode defines parameters for GetBillingOverview.
+type GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsBandsMode string
+
+// GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsCadence defines parameters for GetBillingOverview.
+type GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsCadence string
+
+// GetBillingOverview200JSONResponseBodyOverviewMode defines parameters for GetBillingOverview.
+type GetBillingOverview200JSONResponseBodyOverviewMode string
+
+// GetBillingOverview200JSONResponseBodyOverviewPaymentAlertState defines parameters for GetBillingOverview.
+type GetBillingOverview200JSONResponseBodyOverviewPaymentAlertState string
+
+// GetBillingOverview200JSONResponseBodyOverviewSubState defines parameters for GetBillingOverview.
+type GetBillingOverview200JSONResponseBodyOverviewSubState string
+
+// GetBillingOverview400JSONResponseBodyStatusCode defines parameters for GetBillingOverview.
+type GetBillingOverview400JSONResponseBodyStatusCode float32
+
+// GetBillingOverview401JSONResponseBodyStatusCode defines parameters for GetBillingOverview.
+type GetBillingOverview401JSONResponseBodyStatusCode float32
+
+// GetBillingOverview403JSONResponseBodyStatusCode defines parameters for GetBillingOverview.
+type GetBillingOverview403JSONResponseBodyStatusCode float32
+
+// GetBillingOverview404JSONResponseBodyStatusCode defines parameters for GetBillingOverview.
+type GetBillingOverview404JSONResponseBodyStatusCode float32
+
+// GetBillingOverview422JSONResponseBodyStatusCode defines parameters for GetBillingOverview.
+type GetBillingOverview422JSONResponseBodyStatusCode float32
+
+// GetBillingOverview500JSONResponseBodyStatusCode defines parameters for GetBillingOverview.
+type GetBillingOverview500JSONResponseBodyStatusCode float32
+
+// RefreshBillingOverview400JSONResponseBodyStatusCode defines parameters for RefreshBillingOverview.
+type RefreshBillingOverview400JSONResponseBodyStatusCode float32
+
+// RefreshBillingOverview401JSONResponseBodyStatusCode defines parameters for RefreshBillingOverview.
+type RefreshBillingOverview401JSONResponseBodyStatusCode float32
+
+// RefreshBillingOverview403JSONResponseBodyStatusCode defines parameters for RefreshBillingOverview.
+type RefreshBillingOverview403JSONResponseBodyStatusCode float32
+
+// RefreshBillingOverview404JSONResponseBodyStatusCode defines parameters for RefreshBillingOverview.
+type RefreshBillingOverview404JSONResponseBodyStatusCode float32
+
+// RefreshBillingOverview422JSONResponseBodyStatusCode defines parameters for RefreshBillingOverview.
+type RefreshBillingOverview422JSONResponseBodyStatusCode float32
+
+// RefreshBillingOverview500JSONResponseBodyStatusCode defines parameters for RefreshBillingOverview.
+type RefreshBillingOverview500JSONResponseBodyStatusCode float32
+
+// CreateBillingPaymentMethodSessionJSONBody defines parameters for CreateBillingPaymentMethodSession.
+type CreateBillingPaymentMethodSessionJSONBody struct {
+	ReturnPath *string `json:"returnPath,omitempty"`
+}
+
+// CreateBillingPaymentMethodSession400JSONResponseBodyStatusCode defines parameters for CreateBillingPaymentMethodSession.
+type CreateBillingPaymentMethodSession400JSONResponseBodyStatusCode float32
+
+// CreateBillingPaymentMethodSession401JSONResponseBodyStatusCode defines parameters for CreateBillingPaymentMethodSession.
+type CreateBillingPaymentMethodSession401JSONResponseBodyStatusCode float32
+
+// CreateBillingPaymentMethodSession403JSONResponseBodyStatusCode defines parameters for CreateBillingPaymentMethodSession.
+type CreateBillingPaymentMethodSession403JSONResponseBodyStatusCode float32
+
+// CreateBillingPaymentMethodSession404JSONResponseBodyStatusCode defines parameters for CreateBillingPaymentMethodSession.
+type CreateBillingPaymentMethodSession404JSONResponseBodyStatusCode float32
+
+// CreateBillingPaymentMethodSession422JSONResponseBodyStatusCode defines parameters for CreateBillingPaymentMethodSession.
+type CreateBillingPaymentMethodSession422JSONResponseBodyStatusCode float32
+
+// CreateBillingPaymentMethodSession500JSONResponseBodyStatusCode defines parameters for CreateBillingPaymentMethodSession.
+type CreateBillingPaymentMethodSession500JSONResponseBodyStatusCode float32
+
+// CreateBillingPortalSessionJSONBody defines parameters for CreateBillingPortalSession.
+type CreateBillingPortalSessionJSONBody struct {
+	ReturnPath *string `json:"returnPath,omitempty"`
+}
+
+// CreateBillingPortalSession400JSONResponseBodyStatusCode defines parameters for CreateBillingPortalSession.
+type CreateBillingPortalSession400JSONResponseBodyStatusCode float32
+
+// CreateBillingPortalSession401JSONResponseBodyStatusCode defines parameters for CreateBillingPortalSession.
+type CreateBillingPortalSession401JSONResponseBodyStatusCode float32
+
+// CreateBillingPortalSession403JSONResponseBodyStatusCode defines parameters for CreateBillingPortalSession.
+type CreateBillingPortalSession403JSONResponseBodyStatusCode float32
+
+// CreateBillingPortalSession404JSONResponseBodyStatusCode defines parameters for CreateBillingPortalSession.
+type CreateBillingPortalSession404JSONResponseBodyStatusCode float32
+
+// CreateBillingPortalSession422JSONResponseBodyStatusCode defines parameters for CreateBillingPortalSession.
+type CreateBillingPortalSession422JSONResponseBodyStatusCode float32
+
+// CreateBillingPortalSession500JSONResponseBodyStatusCode defines parameters for CreateBillingPortalSession.
+type CreateBillingPortalSession500JSONResponseBodyStatusCode float32
+
+// ChangeBillingCommitmentsJSONBody defines parameters for ChangeBillingCommitments.
+type ChangeBillingCommitmentsJSONBody struct {
+	Changes []struct {
+		DimensionKey string `json:"dimensionKey"`
+		Quantity     int    `json:"quantity"`
+	} `json:"changes"`
+	ProductId string `json:"productId"`
+}
+
+// ChangeBillingCommitments200JSONResponseBodyOutcome defines parameters for ChangeBillingCommitments.
+type ChangeBillingCommitments200JSONResponseBodyOutcome string
+
+// ChangeBillingCommitments400JSONResponseBodyStatusCode defines parameters for ChangeBillingCommitments.
+type ChangeBillingCommitments400JSONResponseBodyStatusCode float32
+
+// ChangeBillingCommitments401JSONResponseBodyStatusCode defines parameters for ChangeBillingCommitments.
+type ChangeBillingCommitments401JSONResponseBodyStatusCode float32
+
+// ChangeBillingCommitments403JSONResponseBodyStatusCode defines parameters for ChangeBillingCommitments.
+type ChangeBillingCommitments403JSONResponseBodyStatusCode float32
+
+// ChangeBillingCommitments404JSONResponseBodyStatusCode defines parameters for ChangeBillingCommitments.
+type ChangeBillingCommitments404JSONResponseBodyStatusCode float32
+
+// ChangeBillingCommitments422JSONResponseBodyStatusCode defines parameters for ChangeBillingCommitments.
+type ChangeBillingCommitments422JSONResponseBodyStatusCode float32
+
+// ChangeBillingCommitments500JSONResponseBodyStatusCode defines parameters for ChangeBillingCommitments.
+type ChangeBillingCommitments500JSONResponseBodyStatusCode float32
+
+// PreviewBillingSubscriptionChangeJSONBody defines parameters for PreviewBillingSubscriptionChange.
+type PreviewBillingSubscriptionChangeJSONBody struct {
+	AddProductId      *string                                          `json:"addProductId,omitempty"`
+	Cadence           *PreviewBillingSubscriptionChangeJSONBodyCadence `json:"cadence,omitempty"`
+	CommitmentChanges *[]struct {
+		DimensionKey string `json:"dimensionKey"`
+		Quantity     int    `json:"quantity"`
+	} `json:"commitmentChanges,omitempty"`
+	Plan             *string         `json:"plan,omitempty"`
+	Quantities       *map[string]int `json:"quantities,omitempty"`
+	RemoveProductId  *string         `json:"removeProductId,omitempty"`
+	UpgradePlan      *string         `json:"upgradePlan,omitempty"`
+	UpgradeProductId *string         `json:"upgradeProductId,omitempty"`
+}
+
+// PreviewBillingSubscriptionChangeJSONBodyCadence defines parameters for PreviewBillingSubscriptionChange.
+type PreviewBillingSubscriptionChangeJSONBodyCadence string
+
+// PreviewBillingSubscriptionChange400JSONResponseBodyStatusCode defines parameters for PreviewBillingSubscriptionChange.
+type PreviewBillingSubscriptionChange400JSONResponseBodyStatusCode float32
+
+// PreviewBillingSubscriptionChange401JSONResponseBodyStatusCode defines parameters for PreviewBillingSubscriptionChange.
+type PreviewBillingSubscriptionChange401JSONResponseBodyStatusCode float32
+
+// PreviewBillingSubscriptionChange403JSONResponseBodyStatusCode defines parameters for PreviewBillingSubscriptionChange.
+type PreviewBillingSubscriptionChange403JSONResponseBodyStatusCode float32
+
+// PreviewBillingSubscriptionChange404JSONResponseBodyStatusCode defines parameters for PreviewBillingSubscriptionChange.
+type PreviewBillingSubscriptionChange404JSONResponseBodyStatusCode float32
+
+// PreviewBillingSubscriptionChange422JSONResponseBodyStatusCode defines parameters for PreviewBillingSubscriptionChange.
+type PreviewBillingSubscriptionChange422JSONResponseBodyStatusCode float32
+
+// PreviewBillingSubscriptionChange500JSONResponseBodyStatusCode defines parameters for PreviewBillingSubscriptionChange.
+type PreviewBillingSubscriptionChange500JSONResponseBodyStatusCode float32
+
+// BuyBillingProductJSONBody defines parameters for BuyBillingProduct.
+type BuyBillingProductJSONBody struct {
+	Cadence    *BuyBillingProductJSONBodyCadence `json:"cadence,omitempty"`
+	Plan       *string                           `json:"plan,omitempty"`
+	ProductId  string                            `json:"productId"`
+	Quantities *map[string]int                   `json:"quantities,omitempty"`
+	ReturnPath *string                           `json:"returnPath,omitempty"`
+}
+
+// BuyBillingProductJSONBodyCadence defines parameters for BuyBillingProduct.
+type BuyBillingProductJSONBodyCadence string
+
+// BuyBillingProduct200JSONResponseBodyOutcome defines parameters for BuyBillingProduct.
+type BuyBillingProduct200JSONResponseBodyOutcome string
+
+// BuyBillingProduct400JSONResponseBodyStatusCode defines parameters for BuyBillingProduct.
+type BuyBillingProduct400JSONResponseBodyStatusCode float32
+
+// BuyBillingProduct401JSONResponseBodyStatusCode defines parameters for BuyBillingProduct.
+type BuyBillingProduct401JSONResponseBodyStatusCode float32
+
+// BuyBillingProduct403JSONResponseBodyStatusCode defines parameters for BuyBillingProduct.
+type BuyBillingProduct403JSONResponseBodyStatusCode float32
+
+// BuyBillingProduct404JSONResponseBodyStatusCode defines parameters for BuyBillingProduct.
+type BuyBillingProduct404JSONResponseBodyStatusCode float32
+
+// BuyBillingProduct422JSONResponseBodyStatusCode defines parameters for BuyBillingProduct.
+type BuyBillingProduct422JSONResponseBodyStatusCode float32
+
+// BuyBillingProduct500JSONResponseBodyStatusCode defines parameters for BuyBillingProduct.
+type BuyBillingProduct500JSONResponseBodyStatusCode float32
+
+// RemoveBillingProduct400JSONResponseBodyStatusCode defines parameters for RemoveBillingProduct.
+type RemoveBillingProduct400JSONResponseBodyStatusCode float32
+
+// RemoveBillingProduct401JSONResponseBodyStatusCode defines parameters for RemoveBillingProduct.
+type RemoveBillingProduct401JSONResponseBodyStatusCode float32
+
+// RemoveBillingProduct403JSONResponseBodyStatusCode defines parameters for RemoveBillingProduct.
+type RemoveBillingProduct403JSONResponseBodyStatusCode float32
+
+// RemoveBillingProduct404JSONResponseBodyStatusCode defines parameters for RemoveBillingProduct.
+type RemoveBillingProduct404JSONResponseBodyStatusCode float32
+
+// RemoveBillingProduct422JSONResponseBodyStatusCode defines parameters for RemoveBillingProduct.
+type RemoveBillingProduct422JSONResponseBodyStatusCode float32
+
+// RemoveBillingProduct500JSONResponseBodyStatusCode defines parameters for RemoveBillingProduct.
+type RemoveBillingProduct500JSONResponseBodyStatusCode float32
+
+// UpgradeBillingProductJSONBody defines parameters for UpgradeBillingProduct.
+type UpgradeBillingProductJSONBody struct {
+	ExpectedPlanVersionId openapi_types.UUID `json:"expectedPlanVersionId"`
+	Plan                  string             `json:"plan"`
+	ProductId             string             `json:"productId"`
+	ProrationDate         *int               `json:"prorationDate,omitempty"`
+}
+
+// UpgradeBillingProduct200JSONResponseBodyOutcome defines parameters for UpgradeBillingProduct.
+type UpgradeBillingProduct200JSONResponseBodyOutcome string
+
+// UpgradeBillingProduct400JSONResponseBodyStatusCode defines parameters for UpgradeBillingProduct.
+type UpgradeBillingProduct400JSONResponseBodyStatusCode float32
+
+// UpgradeBillingProduct401JSONResponseBodyStatusCode defines parameters for UpgradeBillingProduct.
+type UpgradeBillingProduct401JSONResponseBodyStatusCode float32
+
+// UpgradeBillingProduct403JSONResponseBodyStatusCode defines parameters for UpgradeBillingProduct.
+type UpgradeBillingProduct403JSONResponseBodyStatusCode float32
+
+// UpgradeBillingProduct404JSONResponseBodyStatusCode defines parameters for UpgradeBillingProduct.
+type UpgradeBillingProduct404JSONResponseBodyStatusCode float32
+
+// UpgradeBillingProduct422JSONResponseBodyStatusCode defines parameters for UpgradeBillingProduct.
+type UpgradeBillingProduct422JSONResponseBodyStatusCode float32
+
+// UpgradeBillingProduct500JSONResponseBodyStatusCode defines parameters for UpgradeBillingProduct.
+type UpgradeBillingProduct500JSONResponseBodyStatusCode float32
+
+// StartBillingTrialJSONBody defines parameters for StartBillingTrial.
+type StartBillingTrialJSONBody struct {
+	Plan       string  `json:"plan"`
+	ProductId  string  `json:"productId"`
+	ReturnPath *string `json:"returnPath,omitempty"`
+}
+
+// StartBillingTrial200JSONResponseBodyOutcome defines parameters for StartBillingTrial.
+type StartBillingTrial200JSONResponseBodyOutcome string
+
+// StartBillingTrial400JSONResponseBodyStatusCode defines parameters for StartBillingTrial.
+type StartBillingTrial400JSONResponseBodyStatusCode float32
+
+// StartBillingTrial401JSONResponseBodyStatusCode defines parameters for StartBillingTrial.
+type StartBillingTrial401JSONResponseBodyStatusCode float32
+
+// StartBillingTrial403JSONResponseBodyStatusCode defines parameters for StartBillingTrial.
+type StartBillingTrial403JSONResponseBodyStatusCode float32
+
+// StartBillingTrial404JSONResponseBodyStatusCode defines parameters for StartBillingTrial.
+type StartBillingTrial404JSONResponseBodyStatusCode float32
+
+// StartBillingTrial422JSONResponseBodyStatusCode defines parameters for StartBillingTrial.
+type StartBillingTrial422JSONResponseBodyStatusCode float32
+
+// StartBillingTrial500JSONResponseBodyStatusCode defines parameters for StartBillingTrial.
+type StartBillingTrial500JSONResponseBodyStatusCode float32
+
+// CancelBillingTrialJSONBody defines parameters for CancelBillingTrial.
+type CancelBillingTrialJSONBody struct {
+	ProductId string `json:"productId"`
+}
+
+// CancelBillingTrial200JSONResponseBodyOutcome defines parameters for CancelBillingTrial.
+type CancelBillingTrial200JSONResponseBodyOutcome string
+
+// CancelBillingTrial400JSONResponseBodyStatusCode defines parameters for CancelBillingTrial.
+type CancelBillingTrial400JSONResponseBodyStatusCode float32
+
+// CancelBillingTrial401JSONResponseBodyStatusCode defines parameters for CancelBillingTrial.
+type CancelBillingTrial401JSONResponseBodyStatusCode float32
+
+// CancelBillingTrial403JSONResponseBodyStatusCode defines parameters for CancelBillingTrial.
+type CancelBillingTrial403JSONResponseBodyStatusCode float32
+
+// CancelBillingTrial404JSONResponseBodyStatusCode defines parameters for CancelBillingTrial.
+type CancelBillingTrial404JSONResponseBodyStatusCode float32
+
+// CancelBillingTrial422JSONResponseBodyStatusCode defines parameters for CancelBillingTrial.
+type CancelBillingTrial422JSONResponseBodyStatusCode float32
+
+// CancelBillingTrial500JSONResponseBodyStatusCode defines parameters for CancelBillingTrial.
+type CancelBillingTrial500JSONResponseBodyStatusCode float32
+
+// ConfirmBillingTrialPaymentJSONBody defines parameters for ConfirmBillingTrialPayment.
+type ConfirmBillingTrialPaymentJSONBody struct {
+	ReturnPath *string `json:"returnPath,omitempty"`
+}
+
+// ConfirmBillingTrialPayment200JSONResponseBodyOutcome defines parameters for ConfirmBillingTrialPayment.
+type ConfirmBillingTrialPayment200JSONResponseBodyOutcome string
+
+// ConfirmBillingTrialPayment400JSONResponseBodyStatusCode defines parameters for ConfirmBillingTrialPayment.
+type ConfirmBillingTrialPayment400JSONResponseBodyStatusCode float32
+
+// ConfirmBillingTrialPayment401JSONResponseBodyStatusCode defines parameters for ConfirmBillingTrialPayment.
+type ConfirmBillingTrialPayment401JSONResponseBodyStatusCode float32
+
+// ConfirmBillingTrialPayment403JSONResponseBodyStatusCode defines parameters for ConfirmBillingTrialPayment.
+type ConfirmBillingTrialPayment403JSONResponseBodyStatusCode float32
+
+// ConfirmBillingTrialPayment404JSONResponseBodyStatusCode defines parameters for ConfirmBillingTrialPayment.
+type ConfirmBillingTrialPayment404JSONResponseBodyStatusCode float32
+
+// ConfirmBillingTrialPayment422JSONResponseBodyStatusCode defines parameters for ConfirmBillingTrialPayment.
+type ConfirmBillingTrialPayment422JSONResponseBodyStatusCode float32
+
+// ConfirmBillingTrialPayment500JSONResponseBodyStatusCode defines parameters for ConfirmBillingTrialPayment.
+type ConfirmBillingTrialPayment500JSONResponseBodyStatusCode float32
+
 // GetOrganizationPlanParams defines parameters for GetOrganizationPlan.
 type GetOrganizationPlanParams struct {
 	RefreshCache *GetOrganizationPlanParamsRefreshCache `form:"refreshCache,omitempty" json:"refreshCache,omitempty"`
@@ -195276,6 +197224,29 @@ type GetOrganizationPlan422JSONResponseBodyStatusCode float32
 
 // GetOrganizationPlan500JSONResponseBodyStatusCode defines parameters for GetOrganizationPlan.
 type GetOrganizationPlan500JSONResponseBodyStatusCode float32
+
+// ListOrganizationPlansParams defines parameters for ListOrganizationPlans.
+type ListOrganizationPlansParams struct {
+	WorkspaceId *string `form:"workspaceId,omitempty" json:"workspaceId,omitempty"`
+}
+
+// ListOrganizationPlans400JSONResponseBodyStatusCode defines parameters for ListOrganizationPlans.
+type ListOrganizationPlans400JSONResponseBodyStatusCode float32
+
+// ListOrganizationPlans401JSONResponseBodyStatusCode defines parameters for ListOrganizationPlans.
+type ListOrganizationPlans401JSONResponseBodyStatusCode float32
+
+// ListOrganizationPlans403JSONResponseBodyStatusCode defines parameters for ListOrganizationPlans.
+type ListOrganizationPlans403JSONResponseBodyStatusCode float32
+
+// ListOrganizationPlans404JSONResponseBodyStatusCode defines parameters for ListOrganizationPlans.
+type ListOrganizationPlans404JSONResponseBodyStatusCode float32
+
+// ListOrganizationPlans422JSONResponseBodyStatusCode defines parameters for ListOrganizationPlans.
+type ListOrganizationPlans422JSONResponseBodyStatusCode float32
+
+// ListOrganizationPlans500JSONResponseBodyStatusCode defines parameters for ListOrganizationPlans.
+type ListOrganizationPlans500JSONResponseBodyStatusCode float32
 
 // SendPasswordSetupEmail400JSONResponseBodyStatusCode defines parameters for SendPasswordSetupEmail.
 type SendPasswordSetupEmail400JSONResponseBodyStatusCode float32
@@ -211936,6 +213907,33 @@ type UpdateOrganizationGroupMembershipJSONRequestBody UpdateOrganizationGroupMem
 
 // CreateOrganizationGroupMembershipJSONRequestBody defines body for CreateOrganizationGroupMembership for application/json ContentType.
 type CreateOrganizationGroupMembershipJSONRequestBody CreateOrganizationGroupMembershipJSONBody
+
+// CreateBillingPaymentMethodSessionJSONRequestBody defines body for CreateBillingPaymentMethodSession for application/json ContentType.
+type CreateBillingPaymentMethodSessionJSONRequestBody CreateBillingPaymentMethodSessionJSONBody
+
+// CreateBillingPortalSessionJSONRequestBody defines body for CreateBillingPortalSession for application/json ContentType.
+type CreateBillingPortalSessionJSONRequestBody CreateBillingPortalSessionJSONBody
+
+// ChangeBillingCommitmentsJSONRequestBody defines body for ChangeBillingCommitments for application/json ContentType.
+type ChangeBillingCommitmentsJSONRequestBody ChangeBillingCommitmentsJSONBody
+
+// PreviewBillingSubscriptionChangeJSONRequestBody defines body for PreviewBillingSubscriptionChange for application/json ContentType.
+type PreviewBillingSubscriptionChangeJSONRequestBody PreviewBillingSubscriptionChangeJSONBody
+
+// BuyBillingProductJSONRequestBody defines body for BuyBillingProduct for application/json ContentType.
+type BuyBillingProductJSONRequestBody BuyBillingProductJSONBody
+
+// UpgradeBillingProductJSONRequestBody defines body for UpgradeBillingProduct for application/json ContentType.
+type UpgradeBillingProductJSONRequestBody UpgradeBillingProductJSONBody
+
+// StartBillingTrialJSONRequestBody defines body for StartBillingTrial for application/json ContentType.
+type StartBillingTrialJSONRequestBody StartBillingTrialJSONBody
+
+// CancelBillingTrialJSONRequestBody defines body for CancelBillingTrial for application/json ContentType.
+type CancelBillingTrialJSONRequestBody CancelBillingTrialJSONBody
+
+// ConfirmBillingTrialPaymentJSONRequestBody defines body for ConfirmBillingTrialPayment for application/json ContentType.
+type ConfirmBillingTrialPaymentJSONRequestBody ConfirmBillingTrialPaymentJSONBody
 
 // SetupPasswordJSONRequestBody defines body for SetupPassword for application/json ContentType.
 type SetupPasswordJSONRequestBody SetupPasswordJSONBody
@@ -242707,6 +244705,94 @@ func (t *CreateOrganizationGroupMembershipJSONBody_Roles_Item) UnmarshalJSON(b [
 	return err
 }
 
+// AsGetBillingCatalog200JSONResponseBodyProductsCompareCells0 returns the union data inside the GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties as a GetBillingCatalog200JSONResponseBodyProductsCompareCells0
+func (t GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties) AsGetBillingCatalog200JSONResponseBodyProductsCompareCells0() (GetBillingCatalog200JSONResponseBodyProductsCompareCells0, error) {
+	var body GetBillingCatalog200JSONResponseBodyProductsCompareCells0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetBillingCatalog200JSONResponseBodyProductsCompareCells0 overwrites any union data inside the GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties as the provided GetBillingCatalog200JSONResponseBodyProductsCompareCells0
+func (t *GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties) FromGetBillingCatalog200JSONResponseBodyProductsCompareCells0(v GetBillingCatalog200JSONResponseBodyProductsCompareCells0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetBillingCatalog200JSONResponseBodyProductsCompareCells0 performs a merge with any union data inside the GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties, using the provided GetBillingCatalog200JSONResponseBodyProductsCompareCells0
+func (t *GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties) MergeGetBillingCatalog200JSONResponseBodyProductsCompareCells0(v GetBillingCatalog200JSONResponseBodyProductsCompareCells0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetBillingCatalog200JSONResponseBodyProductsCompareCells1 returns the union data inside the GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties as a GetBillingCatalog200JSONResponseBodyProductsCompareCells1
+func (t GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties) AsGetBillingCatalog200JSONResponseBodyProductsCompareCells1() (GetBillingCatalog200JSONResponseBodyProductsCompareCells1, error) {
+	var body GetBillingCatalog200JSONResponseBodyProductsCompareCells1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetBillingCatalog200JSONResponseBodyProductsCompareCells1 overwrites any union data inside the GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties as the provided GetBillingCatalog200JSONResponseBodyProductsCompareCells1
+func (t *GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties) FromGetBillingCatalog200JSONResponseBodyProductsCompareCells1(v GetBillingCatalog200JSONResponseBodyProductsCompareCells1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetBillingCatalog200JSONResponseBodyProductsCompareCells1 performs a merge with any union data inside the GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties, using the provided GetBillingCatalog200JSONResponseBodyProductsCompareCells1
+func (t *GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties) MergeGetBillingCatalog200JSONResponseBodyProductsCompareCells1(v GetBillingCatalog200JSONResponseBodyProductsCompareCells1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetBillingCatalog200JSONResponseBodyProductsCompareCells2 returns the union data inside the GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties as a GetBillingCatalog200JSONResponseBodyProductsCompareCells2
+func (t GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties) AsGetBillingCatalog200JSONResponseBodyProductsCompareCells2() (GetBillingCatalog200JSONResponseBodyProductsCompareCells2, error) {
+	var body GetBillingCatalog200JSONResponseBodyProductsCompareCells2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetBillingCatalog200JSONResponseBodyProductsCompareCells2 overwrites any union data inside the GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties as the provided GetBillingCatalog200JSONResponseBodyProductsCompareCells2
+func (t *GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties) FromGetBillingCatalog200JSONResponseBodyProductsCompareCells2(v GetBillingCatalog200JSONResponseBodyProductsCompareCells2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetBillingCatalog200JSONResponseBodyProductsCompareCells2 performs a merge with any union data inside the GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties, using the provided GetBillingCatalog200JSONResponseBodyProductsCompareCells2
+func (t *GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties) MergeGetBillingCatalog200JSONResponseBodyProductsCompareCells2(v GetBillingCatalog200JSONResponseBodyProductsCompareCells2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // AsListFolderCommits200JSONResponseBodyCommitsCreatedAt0 returns the union data inside the ListFolderCommits200JSONResponseBody_Commits_CreatedAt as a ListFolderCommits200JSONResponseBodyCommitsCreatedAt0
 func (t ListFolderCommits200JSONResponseBody_Commits_CreatedAt) AsListFolderCommits200JSONResponseBodyCommitsCreatedAt0() (ListFolderCommits200JSONResponseBodyCommitsCreatedAt0, error) {
 	var body ListFolderCommits200JSONResponseBodyCommitsCreatedAt0
@@ -259313,13 +261399,104 @@ type ClientInterface interface {
 	// Break one metered usage dimension down by the organizations and projects its units were created in.
 	GetBillingUsageBreakdown(ctx context.Context, organizationId openapi_types.UUID, dimensionKey GetBillingUsageBreakdownParamsDimensionKey, params *GetBillingUsageBreakdownParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetBillingCatalog performs a GET /api/v1/organizations/{organizationId}/billing/v2/catalog (the `GetBillingCatalog` operationId) request.
+	GetBillingCatalog(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListBillableOrganizations performs a GET /api/v1/organizations/{organizationId}/billing/v2/organizations (the `ListBillableOrganizations` operationId) request.
 	//
 	// List the root organizations whose billing the caller may read. A self-hosted instance admin gets every organization on the instance, because one licence covers them all; everyone else gets only their own.
 	ListBillableOrganizations(ctx context.Context, organizationId openapi_types.UUID, params *ListBillableOrganizationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetBillingOverview performs a GET /api/v1/organizations/{organizationId}/billing/v2/overview (the `GetBillingOverview` operationId) request.
+	GetBillingOverview(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RefreshBillingOverview performs a POST /api/v1/organizations/{organizationId}/billing/v2/overview/refresh (the `RefreshBillingOverview` operationId) request.
+	RefreshBillingOverview(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateBillingPaymentMethodSessionWithBody performs a POST /api/v1/organizations/{organizationId}/billing/v2/payment-method (the `CreateBillingPaymentMethodSession` operationId) request,
+	// with any type of body and a specified content type.
+	CreateBillingPaymentMethodSessionWithBody(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateBillingPaymentMethodSession performs a POST /api/v1/organizations/{organizationId}/billing/v2/payment-method (the `CreateBillingPaymentMethodSession` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CreateBillingPaymentMethodSession(ctx context.Context, organizationId string, body CreateBillingPaymentMethodSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateBillingPortalSessionWithBody performs a POST /api/v1/organizations/{organizationId}/billing/v2/portal-session (the `CreateBillingPortalSession` operationId) request,
+	// with any type of body and a specified content type.
+	CreateBillingPortalSessionWithBody(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateBillingPortalSession performs a POST /api/v1/organizations/{organizationId}/billing/v2/portal-session (the `CreateBillingPortalSession` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CreateBillingPortalSession(ctx context.Context, organizationId string, body CreateBillingPortalSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ChangeBillingCommitmentsWithBody performs a PUT /api/v1/organizations/{organizationId}/billing/v2/subscription/commitments (the `ChangeBillingCommitments` operationId) request,
+	// with any type of body and a specified content type.
+	ChangeBillingCommitmentsWithBody(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ChangeBillingCommitments performs a PUT /api/v1/organizations/{organizationId}/billing/v2/subscription/commitments (the `ChangeBillingCommitments` operationId) request.
+	// Takes a body of the `application/json` content type.
+	ChangeBillingCommitments(ctx context.Context, organizationId string, body ChangeBillingCommitmentsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PreviewBillingSubscriptionChangeWithBody performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/preview (the `PreviewBillingSubscriptionChange` operationId) request,
+	// with any type of body and a specified content type.
+	PreviewBillingSubscriptionChangeWithBody(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PreviewBillingSubscriptionChange performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/preview (the `PreviewBillingSubscriptionChange` operationId) request.
+	// Takes a body of the `application/json` content type.
+	PreviewBillingSubscriptionChange(ctx context.Context, organizationId string, body PreviewBillingSubscriptionChangeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BuyBillingProductWithBody performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/products (the `BuyBillingProduct` operationId) request,
+	// with any type of body and a specified content type.
+	BuyBillingProductWithBody(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BuyBillingProduct performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/products (the `BuyBillingProduct` operationId) request.
+	// Takes a body of the `application/json` content type.
+	BuyBillingProduct(ctx context.Context, organizationId string, body BuyBillingProductJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RemoveBillingProduct performs a DELETE /api/v1/organizations/{organizationId}/billing/v2/subscription/products/{productId} (the `RemoveBillingProduct` operationId) request.
+	RemoveBillingProduct(ctx context.Context, organizationId string, productId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpgradeBillingProductWithBody performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/upgrade (the `UpgradeBillingProduct` operationId) request,
+	// with any type of body and a specified content type.
+	UpgradeBillingProductWithBody(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpgradeBillingProduct performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/upgrade (the `UpgradeBillingProduct` operationId) request.
+	// Takes a body of the `application/json` content type.
+	UpgradeBillingProduct(ctx context.Context, organizationId string, body UpgradeBillingProductJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StartBillingTrialWithBody performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial (the `StartBillingTrial` operationId) request,
+	// with any type of body and a specified content type.
+	StartBillingTrialWithBody(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StartBillingTrial performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial (the `StartBillingTrial` operationId) request.
+	// Takes a body of the `application/json` content type.
+	StartBillingTrial(ctx context.Context, organizationId string, body StartBillingTrialJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CancelBillingTrialWithBody performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial/cancel (the `CancelBillingTrial` operationId) request,
+	// with any type of body and a specified content type.
+	CancelBillingTrialWithBody(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CancelBillingTrial performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial/cancel (the `CancelBillingTrial` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CancelBillingTrial(ctx context.Context, organizationId string, body CancelBillingTrialJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ConfirmBillingTrialPaymentWithBody performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial/confirm-payment (the `ConfirmBillingTrialPayment` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Get the page where the customer approves a trial conversion charge their bank is holding (for example 3D Secure): a Stripe Checkout for a trial on the free tier, or the invoice of the held change for an upgrade trial. The trial converts once it is paid. Returns 'upgraded' with no redirect when the charge went through without needing approval.
+	ConfirmBillingTrialPaymentWithBody(ctx context.Context, organizationId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ConfirmBillingTrialPayment performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial/confirm-payment (the `ConfirmBillingTrialPayment` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Get the page where the customer approves a trial conversion charge their bank is holding (for example 3D Secure): a Stripe Checkout for a trial on the free tier, or the invoice of the held change for an upgrade trial. The trial converts once it is paid. Returns 'upgraded' with no redirect when the charge went through without needing approval.
+	ConfirmBillingTrialPayment(ctx context.Context, organizationId openapi_types.UUID, body ConfirmBillingTrialPaymentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetOrganizationPlan performs a GET /api/v1/organizations/{organizationId}/plan (the `GetOrganizationPlan` operationId) request.
 	GetOrganizationPlan(ctx context.Context, organizationId string, params *GetOrganizationPlanParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListOrganizationPlans performs a GET /api/v1/organizations/{organizationId}/plans (the `ListOrganizationPlans` operationId) request.
+	ListOrganizationPlans(ctx context.Context, organizationId string, params *ListOrganizationPlansParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SendPasswordSetupEmail performs a POST /api/v1/password/email/password-setup (the `SendPasswordSetupEmail` operationId) request.
 	SendPasswordSetupEmail(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -276264,6 +278441,19 @@ func (c *Client) GetBillingUsageBreakdown(ctx context.Context, organizationId op
 	return c.Client.Do(req)
 }
 
+// GetBillingCatalog performs a GET /api/v1/organizations/{organizationId}/billing/v2/catalog (the `GetBillingCatalog` operationId) request.
+func (c *Client) GetBillingCatalog(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetBillingCatalogRequest(c.Server, organizationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListBillableOrganizations performs a GET /api/v1/organizations/{organizationId}/billing/v2/organizations (the `ListBillableOrganizations` operationId) request.
 //
 // List the root organizations whose billing the caller may read. A self-hosted instance admin gets every organization on the instance, because one licence covers them all; everyone else gets only their own.
@@ -276279,9 +278469,317 @@ func (c *Client) ListBillableOrganizations(ctx context.Context, organizationId o
 	return c.Client.Do(req)
 }
 
+// GetBillingOverview performs a GET /api/v1/organizations/{organizationId}/billing/v2/overview (the `GetBillingOverview` operationId) request.
+func (c *Client) GetBillingOverview(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetBillingOverviewRequest(c.Server, organizationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RefreshBillingOverview performs a POST /api/v1/organizations/{organizationId}/billing/v2/overview/refresh (the `RefreshBillingOverview` operationId) request.
+func (c *Client) RefreshBillingOverview(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRefreshBillingOverviewRequest(c.Server, organizationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateBillingPaymentMethodSessionWithBody performs a POST /api/v1/organizations/{organizationId}/billing/v2/payment-method (the `CreateBillingPaymentMethodSession` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CreateBillingPaymentMethodSessionWithBody(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateBillingPaymentMethodSessionRequestWithBody(c.Server, organizationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateBillingPaymentMethodSession performs a POST /api/v1/organizations/{organizationId}/billing/v2/payment-method (the `CreateBillingPaymentMethodSession` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CreateBillingPaymentMethodSession(ctx context.Context, organizationId string, body CreateBillingPaymentMethodSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateBillingPaymentMethodSessionRequest(c.Server, organizationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateBillingPortalSessionWithBody performs a POST /api/v1/organizations/{organizationId}/billing/v2/portal-session (the `CreateBillingPortalSession` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CreateBillingPortalSessionWithBody(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateBillingPortalSessionRequestWithBody(c.Server, organizationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateBillingPortalSession performs a POST /api/v1/organizations/{organizationId}/billing/v2/portal-session (the `CreateBillingPortalSession` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CreateBillingPortalSession(ctx context.Context, organizationId string, body CreateBillingPortalSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateBillingPortalSessionRequest(c.Server, organizationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ChangeBillingCommitmentsWithBody performs a PUT /api/v1/organizations/{organizationId}/billing/v2/subscription/commitments (the `ChangeBillingCommitments` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) ChangeBillingCommitmentsWithBody(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewChangeBillingCommitmentsRequestWithBody(c.Server, organizationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ChangeBillingCommitments performs a PUT /api/v1/organizations/{organizationId}/billing/v2/subscription/commitments (the `ChangeBillingCommitments` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) ChangeBillingCommitments(ctx context.Context, organizationId string, body ChangeBillingCommitmentsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewChangeBillingCommitmentsRequest(c.Server, organizationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PreviewBillingSubscriptionChangeWithBody performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/preview (the `PreviewBillingSubscriptionChange` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) PreviewBillingSubscriptionChangeWithBody(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPreviewBillingSubscriptionChangeRequestWithBody(c.Server, organizationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PreviewBillingSubscriptionChange performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/preview (the `PreviewBillingSubscriptionChange` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) PreviewBillingSubscriptionChange(ctx context.Context, organizationId string, body PreviewBillingSubscriptionChangeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPreviewBillingSubscriptionChangeRequest(c.Server, organizationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BuyBillingProductWithBody performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/products (the `BuyBillingProduct` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) BuyBillingProductWithBody(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBuyBillingProductRequestWithBody(c.Server, organizationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// BuyBillingProduct performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/products (the `BuyBillingProduct` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) BuyBillingProduct(ctx context.Context, organizationId string, body BuyBillingProductJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBuyBillingProductRequest(c.Server, organizationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RemoveBillingProduct performs a DELETE /api/v1/organizations/{organizationId}/billing/v2/subscription/products/{productId} (the `RemoveBillingProduct` operationId) request.
+func (c *Client) RemoveBillingProduct(ctx context.Context, organizationId string, productId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveBillingProductRequest(c.Server, organizationId, productId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpgradeBillingProductWithBody performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/upgrade (the `UpgradeBillingProduct` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) UpgradeBillingProductWithBody(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpgradeBillingProductRequestWithBody(c.Server, organizationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpgradeBillingProduct performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/upgrade (the `UpgradeBillingProduct` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) UpgradeBillingProduct(ctx context.Context, organizationId string, body UpgradeBillingProductJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpgradeBillingProductRequest(c.Server, organizationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StartBillingTrialWithBody performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial (the `StartBillingTrial` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) StartBillingTrialWithBody(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartBillingTrialRequestWithBody(c.Server, organizationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StartBillingTrial performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial (the `StartBillingTrial` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) StartBillingTrial(ctx context.Context, organizationId string, body StartBillingTrialJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartBillingTrialRequest(c.Server, organizationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CancelBillingTrialWithBody performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial/cancel (the `CancelBillingTrial` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CancelBillingTrialWithBody(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCancelBillingTrialRequestWithBody(c.Server, organizationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CancelBillingTrial performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial/cancel (the `CancelBillingTrial` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CancelBillingTrial(ctx context.Context, organizationId string, body CancelBillingTrialJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCancelBillingTrialRequest(c.Server, organizationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ConfirmBillingTrialPaymentWithBody performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial/confirm-payment (the `ConfirmBillingTrialPayment` operationId) request,
+// with any type of body and a specified content type.
+//
+// Get the page where the customer approves a trial conversion charge their bank is holding (for example 3D Secure): a Stripe Checkout for a trial on the free tier, or the invoice of the held change for an upgrade trial. The trial converts once it is paid. Returns 'upgraded' with no redirect when the charge went through without needing approval.
+func (c *Client) ConfirmBillingTrialPaymentWithBody(ctx context.Context, organizationId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewConfirmBillingTrialPaymentRequestWithBody(c.Server, organizationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ConfirmBillingTrialPayment performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial/confirm-payment (the `ConfirmBillingTrialPayment` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Get the page where the customer approves a trial conversion charge their bank is holding (for example 3D Secure): a Stripe Checkout for a trial on the free tier, or the invoice of the held change for an upgrade trial. The trial converts once it is paid. Returns 'upgraded' with no redirect when the charge went through without needing approval.
+func (c *Client) ConfirmBillingTrialPayment(ctx context.Context, organizationId openapi_types.UUID, body ConfirmBillingTrialPaymentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewConfirmBillingTrialPaymentRequest(c.Server, organizationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetOrganizationPlan performs a GET /api/v1/organizations/{organizationId}/plan (the `GetOrganizationPlan` operationId) request.
 func (c *Client) GetOrganizationPlan(ctx context.Context, organizationId string, params *GetOrganizationPlanParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetOrganizationPlanRequest(c.Server, organizationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListOrganizationPlans performs a GET /api/v1/organizations/{organizationId}/plans (the `ListOrganizationPlans` operationId) request.
+func (c *Client) ListOrganizationPlans(ctx context.Context, organizationId string, params *ListOrganizationPlansParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListOrganizationPlansRequest(c.Server, organizationId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -313335,6 +315833,40 @@ func NewGetBillingUsageBreakdownRequest(server string, organizationId openapi_ty
 	return req, nil
 }
 
+// NewGetBillingCatalogRequest constructs an http.Request for the GetBillingCatalog method
+func NewGetBillingCatalogRequest(server string, organizationId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organizations/%s/billing/v2/catalog", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListBillableOrganizationsRequest constructs an http.Request for the ListBillableOrganizations method
 func NewListBillableOrganizationsRequest(server string, organizationId openapi_types.UUID, params *ListBillableOrganizationsParams) (*http.Request, error) {
 	var err error
@@ -313420,6 +315952,538 @@ func NewListBillableOrganizationsRequest(server string, organizationId openapi_t
 	return req, nil
 }
 
+// NewGetBillingOverviewRequest constructs an http.Request for the GetBillingOverview method
+func NewGetBillingOverviewRequest(server string, organizationId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organizations/%s/billing/v2/overview", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRefreshBillingOverviewRequest constructs an http.Request for the RefreshBillingOverview method
+func NewRefreshBillingOverviewRequest(server string, organizationId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organizations/%s/billing/v2/overview/refresh", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateBillingPaymentMethodSessionRequest calls the generic CreateBillingPaymentMethodSession builder with application/json body
+func NewCreateBillingPaymentMethodSessionRequest(server string, organizationId string, body CreateBillingPaymentMethodSessionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateBillingPaymentMethodSessionRequestWithBody(server, organizationId, "application/json", bodyReader)
+}
+
+// NewCreateBillingPaymentMethodSessionRequestWithBody constructs an http.Request for the CreateBillingPaymentMethodSession method, with any body, and a specified content type
+func NewCreateBillingPaymentMethodSessionRequestWithBody(server string, organizationId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organizations/%s/billing/v2/payment-method", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateBillingPortalSessionRequest calls the generic CreateBillingPortalSession builder with application/json body
+func NewCreateBillingPortalSessionRequest(server string, organizationId string, body CreateBillingPortalSessionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateBillingPortalSessionRequestWithBody(server, organizationId, "application/json", bodyReader)
+}
+
+// NewCreateBillingPortalSessionRequestWithBody constructs an http.Request for the CreateBillingPortalSession method, with any body, and a specified content type
+func NewCreateBillingPortalSessionRequestWithBody(server string, organizationId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organizations/%s/billing/v2/portal-session", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewChangeBillingCommitmentsRequest calls the generic ChangeBillingCommitments builder with application/json body
+func NewChangeBillingCommitmentsRequest(server string, organizationId string, body ChangeBillingCommitmentsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewChangeBillingCommitmentsRequestWithBody(server, organizationId, "application/json", bodyReader)
+}
+
+// NewChangeBillingCommitmentsRequestWithBody constructs an http.Request for the ChangeBillingCommitments method, with any body, and a specified content type
+func NewChangeBillingCommitmentsRequestWithBody(server string, organizationId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organizations/%s/billing/v2/subscription/commitments", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPreviewBillingSubscriptionChangeRequest calls the generic PreviewBillingSubscriptionChange builder with application/json body
+func NewPreviewBillingSubscriptionChangeRequest(server string, organizationId string, body PreviewBillingSubscriptionChangeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPreviewBillingSubscriptionChangeRequestWithBody(server, organizationId, "application/json", bodyReader)
+}
+
+// NewPreviewBillingSubscriptionChangeRequestWithBody constructs an http.Request for the PreviewBillingSubscriptionChange method, with any body, and a specified content type
+func NewPreviewBillingSubscriptionChangeRequestWithBody(server string, organizationId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organizations/%s/billing/v2/subscription/preview", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewBuyBillingProductRequest calls the generic BuyBillingProduct builder with application/json body
+func NewBuyBillingProductRequest(server string, organizationId string, body BuyBillingProductJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewBuyBillingProductRequestWithBody(server, organizationId, "application/json", bodyReader)
+}
+
+// NewBuyBillingProductRequestWithBody constructs an http.Request for the BuyBillingProduct method, with any body, and a specified content type
+func NewBuyBillingProductRequestWithBody(server string, organizationId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organizations/%s/billing/v2/subscription/products", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRemoveBillingProductRequest constructs an http.Request for the RemoveBillingProduct method
+func NewRemoveBillingProductRequest(server string, organizationId string, productId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "productId", productId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organizations/%s/billing/v2/subscription/products/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpgradeBillingProductRequest calls the generic UpgradeBillingProduct builder with application/json body
+func NewUpgradeBillingProductRequest(server string, organizationId string, body UpgradeBillingProductJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpgradeBillingProductRequestWithBody(server, organizationId, "application/json", bodyReader)
+}
+
+// NewUpgradeBillingProductRequestWithBody constructs an http.Request for the UpgradeBillingProduct method, with any body, and a specified content type
+func NewUpgradeBillingProductRequestWithBody(server string, organizationId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organizations/%s/billing/v2/subscription/upgrade", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewStartBillingTrialRequest calls the generic StartBillingTrial builder with application/json body
+func NewStartBillingTrialRequest(server string, organizationId string, body StartBillingTrialJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStartBillingTrialRequestWithBody(server, organizationId, "application/json", bodyReader)
+}
+
+// NewStartBillingTrialRequestWithBody constructs an http.Request for the StartBillingTrial method, with any body, and a specified content type
+func NewStartBillingTrialRequestWithBody(server string, organizationId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organizations/%s/billing/v2/trial", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCancelBillingTrialRequest calls the generic CancelBillingTrial builder with application/json body
+func NewCancelBillingTrialRequest(server string, organizationId string, body CancelBillingTrialJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCancelBillingTrialRequestWithBody(server, organizationId, "application/json", bodyReader)
+}
+
+// NewCancelBillingTrialRequestWithBody constructs an http.Request for the CancelBillingTrial method, with any body, and a specified content type
+func NewCancelBillingTrialRequestWithBody(server string, organizationId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organizations/%s/billing/v2/trial/cancel", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewConfirmBillingTrialPaymentRequest calls the generic ConfirmBillingTrialPayment builder with application/json body
+func NewConfirmBillingTrialPaymentRequest(server string, organizationId openapi_types.UUID, body ConfirmBillingTrialPaymentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewConfirmBillingTrialPaymentRequestWithBody(server, organizationId, "application/json", bodyReader)
+}
+
+// NewConfirmBillingTrialPaymentRequestWithBody constructs an http.Request for the ConfirmBillingTrialPayment method, with any body, and a specified content type
+func NewConfirmBillingTrialPaymentRequestWithBody(server string, organizationId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organizations/%s/billing/v2/trial/confirm-payment", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetOrganizationPlanRequest constructs an http.Request for the GetOrganizationPlan method
 func NewGetOrganizationPlanRequest(server string, organizationId string, params *GetOrganizationPlanParams) (*http.Request, error) {
 	var err error
@@ -313458,6 +316522,67 @@ func NewGetOrganizationPlanRequest(server string, organizationId string, params 
 		if params.RefreshCache != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refreshCache", *params.RefreshCache, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListOrganizationPlansRequest constructs an http.Request for the ListOrganizationPlans method
+func NewListOrganizationPlansRequest(server string, organizationId string, params *ListOrganizationPlansParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organizations/%s/plans", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.WorkspaceId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "workspaceId", *params.WorkspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -338645,6 +341770,11 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	GetBillingUsageBreakdownWithResponse(ctx context.Context, organizationId openapi_types.UUID, dimensionKey GetBillingUsageBreakdownParamsDimensionKey, params *GetBillingUsageBreakdownParams, reqEditors ...RequestEditorFn) (*GetBillingUsageBreakdownResponse, error)
 
+	// GetBillingCatalogWithResponse performs a GET /api/v1/organizations/{organizationId}/billing/v2/catalog (the `GetBillingCatalog` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetBillingCatalogWithResponse(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*GetBillingCatalogResponse, error)
+
 	// ListBillableOrganizationsWithResponse performs a GET /api/v1/organizations/{organizationId}/billing/v2/organizations (the `ListBillableOrganizations` operationId) request.
 	//
 	// List the root organizations whose billing the caller may read. A self-hosted instance admin gets every organization on the instance, because one licence covers them all; everyone else gets only their own.
@@ -338652,10 +341782,124 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	ListBillableOrganizationsWithResponse(ctx context.Context, organizationId openapi_types.UUID, params *ListBillableOrganizationsParams, reqEditors ...RequestEditorFn) (*ListBillableOrganizationsResponse, error)
 
+	// GetBillingOverviewWithResponse performs a GET /api/v1/organizations/{organizationId}/billing/v2/overview (the `GetBillingOverview` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetBillingOverviewWithResponse(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*GetBillingOverviewResponse, error)
+
+	// RefreshBillingOverviewWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/overview/refresh (the `RefreshBillingOverview` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	RefreshBillingOverviewWithResponse(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*RefreshBillingOverviewResponse, error)
+
+	// CreateBillingPaymentMethodSessionWithBodyWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/payment-method (the `CreateBillingPaymentMethodSession` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateBillingPaymentMethodSessionWithBodyWithResponse(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateBillingPaymentMethodSessionResponse, error)
+
+	// CreateBillingPaymentMethodSessionWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/payment-method (the `CreateBillingPaymentMethodSession` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CreateBillingPaymentMethodSessionWithResponse(ctx context.Context, organizationId string, body CreateBillingPaymentMethodSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateBillingPaymentMethodSessionResponse, error)
+
+	// CreateBillingPortalSessionWithBodyWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/portal-session (the `CreateBillingPortalSession` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateBillingPortalSessionWithBodyWithResponse(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateBillingPortalSessionResponse, error)
+
+	// CreateBillingPortalSessionWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/portal-session (the `CreateBillingPortalSession` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CreateBillingPortalSessionWithResponse(ctx context.Context, organizationId string, body CreateBillingPortalSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateBillingPortalSessionResponse, error)
+
+	// ChangeBillingCommitmentsWithBodyWithResponse performs a PUT /api/v1/organizations/{organizationId}/billing/v2/subscription/commitments (the `ChangeBillingCommitments` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ChangeBillingCommitmentsWithBodyWithResponse(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ChangeBillingCommitmentsResponse, error)
+
+	// ChangeBillingCommitmentsWithResponse performs a PUT /api/v1/organizations/{organizationId}/billing/v2/subscription/commitments (the `ChangeBillingCommitments` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	ChangeBillingCommitmentsWithResponse(ctx context.Context, organizationId string, body ChangeBillingCommitmentsJSONRequestBody, reqEditors ...RequestEditorFn) (*ChangeBillingCommitmentsResponse, error)
+
+	// PreviewBillingSubscriptionChangeWithBodyWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/preview (the `PreviewBillingSubscriptionChange` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	PreviewBillingSubscriptionChangeWithBodyWithResponse(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PreviewBillingSubscriptionChangeResponse, error)
+
+	// PreviewBillingSubscriptionChangeWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/preview (the `PreviewBillingSubscriptionChange` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	PreviewBillingSubscriptionChangeWithResponse(ctx context.Context, organizationId string, body PreviewBillingSubscriptionChangeJSONRequestBody, reqEditors ...RequestEditorFn) (*PreviewBillingSubscriptionChangeResponse, error)
+
+	// BuyBillingProductWithBodyWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/products (the `BuyBillingProduct` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	BuyBillingProductWithBodyWithResponse(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BuyBillingProductResponse, error)
+
+	// BuyBillingProductWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/products (the `BuyBillingProduct` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	BuyBillingProductWithResponse(ctx context.Context, organizationId string, body BuyBillingProductJSONRequestBody, reqEditors ...RequestEditorFn) (*BuyBillingProductResponse, error)
+
+	// RemoveBillingProductWithResponse performs a DELETE /api/v1/organizations/{organizationId}/billing/v2/subscription/products/{productId} (the `RemoveBillingProduct` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	RemoveBillingProductWithResponse(ctx context.Context, organizationId string, productId string, reqEditors ...RequestEditorFn) (*RemoveBillingProductResponse, error)
+
+	// UpgradeBillingProductWithBodyWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/upgrade (the `UpgradeBillingProduct` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpgradeBillingProductWithBodyWithResponse(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpgradeBillingProductResponse, error)
+
+	// UpgradeBillingProductWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/upgrade (the `UpgradeBillingProduct` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	UpgradeBillingProductWithResponse(ctx context.Context, organizationId string, body UpgradeBillingProductJSONRequestBody, reqEditors ...RequestEditorFn) (*UpgradeBillingProductResponse, error)
+
+	// StartBillingTrialWithBodyWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial (the `StartBillingTrial` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	StartBillingTrialWithBodyWithResponse(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StartBillingTrialResponse, error)
+
+	// StartBillingTrialWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial (the `StartBillingTrial` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	StartBillingTrialWithResponse(ctx context.Context, organizationId string, body StartBillingTrialJSONRequestBody, reqEditors ...RequestEditorFn) (*StartBillingTrialResponse, error)
+
+	// CancelBillingTrialWithBodyWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial/cancel (the `CancelBillingTrial` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CancelBillingTrialWithBodyWithResponse(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CancelBillingTrialResponse, error)
+
+	// CancelBillingTrialWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial/cancel (the `CancelBillingTrial` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CancelBillingTrialWithResponse(ctx context.Context, organizationId string, body CancelBillingTrialJSONRequestBody, reqEditors ...RequestEditorFn) (*CancelBillingTrialResponse, error)
+
+	// ConfirmBillingTrialPaymentWithBodyWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial/confirm-payment (the `ConfirmBillingTrialPayment` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Get the page where the customer approves a trial conversion charge their bank is holding (for example 3D Secure): a Stripe Checkout for a trial on the free tier, or the invoice of the held change for an upgrade trial. The trial converts once it is paid. Returns 'upgraded' with no redirect when the charge went through without needing approval.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ConfirmBillingTrialPaymentWithBodyWithResponse(ctx context.Context, organizationId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ConfirmBillingTrialPaymentResponse, error)
+
+	// ConfirmBillingTrialPaymentWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial/confirm-payment (the `ConfirmBillingTrialPayment` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Get the page where the customer approves a trial conversion charge their bank is holding (for example 3D Secure): a Stripe Checkout for a trial on the free tier, or the invoice of the held change for an upgrade trial. The trial converts once it is paid. Returns 'upgraded' with no redirect when the charge went through without needing approval.
+	ConfirmBillingTrialPaymentWithResponse(ctx context.Context, organizationId openapi_types.UUID, body ConfirmBillingTrialPaymentJSONRequestBody, reqEditors ...RequestEditorFn) (*ConfirmBillingTrialPaymentResponse, error)
+
 	// GetOrganizationPlanWithResponse performs a GET /api/v1/organizations/{organizationId}/plan (the `GetOrganizationPlan` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	GetOrganizationPlanWithResponse(ctx context.Context, organizationId string, params *GetOrganizationPlanParams, reqEditors ...RequestEditorFn) (*GetOrganizationPlanResponse, error)
+
+	// ListOrganizationPlansWithResponse performs a GET /api/v1/organizations/{organizationId}/plans (the `ListOrganizationPlans` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListOrganizationPlansWithResponse(ctx context.Context, organizationId string, params *ListOrganizationPlansParams, reqEditors ...RequestEditorFn) (*ListOrganizationPlansResponse, error)
 
 	// SendPasswordSetupEmailWithResponse performs a POST /api/v1/password/email/password-setup (the `SendPasswordSetupEmail` operationId) request.
 	//
@@ -462151,6 +465395,279 @@ func (r GetBillingUsageBreakdownResponse) ContentType() string {
 	return ""
 }
 
+type GetBillingCatalogResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Products []struct {
+			Addon   *bool  `json:"addon,omitempty"`
+			Color   string `json:"color"`
+			Compare *[]struct {
+				Cells map[string]GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties `json:"cells"`
+				Label string                                                                                      `json:"label"`
+			} `json:"compare,omitempty"`
+			Deprecated  *bool `json:"deprecated,omitempty"`
+			Deprecation *struct {
+				Date      *string  `json:"date"`
+				DaysLeft  *float32 `json:"daysLeft"`
+				NextSteps *string  `json:"nextSteps,omitempty"`
+				Reason    *string  `json:"reason,omitempty"`
+			} `json:"deprecation,omitempty"`
+			DisplayOrder *float32  `json:"displayOrder,omitempty"`
+			Icon         string    `json:"icon"`
+			Id           string    `json:"id"`
+			Includes     *[]string `json:"includes,omitempty"`
+			Name         string    `json:"name"`
+			Plans        []struct {
+				Base *struct {
+					Annual  float32 `json:"annual"`
+					Monthly float32 `json:"monthly"`
+				} `json:"base,omitempty"`
+				Deprecated  *bool `json:"deprecated,omitempty"`
+				Deprecation *struct {
+					Date      *string  `json:"date"`
+					DaysLeft  *float32 `json:"daysLeft"`
+					NextSteps *string  `json:"nextSteps,omitempty"`
+					Reason    *string  `json:"reason,omitempty"`
+				} `json:"deprecation,omitempty"`
+				Dims []struct {
+					Aggregation *string `json:"aggregation,omitempty"`
+					Annual      float32 `json:"annual"`
+					Bands       *struct {
+						Mode  GetBillingCatalog200JSONResponseBodyProductsPlansDimsBandsMode `json:"mode"`
+						Tiers []struct {
+							FlatFee   float32  `json:"flatFee"`
+							UnitPrice float32  `json:"unitPrice"`
+							UpTo      *float32 `json:"upTo"`
+						} `json:"tiers"`
+					} `json:"bands,omitempty"`
+					Included       float32 `json:"included"`
+					Key            string  `json:"key"`
+					Label          string  `json:"label"`
+					MeteredAnnual  *bool   `json:"meteredAnnual,omitempty"`
+					MeteredMonthly *bool   `json:"meteredMonthly,omitempty"`
+					Monthly        float32 `json:"monthly"`
+					Noun           string  `json:"noun"`
+				} `json:"dims"`
+				DisplayOrder *float32 `json:"displayOrder,omitempty"`
+				Feature      *string  `json:"feature,omitempty"`
+				Name         string   `json:"name"`
+				SalesLed     bool     `json:"salesLed"`
+				SelfServe    bool     `json:"selfServe"`
+				Tier         string   `json:"tier"`
+				TrialDays    float32  `json:"trialDays"`
+				Trialable    bool     `json:"trialable"`
+				Upgradeable  bool     `json:"upgradeable"`
+			} `json:"plans"`
+			Tagline *string `json:"tagline,omitempty"`
+		} `json:"products"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetBillingCatalog400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetBillingCatalog401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetBillingCatalog403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetBillingCatalog404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                         `json:"error"`
+		Message    interface{}                                    `json:"message,omitempty"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetBillingCatalog422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetBillingCatalog500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetBillingCatalogResponse) GetJSON200() *struct {
+	Products []struct {
+		Addon   *bool  `json:"addon,omitempty"`
+		Color   string `json:"color"`
+		Compare *[]struct {
+			Cells map[string]GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties `json:"cells"`
+			Label string                                                                                      `json:"label"`
+		} `json:"compare,omitempty"`
+		Deprecated  *bool `json:"deprecated,omitempty"`
+		Deprecation *struct {
+			Date      *string  `json:"date"`
+			DaysLeft  *float32 `json:"daysLeft"`
+			NextSteps *string  `json:"nextSteps,omitempty"`
+			Reason    *string  `json:"reason,omitempty"`
+		} `json:"deprecation,omitempty"`
+		DisplayOrder *float32  `json:"displayOrder,omitempty"`
+		Icon         string    `json:"icon"`
+		Id           string    `json:"id"`
+		Includes     *[]string `json:"includes,omitempty"`
+		Name         string    `json:"name"`
+		Plans        []struct {
+			Base *struct {
+				Annual  float32 `json:"annual"`
+				Monthly float32 `json:"monthly"`
+			} `json:"base,omitempty"`
+			Deprecated  *bool `json:"deprecated,omitempty"`
+			Deprecation *struct {
+				Date      *string  `json:"date"`
+				DaysLeft  *float32 `json:"daysLeft"`
+				NextSteps *string  `json:"nextSteps,omitempty"`
+				Reason    *string  `json:"reason,omitempty"`
+			} `json:"deprecation,omitempty"`
+			Dims []struct {
+				Aggregation *string `json:"aggregation,omitempty"`
+				Annual      float32 `json:"annual"`
+				Bands       *struct {
+					Mode  GetBillingCatalog200JSONResponseBodyProductsPlansDimsBandsMode `json:"mode"`
+					Tiers []struct {
+						FlatFee   float32  `json:"flatFee"`
+						UnitPrice float32  `json:"unitPrice"`
+						UpTo      *float32 `json:"upTo"`
+					} `json:"tiers"`
+				} `json:"bands,omitempty"`
+				Included       float32 `json:"included"`
+				Key            string  `json:"key"`
+				Label          string  `json:"label"`
+				MeteredAnnual  *bool   `json:"meteredAnnual,omitempty"`
+				MeteredMonthly *bool   `json:"meteredMonthly,omitempty"`
+				Monthly        float32 `json:"monthly"`
+				Noun           string  `json:"noun"`
+			} `json:"dims"`
+			DisplayOrder *float32 `json:"displayOrder,omitempty"`
+			Feature      *string  `json:"feature,omitempty"`
+			Name         string   `json:"name"`
+			SalesLed     bool     `json:"salesLed"`
+			SelfServe    bool     `json:"selfServe"`
+			Tier         string   `json:"tier"`
+			TrialDays    float32  `json:"trialDays"`
+			Trialable    bool     `json:"trialable"`
+			Upgradeable  bool     `json:"upgradeable"`
+		} `json:"plans"`
+		Tagline *string `json:"tagline,omitempty"`
+	} `json:"products"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetBillingCatalogResponse) GetJSON400() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetBillingCatalog400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetBillingCatalogResponse) GetJSON401() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetBillingCatalog401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetBillingCatalogResponse) GetJSON403() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetBillingCatalog403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetBillingCatalogResponse) GetJSON404() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetBillingCatalog404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetBillingCatalogResponse) GetJSON422() *struct {
+	Error      string                                         `json:"error"`
+	Message    interface{}                                    `json:"message,omitempty"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetBillingCatalog422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetBillingCatalogResponse) GetJSON500() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetBillingCatalog500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetBillingCatalogResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetBillingCatalogResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetBillingCatalogResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetBillingCatalogResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListBillableOrganizationsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -462326,6 +465843,2150 @@ func (r ListBillableOrganizationsResponse) ContentType() string {
 	return ""
 }
 
+type GetBillingOverviewResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Overview struct {
+			Billing struct {
+				ActiveProductCount float32 `json:"activeProductCount"`
+				AnnualCommitted    float32 `json:"annualCommitted"`
+				MonthlyRecurring   float32 `json:"monthlyRecurring"`
+				NextCharge         *struct {
+					Amount         float32                                                                `json:"amount"`
+					At             string                                                                 `json:"at"`
+					Cadence        *GetBillingOverview200JSONResponseBodyOverviewBillingNextChargeCadence `json:"cadence"`
+					EstimatedUsage *float32                                                               `json:"estimatedUsage"`
+					HasUsage       bool                                                                   `json:"hasUsage"`
+					ProductKeys    []string                                                               `json:"productKeys"`
+				} `json:"nextCharge"`
+			} `json:"billing"`
+			BillingDetails *struct {
+				Address *struct {
+					City       *string `json:"city,omitempty"`
+					Country    *string `json:"country,omitempty"`
+					Line1      *string `json:"line1,omitempty"`
+					Line2      *string `json:"line2,omitempty"`
+					PostalCode *string `json:"postalCode,omitempty"`
+					State      *string `json:"state,omitempty"`
+				} `json:"address"`
+				Email  string `json:"email"`
+				Name   string `json:"name"`
+				TaxIds []struct {
+					Type  string `json:"type"`
+					Value string `json:"value"`
+				} `json:"taxIds"`
+			} `json:"billingDetails"`
+			CheckoutFrozen bool `json:"checkoutFrozen"`
+			Entitlements   map[string]struct {
+				Amount      *float32                                                          `json:"amount,omitempty"`
+				Cadence     *GetBillingOverview200JSONResponseBodyOverviewEntitlementsCadence `json:"cadence,omitempty"`
+				Deprecation *struct {
+					Date      *string                                                                  `json:"date"`
+					DaysLeft  *float32                                                                 `json:"daysLeft"`
+					Kind      GetBillingOverview200JSONResponseBodyOverviewEntitlementsDeprecationKind `json:"kind"`
+					NextSteps *string                                                                  `json:"nextSteps,omitempty"`
+					Reason    *string                                                                  `json:"reason,omitempty"`
+				} `json:"deprecation,omitempty"`
+				Dimensions *[]struct {
+					Bands *struct {
+						Mode  GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsBandsMode `json:"mode"`
+						Tiers []struct {
+							FlatFee   float32  `json:"flatFee"`
+							UnitPrice float32  `json:"unitPrice"`
+							UpTo      *float32 `json:"upTo"`
+						} `json:"tiers"`
+					} `json:"bands,omitempty"`
+					Cadence             *GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsCadence `json:"cadence"`
+					CanDecreaseNow      *bool                                                                       `json:"canDecreaseNow,omitempty"`
+					CommitAvailable     bool                                                                        `json:"commitAvailable"`
+					Committed           *float32                                                                    `json:"committed"`
+					CommittedRate       *float32                                                                    `json:"committedRate,omitempty"`
+					DecreaseAllowedFrom *string                                                                     `json:"decreaseAllowedFrom,omitempty"`
+					FreeBand            *float32                                                                    `json:"freeBand,omitempty"`
+					Key                 string                                                                      `json:"key"`
+					Label               string                                                                      `json:"label"`
+					Limit               *float32                                                                    `json:"limit"`
+					Metered             bool                                                                        `json:"metered"`
+					Noun                string                                                                      `json:"noun"`
+					OnDemandAmount      float32                                                                     `json:"onDemandAmount"`
+					OnDemandRate        *float32                                                                    `json:"onDemandRate,omitempty"`
+					Rate                *float32                                                                    `json:"rate,omitempty"`
+					RenewalDate         *string                                                                     `json:"renewalDate,omitempty"`
+					Unit                string                                                                      `json:"unit"`
+					Usage               *struct {
+						AsOf            *string `json:"asOf"`
+						CurrentTier     float32 `json:"currentTier"`
+						EarlierInPeriod []struct {
+							EstimatedAmount *float32 `json:"estimatedAmount"`
+							PeriodEnd       *string  `json:"periodEnd"`
+							PeriodStart     *string  `json:"periodStart"`
+							Used            float32  `json:"used"`
+						} `json:"earlierInPeriod"`
+						EstimatedAmount *float32 `json:"estimatedAmount"`
+						NextTierAt      *float32 `json:"nextTierAt"`
+						PeriodEnd       *string  `json:"periodEnd"`
+						PeriodStart     *string  `json:"periodStart"`
+						Trial           bool     `json:"trial"`
+					} `json:"usage,omitempty"`
+					Used float32 `json:"used"`
+				} `json:"dimensions,omitempty"`
+				Entitled              bool     `json:"entitled"`
+				IsTrialing            *bool    `json:"isTrialing,omitempty"`
+				Limit                 *float32 `json:"limit,omitempty"`
+				OnDemandAmount        *float32 `json:"onDemandAmount,omitempty"`
+				PlanTier              *string  `json:"planTier,omitempty"`
+				RenewsOn              *string  `json:"renewsOn,omitempty"`
+				Status                *string  `json:"status,omitempty"`
+				TrialEndsAt           *string  `json:"trialEndsAt,omitempty"`
+				TrialPaymentDueAt     *string  `json:"trialPaymentDueAt,omitempty"`
+				TrialPlan             *string  `json:"trialPlan,omitempty"`
+				TrialPlanDaysLeft     *float32 `json:"trialPlanDaysLeft,omitempty"`
+				TrialPlanEndsAt       *string  `json:"trialPlanEndsAt,omitempty"`
+				TrialPlanName         *string  `json:"trialPlanName,omitempty"`
+				TrialPlanPaymentDueAt *string  `json:"trialPlanPaymentDueAt,omitempty"`
+				Unit                  *string  `json:"unit,omitempty"`
+				Used                  *float32 `json:"used,omitempty"`
+			} `json:"entitlements"`
+			Invoices []struct {
+				Amount float32 `json:"amount"`
+				Date   string  `json:"date"`
+				Id     string  `json:"id"`
+				Number string  `json:"number"`
+				Paid   bool    `json:"paid"`
+				PdfUrl string  `json:"pdfUrl"`
+			} `json:"invoices"`
+			IsCloud        bool                                              `json:"isCloud"`
+			Mode           GetBillingOverview200JSONResponseBodyOverviewMode `json:"mode"`
+			OnDemandAmount float32                                           `json:"onDemandAmount"`
+			Payment        *struct {
+				Brand    string  `json:"brand"`
+				ExpMonth float32 `json:"expMonth"`
+				ExpYear  float32 `json:"expYear"`
+				Last4    string  `json:"last4"`
+			} `json:"payment"`
+			PaymentAlert *struct {
+				ActionUrl string                                                         `json:"actionUrl"`
+				State     GetBillingOverview200JSONResponseBodyOverviewPaymentAlertState `json:"state"`
+			} `json:"paymentAlert"`
+			PlanName        string                                                `json:"planName"`
+			SelfServe       bool                                                  `json:"selfServe"`
+			SubState        GetBillingOverview200JSONResponseBodyOverviewSubState `json:"subState"`
+			TrialPaymentDue *struct {
+				DueAt       string   `json:"dueAt"`
+				ProductKeys []string `json:"productKeys"`
+			} `json:"trialPaymentDue"`
+			TrialedProductKeys []string `json:"trialedProductKeys"`
+			Trials             []struct {
+				BasePlanTier *string  `json:"basePlanTier"`
+				EndedAt      *string  `json:"endedAt"`
+				EndedDaysAgo *float32 `json:"endedDaysAgo"`
+				EndedDetail  *string  `json:"endedDetail"`
+				EndedReason  *string  `json:"endedReason"`
+				Outcome      string   `json:"outcome"`
+				PlanTier     *string  `json:"planTier"`
+				ProductKey   string   `json:"productKey"`
+			} `json:"trials"`
+		} `json:"overview"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetBillingOverview400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetBillingOverview401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetBillingOverview403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetBillingOverview404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                          `json:"error"`
+		Message    interface{}                                     `json:"message,omitempty"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetBillingOverview422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetBillingOverview500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetBillingOverviewResponse) GetJSON200() *struct {
+	Overview struct {
+		Billing struct {
+			ActiveProductCount float32 `json:"activeProductCount"`
+			AnnualCommitted    float32 `json:"annualCommitted"`
+			MonthlyRecurring   float32 `json:"monthlyRecurring"`
+			NextCharge         *struct {
+				Amount         float32                                                                `json:"amount"`
+				At             string                                                                 `json:"at"`
+				Cadence        *GetBillingOverview200JSONResponseBodyOverviewBillingNextChargeCadence `json:"cadence"`
+				EstimatedUsage *float32                                                               `json:"estimatedUsage"`
+				HasUsage       bool                                                                   `json:"hasUsage"`
+				ProductKeys    []string                                                               `json:"productKeys"`
+			} `json:"nextCharge"`
+		} `json:"billing"`
+		BillingDetails *struct {
+			Address *struct {
+				City       *string `json:"city,omitempty"`
+				Country    *string `json:"country,omitempty"`
+				Line1      *string `json:"line1,omitempty"`
+				Line2      *string `json:"line2,omitempty"`
+				PostalCode *string `json:"postalCode,omitempty"`
+				State      *string `json:"state,omitempty"`
+			} `json:"address"`
+			Email  string `json:"email"`
+			Name   string `json:"name"`
+			TaxIds []struct {
+				Type  string `json:"type"`
+				Value string `json:"value"`
+			} `json:"taxIds"`
+		} `json:"billingDetails"`
+		CheckoutFrozen bool `json:"checkoutFrozen"`
+		Entitlements   map[string]struct {
+			Amount      *float32                                                          `json:"amount,omitempty"`
+			Cadence     *GetBillingOverview200JSONResponseBodyOverviewEntitlementsCadence `json:"cadence,omitempty"`
+			Deprecation *struct {
+				Date      *string                                                                  `json:"date"`
+				DaysLeft  *float32                                                                 `json:"daysLeft"`
+				Kind      GetBillingOverview200JSONResponseBodyOverviewEntitlementsDeprecationKind `json:"kind"`
+				NextSteps *string                                                                  `json:"nextSteps,omitempty"`
+				Reason    *string                                                                  `json:"reason,omitempty"`
+			} `json:"deprecation,omitempty"`
+			Dimensions *[]struct {
+				Bands *struct {
+					Mode  GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsBandsMode `json:"mode"`
+					Tiers []struct {
+						FlatFee   float32  `json:"flatFee"`
+						UnitPrice float32  `json:"unitPrice"`
+						UpTo      *float32 `json:"upTo"`
+					} `json:"tiers"`
+				} `json:"bands,omitempty"`
+				Cadence             *GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsCadence `json:"cadence"`
+				CanDecreaseNow      *bool                                                                       `json:"canDecreaseNow,omitempty"`
+				CommitAvailable     bool                                                                        `json:"commitAvailable"`
+				Committed           *float32                                                                    `json:"committed"`
+				CommittedRate       *float32                                                                    `json:"committedRate,omitempty"`
+				DecreaseAllowedFrom *string                                                                     `json:"decreaseAllowedFrom,omitempty"`
+				FreeBand            *float32                                                                    `json:"freeBand,omitempty"`
+				Key                 string                                                                      `json:"key"`
+				Label               string                                                                      `json:"label"`
+				Limit               *float32                                                                    `json:"limit"`
+				Metered             bool                                                                        `json:"metered"`
+				Noun                string                                                                      `json:"noun"`
+				OnDemandAmount      float32                                                                     `json:"onDemandAmount"`
+				OnDemandRate        *float32                                                                    `json:"onDemandRate,omitempty"`
+				Rate                *float32                                                                    `json:"rate,omitempty"`
+				RenewalDate         *string                                                                     `json:"renewalDate,omitempty"`
+				Unit                string                                                                      `json:"unit"`
+				Usage               *struct {
+					AsOf            *string `json:"asOf"`
+					CurrentTier     float32 `json:"currentTier"`
+					EarlierInPeriod []struct {
+						EstimatedAmount *float32 `json:"estimatedAmount"`
+						PeriodEnd       *string  `json:"periodEnd"`
+						PeriodStart     *string  `json:"periodStart"`
+						Used            float32  `json:"used"`
+					} `json:"earlierInPeriod"`
+					EstimatedAmount *float32 `json:"estimatedAmount"`
+					NextTierAt      *float32 `json:"nextTierAt"`
+					PeriodEnd       *string  `json:"periodEnd"`
+					PeriodStart     *string  `json:"periodStart"`
+					Trial           bool     `json:"trial"`
+				} `json:"usage,omitempty"`
+				Used float32 `json:"used"`
+			} `json:"dimensions,omitempty"`
+			Entitled              bool     `json:"entitled"`
+			IsTrialing            *bool    `json:"isTrialing,omitempty"`
+			Limit                 *float32 `json:"limit,omitempty"`
+			OnDemandAmount        *float32 `json:"onDemandAmount,omitempty"`
+			PlanTier              *string  `json:"planTier,omitempty"`
+			RenewsOn              *string  `json:"renewsOn,omitempty"`
+			Status                *string  `json:"status,omitempty"`
+			TrialEndsAt           *string  `json:"trialEndsAt,omitempty"`
+			TrialPaymentDueAt     *string  `json:"trialPaymentDueAt,omitempty"`
+			TrialPlan             *string  `json:"trialPlan,omitempty"`
+			TrialPlanDaysLeft     *float32 `json:"trialPlanDaysLeft,omitempty"`
+			TrialPlanEndsAt       *string  `json:"trialPlanEndsAt,omitempty"`
+			TrialPlanName         *string  `json:"trialPlanName,omitempty"`
+			TrialPlanPaymentDueAt *string  `json:"trialPlanPaymentDueAt,omitempty"`
+			Unit                  *string  `json:"unit,omitempty"`
+			Used                  *float32 `json:"used,omitempty"`
+		} `json:"entitlements"`
+		Invoices []struct {
+			Amount float32 `json:"amount"`
+			Date   string  `json:"date"`
+			Id     string  `json:"id"`
+			Number string  `json:"number"`
+			Paid   bool    `json:"paid"`
+			PdfUrl string  `json:"pdfUrl"`
+		} `json:"invoices"`
+		IsCloud        bool                                              `json:"isCloud"`
+		Mode           GetBillingOverview200JSONResponseBodyOverviewMode `json:"mode"`
+		OnDemandAmount float32                                           `json:"onDemandAmount"`
+		Payment        *struct {
+			Brand    string  `json:"brand"`
+			ExpMonth float32 `json:"expMonth"`
+			ExpYear  float32 `json:"expYear"`
+			Last4    string  `json:"last4"`
+		} `json:"payment"`
+		PaymentAlert *struct {
+			ActionUrl string                                                         `json:"actionUrl"`
+			State     GetBillingOverview200JSONResponseBodyOverviewPaymentAlertState `json:"state"`
+		} `json:"paymentAlert"`
+		PlanName        string                                                `json:"planName"`
+		SelfServe       bool                                                  `json:"selfServe"`
+		SubState        GetBillingOverview200JSONResponseBodyOverviewSubState `json:"subState"`
+		TrialPaymentDue *struct {
+			DueAt       string   `json:"dueAt"`
+			ProductKeys []string `json:"productKeys"`
+		} `json:"trialPaymentDue"`
+		TrialedProductKeys []string `json:"trialedProductKeys"`
+		Trials             []struct {
+			BasePlanTier *string  `json:"basePlanTier"`
+			EndedAt      *string  `json:"endedAt"`
+			EndedDaysAgo *float32 `json:"endedDaysAgo"`
+			EndedDetail  *string  `json:"endedDetail"`
+			EndedReason  *string  `json:"endedReason"`
+			Outcome      string   `json:"outcome"`
+			PlanTier     *string  `json:"planTier"`
+			ProductKey   string   `json:"productKey"`
+		} `json:"trials"`
+	} `json:"overview"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetBillingOverviewResponse) GetJSON400() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetBillingOverview400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetBillingOverviewResponse) GetJSON401() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetBillingOverview401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetBillingOverviewResponse) GetJSON403() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetBillingOverview403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetBillingOverviewResponse) GetJSON404() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetBillingOverview404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetBillingOverviewResponse) GetJSON422() *struct {
+	Error      string                                          `json:"error"`
+	Message    interface{}                                     `json:"message,omitempty"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetBillingOverview422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetBillingOverviewResponse) GetJSON500() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetBillingOverview500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetBillingOverviewResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetBillingOverviewResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetBillingOverviewResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetBillingOverviewResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RefreshBillingOverviewResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Success bool `json:"success"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode RefreshBillingOverview400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode RefreshBillingOverview401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode RefreshBillingOverview403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode RefreshBillingOverview404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                              `json:"error"`
+		Message    interface{}                                         `json:"message,omitempty"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode RefreshBillingOverview422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode RefreshBillingOverview500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RefreshBillingOverviewResponse) GetJSON200() *struct {
+	Success bool `json:"success"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RefreshBillingOverviewResponse) GetJSON400() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode RefreshBillingOverview400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RefreshBillingOverviewResponse) GetJSON401() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode RefreshBillingOverview401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RefreshBillingOverviewResponse) GetJSON403() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode RefreshBillingOverview403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RefreshBillingOverviewResponse) GetJSON404() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode RefreshBillingOverview404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r RefreshBillingOverviewResponse) GetJSON422() *struct {
+	Error      string                                              `json:"error"`
+	Message    interface{}                                         `json:"message,omitempty"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode RefreshBillingOverview422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r RefreshBillingOverviewResponse) GetJSON500() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode RefreshBillingOverview500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r RefreshBillingOverviewResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RefreshBillingOverviewResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RefreshBillingOverviewResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RefreshBillingOverviewResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateBillingPaymentMethodSessionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Url string `json:"url"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                    `json:"details,omitempty"`
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode CreateBillingPaymentMethodSession400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode CreateBillingPaymentMethodSession401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                    `json:"details,omitempty"`
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode CreateBillingPaymentMethodSession403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode CreateBillingPaymentMethodSession404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                         `json:"error"`
+		Message    interface{}                                                    `json:"message,omitempty"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode CreateBillingPaymentMethodSession422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                         `json:"error"`
+		Message    string                                                         `json:"message"`
+		ReqId      string                                                         `json:"reqId"`
+		StatusCode CreateBillingPaymentMethodSession500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateBillingPaymentMethodSessionResponse) GetJSON200() *struct {
+	Url string `json:"url"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateBillingPaymentMethodSessionResponse) GetJSON400() *struct {
+	Details    interface{}                                                    `json:"details,omitempty"`
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode CreateBillingPaymentMethodSession400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateBillingPaymentMethodSessionResponse) GetJSON401() *struct {
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode CreateBillingPaymentMethodSession401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateBillingPaymentMethodSessionResponse) GetJSON403() *struct {
+	Details    interface{}                                                    `json:"details,omitempty"`
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode CreateBillingPaymentMethodSession403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateBillingPaymentMethodSessionResponse) GetJSON404() *struct {
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode CreateBillingPaymentMethodSession404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateBillingPaymentMethodSessionResponse) GetJSON422() *struct {
+	Error      string                                                         `json:"error"`
+	Message    interface{}                                                    `json:"message,omitempty"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode CreateBillingPaymentMethodSession422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateBillingPaymentMethodSessionResponse) GetJSON500() *struct {
+	Error      string                                                         `json:"error"`
+	Message    string                                                         `json:"message"`
+	ReqId      string                                                         `json:"reqId"`
+	StatusCode CreateBillingPaymentMethodSession500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateBillingPaymentMethodSessionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateBillingPaymentMethodSessionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateBillingPaymentMethodSessionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateBillingPaymentMethodSessionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateBillingPortalSessionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Url string `json:"url"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                             `json:"details,omitempty"`
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode CreateBillingPortalSession400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode CreateBillingPortalSession401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                             `json:"details,omitempty"`
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode CreateBillingPortalSession403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode CreateBillingPortalSession404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                  `json:"error"`
+		Message    interface{}                                             `json:"message,omitempty"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode CreateBillingPortalSession422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode CreateBillingPortalSession500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateBillingPortalSessionResponse) GetJSON200() *struct {
+	Url string `json:"url"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateBillingPortalSessionResponse) GetJSON400() *struct {
+	Details    interface{}                                             `json:"details,omitempty"`
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode CreateBillingPortalSession400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateBillingPortalSessionResponse) GetJSON401() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode CreateBillingPortalSession401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateBillingPortalSessionResponse) GetJSON403() *struct {
+	Details    interface{}                                             `json:"details,omitempty"`
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode CreateBillingPortalSession403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateBillingPortalSessionResponse) GetJSON404() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode CreateBillingPortalSession404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateBillingPortalSessionResponse) GetJSON422() *struct {
+	Error      string                                                  `json:"error"`
+	Message    interface{}                                             `json:"message,omitempty"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode CreateBillingPortalSession422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateBillingPortalSessionResponse) GetJSON500() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode CreateBillingPortalSession500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateBillingPortalSessionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateBillingPortalSessionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateBillingPortalSessionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateBillingPortalSessionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ChangeBillingCommitmentsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CheckoutUrl    *string                                            `json:"checkoutUrl,omitempty"`
+		Outcome        ChangeBillingCommitments200JSONResponseBodyOutcome `json:"outcome"`
+		PaymentUrl     *string                                            `json:"paymentUrl,omitempty"`
+		SubscriptionId *string                                            `json:"subscriptionId,omitempty"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                           `json:"details,omitempty"`
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode ChangeBillingCommitments400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode ChangeBillingCommitments401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                           `json:"details,omitempty"`
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode ChangeBillingCommitments403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode ChangeBillingCommitments404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                `json:"error"`
+		Message    interface{}                                           `json:"message,omitempty"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode ChangeBillingCommitments422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode ChangeBillingCommitments500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ChangeBillingCommitmentsResponse) GetJSON200() *struct {
+	CheckoutUrl    *string                                            `json:"checkoutUrl,omitempty"`
+	Outcome        ChangeBillingCommitments200JSONResponseBodyOutcome `json:"outcome"`
+	PaymentUrl     *string                                            `json:"paymentUrl,omitempty"`
+	SubscriptionId *string                                            `json:"subscriptionId,omitempty"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ChangeBillingCommitmentsResponse) GetJSON400() *struct {
+	Details    interface{}                                           `json:"details,omitempty"`
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode ChangeBillingCommitments400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ChangeBillingCommitmentsResponse) GetJSON401() *struct {
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode ChangeBillingCommitments401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ChangeBillingCommitmentsResponse) GetJSON403() *struct {
+	Details    interface{}                                           `json:"details,omitempty"`
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode ChangeBillingCommitments403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ChangeBillingCommitmentsResponse) GetJSON404() *struct {
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode ChangeBillingCommitments404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ChangeBillingCommitmentsResponse) GetJSON422() *struct {
+	Error      string                                                `json:"error"`
+	Message    interface{}                                           `json:"message,omitempty"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode ChangeBillingCommitments422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ChangeBillingCommitmentsResponse) GetJSON500() *struct {
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode ChangeBillingCommitments500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ChangeBillingCommitmentsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ChangeBillingCommitmentsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ChangeBillingCommitmentsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ChangeBillingCommitmentsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PreviewBillingSubscriptionChangeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Preview struct {
+			AdditionalCharges float32 `json:"additionalCharges"`
+			Currency          string  `json:"currency"`
+			Lines             []struct {
+				Amount      float32 `json:"amount"`
+				Description string  `json:"description"`
+				Proration   bool    `json:"proration"`
+			} `json:"lines"`
+			NextInvoiceTotal   float32  `json:"nextInvoiceTotal"`
+			NextRecurringTotal float32  `json:"nextRecurringTotal"`
+			ProrationAmount    float32  `json:"prorationAmount"`
+			ProrationDate      *float32 `json:"prorationDate,omitempty"`
+			ToPlanVersionId    *string  `json:"toPlanVersionId,omitempty"`
+			TotalDueNow        float32  `json:"totalDueNow"`
+		} `json:"preview"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                   `json:"details,omitempty"`
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode PreviewBillingSubscriptionChange400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode PreviewBillingSubscriptionChange401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                   `json:"details,omitempty"`
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode PreviewBillingSubscriptionChange403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode PreviewBillingSubscriptionChange404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                        `json:"error"`
+		Message    interface{}                                                   `json:"message,omitempty"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode PreviewBillingSubscriptionChange422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode PreviewBillingSubscriptionChange500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PreviewBillingSubscriptionChangeResponse) GetJSON200() *struct {
+	Preview struct {
+		AdditionalCharges float32 `json:"additionalCharges"`
+		Currency          string  `json:"currency"`
+		Lines             []struct {
+			Amount      float32 `json:"amount"`
+			Description string  `json:"description"`
+			Proration   bool    `json:"proration"`
+		} `json:"lines"`
+		NextInvoiceTotal   float32  `json:"nextInvoiceTotal"`
+		NextRecurringTotal float32  `json:"nextRecurringTotal"`
+		ProrationAmount    float32  `json:"prorationAmount"`
+		ProrationDate      *float32 `json:"prorationDate,omitempty"`
+		ToPlanVersionId    *string  `json:"toPlanVersionId,omitempty"`
+		TotalDueNow        float32  `json:"totalDueNow"`
+	} `json:"preview"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r PreviewBillingSubscriptionChangeResponse) GetJSON400() *struct {
+	Details    interface{}                                                   `json:"details,omitempty"`
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode PreviewBillingSubscriptionChange400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r PreviewBillingSubscriptionChangeResponse) GetJSON401() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode PreviewBillingSubscriptionChange401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r PreviewBillingSubscriptionChangeResponse) GetJSON403() *struct {
+	Details    interface{}                                                   `json:"details,omitempty"`
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode PreviewBillingSubscriptionChange403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r PreviewBillingSubscriptionChangeResponse) GetJSON404() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode PreviewBillingSubscriptionChange404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r PreviewBillingSubscriptionChangeResponse) GetJSON422() *struct {
+	Error      string                                                        `json:"error"`
+	Message    interface{}                                                   `json:"message,omitempty"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode PreviewBillingSubscriptionChange422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r PreviewBillingSubscriptionChangeResponse) GetJSON500() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode PreviewBillingSubscriptionChange500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r PreviewBillingSubscriptionChangeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PreviewBillingSubscriptionChangeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PreviewBillingSubscriptionChangeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PreviewBillingSubscriptionChangeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type BuyBillingProductResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CheckoutUrl    *string                                     `json:"checkoutUrl,omitempty"`
+		Outcome        BuyBillingProduct200JSONResponseBodyOutcome `json:"outcome"`
+		PaymentUrl     *string                                     `json:"paymentUrl,omitempty"`
+		SubscriptionId *string                                     `json:"subscriptionId,omitempty"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode BuyBillingProduct400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode BuyBillingProduct401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode BuyBillingProduct403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode BuyBillingProduct404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                         `json:"error"`
+		Message    interface{}                                    `json:"message,omitempty"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode BuyBillingProduct422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode BuyBillingProduct500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r BuyBillingProductResponse) GetJSON200() *struct {
+	CheckoutUrl    *string                                     `json:"checkoutUrl,omitempty"`
+	Outcome        BuyBillingProduct200JSONResponseBodyOutcome `json:"outcome"`
+	PaymentUrl     *string                                     `json:"paymentUrl,omitempty"`
+	SubscriptionId *string                                     `json:"subscriptionId,omitempty"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r BuyBillingProductResponse) GetJSON400() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode BuyBillingProduct400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r BuyBillingProductResponse) GetJSON401() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode BuyBillingProduct401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r BuyBillingProductResponse) GetJSON403() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode BuyBillingProduct403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r BuyBillingProductResponse) GetJSON404() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode BuyBillingProduct404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r BuyBillingProductResponse) GetJSON422() *struct {
+	Error      string                                         `json:"error"`
+	Message    interface{}                                    `json:"message,omitempty"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode BuyBillingProduct422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r BuyBillingProductResponse) GetJSON500() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode BuyBillingProduct500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r BuyBillingProductResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r BuyBillingProductResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BuyBillingProductResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r BuyBillingProductResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RemoveBillingProductResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		SubscriptionId *string `json:"subscriptionId,omitempty"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode RemoveBillingProduct400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode RemoveBillingProduct401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode RemoveBillingProduct403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode RemoveBillingProduct404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                            `json:"error"`
+		Message    interface{}                                       `json:"message,omitempty"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode RemoveBillingProduct422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode RemoveBillingProduct500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RemoveBillingProductResponse) GetJSON200() *struct {
+	SubscriptionId *string `json:"subscriptionId,omitempty"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RemoveBillingProductResponse) GetJSON400() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode RemoveBillingProduct400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RemoveBillingProductResponse) GetJSON401() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode RemoveBillingProduct401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RemoveBillingProductResponse) GetJSON403() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode RemoveBillingProduct403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RemoveBillingProductResponse) GetJSON404() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode RemoveBillingProduct404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r RemoveBillingProductResponse) GetJSON422() *struct {
+	Error      string                                            `json:"error"`
+	Message    interface{}                                       `json:"message,omitempty"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode RemoveBillingProduct422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r RemoveBillingProductResponse) GetJSON500() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode RemoveBillingProduct500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r RemoveBillingProductResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RemoveBillingProductResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemoveBillingProductResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemoveBillingProductResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpgradeBillingProductResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		FromPlanKey    *string                                         `json:"fromPlanKey,omitempty"`
+		Outcome        UpgradeBillingProduct200JSONResponseBodyOutcome `json:"outcome"`
+		PaymentUrl     *string                                         `json:"paymentUrl,omitempty"`
+		SubscriptionId *string                                         `json:"subscriptionId,omitempty"`
+		ToPlanKey      *string                                         `json:"toPlanKey,omitempty"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                        `json:"details,omitempty"`
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode UpgradeBillingProduct400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode UpgradeBillingProduct401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                        `json:"details,omitempty"`
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode UpgradeBillingProduct403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode UpgradeBillingProduct404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                             `json:"error"`
+		Message    interface{}                                        `json:"message,omitempty"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode UpgradeBillingProduct422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode UpgradeBillingProduct500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpgradeBillingProductResponse) GetJSON200() *struct {
+	FromPlanKey    *string                                         `json:"fromPlanKey,omitempty"`
+	Outcome        UpgradeBillingProduct200JSONResponseBodyOutcome `json:"outcome"`
+	PaymentUrl     *string                                         `json:"paymentUrl,omitempty"`
+	SubscriptionId *string                                         `json:"subscriptionId,omitempty"`
+	ToPlanKey      *string                                         `json:"toPlanKey,omitempty"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpgradeBillingProductResponse) GetJSON400() *struct {
+	Details    interface{}                                        `json:"details,omitempty"`
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode UpgradeBillingProduct400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpgradeBillingProductResponse) GetJSON401() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode UpgradeBillingProduct401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpgradeBillingProductResponse) GetJSON403() *struct {
+	Details    interface{}                                        `json:"details,omitempty"`
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode UpgradeBillingProduct403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpgradeBillingProductResponse) GetJSON404() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode UpgradeBillingProduct404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpgradeBillingProductResponse) GetJSON422() *struct {
+	Error      string                                             `json:"error"`
+	Message    interface{}                                        `json:"message,omitempty"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode UpgradeBillingProduct422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpgradeBillingProductResponse) GetJSON500() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode UpgradeBillingProduct500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpgradeBillingProductResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpgradeBillingProductResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpgradeBillingProductResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpgradeBillingProductResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type StartBillingTrialResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CardSetupUrl *string                                     `json:"cardSetupUrl,omitempty"`
+		Outcome      StartBillingTrial200JSONResponseBodyOutcome `json:"outcome"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode StartBillingTrial400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode StartBillingTrial401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode StartBillingTrial403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode StartBillingTrial404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                         `json:"error"`
+		Message    interface{}                                    `json:"message,omitempty"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode StartBillingTrial422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode StartBillingTrial500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StartBillingTrialResponse) GetJSON200() *struct {
+	CardSetupUrl *string                                     `json:"cardSetupUrl,omitempty"`
+	Outcome      StartBillingTrial200JSONResponseBodyOutcome `json:"outcome"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r StartBillingTrialResponse) GetJSON400() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode StartBillingTrial400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r StartBillingTrialResponse) GetJSON401() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode StartBillingTrial401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r StartBillingTrialResponse) GetJSON403() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode StartBillingTrial403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r StartBillingTrialResponse) GetJSON404() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode StartBillingTrial404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r StartBillingTrialResponse) GetJSON422() *struct {
+	Error      string                                         `json:"error"`
+	Message    interface{}                                    `json:"message,omitempty"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode StartBillingTrial422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r StartBillingTrialResponse) GetJSON500() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode StartBillingTrial500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r StartBillingTrialResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StartBillingTrialResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StartBillingTrialResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StartBillingTrialResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CancelBillingTrialResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Outcome CancelBillingTrial200JSONResponseBodyOutcome `json:"outcome"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode CancelBillingTrial400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode CancelBillingTrial401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode CancelBillingTrial403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode CancelBillingTrial404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                          `json:"error"`
+		Message    interface{}                                     `json:"message,omitempty"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode CancelBillingTrial422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode CancelBillingTrial500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CancelBillingTrialResponse) GetJSON200() *struct {
+	Outcome CancelBillingTrial200JSONResponseBodyOutcome `json:"outcome"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CancelBillingTrialResponse) GetJSON400() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode CancelBillingTrial400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CancelBillingTrialResponse) GetJSON401() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode CancelBillingTrial401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CancelBillingTrialResponse) GetJSON403() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode CancelBillingTrial403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CancelBillingTrialResponse) GetJSON404() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode CancelBillingTrial404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CancelBillingTrialResponse) GetJSON422() *struct {
+	Error      string                                          `json:"error"`
+	Message    interface{}                                     `json:"message,omitempty"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode CancelBillingTrial422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CancelBillingTrialResponse) GetJSON500() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode CancelBillingTrial500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CancelBillingTrialResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CancelBillingTrialResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CancelBillingTrialResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CancelBillingTrialResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ConfirmBillingTrialPaymentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Outcome     ConfirmBillingTrialPayment200JSONResponseBodyOutcome `json:"outcome"`
+		RedirectUrl *string                                              `json:"redirectUrl,omitempty"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                             `json:"details,omitempty"`
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode ConfirmBillingTrialPayment400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode ConfirmBillingTrialPayment401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                             `json:"details,omitempty"`
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode ConfirmBillingTrialPayment403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode ConfirmBillingTrialPayment404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                  `json:"error"`
+		Message    interface{}                                             `json:"message,omitempty"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode ConfirmBillingTrialPayment422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode ConfirmBillingTrialPayment500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ConfirmBillingTrialPaymentResponse) GetJSON200() *struct {
+	Outcome     ConfirmBillingTrialPayment200JSONResponseBodyOutcome `json:"outcome"`
+	RedirectUrl *string                                              `json:"redirectUrl,omitempty"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ConfirmBillingTrialPaymentResponse) GetJSON400() *struct {
+	Details    interface{}                                             `json:"details,omitempty"`
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode ConfirmBillingTrialPayment400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ConfirmBillingTrialPaymentResponse) GetJSON401() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode ConfirmBillingTrialPayment401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ConfirmBillingTrialPaymentResponse) GetJSON403() *struct {
+	Details    interface{}                                             `json:"details,omitempty"`
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode ConfirmBillingTrialPayment403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ConfirmBillingTrialPaymentResponse) GetJSON404() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode ConfirmBillingTrialPayment404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ConfirmBillingTrialPaymentResponse) GetJSON422() *struct {
+	Error      string                                                  `json:"error"`
+	Message    interface{}                                             `json:"message,omitempty"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode ConfirmBillingTrialPayment422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ConfirmBillingTrialPaymentResponse) GetJSON500() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode ConfirmBillingTrialPayment500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ConfirmBillingTrialPaymentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ConfirmBillingTrialPaymentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ConfirmBillingTrialPaymentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ConfirmBillingTrialPaymentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetOrganizationPlanResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -462471,6 +468132,153 @@ func (r GetOrganizationPlanResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetOrganizationPlanResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListOrganizationPlansResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *interface{}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                        `json:"details,omitempty"`
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode ListOrganizationPlans400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode ListOrganizationPlans401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                        `json:"details,omitempty"`
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode ListOrganizationPlans403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode ListOrganizationPlans404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                             `json:"error"`
+		Message    interface{}                                        `json:"message,omitempty"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode ListOrganizationPlans422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode ListOrganizationPlans500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListOrganizationPlansResponse) GetJSON200() *interface{} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListOrganizationPlansResponse) GetJSON400() *struct {
+	Details    interface{}                                        `json:"details,omitempty"`
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode ListOrganizationPlans400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListOrganizationPlansResponse) GetJSON401() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode ListOrganizationPlans401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListOrganizationPlansResponse) GetJSON403() *struct {
+	Details    interface{}                                        `json:"details,omitempty"`
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode ListOrganizationPlans403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListOrganizationPlansResponse) GetJSON404() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode ListOrganizationPlans404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListOrganizationPlansResponse) GetJSON422() *struct {
+	Error      string                                             `json:"error"`
+	Message    interface{}                                        `json:"message,omitempty"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode ListOrganizationPlans422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListOrganizationPlansResponse) GetJSON500() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode ListOrganizationPlans500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListOrganizationPlansResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListOrganizationPlansResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListOrganizationPlansResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListOrganizationPlansResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -547299,6 +553107,17 @@ func (c *ClientWithResponses) GetBillingUsageBreakdownWithResponse(ctx context.C
 	return ParseGetBillingUsageBreakdownResponse(rsp)
 }
 
+// GetBillingCatalogWithResponse performs a GET /api/v1/organizations/{organizationId}/billing/v2/catalog (the `GetBillingCatalog` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetBillingCatalogWithResponse(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*GetBillingCatalogResponse, error) {
+	rsp, err := c.GetBillingCatalog(ctx, organizationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetBillingCatalogResponse(rsp)
+}
+
 // ListBillableOrganizationsWithResponse performs a GET /api/v1/organizations/{organizationId}/billing/v2/organizations (the `ListBillableOrganizations` operationId) request.
 //
 // List the root organizations whose billing the caller may read. A self-hosted instance admin gets every organization on the instance, because one licence covers them all; everyone else gets only their own.
@@ -547312,6 +553131,241 @@ func (c *ClientWithResponses) ListBillableOrganizationsWithResponse(ctx context.
 	return ParseListBillableOrganizationsResponse(rsp)
 }
 
+// GetBillingOverviewWithResponse performs a GET /api/v1/organizations/{organizationId}/billing/v2/overview (the `GetBillingOverview` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetBillingOverviewWithResponse(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*GetBillingOverviewResponse, error) {
+	rsp, err := c.GetBillingOverview(ctx, organizationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetBillingOverviewResponse(rsp)
+}
+
+// RefreshBillingOverviewWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/overview/refresh (the `RefreshBillingOverview` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) RefreshBillingOverviewWithResponse(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*RefreshBillingOverviewResponse, error) {
+	rsp, err := c.RefreshBillingOverview(ctx, organizationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRefreshBillingOverviewResponse(rsp)
+}
+
+// CreateBillingPaymentMethodSessionWithBodyWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/payment-method (the `CreateBillingPaymentMethodSession` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateBillingPaymentMethodSessionWithBodyWithResponse(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateBillingPaymentMethodSessionResponse, error) {
+	rsp, err := c.CreateBillingPaymentMethodSessionWithBody(ctx, organizationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateBillingPaymentMethodSessionResponse(rsp)
+}
+
+// CreateBillingPaymentMethodSessionWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/payment-method (the `CreateBillingPaymentMethodSession` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateBillingPaymentMethodSessionWithResponse(ctx context.Context, organizationId string, body CreateBillingPaymentMethodSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateBillingPaymentMethodSessionResponse, error) {
+	rsp, err := c.CreateBillingPaymentMethodSession(ctx, organizationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateBillingPaymentMethodSessionResponse(rsp)
+}
+
+// CreateBillingPortalSessionWithBodyWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/portal-session (the `CreateBillingPortalSession` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateBillingPortalSessionWithBodyWithResponse(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateBillingPortalSessionResponse, error) {
+	rsp, err := c.CreateBillingPortalSessionWithBody(ctx, organizationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateBillingPortalSessionResponse(rsp)
+}
+
+// CreateBillingPortalSessionWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/portal-session (the `CreateBillingPortalSession` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateBillingPortalSessionWithResponse(ctx context.Context, organizationId string, body CreateBillingPortalSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateBillingPortalSessionResponse, error) {
+	rsp, err := c.CreateBillingPortalSession(ctx, organizationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateBillingPortalSessionResponse(rsp)
+}
+
+// ChangeBillingCommitmentsWithBodyWithResponse performs a PUT /api/v1/organizations/{organizationId}/billing/v2/subscription/commitments (the `ChangeBillingCommitments` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ChangeBillingCommitmentsWithBodyWithResponse(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ChangeBillingCommitmentsResponse, error) {
+	rsp, err := c.ChangeBillingCommitmentsWithBody(ctx, organizationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseChangeBillingCommitmentsResponse(rsp)
+}
+
+// ChangeBillingCommitmentsWithResponse performs a PUT /api/v1/organizations/{organizationId}/billing/v2/subscription/commitments (the `ChangeBillingCommitments` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ChangeBillingCommitmentsWithResponse(ctx context.Context, organizationId string, body ChangeBillingCommitmentsJSONRequestBody, reqEditors ...RequestEditorFn) (*ChangeBillingCommitmentsResponse, error) {
+	rsp, err := c.ChangeBillingCommitments(ctx, organizationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseChangeBillingCommitmentsResponse(rsp)
+}
+
+// PreviewBillingSubscriptionChangeWithBodyWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/preview (the `PreviewBillingSubscriptionChange` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) PreviewBillingSubscriptionChangeWithBodyWithResponse(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PreviewBillingSubscriptionChangeResponse, error) {
+	rsp, err := c.PreviewBillingSubscriptionChangeWithBody(ctx, organizationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePreviewBillingSubscriptionChangeResponse(rsp)
+}
+
+// PreviewBillingSubscriptionChangeWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/preview (the `PreviewBillingSubscriptionChange` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) PreviewBillingSubscriptionChangeWithResponse(ctx context.Context, organizationId string, body PreviewBillingSubscriptionChangeJSONRequestBody, reqEditors ...RequestEditorFn) (*PreviewBillingSubscriptionChangeResponse, error) {
+	rsp, err := c.PreviewBillingSubscriptionChange(ctx, organizationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePreviewBillingSubscriptionChangeResponse(rsp)
+}
+
+// BuyBillingProductWithBodyWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/products (the `BuyBillingProduct` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) BuyBillingProductWithBodyWithResponse(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BuyBillingProductResponse, error) {
+	rsp, err := c.BuyBillingProductWithBody(ctx, organizationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBuyBillingProductResponse(rsp)
+}
+
+// BuyBillingProductWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/products (the `BuyBillingProduct` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) BuyBillingProductWithResponse(ctx context.Context, organizationId string, body BuyBillingProductJSONRequestBody, reqEditors ...RequestEditorFn) (*BuyBillingProductResponse, error) {
+	rsp, err := c.BuyBillingProduct(ctx, organizationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBuyBillingProductResponse(rsp)
+}
+
+// RemoveBillingProductWithResponse performs a DELETE /api/v1/organizations/{organizationId}/billing/v2/subscription/products/{productId} (the `RemoveBillingProduct` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) RemoveBillingProductWithResponse(ctx context.Context, organizationId string, productId string, reqEditors ...RequestEditorFn) (*RemoveBillingProductResponse, error) {
+	rsp, err := c.RemoveBillingProduct(ctx, organizationId, productId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemoveBillingProductResponse(rsp)
+}
+
+// UpgradeBillingProductWithBodyWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/upgrade (the `UpgradeBillingProduct` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpgradeBillingProductWithBodyWithResponse(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpgradeBillingProductResponse, error) {
+	rsp, err := c.UpgradeBillingProductWithBody(ctx, organizationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpgradeBillingProductResponse(rsp)
+}
+
+// UpgradeBillingProductWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/subscription/upgrade (the `UpgradeBillingProduct` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpgradeBillingProductWithResponse(ctx context.Context, organizationId string, body UpgradeBillingProductJSONRequestBody, reqEditors ...RequestEditorFn) (*UpgradeBillingProductResponse, error) {
+	rsp, err := c.UpgradeBillingProduct(ctx, organizationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpgradeBillingProductResponse(rsp)
+}
+
+// StartBillingTrialWithBodyWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial (the `StartBillingTrial` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) StartBillingTrialWithBodyWithResponse(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StartBillingTrialResponse, error) {
+	rsp, err := c.StartBillingTrialWithBody(ctx, organizationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStartBillingTrialResponse(rsp)
+}
+
+// StartBillingTrialWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial (the `StartBillingTrial` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) StartBillingTrialWithResponse(ctx context.Context, organizationId string, body StartBillingTrialJSONRequestBody, reqEditors ...RequestEditorFn) (*StartBillingTrialResponse, error) {
+	rsp, err := c.StartBillingTrial(ctx, organizationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStartBillingTrialResponse(rsp)
+}
+
+// CancelBillingTrialWithBodyWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial/cancel (the `CancelBillingTrial` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CancelBillingTrialWithBodyWithResponse(ctx context.Context, organizationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CancelBillingTrialResponse, error) {
+	rsp, err := c.CancelBillingTrialWithBody(ctx, organizationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCancelBillingTrialResponse(rsp)
+}
+
+// CancelBillingTrialWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial/cancel (the `CancelBillingTrial` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CancelBillingTrialWithResponse(ctx context.Context, organizationId string, body CancelBillingTrialJSONRequestBody, reqEditors ...RequestEditorFn) (*CancelBillingTrialResponse, error) {
+	rsp, err := c.CancelBillingTrial(ctx, organizationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCancelBillingTrialResponse(rsp)
+}
+
+// ConfirmBillingTrialPaymentWithBodyWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial/confirm-payment (the `ConfirmBillingTrialPayment` operationId) request,
+// with any type of body and a specified content type.
+//
+// Get the page where the customer approves a trial conversion charge their bank is holding (for example 3D Secure): a Stripe Checkout for a trial on the free tier, or the invoice of the held change for an upgrade trial. The trial converts once it is paid. Returns 'upgraded' with no redirect when the charge went through without needing approval.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ConfirmBillingTrialPaymentWithBodyWithResponse(ctx context.Context, organizationId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ConfirmBillingTrialPaymentResponse, error) {
+	rsp, err := c.ConfirmBillingTrialPaymentWithBody(ctx, organizationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseConfirmBillingTrialPaymentResponse(rsp)
+}
+
+// ConfirmBillingTrialPaymentWithResponse performs a POST /api/v1/organizations/{organizationId}/billing/v2/trial/confirm-payment (the `ConfirmBillingTrialPayment` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Get the page where the customer approves a trial conversion charge their bank is holding (for example 3D Secure): a Stripe Checkout for a trial on the free tier, or the invoice of the held change for an upgrade trial. The trial converts once it is paid. Returns 'upgraded' with no redirect when the charge went through without needing approval.
+func (c *ClientWithResponses) ConfirmBillingTrialPaymentWithResponse(ctx context.Context, organizationId openapi_types.UUID, body ConfirmBillingTrialPaymentJSONRequestBody, reqEditors ...RequestEditorFn) (*ConfirmBillingTrialPaymentResponse, error) {
+	rsp, err := c.ConfirmBillingTrialPayment(ctx, organizationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseConfirmBillingTrialPaymentResponse(rsp)
+}
+
 // GetOrganizationPlanWithResponse performs a GET /api/v1/organizations/{organizationId}/plan (the `GetOrganizationPlan` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -547321,6 +553375,17 @@ func (c *ClientWithResponses) GetOrganizationPlanWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseGetOrganizationPlanResponse(rsp)
+}
+
+// ListOrganizationPlansWithResponse performs a GET /api/v1/organizations/{organizationId}/plans (the `ListOrganizationPlans` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListOrganizationPlansWithResponse(ctx context.Context, organizationId string, params *ListOrganizationPlansParams, reqEditors ...RequestEditorFn) (*ListOrganizationPlansResponse, error) {
+	rsp, err := c.ListOrganizationPlans(ctx, organizationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListOrganizationPlansResponse(rsp)
 }
 
 // SendPasswordSetupEmailWithResponse performs a POST /api/v1/password/email/password-setup (the `SendPasswordSetupEmail` operationId) request.
@@ -631272,6 +637337,169 @@ func ParseGetBillingUsageBreakdownResponse(rsp *http.Response) (*GetBillingUsage
 	return response, nil
 }
 
+// ParseGetBillingCatalogResponse parses an HTTP response from a GetBillingCatalogWithResponse call
+func ParseGetBillingCatalogResponse(rsp *http.Response) (*GetBillingCatalogResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetBillingCatalogResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Products []struct {
+				Addon   *bool  `json:"addon,omitempty"`
+				Color   string `json:"color"`
+				Compare *[]struct {
+					Cells map[string]GetBillingCatalog200JSONResponseBody_Products_Compare_Cells_AdditionalProperties `json:"cells"`
+					Label string                                                                                      `json:"label"`
+				} `json:"compare,omitempty"`
+				Deprecated  *bool `json:"deprecated,omitempty"`
+				Deprecation *struct {
+					Date      *string  `json:"date"`
+					DaysLeft  *float32 `json:"daysLeft"`
+					NextSteps *string  `json:"nextSteps,omitempty"`
+					Reason    *string  `json:"reason,omitempty"`
+				} `json:"deprecation,omitempty"`
+				DisplayOrder *float32  `json:"displayOrder,omitempty"`
+				Icon         string    `json:"icon"`
+				Id           string    `json:"id"`
+				Includes     *[]string `json:"includes,omitempty"`
+				Name         string    `json:"name"`
+				Plans        []struct {
+					Base *struct {
+						Annual  float32 `json:"annual"`
+						Monthly float32 `json:"monthly"`
+					} `json:"base,omitempty"`
+					Deprecated  *bool `json:"deprecated,omitempty"`
+					Deprecation *struct {
+						Date      *string  `json:"date"`
+						DaysLeft  *float32 `json:"daysLeft"`
+						NextSteps *string  `json:"nextSteps,omitempty"`
+						Reason    *string  `json:"reason,omitempty"`
+					} `json:"deprecation,omitempty"`
+					Dims []struct {
+						Aggregation *string `json:"aggregation,omitempty"`
+						Annual      float32 `json:"annual"`
+						Bands       *struct {
+							Mode  GetBillingCatalog200JSONResponseBodyProductsPlansDimsBandsMode `json:"mode"`
+							Tiers []struct {
+								FlatFee   float32  `json:"flatFee"`
+								UnitPrice float32  `json:"unitPrice"`
+								UpTo      *float32 `json:"upTo"`
+							} `json:"tiers"`
+						} `json:"bands,omitempty"`
+						Included       float32 `json:"included"`
+						Key            string  `json:"key"`
+						Label          string  `json:"label"`
+						MeteredAnnual  *bool   `json:"meteredAnnual,omitempty"`
+						MeteredMonthly *bool   `json:"meteredMonthly,omitempty"`
+						Monthly        float32 `json:"monthly"`
+						Noun           string  `json:"noun"`
+					} `json:"dims"`
+					DisplayOrder *float32 `json:"displayOrder,omitempty"`
+					Feature      *string  `json:"feature,omitempty"`
+					Name         string   `json:"name"`
+					SalesLed     bool     `json:"salesLed"`
+					SelfServe    bool     `json:"selfServe"`
+					Tier         string   `json:"tier"`
+					TrialDays    float32  `json:"trialDays"`
+					Trialable    bool     `json:"trialable"`
+					Upgradeable  bool     `json:"upgradeable"`
+				} `json:"plans"`
+				Tagline *string `json:"tagline,omitempty"`
+			} `json:"products"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetBillingCatalog400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetBillingCatalog401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetBillingCatalog403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetBillingCatalog404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    interface{}                                    `json:"message,omitempty"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetBillingCatalog422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetBillingCatalog500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListBillableOrganizationsResponse parses an HTTP response from a ListBillableOrganizationsWithResponse call
 func ParseListBillableOrganizationsResponse(rsp *http.Response) (*ListBillableOrganizationsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -631386,6 +637614,1396 @@ func ParseListBillableOrganizationsResponse(rsp *http.Response) (*ListBillableOr
 	return response, nil
 }
 
+// ParseGetBillingOverviewResponse parses an HTTP response from a GetBillingOverviewWithResponse call
+func ParseGetBillingOverviewResponse(rsp *http.Response) (*GetBillingOverviewResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetBillingOverviewResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Overview struct {
+				Billing struct {
+					ActiveProductCount float32 `json:"activeProductCount"`
+					AnnualCommitted    float32 `json:"annualCommitted"`
+					MonthlyRecurring   float32 `json:"monthlyRecurring"`
+					NextCharge         *struct {
+						Amount         float32                                                                `json:"amount"`
+						At             string                                                                 `json:"at"`
+						Cadence        *GetBillingOverview200JSONResponseBodyOverviewBillingNextChargeCadence `json:"cadence"`
+						EstimatedUsage *float32                                                               `json:"estimatedUsage"`
+						HasUsage       bool                                                                   `json:"hasUsage"`
+						ProductKeys    []string                                                               `json:"productKeys"`
+					} `json:"nextCharge"`
+				} `json:"billing"`
+				BillingDetails *struct {
+					Address *struct {
+						City       *string `json:"city,omitempty"`
+						Country    *string `json:"country,omitempty"`
+						Line1      *string `json:"line1,omitempty"`
+						Line2      *string `json:"line2,omitempty"`
+						PostalCode *string `json:"postalCode,omitempty"`
+						State      *string `json:"state,omitempty"`
+					} `json:"address"`
+					Email  string `json:"email"`
+					Name   string `json:"name"`
+					TaxIds []struct {
+						Type  string `json:"type"`
+						Value string `json:"value"`
+					} `json:"taxIds"`
+				} `json:"billingDetails"`
+				CheckoutFrozen bool `json:"checkoutFrozen"`
+				Entitlements   map[string]struct {
+					Amount      *float32                                                          `json:"amount,omitempty"`
+					Cadence     *GetBillingOverview200JSONResponseBodyOverviewEntitlementsCadence `json:"cadence,omitempty"`
+					Deprecation *struct {
+						Date      *string                                                                  `json:"date"`
+						DaysLeft  *float32                                                                 `json:"daysLeft"`
+						Kind      GetBillingOverview200JSONResponseBodyOverviewEntitlementsDeprecationKind `json:"kind"`
+						NextSteps *string                                                                  `json:"nextSteps,omitempty"`
+						Reason    *string                                                                  `json:"reason,omitempty"`
+					} `json:"deprecation,omitempty"`
+					Dimensions *[]struct {
+						Bands *struct {
+							Mode  GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsBandsMode `json:"mode"`
+							Tiers []struct {
+								FlatFee   float32  `json:"flatFee"`
+								UnitPrice float32  `json:"unitPrice"`
+								UpTo      *float32 `json:"upTo"`
+							} `json:"tiers"`
+						} `json:"bands,omitempty"`
+						Cadence             *GetBillingOverview200JSONResponseBodyOverviewEntitlementsDimensionsCadence `json:"cadence"`
+						CanDecreaseNow      *bool                                                                       `json:"canDecreaseNow,omitempty"`
+						CommitAvailable     bool                                                                        `json:"commitAvailable"`
+						Committed           *float32                                                                    `json:"committed"`
+						CommittedRate       *float32                                                                    `json:"committedRate,omitempty"`
+						DecreaseAllowedFrom *string                                                                     `json:"decreaseAllowedFrom,omitempty"`
+						FreeBand            *float32                                                                    `json:"freeBand,omitempty"`
+						Key                 string                                                                      `json:"key"`
+						Label               string                                                                      `json:"label"`
+						Limit               *float32                                                                    `json:"limit"`
+						Metered             bool                                                                        `json:"metered"`
+						Noun                string                                                                      `json:"noun"`
+						OnDemandAmount      float32                                                                     `json:"onDemandAmount"`
+						OnDemandRate        *float32                                                                    `json:"onDemandRate,omitempty"`
+						Rate                *float32                                                                    `json:"rate,omitempty"`
+						RenewalDate         *string                                                                     `json:"renewalDate,omitempty"`
+						Unit                string                                                                      `json:"unit"`
+						Usage               *struct {
+							AsOf            *string `json:"asOf"`
+							CurrentTier     float32 `json:"currentTier"`
+							EarlierInPeriod []struct {
+								EstimatedAmount *float32 `json:"estimatedAmount"`
+								PeriodEnd       *string  `json:"periodEnd"`
+								PeriodStart     *string  `json:"periodStart"`
+								Used            float32  `json:"used"`
+							} `json:"earlierInPeriod"`
+							EstimatedAmount *float32 `json:"estimatedAmount"`
+							NextTierAt      *float32 `json:"nextTierAt"`
+							PeriodEnd       *string  `json:"periodEnd"`
+							PeriodStart     *string  `json:"periodStart"`
+							Trial           bool     `json:"trial"`
+						} `json:"usage,omitempty"`
+						Used float32 `json:"used"`
+					} `json:"dimensions,omitempty"`
+					Entitled              bool     `json:"entitled"`
+					IsTrialing            *bool    `json:"isTrialing,omitempty"`
+					Limit                 *float32 `json:"limit,omitempty"`
+					OnDemandAmount        *float32 `json:"onDemandAmount,omitempty"`
+					PlanTier              *string  `json:"planTier,omitempty"`
+					RenewsOn              *string  `json:"renewsOn,omitempty"`
+					Status                *string  `json:"status,omitempty"`
+					TrialEndsAt           *string  `json:"trialEndsAt,omitempty"`
+					TrialPaymentDueAt     *string  `json:"trialPaymentDueAt,omitempty"`
+					TrialPlan             *string  `json:"trialPlan,omitempty"`
+					TrialPlanDaysLeft     *float32 `json:"trialPlanDaysLeft,omitempty"`
+					TrialPlanEndsAt       *string  `json:"trialPlanEndsAt,omitempty"`
+					TrialPlanName         *string  `json:"trialPlanName,omitempty"`
+					TrialPlanPaymentDueAt *string  `json:"trialPlanPaymentDueAt,omitempty"`
+					Unit                  *string  `json:"unit,omitempty"`
+					Used                  *float32 `json:"used,omitempty"`
+				} `json:"entitlements"`
+				Invoices []struct {
+					Amount float32 `json:"amount"`
+					Date   string  `json:"date"`
+					Id     string  `json:"id"`
+					Number string  `json:"number"`
+					Paid   bool    `json:"paid"`
+					PdfUrl string  `json:"pdfUrl"`
+				} `json:"invoices"`
+				IsCloud        bool                                              `json:"isCloud"`
+				Mode           GetBillingOverview200JSONResponseBodyOverviewMode `json:"mode"`
+				OnDemandAmount float32                                           `json:"onDemandAmount"`
+				Payment        *struct {
+					Brand    string  `json:"brand"`
+					ExpMonth float32 `json:"expMonth"`
+					ExpYear  float32 `json:"expYear"`
+					Last4    string  `json:"last4"`
+				} `json:"payment"`
+				PaymentAlert *struct {
+					ActionUrl string                                                         `json:"actionUrl"`
+					State     GetBillingOverview200JSONResponseBodyOverviewPaymentAlertState `json:"state"`
+				} `json:"paymentAlert"`
+				PlanName        string                                                `json:"planName"`
+				SelfServe       bool                                                  `json:"selfServe"`
+				SubState        GetBillingOverview200JSONResponseBodyOverviewSubState `json:"subState"`
+				TrialPaymentDue *struct {
+					DueAt       string   `json:"dueAt"`
+					ProductKeys []string `json:"productKeys"`
+				} `json:"trialPaymentDue"`
+				TrialedProductKeys []string `json:"trialedProductKeys"`
+				Trials             []struct {
+					BasePlanTier *string  `json:"basePlanTier"`
+					EndedAt      *string  `json:"endedAt"`
+					EndedDaysAgo *float32 `json:"endedDaysAgo"`
+					EndedDetail  *string  `json:"endedDetail"`
+					EndedReason  *string  `json:"endedReason"`
+					Outcome      string   `json:"outcome"`
+					PlanTier     *string  `json:"planTier"`
+					ProductKey   string   `json:"productKey"`
+				} `json:"trials"`
+			} `json:"overview"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetBillingOverview400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetBillingOverview401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetBillingOverview403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetBillingOverview404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    interface{}                                     `json:"message,omitempty"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetBillingOverview422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetBillingOverview500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRefreshBillingOverviewResponse parses an HTTP response from a RefreshBillingOverviewWithResponse call
+func ParseRefreshBillingOverviewResponse(rsp *http.Response) (*RefreshBillingOverviewResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RefreshBillingOverviewResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Success bool `json:"success"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode RefreshBillingOverview400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode RefreshBillingOverview401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode RefreshBillingOverview403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode RefreshBillingOverview404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    interface{}                                         `json:"message,omitempty"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode RefreshBillingOverview422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode RefreshBillingOverview500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateBillingPaymentMethodSessionResponse parses an HTTP response from a CreateBillingPaymentMethodSessionWithResponse call
+func ParseCreateBillingPaymentMethodSessionResponse(rsp *http.Response) (*CreateBillingPaymentMethodSessionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateBillingPaymentMethodSessionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Url string `json:"url"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                    `json:"details,omitempty"`
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode CreateBillingPaymentMethodSession400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode CreateBillingPaymentMethodSession401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                    `json:"details,omitempty"`
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode CreateBillingPaymentMethodSession403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode CreateBillingPaymentMethodSession404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    interface{}                                                    `json:"message,omitempty"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode CreateBillingPaymentMethodSession422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                         `json:"error"`
+			Message    string                                                         `json:"message"`
+			ReqId      string                                                         `json:"reqId"`
+			StatusCode CreateBillingPaymentMethodSession500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateBillingPortalSessionResponse parses an HTTP response from a CreateBillingPortalSessionWithResponse call
+func ParseCreateBillingPortalSessionResponse(rsp *http.Response) (*CreateBillingPortalSessionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateBillingPortalSessionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Url string `json:"url"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                             `json:"details,omitempty"`
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode CreateBillingPortalSession400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode CreateBillingPortalSession401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                             `json:"details,omitempty"`
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode CreateBillingPortalSession403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode CreateBillingPortalSession404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    interface{}                                             `json:"message,omitempty"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode CreateBillingPortalSession422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode CreateBillingPortalSession500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseChangeBillingCommitmentsResponse parses an HTTP response from a ChangeBillingCommitmentsWithResponse call
+func ParseChangeBillingCommitmentsResponse(rsp *http.Response) (*ChangeBillingCommitmentsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ChangeBillingCommitmentsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CheckoutUrl    *string                                            `json:"checkoutUrl,omitempty"`
+			Outcome        ChangeBillingCommitments200JSONResponseBodyOutcome `json:"outcome"`
+			PaymentUrl     *string                                            `json:"paymentUrl,omitempty"`
+			SubscriptionId *string                                            `json:"subscriptionId,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                           `json:"details,omitempty"`
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode ChangeBillingCommitments400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode ChangeBillingCommitments401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                           `json:"details,omitempty"`
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode ChangeBillingCommitments403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode ChangeBillingCommitments404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    interface{}                                           `json:"message,omitempty"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode ChangeBillingCommitments422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode ChangeBillingCommitments500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePreviewBillingSubscriptionChangeResponse parses an HTTP response from a PreviewBillingSubscriptionChangeWithResponse call
+func ParsePreviewBillingSubscriptionChangeResponse(rsp *http.Response) (*PreviewBillingSubscriptionChangeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PreviewBillingSubscriptionChangeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Preview struct {
+				AdditionalCharges float32 `json:"additionalCharges"`
+				Currency          string  `json:"currency"`
+				Lines             []struct {
+					Amount      float32 `json:"amount"`
+					Description string  `json:"description"`
+					Proration   bool    `json:"proration"`
+				} `json:"lines"`
+				NextInvoiceTotal   float32  `json:"nextInvoiceTotal"`
+				NextRecurringTotal float32  `json:"nextRecurringTotal"`
+				ProrationAmount    float32  `json:"prorationAmount"`
+				ProrationDate      *float32 `json:"prorationDate,omitempty"`
+				ToPlanVersionId    *string  `json:"toPlanVersionId,omitempty"`
+				TotalDueNow        float32  `json:"totalDueNow"`
+			} `json:"preview"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                   `json:"details,omitempty"`
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode PreviewBillingSubscriptionChange400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode PreviewBillingSubscriptionChange401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                   `json:"details,omitempty"`
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode PreviewBillingSubscriptionChange403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode PreviewBillingSubscriptionChange404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    interface{}                                                   `json:"message,omitempty"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode PreviewBillingSubscriptionChange422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode PreviewBillingSubscriptionChange500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseBuyBillingProductResponse parses an HTTP response from a BuyBillingProductWithResponse call
+func ParseBuyBillingProductResponse(rsp *http.Response) (*BuyBillingProductResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BuyBillingProductResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CheckoutUrl    *string                                     `json:"checkoutUrl,omitempty"`
+			Outcome        BuyBillingProduct200JSONResponseBodyOutcome `json:"outcome"`
+			PaymentUrl     *string                                     `json:"paymentUrl,omitempty"`
+			SubscriptionId *string                                     `json:"subscriptionId,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode BuyBillingProduct400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode BuyBillingProduct401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode BuyBillingProduct403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode BuyBillingProduct404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    interface{}                                    `json:"message,omitempty"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode BuyBillingProduct422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode BuyBillingProduct500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRemoveBillingProductResponse parses an HTTP response from a RemoveBillingProductWithResponse call
+func ParseRemoveBillingProductResponse(rsp *http.Response) (*RemoveBillingProductResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemoveBillingProductResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			SubscriptionId *string `json:"subscriptionId,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode RemoveBillingProduct400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode RemoveBillingProduct401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode RemoveBillingProduct403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode RemoveBillingProduct404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    interface{}                                       `json:"message,omitempty"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode RemoveBillingProduct422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode RemoveBillingProduct500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpgradeBillingProductResponse parses an HTTP response from a UpgradeBillingProductWithResponse call
+func ParseUpgradeBillingProductResponse(rsp *http.Response) (*UpgradeBillingProductResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpgradeBillingProductResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			FromPlanKey    *string                                         `json:"fromPlanKey,omitempty"`
+			Outcome        UpgradeBillingProduct200JSONResponseBodyOutcome `json:"outcome"`
+			PaymentUrl     *string                                         `json:"paymentUrl,omitempty"`
+			SubscriptionId *string                                         `json:"subscriptionId,omitempty"`
+			ToPlanKey      *string                                         `json:"toPlanKey,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                        `json:"details,omitempty"`
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode UpgradeBillingProduct400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode UpgradeBillingProduct401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                        `json:"details,omitempty"`
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode UpgradeBillingProduct403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode UpgradeBillingProduct404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    interface{}                                        `json:"message,omitempty"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode UpgradeBillingProduct422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode UpgradeBillingProduct500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseStartBillingTrialResponse parses an HTTP response from a StartBillingTrialWithResponse call
+func ParseStartBillingTrialResponse(rsp *http.Response) (*StartBillingTrialResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StartBillingTrialResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CardSetupUrl *string                                     `json:"cardSetupUrl,omitempty"`
+			Outcome      StartBillingTrial200JSONResponseBodyOutcome `json:"outcome"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode StartBillingTrial400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode StartBillingTrial401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode StartBillingTrial403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode StartBillingTrial404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    interface{}                                    `json:"message,omitempty"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode StartBillingTrial422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode StartBillingTrial500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCancelBillingTrialResponse parses an HTTP response from a CancelBillingTrialWithResponse call
+func ParseCancelBillingTrialResponse(rsp *http.Response) (*CancelBillingTrialResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CancelBillingTrialResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Outcome CancelBillingTrial200JSONResponseBodyOutcome `json:"outcome"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode CancelBillingTrial400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode CancelBillingTrial401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode CancelBillingTrial403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode CancelBillingTrial404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    interface{}                                     `json:"message,omitempty"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode CancelBillingTrial422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode CancelBillingTrial500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseConfirmBillingTrialPaymentResponse parses an HTTP response from a ConfirmBillingTrialPaymentWithResponse call
+func ParseConfirmBillingTrialPaymentResponse(rsp *http.Response) (*ConfirmBillingTrialPaymentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ConfirmBillingTrialPaymentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Outcome     ConfirmBillingTrialPayment200JSONResponseBodyOutcome `json:"outcome"`
+			RedirectUrl *string                                              `json:"redirectUrl,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                             `json:"details,omitempty"`
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode ConfirmBillingTrialPayment400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode ConfirmBillingTrialPayment401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                             `json:"details,omitempty"`
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode ConfirmBillingTrialPayment403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode ConfirmBillingTrialPayment404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    interface{}                                             `json:"message,omitempty"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode ConfirmBillingTrialPayment422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode ConfirmBillingTrialPayment500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetOrganizationPlanResponse parses an HTTP response from a GetOrganizationPlanWithResponse call
 func ParseGetOrganizationPlanResponse(rsp *http.Response) (*GetOrganizationPlanResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -631477,6 +639095,106 @@ func ParseGetOrganizationPlanResponse(rsp *http.Response) (*GetOrganizationPlanR
 			Message    string                                           `json:"message"`
 			ReqId      string                                           `json:"reqId"`
 			StatusCode GetOrganizationPlan500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListOrganizationPlansResponse parses an HTTP response from a ListOrganizationPlansWithResponse call
+func ParseListOrganizationPlansResponse(rsp *http.Response) (*ListOrganizationPlansResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListOrganizationPlansResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest interface{}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                        `json:"details,omitempty"`
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode ListOrganizationPlans400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode ListOrganizationPlans401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                        `json:"details,omitempty"`
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode ListOrganizationPlans403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode ListOrganizationPlans404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    interface{}                                        `json:"message,omitempty"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode ListOrganizationPlans422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode ListOrganizationPlans500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

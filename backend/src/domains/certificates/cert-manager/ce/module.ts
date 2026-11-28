@@ -1,12 +1,13 @@
 import { TDbClient } from "@app/db";
 import { poolStoreConnection } from "@app/domains/lib/data-access";
-import { Meter, TUsageCounter } from "@app/domains/platform/license/ce/module";
+import { TUsageCounter } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsService } from "@app/domains/platform/organizations/ce/module";
 import { TProjectResourcePermissionService } from "@app/domains/platform/projects/ce/module";
 
 import { CertificateUsageStore } from "./data-access/certificate-usage-store";
 import { ApplicationPermissionService, TApplicationPermissionService } from "./services/application-permission/service";
 import { CertManagerService, TCertManagerService } from "./services/cert-manager/service";
+import { certificateUsageCounters } from "./services/helpers/usage-counters";
 
 export * from "./models/application-resource-roles";
 export * from "./models/permissions/application-roles";
@@ -36,17 +37,6 @@ export class CertManagerModule {
     this.certManagerService = new CertManagerService(certificateUsageStore, organizationsService);
     this.applicationPermissionService = new ApplicationPermissionService(projectResourcePermissionService);
 
-    this.usageCounters = [
-      { meter: Meter.InternalCas, count: (orgId) => certificateUsageStore.countInternalCas(orgId ?? undefined) },
-      {
-        meter: Meter.ActiveCerts,
-        count: async (orgId) => (await certificateUsageStore.countActiveCertificateQuotaKeys(orgId ?? undefined)).total
-      },
-      {
-        meter: Meter.WildcardCerts,
-        count: async (orgId) =>
-          (await certificateUsageStore.countActiveCertificateQuotaKeys(orgId ?? undefined)).wildcard
-      }
-    ];
+    this.usageCounters = certificateUsageCounters(certificateUsageStore);
   }
 }

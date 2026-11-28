@@ -5,7 +5,7 @@ import { Knex } from "knex";
 import { monitorEventLoopDelay } from "perf_hooks";
 import { z } from "zod";
 
-import { TDomains } from "@app/domains/domains";
+import { registerBillingRouter, registerOrgPlanRouter, TDomains } from "@app/domains/domains";
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
 import { registerMicrosoftAutoenrollmentRouter } from "@app/ee/routes/microsoft-autoenrollment/microsoft-autoenrollment-router";
 import { registerPkiScepRouter } from "@app/ee/routes/scep/pki-scep-router";
@@ -126,8 +126,6 @@ import { kmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
 import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
-import { licenseV2BreakdownDALFactory } from "@app/ee/services/license-v2/license-v2-breakdown-dal";
-import { licenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
 import { channelBindingCacheFactory } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-channel-binding-cache";
 import { checkMicrosoftAutoenrollmentRequestBeforeSigning } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-eligibility-fns";
 import { microsoftAutoenrollmentRequestDALFactory } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-request-dal";
@@ -895,22 +893,6 @@ export const registerRoutes = async (
     actorContextService,
     identityDAL,
     userDAL
-  });
-
-  const licenseV2BreakdownDAL = licenseV2BreakdownDALFactory(db);
-
-  // Billing surface: catalog, subscription and entitlement reads through the License Server billing client.
-  const licenseV2Service = licenseV2ServiceFactory({
-    orgPermissionService,
-    envConfig,
-    orgDAL,
-    licenseService,
-    usageMeteringService,
-    licenseBilling: domains.licenseBilling,
-    organizationsService,
-    projectsService,
-    certManagerService,
-    breakdownDAL: licenseV2BreakdownDAL
   });
 
   // Project events SSE service (for clients to subscribe to secret mutation events)
@@ -2004,7 +1986,8 @@ export const registerRoutes = async (
   const certificatePolicyService = certificatePolicyServiceFactory({
     projectPermissionService,
     applicationPermissionService,
-    certificatePolicyDAL
+    certificatePolicyDAL,
+    projectDAL
   });
 
   const pkiApplicationService = pkiApplicationServiceFactory({
@@ -4084,6 +4067,7 @@ export const registerRoutes = async (
     caSigningConfigDAL,
     certificateAuthorityDAL,
     internalCertificateAuthorityDAL,
+    projectDAL,
     licenseService,
     appConnectionService,
     caAutoRenewalQueue
@@ -5292,7 +5276,6 @@ export const registerRoutes = async (
     actorContextService,
     orgPermissionService,
     memberPermissionAudit: memberPermissionAuditService,
-    licenseV2: licenseV2Service,
     trustedIp: trustedIpService,
     scim: scimService,
     secretBlindIndex: secretBlindIndexService,
@@ -5477,6 +5460,13 @@ export const registerRoutes = async (
     // register routes for v1
     await server.register(
       async (v1Server) => {
+        await v1Server.register(
+          async (orgServer: FastifyZodProvider) => {
+            await registerOrgPlanRouter(orgServer, domains.billing);
+            await registerBillingRouter(orgServer, domains.billing);
+          },
+          { prefix: "/organizations" }
+        );
         await v1Server.register(registerV1EERoutes);
         await v1Server.register(registerV1Routes);
       },

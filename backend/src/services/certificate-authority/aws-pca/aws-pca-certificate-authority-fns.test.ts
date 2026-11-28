@@ -1,6 +1,8 @@
 import { RequestAlreadyProcessedException } from "@aws-sdk/client-acm-pca";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { CrlReason } from "@app/services/certificate/certificate-types";
 
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -26,6 +28,8 @@ vi.mock("@app/services/app-connection/aws/aws-connection-fns", () => ({
 }));
 
 const CA_ID = "ca-1";
+
+type TCreateArgs = Parameters<ReturnType<typeof AwsPcaCertificateAuthorityFns>["createCertificateAuthority"]>[0];
 
 const buildFns = () =>
   AwsPcaCertificateAuthorityFns({
@@ -70,5 +74,88 @@ describe("AWS PCA revokeCertificate", () => {
     await expect(
       buildFns().revokeCertificate({ caId: CA_ID, serialNumber: "0a1b", reason: CrlReason.KEY_COMPROMISE })
     ).rejects.toBe(throttled);
+  });
+});
+
+describe("AWS PCA createCertificateAuthority setup check", () => {
+  beforeEach(() => {
+    send.mockReset();
+  });
+
+  const runSetup = () => {
+    const fns = AwsPcaCertificateAuthorityFns({
+      appConnectionDAL: { findById: vi.fn().mockResolvedValue({ id: "connection-1", app: "aws" }) },
+      appConnectionService: { validateAppConnectionUsageById: vi.fn().mockResolvedValue({}) },
+      certificateAuthorityDAL: {}
+    } as unknown as Parameters<typeof AwsPcaCertificateAuthorityFns>[0]);
+
+    return fns.createCertificateAuthority({
+      name: "private-aws",
+      projectId: "project-1",
+      status: CaStatus.ACTIVE,
+      configuration: {
+        appConnectionId: "connection-1",
+        certificateAuthorityArn: "arn:aws:acm-pca:us-east-1:111122223333:certificate-authority/example",
+        region: "us-east-1"
+      } as TCreateArgs["configuration"],
+      actor: {} as TCreateArgs["actor"]
+    });
+  };
+
+  const awsError = (name: string, extra: Record<string, unknown> = {}) =>
+    Object.assign(new Error(name), { name, $metadata: {}, ...extra });
+
+  it("answers a 400 naming the missing instance credentials when the role can't be assumed", async () => {
+    const missingCredentials = new Error("Could not load credentials from any providers");
+    missingCredentials.name = "CredentialsProviderError";
+    send.mockRejectedValue(missingCredentials);
+
+    const setup = runSetup();
+    await expect(setup).rejects.toBeInstanceOf(BadRequestError);
+    await expect(setup).rejects.toThrow("could not load its own AWS credentials to assume the AWS connection's role");
+  });
+
+  it.each([
+    ["throttling", awsError("ThrottlingException", { $fault: "client", $metadata: { httpStatusCode: 400 } })],
+    ["an AWS server fault", awsError("InternalFailure", { $fault: "server", $metadata: { httpStatusCode: 500 } })],
+    ["a 503 from AWS", awsError("ServiceUnavailable", { $metadata: { httpStatusCode: 503 } })],
+    ["a 429 from AWS", awsError("TooManyRequests", { $metadata: { httpStatusCode: 429 } })],
+    ["a timeout after the SDK's retries", awsError("TimeoutError", { $metadata: { attempts: 3 } })]
+  ])("answers %s with a retryable 500 rather than a 400", async (_label, error) => {
+    send.mockRejectedValue(error);
+
+    const setup = runSetup();
+    await expect(setup).rejects.toBeInstanceOf(InternalServerError);
+    await expect(setup).rejects.toThrow(
+      `AWS Private CA did not answer Infisical's check (${error.name}). This is a temporary problem on AWS's side`
+    );
+  });
+
+  it("names the network code when the connection to AWS fails", async () => {
+    send.mockRejectedValue(awsError("Error", { code: "ECONNRESET", $metadata: { attempts: 3 } }));
+
+    const setup = runSetup();
+    await expect(setup).rejects.toBeInstanceOf(InternalServerError);
+    await expect(setup).rejects.toThrow("Infisical could not reach AWS Private CA (ECONNRESET).");
+  });
+
+  it("names AWS STS when the connection's role can't be reached", async () => {
+    vi.mocked(getAwsConnectionConfig).mockRejectedValueOnce(
+      awsError("TimeoutError", { code: "ECONNREFUSED", $metadata: { attempts: 3 } })
+    );
+
+    await expect(runSetup()).rejects.toThrow("Infisical could not reach AWS STS (ECONNREFUSED).");
+  });
+
+  it("keeps a host that does not exist as a 400, since retrying can't fix it", async () => {
+    send.mockRejectedValue(awsError("Error", { code: "ENOTFOUND", $metadata: { attempts: 3 } }));
+
+    await expect(runSetup()).rejects.toBeInstanceOf(BadRequestError);
+  });
+
+  it("still answers a credential denial with a 400", async () => {
+    send.mockRejectedValue(awsError("AccessDeniedException", { $fault: "client", $metadata: { httpStatusCode: 403 } }));
+
+    await expect(runSetup()).rejects.toBeInstanceOf(BadRequestError);
   });
 });

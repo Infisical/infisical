@@ -88,7 +88,7 @@ func TestAwsAcmPublicCA_Lifecycle(t *testing.T) {
 		require.Equal(t, "KEY_COMPROMISE", got.RevocationReason)
 	})
 
-	t.Run("should refuse an update naming a hosted zone the DNS connection cannot reach", func(t *testing.T) {
+	t.Run("should refuse an update naming a hosted zone the Route 53 connection cannot reach", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -104,7 +104,7 @@ func TestAwsAcmPublicCA_Lifecycle(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
-		require.Equal(t, "Failed to access Route 53 hosted zone: No hosted zone found with ID: "+missing, apierr.Message(res.Body))
+		require.Equal(t, "Route 53 has no hosted zone '"+missing+"' that the Route 53 connection can see. Check the hosted zone ID, then try again.", apierr.Message(res.Body))
 		got, err := tn.Admin.API.GetAwsAcmPublicCaCertificateAuthorityV1WithResponse(t.Context(), r.ca.ID.String())
 		require.NoError(t, err)
 		require.Equal(t, r.zone, decode(t, got.Body)["configuration"].(map[string]any)["hostedZoneId"])

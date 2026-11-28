@@ -209,4 +209,10 @@ describe("certificateAuthorityCrlService.getCaCrls", () => {
 
     expect(crls).toEqual([expect.objectContaining({ id: "crl-1", crlNumber: null, thisUpdate, nextUpdate })]);
   });
+
+  test("answers a CA in another organization the same as an unknown one", async () => {
+    const service = buildService({ caOrgId: "org-2" });
+
+    await expect(service.getCaCrls(actorFields)).rejects.toThrow(`Certificate authority with ID '${CA_ID}' not found.`);
+  });
 });

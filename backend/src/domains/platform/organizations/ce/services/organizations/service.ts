@@ -3,7 +3,10 @@ import { TTransaction, TTransactionRunner } from "@app/domains/lib/transactions"
 import {
   TBillableActorStore,
   TIdentityOwnership,
+  TListRootOrganizationsQuery,
   TOrganization,
+  TOrganizationName,
+  TOrganizationPage,
   TOrganizationStore,
   TOrganizationsStores
 } from "../dependencies";
@@ -19,6 +22,11 @@ export type TOrganizationsService = {
   resolveRootOrgId(orgId: string): Promise<string>;
   // Not cached: name and slug can change.
   findOrganization(orgId: string): Promise<TOrganization | null>;
+  // The org's root and every org under it, whichever org of the tree is given.
+  listOrgTreeNames(orgId: string): Promise<TOrganizationName[]>;
+  // Every org on the instance, for reads that span it (self-hosted usage).
+  listAllOrgNames(): Promise<TOrganizationName[]>;
+  listRootOrganizations(query: TListRootOrganizationsQuery): Promise<TOrganizationPage>;
   // Org members in a Secret Manager/KMS project or in none. Null orgId = whole instance.
   countBillableOrgActors(orgId: string | null): Promise<{ users: number; identities: number }>;
   getBillableIdentityOwnershipBreakdown(orgId: string | null): Promise<TIdentityOwnership[]>;
@@ -54,6 +62,18 @@ export class OrganizationsService implements TOrganizationsService {
 
   findOrganization(orgId: string): Promise<TOrganization | null> {
     return this.organizationStore.findById(orgId);
+  }
+
+  listOrgTreeNames(orgId: string) {
+    return this.organizationStore.listOrgTreeNames(orgId);
+  }
+
+  listAllOrgNames() {
+    return this.organizationStore.listAllOrgNames();
+  }
+
+  listRootOrganizations(query: TListRootOrganizationsQuery) {
+    return this.organizationStore.listRootOrganizations(query);
   }
 
   countBillableOrgActors(orgId: string | null) {

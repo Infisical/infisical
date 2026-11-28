@@ -57,9 +57,11 @@ export const SanitizedAcmeCertificateAuthoritySchema = BaseCertificateAuthorityS
 });
 
 export const CreateAcmeCertificateAuthoritySchema = GenericCreateCertificateAuthorityFieldsSchema(CaType.ACME).extend({
-  configuration: AcmeCertificateAuthorityConfigurationSchema
+  configuration: AcmeCertificateAuthorityConfigurationSchema.describe(CertificateAuthorities.CONFIGURATION(CaType.ACME))
 });
 
 export const UpdateAcmeCertificateAuthoritySchema = GenericUpdateCertificateAuthorityFieldsSchema(CaType.ACME).extend({
-  configuration: AcmeCertificateAuthorityConfigurationSchema.optional()
+  configuration: AcmeCertificateAuthorityConfigurationSchema.optional().describe(
+    CertificateAuthorities.UPDATE_CONFIGURATION(CaType.ACME)
+  )
 });

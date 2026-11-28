@@ -16,12 +16,13 @@ import { PamModule, PamProjectRoles } from "./pam/pam/ce/module";
 import { AccessControlModule } from "./platform/access-control/ce/module";
 import { AuditLogModule } from "./platform/audit-log/ce/module";
 import { AuditLogEeModule } from "./platform/audit-log/ee/module";
+import { BillingEeModule } from "./platform/billing/ee/module";
 import { EventsModule } from "./platform/events/ce/module";
 import { InstanceConfigCoreModule } from "./platform/instance-config-core/ce/module";
 import { KmsCoreModule } from "./platform/kms-core/ce/module";
 import { ExternalKmsEeModule } from "./platform/kms-core/ee/external-kms-module";
 import { KmsCoreEeModule } from "./platform/kms-core/ee/module";
-import { InstanceFeature, LicenseModule, PlanFeature, TLicenseServerBilling } from "./platform/license/ce/module";
+import { InstanceFeature, LicenseModule, PlanFeature } from "./platform/license/ce/module";
 import { LicenseEeModule } from "./platform/license/ee/module";
 import { OrganizationsModule } from "./platform/organizations/ce/module";
 import { ProjectsModule, TProjectAccessListener } from "./platform/projects/ce/module";
@@ -55,6 +56,7 @@ export type TDomainDeps = {
     | "LICENSE_SERVER_URL"
     | "INTERNAL_REGION"
     | "isCloud"
+    | "SITE_URL"
     | "isProductionMode"
     | "isTestMode"
     | "isSecondaryInstance"
@@ -125,6 +127,10 @@ export const startStandaloneKmsCore = async ({
   });
   return kmsCore;
 };
+
+// Billing is EE only, with no ce/module, so routes/index.ts reaches its routers here.
+export { registerBillingRouter } from "./platform/billing/ee/router/billing-router";
+export { registerOrgPlanRouter } from "./platform/billing/ee/router/org-plan-router";
 
 // Only file outside a domain that imports ee/. Products build before License and hand it their counters;
 // a product that needs License builds after it, so its counters have to come from data access.
@@ -204,8 +210,16 @@ export const createDomains = async (deps: TDomainDeps) => {
     usageCounters: [...secrets.usageCounters, ...pam.usageCounters, ...certManager.usageCounters]
   });
 
-  // Subscriptions are managed on the EE client itself; License never calls its billing methods.
-  const licenseBilling: TLicenseServerBilling = licenseEe.licenseServerClient;
+  // The billing portal. It alone calls the License Server's billing endpoints; License never does.
+  const billing = new BillingEeModule({
+    orgPermissionService: organizations.orgPermissionService,
+    organizationsService,
+    projectsService,
+    licenseService: license.licenseService,
+    usageMeteringService: license.usageMeteringService,
+    licenseBilling: licenseEe.licenseServerClient,
+    config: { isCloud: deps.envConfig.isCloud, siteUrl: deps.envConfig.SITE_URL }
+  });
 
   const agentVault = new AgentVaultEeModule({
     keyStore: deps.keyStore,
@@ -264,7 +278,7 @@ export const createDomains = async (deps: TDomainDeps) => {
     auditLogEe,
     events,
     license,
-    licenseBilling,
+    billing,
     kmsCoreEe,
     kmsCore,
     externalKms,

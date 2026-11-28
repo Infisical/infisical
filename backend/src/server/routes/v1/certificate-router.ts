@@ -19,12 +19,16 @@ import { CaType } from "@app/services/certificate-authority/certificate-authorit
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
 import {
   CertExtendedKeyUsageType,
+  buildAltNamesSchema,
+  buildCustomExtensionsSchema,
   certificateAttributesSchema,
+  customExtensionRequestSchema,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
   csrSchema,
   CUSTOM_EXTENSIONS_WITH_CSR_ERROR_MESSAGE,
   resolvedCustomExtensionSchema,
+  subjectAlternativeNameSchema,
   subjectAttributeSchema
 } from "@app/services/certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
@@ -64,6 +68,57 @@ type CertificateServiceResponse = TCertificateIssuanceResponse | Omit<TCertifica
 // their format here (wildcards like *.example.com are valid); only bound the length, which
 // subjectAttributeSchema does against the varchar(255) columns they are persisted in.
 const subjectAttributeField = subjectAttributeSchema;
+
+const { shape: attributeShape } = certificateAttributesSchema;
+const describedCertificateAttributesSchema = certificateAttributesSchema.extend({
+  commonName: attributeShape.commonName.describe(CERTIFICATES.ATTRIBUTES.commonName),
+  organization: attributeShape.organization.describe(CERTIFICATES.ATTRIBUTES.organization),
+  organizationalUnit: attributeShape.organizationalUnit.describe(CERTIFICATES.ATTRIBUTES.organizationalUnit),
+  country: attributeShape.country.describe(CERTIFICATES.ATTRIBUTES.country),
+  state: attributeShape.state.describe(CERTIFICATES.ATTRIBUTES.state),
+  locality: attributeShape.locality.describe(CERTIFICATES.ATTRIBUTES.locality),
+  domainComponents: attributeShape.domainComponents.describe(CERTIFICATES.ATTRIBUTES.domainComponents),
+  keyUsages: attributeShape.keyUsages.describe(CERTIFICATES.ATTRIBUTES.keyUsages),
+  extendedKeyUsages: attributeShape.extendedKeyUsages.describe(CERTIFICATES.ATTRIBUTES.extendedKeyUsages),
+  altNames: buildAltNamesSchema(
+    subjectAlternativeNameSchema.extend({
+      type: subjectAlternativeNameSchema.shape.type.describe(CERTIFICATES.ATTRIBUTES.altNameType),
+      value: subjectAlternativeNameSchema.shape.value.describe(CERTIFICATES.ATTRIBUTES.altNameValue)
+    })
+  )
+    .optional()
+    .describe(CERTIFICATES.ATTRIBUTES.altNames),
+  signatureAlgorithm: attributeShape.signatureAlgorithm.describe(CERTIFICATES.ATTRIBUTES.signatureAlgorithm),
+  keyAlgorithm: attributeShape.keyAlgorithm.describe(CERTIFICATES.ATTRIBUTES.keyAlgorithm),
+  ttl: attributeShape.ttl.describe(CERTIFICATES.ATTRIBUTES.ttl),
+  basicConstraints: attributeShape.basicConstraints
+    .unwrap()
+    .extend({
+      isCA: attributeShape.basicConstraints.unwrap().shape.isCA.describe(CERTIFICATES.ATTRIBUTES.isCA),
+      pathLength: attributeShape.basicConstraints.unwrap().shape.pathLength.describe(CERTIFICATES.ATTRIBUTES.pathLength)
+    })
+    .optional()
+    .describe(CERTIFICATES.ATTRIBUTES.basicConstraints),
+  customExtensions: buildCustomExtensionsSchema(
+    customExtensionRequestSchema.extend({
+      oid: customExtensionRequestSchema.shape.oid.describe(CERTIFICATES.ATTRIBUTES.customExtensionOid),
+      value: customExtensionRequestSchema.shape.value.describe(CERTIFICATES.ATTRIBUTES.customExtensionValue),
+      critical: customExtensionRequestSchema.shape.critical.describe(CERTIFICATES.ATTRIBUTES.customExtensionCritical)
+    })
+  )
+    .optional()
+    .describe(CERTIFICATES.ATTRIBUTES.customExtensions)
+});
+
+const describedMetadataSchema = z
+  .array(
+    ResourceMetadataNonEncryptionSchema.element.extend({
+      key: ResourceMetadataNonEncryptionSchema.element.shape.key.describe(CERTIFICATES.CREATE.metadataKey),
+      value: ResourceMetadataNonEncryptionSchema.element.shape.value.describe(CERTIFICATES.CREATE.metadataValue)
+    })
+  )
+  .optional()
+  .describe(CERTIFICATES.CREATE.metadata);
 
 const extractCertificateData = (
   data: CertificateServiceResponse
@@ -156,19 +211,24 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       hide: false,
       operationId: "createCertificate",
       tags: [ApiDocsTags.PkiCertificates],
+      description: CERTIFICATES.CREATE.description,
       body: z
         .object({
-          profileId: z.string().uuid(),
-          applicationId: z.string().uuid().optional(),
-          csr: csrSchema.optional(),
-          attributes: certificateAttributesSchema
+          profileId: z.string().uuid().describe(CERTIFICATES.CREATE.profileId),
+          applicationId: z.string().uuid().optional().describe(CERTIFICATES.CREATE.applicationId),
+          csr: csrSchema.optional().describe(CERTIFICATES.CREATE.csr),
+          attributes: describedCertificateAttributesSchema
             .extend({
-              notBefore: validateCaDateField.optional(),
-              notAfter: validateCaDateField.optional()
+              notBefore: validateCaDateField.optional().describe(CERTIFICATES.ATTRIBUTES.notBefore),
+              notAfter: validateCaDateField.optional().describe(CERTIFICATES.ATTRIBUTES.notAfter)
             })
-            .optional(),
-          removeRootsFromChain: booleanSchema.default(false).optional(),
-          metadata: ResourceMetadataNonEncryptionSchema.optional()
+            .optional()
+            .describe(CERTIFICATES.CREATE.attributes),
+          removeRootsFromChain: booleanSchema
+            .default(false)
+            .optional()
+            .describe(CERTIFICATES.CREATE.removeRootsFromChain),
+          metadata: describedMetadataSchema
         })
         .refine(validateTtlAndDateFields, {
           message:
@@ -1353,7 +1413,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             .optional()
             .describe(CERTIFICATES.RENEW.renewalKeySource),
           csr: csrSchema.optional().describe(CERTIFICATES.RENEW.csr),
-          attributes: certificateAttributesSchema.optional().describe(CERTIFICATES.RENEW.attributes),
+          attributes: describedCertificateAttributesSchema.optional().describe(CERTIFICATES.RENEW.attributes),
           externalConfiguration: z
             .object({
               reissue: booleanSchema.optional().describe(CERTIFICATES.RENEW.reissue)
@@ -1933,7 +1993,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       hide: false,
       operationId: "revokeCertificate",
       tags: [ApiDocsTags.PkiCertificates],
-      description: "Revoke",
+      description: CERTIFICATES.REVOKE.description,
       params: z.object({
         id: z.string().trim().describe(CERTIFICATES.REVOKE.id)
       }),
