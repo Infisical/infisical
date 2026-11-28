@@ -260,31 +260,53 @@ You become the project's admin.
   </Tab>
 </Tabs>
 
-## Step 3: Connect your agents
+## Step 3: Run your agents
 
-Pick the guide for where your agents run. Each guide continues from the access bundle you just created.
+Pick the guide for the agent you run or for the platform it runs on. Each guide continues from the access bundle you just created.
 
 <Tip>
 If you're not sure which guide fits, [plan your setup](/documentation/platform/agent-vault/plan-your-setup) to get a recommendation.
 </Tip>
 
+### Agent guides
+
 <CardGroup cols={2}>
+  <Card title="Claude Code" icon="/images/agent-vault-agents/claude-code.svg" href="/documentation/platform/agent-vault/guides/claude-code">
+    Launch Claude Code with Agent Vault so it can call HTTP APIs and MCP servers without having access to their credentials.
+  </Card>
+  <Card title="Codex" icon="/images/agent-vault-agents/OpenAI.png" href="/documentation/platform/agent-vault/guides/codex">
+    Launch Codex with Agent Vault so it can call HTTP APIs and MCP servers without having access to their credentials.
+  </Card>
+  <Card title="OpenCode" icon="/images/agent-vault-agents/opencode.svg" href="/documentation/platform/agent-vault/guides/opencode">
+    Launch OpenCode with Agent Vault so it can call HTTP APIs and MCP servers without having access to their credentials.
+  </Card>
+  <Card title="OpenClaw" icon="/images/agent-vault-agents/openclaw.svg" href="/documentation/platform/agent-vault/guides/openclaw">
+    Launch OpenClaw with Agent Vault so it can call HTTP APIs and MCP servers without having access to their credentials.
+  </Card>
+  <Card title="Hermes Agent" icon="/images/agent-vault-agents/hermes.png" href="/documentation/platform/agent-vault/guides/hermes">
+    Launch Hermes Agent with Agent Vault so it can call HTTP APIs and MCP servers without having access to their credentials.
+  </Card>
+  <Card title="Cursor Cloud Agents" icon="/images/agent-vault-agents/cursor.svg" href="/documentation/platform/agent-vault/guides/cursor">
+    Give Cursor Cloud Agents in your Kubernetes cluster access to APIs without putting credentials in worker pods.
+  </Card>
+</CardGroup>
+
+### Compute guides
+
+<CardGroup cols={2}>
+  <Card title="Docker" icon="/images/agent-vault-agents/docker.svg" href="/documentation/platform/agent-vault/guides/docker">
+    Run an Agent Vault proxy beside each agent container so the agent never has access to a credential.
+  </Card>
+  <Card title="Kubernetes" icon="/images/stack/kubernetes.png" href="/documentation/platform/agent-vault/guides/kubernetes">
+    Learn how to run AI agents in Kubernetes pods that contain no credentials and can only connect to the Agent Vault proxy.
+  </Card>
   <Card title="Modal" icon="/images/agent-vault-agents/modal.svg" href="/documentation/platform/agent-vault/guides/modal">
     Run an Agent Vault proxy in each Modal sandbox so the agent never has access to a credential.
   </Card>
   <Card title="Daytona" icon="/images/agent-vault-agents/daytona.svg" href="/documentation/platform/agent-vault/guides/daytona">
     Run an Agent Vault proxy beside each Daytona sandbox so the agent never has access to a credential.
   </Card>
-  <Card title="Kubernetes" icon="/images/stack/kubernetes.png" href="/documentation/platform/agent-vault/guides/kubernetes">
-    Learn how to run AI agents in Kubernetes pods that contain no credentials and can only connect to the Agent Vault proxy.
-  </Card>
-  <Card title="Docker" icon="/images/agent-vault-agents/docker.svg" href="/documentation/platform/agent-vault/guides/docker">
-    Run an Agent Vault proxy beside each agent container so the agent never has access to a credential.
-  </Card>
-  <Card title="E2B sandboxes" icon="/images/agent-vault-agents/e2b.svg" href="/documentation/platform/agent-vault/guides/e2b">
-    Run an Agent Vault proxy for your E2B sandboxes so the agent never has access to a credential.
-  </Card>
-  <Card title="Cursor Cloud Agents" icon="/images/agent-vault-agents/cursor.svg" href="/documentation/platform/agent-vault/guides/cursor">
-    Run an Agent Vault proxy beside your Cursor workers on Kubernetes so the agent never has access to a credential.
+  <Card title="E2B" icon="/images/agent-vault-agents/e2b.svg" href="/documentation/platform/agent-vault/guides/e2b">
+    Send each E2B sandbox's traffic to an Agent Vault proxy over SOCKS5 so the agent never has access to a credential.
   </Card>
 </CardGroup>
