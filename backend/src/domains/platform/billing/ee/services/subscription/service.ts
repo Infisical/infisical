@@ -8,8 +8,7 @@ import {
 } from "@app/domains/platform/license/ce/module";
 import { TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
 
-import { BillingCadence } from "../../models/billing-cadence";
-import { TCadence } from "../../models/catalog-plan";
+import { BillingCadence, TCadence } from "../../models/billing-cadence";
 import { CatalogProduct } from "../../models/catalog-product";
 import { ChangePreviewRequest, TCommitmentChange } from "../../models/change-preview-request";
 import { Money } from "../../models/money";

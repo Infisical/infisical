@@ -1,5 +1,6 @@
 import { TCatalogProduct } from "@app/domains/platform/license/ce/module";
 
+import { TCadence } from "./billing-cadence";
 import { Deprecation, TDeprecationRecord } from "./deprecation";
 import { Money } from "./money";
 import { PriceBands, TPriceBandsRecord } from "./price-bands";
@@ -7,8 +8,6 @@ import { PriceBands, TPriceBandsRecord } from "./price-bands";
 export type TCatalogPlanRecord = TCatalogProduct["plans"][number];
 
 export type TCatalogPrice = TCatalogPlanRecord["prices"][number];
-
-export type TCadence = "monthly" | "annual";
 
 export type TCatalogDimView = {
   key: string;
@@ -65,7 +64,7 @@ export class CatalogPlan {
   }
 
   // A known-kind price, a flat base fee, or both. A base-only plan (a base fee with no priced dimensions) is priced.
-  hasPricing(): boolean {
+  private hasPricing(): boolean {
     return (
       this.record.prices.some((price) => isKnownPriceKind(price.kind)) ||
       isSet(this.record.basePriceMonthlyCents) ||
@@ -103,7 +102,7 @@ export class CatalogPlan {
 
   // The License Server classifies a price by its dimension's billing type and doesn't always send a kind, so a
   // metered dimension's price would otherwise be sold as a buyer-set quantity.
-  effectivePriceKind(price: TCatalogPrice): string {
+  private effectivePriceKind(price: TCatalogPrice): string {
     if (price.kind && price.kind !== PER_UNIT_KIND) return price.kind;
     const dimension = this.dimensions.find((candidate) => candidate.key === price.dimensionKey);
     return dimension?.billingType === METERED_KIND ? METERED_KIND : PER_UNIT_KIND;
@@ -164,15 +163,7 @@ export class CatalogPlan {
       });
     });
 
-    const deprecation = Deprecation.from(
-      {
-        deprecated: this.record.deprecated,
-        reason: this.record.deprecationReason,
-        nextSteps: this.record.deprecationNextSteps,
-        date: this.record.deprecationDate
-      },
-      now
-    );
+    const deprecation = Deprecation.from(this.record, now);
     const view: TCatalogPlanView = {
       tier: this.record.tier,
       name: this.record.name,

@@ -60,14 +60,14 @@ describe("CatalogPlan.perUnitPrices", () => {
   });
 });
 
-describe("CatalogPlan.hasPricing", () => {
-  test("should count a plan with only a base fee as priced, and one with only an unknown kind as unpriced", () => {
+describe("CatalogPlan.isPaidSelfServe", () => {
+  test("should sell a plan with only a base fee, and not one with only an unknown kind", () => {
     // Setup
     const baseOnly = plan({ prices: [], basePriceMonthlyCents: 9900 });
     const unknownOnly = plan({ prices: [price({ kind: "mystery" })] });
 
     // Action
-    const result = [baseOnly.hasPricing(), unknownOnly.hasPricing()];
+    const result = [baseOnly.isPaidSelfServe(), unknownOnly.isPaidSelfServe()];
 
     // Assert
     expect(result).toEqual([true, false]);

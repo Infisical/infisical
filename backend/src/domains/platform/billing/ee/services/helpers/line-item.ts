@@ -1,6 +1,6 @@
 import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 
-import { TCadence } from "../../models/catalog-plan";
+import { TCadence } from "../../models/billing-cadence";
 import { CatalogProduct } from "../../models/catalog-product";
 import { ProductLineItem } from "../../models/product-line-item";
 

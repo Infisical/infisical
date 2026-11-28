@@ -41,10 +41,8 @@ type TScope = {
 export class UsageBreakdown {
   private constructor(private readonly view: TUsageBreakdownView) {}
 
-  // An org is listed only once it contributes, since a tree can carry far more sub-orgs than a product uses.
   // keepEmptyOrgId (a tree's root) is listed even at zero, so the user can see it holds nothing; the instance-wide
-  // breakdown passes null. Units held by an org or project deleted since they were counted keep their own row, so
-  // the parts still add up to the total.
+  // breakdown passes null. A dimension that isn't split by org (user identities) lists no scopes.
   static assemble({
     dimension,
     usage,
@@ -58,19 +56,36 @@ export class UsageBreakdown {
     projects: TBreakdownProject[];
     keepEmptyOrgId: string | null;
   }): UsageBreakdown {
-    const scopedCount = usage.total - usage.users;
-    if (!dimension.isScoped) {
-      return new UsageBreakdown({
-        dimensionKey: dimension.key,
-        total: usage.total,
-        userCount: usage.users,
-        scopedCount,
-        hasProjectDetail: false,
-        unit: dimension.unit,
-        scopes: []
-      });
-    }
+    return new UsageBreakdown({
+      dimensionKey: dimension.key,
+      total: usage.total,
+      userCount: usage.users,
+      scopedCount: usage.total - usage.users,
+      hasProjectDetail: dimension.isScoped && dimension.hasProjectDetail,
+      unit: dimension.unit,
+      scopes: dimension.isScoped ? UsageBreakdown.scopesOf({ dimension, usage, orgs, projects, keepEmptyOrgId }) : []
+    });
+  }
 
+  toJSON(): TUsageBreakdownView {
+    return this.view;
+  }
+
+  // An org is listed only once it contributes, since a tree can carry far more sub-orgs than a product uses. Units held
+  // by an org or project deleted since they were counted keep their own row, so the parts still add up to the total.
+  private static scopesOf({
+    dimension,
+    usage,
+    orgs,
+    projects,
+    keepEmptyOrgId
+  }: {
+    dimension: BreakdownDimension;
+    usage: TUsageBreakdown;
+    orgs: TBreakdownOrg[];
+    projects: TBreakdownProject[];
+    keepEmptyOrgId: string | null;
+  }): TBreakdownScopeView[] {
     const rows = dimension.hasProjectDetail ? usage.rows : usage.rows.map((row) => ({ ...row, projectId: null }));
     const projectsById = new Map(projects.map((project) => [project.id, project]));
     const orgNameById = new Map(orgs.map((org) => [org.id, org.name]));
@@ -102,7 +117,7 @@ export class UsageBreakdown {
       });
     });
 
-    const scopes = [...byOrg.entries()]
+    return [...byOrg.entries()]
       .map(([orgId, scope]) => {
         const sorted = scope.projects.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
         return {
@@ -117,25 +132,5 @@ export class UsageBreakdown {
       })
       .filter((scope) => scope.count > 0 || scope.orgId === keepEmptyOrgId)
       .sort((a, b) => Number(b.isRoot) - Number(a.isRoot) || b.count - a.count || a.name.localeCompare(b.name));
-
-    return new UsageBreakdown({
-      dimensionKey: dimension.key,
-      total: usage.total,
-      userCount: usage.users,
-      scopedCount,
-      hasProjectDetail: dimension.hasProjectDetail,
-      unit: dimension.unit,
-      scopes
-    });
-  }
-
-  // Projects to look up names for: only those a project-level row names.
-  static projectIdsIn(dimension: BreakdownDimension, usage: TUsageBreakdown): string[] {
-    if (!dimension.isScoped || !dimension.hasProjectDetail) return [];
-    return [...new Set(usage.rows.map((row) => row.projectId).filter((id): id is string => Boolean(id)))];
-  }
-
-  toJSON(): TUsageBreakdownView {
-    return this.view;
   }
 }

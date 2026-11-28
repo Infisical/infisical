@@ -106,7 +106,12 @@ export class BillingOverviewService implements TBillingOverviewService {
     const profile = isCloud ? await this.readBillingProfile(orgId) : null;
     const catalog = subscription.hasItems() ? await this.readCatalogForEntitlements(orgId) : null;
     const entitlementsRecord = await this.readEntitlements(organization);
-    const entitlements = EntitlementSet.build({ subscription, catalog, entitlements: entitlementsRecord, now });
+    const entitlements = EntitlementSet.build({
+      subscription: subscriptionRecord,
+      catalog,
+      entitlements: entitlementsRecord,
+      now
+    });
     const trials = isCloud ? await this.readTrials(orgId, now) : TrialHistory.empty();
 
     return {

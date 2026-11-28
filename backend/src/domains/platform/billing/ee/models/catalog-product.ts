@@ -41,10 +41,6 @@ export class CatalogProduct {
     return record ? CatalogProduct.restore(record) : null;
   }
 
-  get id(): string {
-    return this.record.id;
-  }
-
   // The plan a self-serve purchase is for: the named tier when it is self-serve, else the paid self-serve plan
   // (pro). Null when there is none, so the product can't be bought self-serve.
   selfServePlan(tier?: string): CatalogPlan | null {
@@ -65,15 +61,7 @@ export class CatalogProduct {
       });
       return { label: row.label, cells };
     });
-    const deprecation = Deprecation.from(
-      {
-        deprecated: this.record.deprecated,
-        reason: this.record.deprecationReason,
-        nextSteps: this.record.deprecationNextSteps,
-        date: this.record.deprecationDate
-      },
-      now
-    );
+    const deprecation = Deprecation.from(this.record, now);
     return {
       id: this.record.id,
       name: this.record.name,

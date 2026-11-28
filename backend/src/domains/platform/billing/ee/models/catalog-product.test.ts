@@ -76,7 +76,7 @@ describe("CatalogProduct.findIn", () => {
 
     // Action
     const result = [
-      CatalogProduct.findIn(catalog, "secrets")?.id,
+      CatalogProduct.findIn(catalog, "secrets")?.toView(NOW).id,
       CatalogProduct.findIn(catalog, "pam"),
       CatalogProduct.findIn(null, "secrets")
     ];

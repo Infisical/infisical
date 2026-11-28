@@ -181,7 +181,7 @@ describe("UsageBreakdown.assemble", () => {
   });
 });
 
-describe("UsageBreakdown.projectIdsIn", () => {
+describe("BreakdownDimension.projectIdsIn", () => {
   test("should return each project id once, without org-level rows", () => {
     // Setup
     const usage = {
@@ -196,7 +196,7 @@ describe("UsageBreakdown.projectIdsIn", () => {
     };
 
     // Action
-    const ids = UsageBreakdown.projectIdsIn(BreakdownDimension.Identities, usage);
+    const ids = BreakdownDimension.Identities.projectIdsIn(usage);
 
     // Assert
     expect(ids).toEqual(["p1", "p2"]);
@@ -208,8 +208,8 @@ describe("UsageBreakdown.projectIdsIn", () => {
 
     // Action
     const ids = [
-      UsageBreakdown.projectIdsIn(BreakdownDimension.PamIdentities, usage),
-      UsageBreakdown.projectIdsIn(BreakdownDimension.UserIdentities, usage)
+      BreakdownDimension.PamIdentities.projectIdsIn(usage),
+      BreakdownDimension.UserIdentities.projectIdsIn(usage)
     ];
 
     // Assert

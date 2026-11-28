@@ -1,4 +1,4 @@
-import { TCadence } from "./catalog-plan";
+export type TCadence = "monthly" | "annual";
 
 // How often a line bills. Anything but "annual" bills monthly, the License Server's default.
 export class BillingCadence {

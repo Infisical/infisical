@@ -3,7 +3,7 @@ const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const LONG: Intl.DateTimeFormatOptions = { year: "numeric", month: "long", day: "numeric" };
 
 // Dates for display on the billing pages. The License Server sends unix seconds, except entitlement product dates
-// (ISO strings) and deprecation dates (seconds, milliseconds or ISO, depending on the server).
+// (ISO strings).
 export class BillingDate {
   private constructor() {}
 
@@ -40,16 +40,5 @@ export class BillingDate {
   static daysSince(unixSeconds: number | null | undefined, now: Date): number | null {
     if (!unixSeconds) return null;
     return Math.max(0, Math.floor((now.getTime() - unixSeconds * 1000) / DAY_IN_MS));
-  }
-
-  static daysUntilDate(date: Date, now: Date): number {
-    return Math.max(0, Math.ceil((date.getTime() - now.getTime()) / DAY_IN_MS));
-  }
-
-  // A number under 1e12 is seconds, anything larger milliseconds.
-  static parseFlexible(value: number | string | null | undefined): Date | null {
-    if (value === null || value === undefined) return null;
-    const date = typeof value === "number" ? new Date(value < 1e12 ? value * 1000 : value) : new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
   }
 }

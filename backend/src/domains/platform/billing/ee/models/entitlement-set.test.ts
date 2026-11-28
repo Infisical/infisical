@@ -2,7 +2,6 @@ import { TCatalogProduct, TSubscriptionResponse } from "@app/domains/platform/li
 
 import { BillingDate } from "./billing-date";
 import { EntitlementSet, TCatalogRecord, TEntitlementsRecord } from "./entitlement-set";
-import { Subscription } from "./subscription";
 
 type TItem = TSubscriptionResponse["items"][number];
 type TDim = TItem["dimensions"][number];
@@ -66,7 +65,7 @@ const build = ({
   entitlementsRecord?: TEntitlementsRecord | null;
 }) =>
   EntitlementSet.build({
-    subscription: Subscription.restore({ status: "active", items }),
+    subscription: { status: "active", items },
     catalog,
     entitlements: entitlementsRecord,
     now: NOW

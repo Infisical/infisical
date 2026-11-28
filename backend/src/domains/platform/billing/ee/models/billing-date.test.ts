@@ -67,31 +67,3 @@ describe("BillingDate.daysSince", () => {
     expect(result).toEqual([1, 0]);
   });
 });
-
-describe("BillingDate.parseFlexible", () => {
-  test("should read seconds, milliseconds and ISO strings as the same instant", () => {
-    // Setup
-    const instant = new Date("2026-12-25T00:00:00Z");
-
-    // Action
-    const result = [
-      BillingDate.parseFlexible(instant.getTime() / 1000)?.getTime(),
-      BillingDate.parseFlexible(instant.getTime())?.getTime(),
-      BillingDate.parseFlexible(instant.toISOString())?.getTime()
-    ];
-
-    // Assert
-    expect(result).toEqual([instant.getTime(), instant.getTime(), instant.getTime()]);
-  });
-
-  test("should be null for an absent or unparseable value", () => {
-    // Setup
-    const inputs = [null, undefined, "garbage"];
-
-    // Action
-    const result = inputs.map((input) => BillingDate.parseFlexible(input));
-
-    // Assert
-    expect(result).toEqual([null, null, null]);
-  });
-});

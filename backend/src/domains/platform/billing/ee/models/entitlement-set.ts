@@ -1,12 +1,10 @@
 import { TCatalogProduct, TLicenseServerBilling, TSubscriptionResponse } from "@app/domains/platform/license/ce/module";
 
-import { BillingCadence } from "./billing-cadence";
+import { BillingCadence, TCadence } from "./billing-cadence";
 import { BillingDate } from "./billing-date";
-import { TCadence } from "./catalog-plan";
 import { Deprecation, TDeprecationRecord } from "./deprecation";
 import { Money } from "./money";
 import { PriceBands, TPriceBandsRecord } from "./price-bands";
-import { Subscription } from "./subscription";
 
 export type TCatalogRecord = NonNullable<Awaited<ReturnType<TLicenseServerBilling["getCatalog"]>>>;
 
@@ -82,6 +80,16 @@ type TBillingLines = NonNullable<TSubscriptionResponse["billing"]>["lines"];
 
 const isSet = (value: number | null | undefined): value is number => value !== null && value !== undefined;
 
+type TCatalogDimension = TCatalogProduct["dimensions"][number];
+
+type TMostConstrainingLimit = { used: number; limit: number | null; key: string | null };
+
+// An unlimited (<= 0) cap can't be hit, so it only constrains once anything is used.
+const utilizationOf = (used: number, limit: number): number => {
+  if (limit > 0) return used / limit;
+  return used > 0 ? Infinity : 0;
+};
+
 // What the org holds, per product id: its subscription items, products entitled without a subscription
 // (pay-as-you-go, account-based), and products only a feature points at.
 export class EntitlementSet {
@@ -96,36 +104,18 @@ export class EntitlementSet {
     entitlements,
     now
   }: {
-    subscription: Subscription;
+    subscription: TSubscriptionResponse | null;
     catalog: TCatalogRecord | null;
     entitlements: TEntitlementsRecord | null;
     now: Date;
   }): EntitlementSet {
     const byProduct: Record<string, TEntitlementView> = {};
-    const labelByDimension = new Map<string, string>();
-    const nounByDimension = new Map<string, string>();
-    const catalogProductById = new Map<string, TCatalogProduct>();
-    catalog?.products.forEach((product) => {
-      catalogProductById.set(product.id, product);
-      product.dimensions.forEach((dimension) => {
-        labelByDimension.set(`${product.id}:${dimension.key}`, dimension.label);
-        nounByDimension.set(`${product.id}:${dimension.key}`, dimension.noun);
-      });
-    });
+    const lines = subscription?.billing?.lines ?? [];
 
-    const record = subscription.raw;
-    if (record) {
-      record.items.forEach((item) => {
-        byProduct[item.productId] = EntitlementSet.fromItem({
-          item,
-          lines: record.billing?.lines ?? [],
-          catalogProduct: catalogProductById.get(item.productId),
-          labelByDimension,
-          nounByDimension,
-          now
-        });
-      });
-    }
+    (subscription?.items ?? []).forEach((item) => {
+      const catalogProduct = catalog?.products.find((product) => product.id === item.productId);
+      byProduct[item.productId] = EntitlementSet.fromItem({ item, lines, catalogProduct, now });
+    });
 
     (entitlements?.products ?? []).forEach((product) => {
       const existing = byProduct[product.product_key];
@@ -139,21 +129,18 @@ export class EntitlementSet {
         entitled: true,
         planTier: product.plan_key ?? undefined,
         status: product.status ?? undefined,
-        ...(product.trial_plan_key ? { trialPlan: product.trial_plan_key } : {}),
+        trialPlan: product.trial_plan_key || undefined,
         isTrialing: product.status === "trialing",
         trialEndsAt: BillingDate.longFromIso(product.trial_ends_at)
       };
     });
 
-    const features = entitlements?.features ?? null;
-    if (features) {
-      Object.values(features).forEach((feature) => {
-        const productId = feature.from_product;
-        if (productId && !byProduct[productId]) {
-          byProduct[productId] = { entitled: true };
-        }
-      });
-    }
+    Object.values(entitlements?.features ?? {}).forEach((feature) => {
+      const productId = feature.from_product;
+      if (productId && !byProduct[productId]) {
+        byProduct[productId] = { entitled: true };
+      }
+    });
 
     return new EntitlementSet(byProduct);
   }
@@ -177,129 +164,119 @@ export class EntitlementSet {
     item,
     lines,
     catalogProduct,
-    labelByDimension,
-    nounByDimension,
     now
   }: {
     item: TSubscriptionItem;
     lines: TBillingLines;
     catalogProduct: TCatalogProduct | undefined;
-    labelByDimension: Map<string, string>;
-    nounByDimension: Map<string, string>;
     now: Date;
   }): TEntitlementView {
+    const catalogDimension = (key: string) => catalogProduct?.dimensions.find((dimension) => dimension.key === key);
     const dimensions = item.dimensions.map((dimension) =>
-      EntitlementSet.dimensionView(dimension, `${item.productId}:${dimension.key}`, labelByDimension, nounByDimension)
+      EntitlementSet.dimensionView(dimension, catalogDimension(dimension.key))
     );
-
-    // The most constraining limit: the highest utilization, each limit paired with its own quantity. Older License
-    // Servers send no dimensions, only the limits and quantities maps.
-    const limitPairs: [string, number][] =
-      dimensions.length > 0
-        ? dimensions
-            .filter((dimension) => dimension.limit !== null)
-            .map((dimension) => [dimension.key, dimension.limit as number])
-        : Object.entries(item.limits);
-    const usedForKey = (key: string): number =>
-      dimensions.length > 0
-        ? (dimensions.find((dimension) => dimension.key === key)?.used ?? 0)
-        : (item.quantities[key] ?? 0);
-
-    let used = 0;
-    let limit: number | null = null;
-    let limitKey: string | null = null;
-    let highestUtilization = -1;
-    for (const [key, dimensionLimit] of limitPairs) {
-      const dimensionUsed = usedForKey(key);
-      // An unlimited (<= 0) cap can't be hit.
-      const utilization =
-        // eslint-disable-next-line no-nested-ternary
-        dimensionLimit > 0 ? dimensionUsed / dimensionLimit : dimensionUsed > 0 ? Infinity : 0;
-      if (limitKey === null || utilization > highestUtilization) {
-        highestUtilization = utilization;
-        used = dimensionUsed;
-        limit = dimensionLimit;
-        limitKey = key;
-      }
-    }
-    const unit = limitKey ? (nounByDimension.get(`${item.productId}:${limitKey}`) ?? null) : null;
-
-    let cadence: TCadence | null = null;
-    if (dimensions.some((dimension) => dimension.cadence === "annual")) {
-      cadence = "annual";
-    } else if (dimensions.length > 0) {
-      cadence = "monthly";
-    }
-
-    // A product can have several lines, each on its own cycle; it renews on the soonest to close.
-    const lineEnds = (lines ?? [])
-      .filter((line) => line.productKey === item.productId && typeof line.currentPeriodEnd === "number")
-      .map((line) => line.currentPeriodEnd as number);
-    const renewsOn = lineEnds.length > 0 ? BillingDate.long(Math.min(...lineEnds)) : null;
-
-    // The sunset date lives only on the catalog; the item's own reason and next steps win over the catalog's.
-    const catalogPlan = catalogProduct?.plans.find((candidate) => candidate.tier === item.plan);
-    let deprecation: TEntitlementView["deprecation"];
-    if (catalogProduct?.deprecated) {
-      const base = Deprecation.from(
-        {
-          deprecated: true,
-          reason: item.deprecation?.reason ?? catalogProduct.deprecationReason,
-          nextSteps: item.deprecation?.nextSteps ?? catalogProduct.deprecationNextSteps,
-          date: catalogProduct.deprecationDate
-        },
-        now
-      );
-      if (base) deprecation = { kind: "product", ...base };
-    } else if (catalogPlan?.deprecated) {
-      const base = Deprecation.from(
-        {
-          deprecated: true,
-          reason: item.deprecation?.reason ?? catalogPlan.deprecationReason,
-          nextSteps: item.deprecation?.nextSteps ?? catalogPlan.deprecationNextSteps,
-          date: catalogPlan.deprecationDate
-        },
-        now
-      );
-      if (base) deprecation = { kind: "plan", ...base };
-    }
+    const mostConstraining = EntitlementSet.mostConstrainingLimit(item, dimensions);
 
     return {
       entitled: true,
       planTier: item.plan,
-      cadence,
+      cadence: EntitlementSet.productCadence(dimensions),
       amount: item.amount !== undefined ? Money.dollars(item.amount) : undefined,
       onDemandAmount: dimensions.reduce((sum, dimension) => sum + dimension.onDemandAmount, 0),
       dimensions: dimensions.length > 0 ? dimensions : undefined,
       status: item.status,
       isTrialing: item.isTrialing ?? false,
       trialEndsAt: item.trialEndsAt ? BillingDate.long(item.trialEndsAt) : null,
-      ...(item.trialPlan
-        ? {
-            trialPlan: item.trialPlan,
-            trialPlanName:
-              catalogProduct?.plans.find((candidate) => candidate.tier === item.trialPlan)?.name ?? item.trialPlan,
-            trialPlanEndsAt: BillingDate.long(item.trialPlanEndsAt),
-            trialPlanDaysLeft: item.trialPlanPaymentDueAt ? null : BillingDate.daysUntil(item.trialPlanEndsAt, now),
-            trialPlanPaymentDueAt: BillingDate.long(item.trialPlanPaymentDueAt)
-          }
-        : {}),
+      ...EntitlementSet.trialPlanFields(item, catalogProduct, now),
       trialPaymentDueAt: BillingDate.long(item.trialPaymentDueAt),
-      renewsOn,
-      ...(deprecation ? { deprecation } : {}),
-      used,
-      limit,
-      unit
+      renewsOn: EntitlementSet.renewsOn(item.productId, lines),
+      deprecation: EntitlementSet.deprecationOf(item, catalogProduct, now),
+      used: mostConstraining.used,
+      limit: mostConstraining.limit,
+      unit: mostConstraining.key ? (catalogDimension(mostConstraining.key)?.noun ?? null) : null
     };
+  }
+
+  // An upgrade trial on another plan of the product. Its days left are not counted while its payment is due.
+  private static trialPlanFields(
+    item: TSubscriptionItem,
+    catalogProduct: TCatalogProduct | undefined,
+    now: Date
+  ): Pick<
+    TEntitlementView,
+    "trialPlan" | "trialPlanName" | "trialPlanEndsAt" | "trialPlanDaysLeft" | "trialPlanPaymentDueAt"
+  > {
+    const { trialPlan } = item;
+    if (!trialPlan) return {};
+    const plan = catalogProduct?.plans.find((candidate) => candidate.tier === trialPlan);
+    return {
+      trialPlan,
+      trialPlanName: plan?.name ?? trialPlan,
+      trialPlanEndsAt: BillingDate.long(item.trialPlanEndsAt),
+      trialPlanDaysLeft: item.trialPlanPaymentDueAt ? null : BillingDate.daysUntil(item.trialPlanEndsAt, now),
+      trialPlanPaymentDueAt: BillingDate.long(item.trialPlanPaymentDueAt)
+    };
+  }
+
+  // The highest utilization, each limit paired with its own quantity, so the unit shown matches the count. Older
+  // License Servers send no dimensions, only the limits and quantities maps. The first maximum wins.
+  private static mostConstrainingLimit(
+    item: TSubscriptionItem,
+    dimensions: TEntitlementDimView[]
+  ): TMostConstrainingLimit {
+    const hasDimensions = dimensions.length > 0;
+    const limitPairs: [string, number][] = hasDimensions
+      ? dimensions.flatMap((dimension) => (dimension.limit === null ? [] : [[dimension.key, dimension.limit]]))
+      : Object.entries(item.limits);
+    const usedFor = (key: string): number =>
+      hasDimensions ? (dimensions.find((dimension) => dimension.key === key)?.used ?? 0) : (item.quantities[key] ?? 0);
+
+    let best: TMostConstrainingLimit = { used: 0, limit: null, key: null };
+    let highestUtilization = -1;
+    for (const [key, limit] of limitPairs) {
+      const used = usedFor(key);
+      const utilization = utilizationOf(used, limit);
+      if (best.key === null || utilization > highestUtilization) {
+        highestUtilization = utilization;
+        best = { used, limit, key };
+      }
+    }
+    return best;
+  }
+
+  // Annual when any dimension is committed annually; monthly when it has dimensions at all.
+  private static productCadence(dimensions: TEntitlementDimView[]): TCadence | null {
+    if (dimensions.some((dimension) => dimension.cadence === "annual")) return "annual";
+    return dimensions.length > 0 ? "monthly" : null;
+  }
+
+  // A product can have several lines, each on its own cycle; it renews on the soonest to close.
+  private static renewsOn(productId: string, lines: TBillingLines): string | null {
+    const lineEnds = (lines ?? [])
+      .filter((line) => line.productKey === productId && typeof line.currentPeriodEnd === "number")
+      .map((line) => line.currentPeriodEnd as number);
+    return lineEnds.length > 0 ? BillingDate.long(Math.min(...lineEnds)) : null;
+  }
+
+  // A deprecated product wins over a deprecated plan. The sunset date lives only on the catalog; the item's own reason
+  // and next steps win over the catalog's.
+  private static deprecationOf(
+    item: TSubscriptionItem,
+    catalogProduct: TCatalogProduct | undefined,
+    now: Date
+  ): TEntitlementView["deprecation"] {
+    const catalogPlan = catalogProduct?.plans.find((candidate) => candidate.tier === item.plan);
+    const kind = catalogProduct?.deprecated ? "product" : "plan";
+    const source = kind === "product" ? catalogProduct : catalogPlan;
+    const base = Deprecation.from(source, now, item.deprecation);
+    return base && { kind, ...base };
   }
 
   // Usage is the License Server's figure for every dimension (metered: the period reading; per_resource: the latest
   // snapshot), so it matches what the customer is billed on.
   private static dimensionView(
     dimension: TSubscriptionItem["dimensions"][number],
-    catalogKey: string,
-    labelByDimension: Map<string, string>,
-    nounByDimension: Map<string, string>
+    catalogDimension: TCatalogDimension | undefined
   ): TEntitlementDimView {
     const metered = dimension.metered ?? false;
     const committed = dimension.committed ?? null;
@@ -307,12 +284,13 @@ export class EntitlementSet {
     const onDemandRate = isSet(dimension.onDemandRateCents) ? Money.dollars(dimension.onDemandRateCents) : undefined;
     const onDemandAmount =
       committed !== null && onDemandRate !== undefined ? Math.max(0, used - committed) * onDemandRate : 0;
+    const usage = metered ? dimension.usage : undefined;
 
     return {
       key: dimension.key,
-      label: labelByDimension.get(catalogKey) ?? dimension.key,
-      noun: nounByDimension.get(catalogKey) ?? dimension.unit ?? dimension.key,
-      unit: dimension.unit ?? nounByDimension.get(catalogKey) ?? dimension.key,
+      label: catalogDimension?.label ?? dimension.key,
+      noun: catalogDimension?.noun ?? dimension.unit ?? dimension.key,
+      unit: dimension.unit ?? catalogDimension?.noun ?? dimension.key,
       metered,
       cadence: BillingCadence.orNull(dimension.cadence),
       used,
@@ -321,39 +299,36 @@ export class EntitlementSet {
       // From the pinned plan version, not the catalog, so a grandfathered customer keeps it.
       commitAvailable: dimension.commitAvailable ?? false,
       onDemandAmount,
-      ...(isSet(dimension.committedRateCents) ? { committedRate: Money.dollars(dimension.committedRateCents) } : {}),
-      ...(onDemandRate !== undefined ? { onDemandRate } : {}),
-      ...(metered && isSet(dimension.rateCents) ? { rate: Money.dollars(dimension.rateCents) } : {}),
-      ...(metered && isSet(dimension.freeBand) ? { freeBand: dimension.freeBand } : {}),
-      ...(metered && dimension.usage
+      committedRate: isSet(dimension.committedRateCents) ? Money.dollars(dimension.committedRateCents) : undefined,
+      onDemandRate,
+      rate: metered && isSet(dimension.rateCents) ? Money.dollars(dimension.rateCents) : undefined,
+      freeBand: metered && isSet(dimension.freeBand) ? dimension.freeBand : undefined,
+      usage: usage
         ? {
-            usage: {
-              periodStart: BillingDate.long(dimension.usage.periodStart),
-              periodEnd: BillingDate.long(dimension.usage.periodEnd - 1),
-              asOf: dimension.usage.asOf ? new Date(dimension.usage.asOf * 1000).toISOString() : null,
-              estimatedAmount: Money.dollarsOrNull(dimension.usage.estimatedAmountCents),
-              currentTier: dimension.usage.currentTier,
-              nextTierAt: dimension.usage.nextTierAt ?? null,
-              earlierInPeriod: dimension.usage.earlierInPeriod.map((segment) => ({
-                periodStart: BillingDate.long(segment.periodStart),
-                periodEnd: BillingDate.long(segment.periodEnd - 1),
-                used: segment.used,
-                estimatedAmount: Money.dollarsOrNull(segment.estimatedAmountCents)
-              })),
-              trial: dimension.usage.trial
-            }
+            periodStart: BillingDate.long(usage.periodStart),
+            periodEnd: BillingDate.long(usage.periodEnd - 1),
+            asOf: usage.asOf ? new Date(usage.asOf * 1000).toISOString() : null,
+            estimatedAmount: Money.dollarsOrNull(usage.estimatedAmountCents),
+            currentTier: usage.currentTier,
+            nextTierAt: usage.nextTierAt ?? null,
+            earlierInPeriod: usage.earlierInPeriod.map((segment) => ({
+              periodStart: BillingDate.long(segment.periodStart),
+              periodEnd: BillingDate.long(segment.periodEnd - 1),
+              used: segment.used,
+              estimatedAmount: Money.dollarsOrNull(segment.estimatedAmountCents)
+            })),
+            trial: usage.trial
           }
-        : {}),
-      ...(metered && dimension.pricing
-        ? { bands: PriceBands.fromTiers(dimension.pricing.tiersMode, dimension.pricing.tiers) }
-        : {}),
+        : undefined,
+      bands:
+        metered && dimension.pricing
+          ? PriceBands.fromTiers(dimension.pricing.tiersMode, dimension.pricing.tiers)
+          : undefined,
       // The page holds the commitment floor at the current quantity unless canDecreaseNow, and shows when a decrease
       // opens.
-      ...(dimension.canDecreaseNow !== null && dimension.canDecreaseNow !== undefined
-        ? { canDecreaseNow: dimension.canDecreaseNow }
-        : {}),
-      ...(dimension.renewalDate ? { renewalDate: BillingDate.long(dimension.renewalDate) } : {}),
-      ...(dimension.decreaseAllowedFrom ? { decreaseAllowedFrom: BillingDate.long(dimension.decreaseAllowedFrom) } : {})
+      canDecreaseNow: dimension.canDecreaseNow ?? undefined,
+      renewalDate: dimension.renewalDate ? BillingDate.long(dimension.renewalDate) : undefined,
+      decreaseAllowedFrom: dimension.decreaseAllowedFrom ? BillingDate.long(dimension.decreaseAllowedFrom) : undefined
     };
   }
 }

@@ -1,4 +1,4 @@
-import { Meter } from "@app/domains/platform/license/ce/module";
+import { Meter, TUsageBreakdown } from "@app/domains/platform/license/ce/module";
 
 // How a meter's usage breakdown reads: the unit it counts, whether units are listed per project, and whether it is
 // split by org at all (user identities are one org-wide figure).
@@ -43,6 +43,13 @@ export class BreakdownDimension {
 
   get key(): string {
     return this.meter.key;
+  }
+
+  // Projects to look up names for: only those a project-level row names.
+  projectIdsIn(usage: TUsageBreakdown): string[] {
+    if (!this.isScoped || !this.hasProjectDetail) return [];
+    const projectIds = usage.rows.map((row) => row.projectId).filter((id): id is string => Boolean(id));
+    return [...new Set(projectIds)];
   }
 }
 

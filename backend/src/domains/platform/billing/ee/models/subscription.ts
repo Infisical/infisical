@@ -1,8 +1,7 @@
 import { TSubscriptionResponse } from "@app/domains/platform/license/ce/module";
 
-import { BillingCadence } from "./billing-cadence";
+import { BillingCadence, TCadence } from "./billing-cadence";
 import { BillingDate } from "./billing-date";
-import { TCadence } from "./catalog-plan";
 import { Money } from "./money";
 import { PaymentLink } from "./payment-link";
 
@@ -38,10 +37,6 @@ export class Subscription {
 
   static restore(record: TSubscriptionResponse | null): Subscription {
     return new Subscription(record);
-  }
-
-  get raw(): TSubscriptionResponse | null {
-    return this.record;
   }
 
   hasItems(): boolean {

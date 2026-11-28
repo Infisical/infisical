@@ -97,7 +97,7 @@ export class UsageBreakdownService implements TUsageBreakdownService {
           rootOrgId
             ? this.organizationsService.listOrgTreeNames(rootOrgId)
             : this.organizationsService.listAllOrgNames(),
-          this.projectsService.findProjectNames(UsageBreakdown.projectIdsIn(dimension, usage))
+          this.projectsService.findProjectNames(dimension.projectIdsIn(usage))
         ])
       : [[], []];
 
