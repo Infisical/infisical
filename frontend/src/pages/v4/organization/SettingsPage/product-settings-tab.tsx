@@ -211,7 +211,7 @@ const CertManagerInstances = () => {
     <>
       <Card variant="framed" title="Certificate Manager" flush>
         {state?.isMultiInstance && (
-          <Alert tone="warn">
+          <Alert band tone="warn">
             <AlertDescription>
               Your organization has multiple Certificate Manager projects. Only one project per
               organization is supported going forward, so choose your active project and remove the
@@ -228,6 +228,7 @@ const CertManagerInstances = () => {
         )}
         <DataTable
           label="Certificate Manager projects"
+          headerGround={state?.isMultiInstance ? "paper" : undefined}
           rows={instances}
           columns={columns}
           getRowId={(row) => row.id}
@@ -374,7 +375,7 @@ const SecretScanningInstances = () => {
 
   return (
     <Card variant="framed" title="Secret Scanning" flush>
-      <Alert tone="warn">
+      <Alert band tone="warn">
         <AlertDescription>
           Secret Scanning no longer uses projects. Opening Secret Scanning takes everyone to the
           most recently created project below. The earlier ones stay available from their links.
@@ -382,6 +383,7 @@ const SecretScanningInstances = () => {
       </Alert>
       <DataTable
         label="Secret Scanning projects"
+        headerGround="paper"
         rows={instances}
         columns={columns}
         getRowId={(row) => row.id}

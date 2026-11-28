@@ -2336,6 +2336,19 @@ export const OverviewPage = () => {
                   </div>
                 </div>
                 <div className={styles.tableBlock}>
+                  {!unavailableState && (
+                    <div className={styles.notices}>
+                      <PendingApprovalsLine orgId={orgId} projectId={projectId} />
+                      {single && (
+                        <RequestAccessLine
+                          orgId={orgId}
+                          projectId={projectId}
+                          environment={activeEnvironment}
+                          secretPath={path}
+                        />
+                      )}
+                    </div>
+                  )}
                   <div className={styles.tableFrame}>
                     <FolderBreadcrumbBar
                       path={path}
@@ -2443,17 +2456,6 @@ export const OverviewPage = () => {
                       }
                       report={report}
                     />
-                    {!unavailableState && (
-                      <PendingApprovalsLine orgId={orgId} projectId={projectId} />
-                    )}
-                    {!unavailableState && single && (
-                      <RequestAccessLine
-                        orgId={orgId}
-                        projectId={projectId}
-                        environment={activeEnvironment}
-                        secretPath={path}
-                      />
-                    )}
                     {unavailableState ?? (
                       <Table
                         className={styles.table}
@@ -2476,7 +2478,7 @@ export const OverviewPage = () => {
                             ))
                           )}
                         </colgroup>
-                        <TableHeader>
+                        <TableHeader ground="paper">
                           <TableRow>
                             <TableHead pin="start" selection divider={false}>
                               <span className={styles.iconSlot}>

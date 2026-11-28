@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "@infisical/cipher/ui/button";
+import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
 import { Icon } from "@infisical/cipher/ui/icon";
 
 import { orgHref } from "../../../links";
@@ -40,9 +40,9 @@ export const PendingApprovalsLine = ({
     setDismissed(signature);
   };
   return (
-    <div className={styles.approvalsLine}>
-      <Icon name="inbox" size={14} className={styles.approvalsIcon} />
-      <p className={styles.approvalsText}>
+    <Alert tone="info" onDismiss={dismiss}>
+      <Icon name="inbox" />
+      <AlertDescription className={styles.approvalsText}>
         {toReview > 0 && (
           <span>
             {join([
@@ -58,10 +58,7 @@ export const PendingApprovalsLine = ({
             You have {plural(mine, "request")} waiting. <a href={tab(changesMine)}>View</a>
           </span>
         )}
-      </p>
-      <Button variant="ghost" size="xs" icon="x" iconOnly onClick={dismiss}>
-        Dismiss
-      </Button>
-    </div>
+      </AlertDescription>
+    </Alert>
   );
 };

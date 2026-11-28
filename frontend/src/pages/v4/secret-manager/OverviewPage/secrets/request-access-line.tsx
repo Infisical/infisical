@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Alert, AlertAction, AlertDescription } from "@infisical/cipher/ui/alert";
 import { Button } from "@infisical/cipher/ui/button";
 import { Icon } from "@infisical/cipher/ui/icon";
 
@@ -12,8 +13,6 @@ import { useV4Adapter } from "../../../data/adapters";
 import { RequestAccessSheet } from "../../SecretApprovalsPage/access-requests/RequestAccessSheet";
 import { resolveAccessPolicyForPath } from "../../SecretApprovalsPage/access-requests/scope";
 import { useManagedBlock } from "./row-actions/permissions";
-
-import styles from "./overview.module.css";
 
 const WRITE_ACTIONS = [
   {
@@ -78,17 +77,17 @@ export const RequestAccessLine = ({
       : WRITE_ACTIONS.filter((entry) => denied(entry.secret));
   if (!missing.length) return null;
   return (
-    <div className={styles.approvalsLine}>
-      <Icon name="lock" size={14} className={styles.approvalsIcon} />
-      <p className={styles.approvalsText}>
-        <span>
-          You don&apos;t have permission to {listVerbs(missing.map((entry) => entry.verb))} secrets
-          in this folder.
-        </span>
-      </p>
-      <Button variant="outline" size="xs" onClick={() => setOpen(true)}>
-        Request access
-      </Button>
+    <Alert tone="info">
+      <Icon name="lock" />
+      <AlertDescription>
+        You don&apos;t have permission to {listVerbs(missing.map((entry) => entry.verb))} secrets in
+        this folder.
+      </AlertDescription>
+      <AlertAction>
+        <Button variant="outline" size="xs" onClick={() => setOpen(true)}>
+          Request access
+        </Button>
+      </AlertAction>
       {open && (
         <RequestAccessSheet
           project={project}
@@ -98,6 +97,6 @@ export const RequestAccessLine = ({
           onClose={() => setOpen(false)}
         />
       )}
-    </div>
+    </Alert>
   );
 };
