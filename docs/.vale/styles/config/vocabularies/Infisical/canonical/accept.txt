@@ -265,6 +265,7 @@ Mintlify
 Ona
 Daytona
 E2B
+boxd
 DBT
 Ab Initio
 Initio
