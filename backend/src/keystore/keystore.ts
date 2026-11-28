@@ -228,6 +228,8 @@ export const KeyStorePrefixes = {
   CertPqcTrend: (projectId: string, range: string) => `cert-pqc-trend:${projectId}:${range}` as const,
   SigningActivityTrend: (projectId: string, range: string, signerId?: string) =>
     `signing-activity-trend:${projectId}:${range}:${signerId ?? "all"}` as const,
+  SigningActivityBySigner: (projectId: string, range: string, orderBy: string, orderDirection: string) =>
+    `signing-activity-by-signer:${projectId}:${range}:${orderBy}:${orderDirection}` as const,
   RefreshTokenGrace: (sessionId: string, refreshVersion: number) =>
     `refresh-token-grace:${sessionId}:${refreshVersion}` as const,
   EmailSignupOtpHash: (hash: string) => `email-signup-otp:${hash}:hash` as const,

@@ -7,8 +7,9 @@ import type { TActorContext } from "@app/domains/lib/actor-context";
 import { EntityNotFoundError, RuleViolationError, PermissionDeniedError } from "@app/domains/lib/errors";
 import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
-import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { ExecutionError, ExecutionStats, ResourceLockedError } from "@app/lib/red-lock";
+import { OrderByDirection } from "@app/lib/types";
 
 import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
 import {
@@ -30,6 +31,7 @@ import {
 } from "./signer-enums";
 import { issueSignerCertificate } from "./signer-issuance-fns";
 import { signerServiceFactory } from "./signer-service";
+import { SigningActivityOrderBy, SigningActivityRange } from "./signer-types";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
@@ -230,7 +232,8 @@ const buildService = ({
       { id: "membership-admin", actorUserId: ADMIN_USER_ID },
       { id: "membership-group", actorGroupId: "group-1" },
       { id: "membership-viewer", actorUserId: "user-viewer" }
-    ])
+    ]),
+    findResourceMembershipsForActor: vi.fn().mockResolvedValue([])
   };
   const membershipRoleDAL = {
     find: vi.fn().mockResolvedValue([
@@ -247,7 +250,12 @@ const buildService = ({
     signerIssuanceService,
     projectPermissionService: { getProjectPermission: vi.fn() },
     signerPermissionService: { getSignerPermission: vi.fn().mockResolvedValue(permission) },
-    keyStore: { acquireLock: vi.fn().mockResolvedValue(lock) },
+    keyStore: {
+      acquireLock: vi.fn().mockResolvedValue(lock),
+      getItem: vi.fn().mockResolvedValue(null),
+      setItemWithExpiry: vi.fn().mockResolvedValue(undefined)
+    },
+    signingOperationDAL: { getActivityBySigner: vi.fn() },
     hsmConnectorService: { assertAttachPermission: vi.fn() },
     digicertFns: {
       assertCodeSigningOrderReusable: vi.fn(),
@@ -1265,5 +1273,242 @@ describe("signerService revokeWithCertificate", () => {
     expect(result).toEqual({ isCertificateRevoked: true, revokedSigners: [] });
     expect(signer().status).toBe(SignerStatus.Active);
     expect(deps.signerIssuanceService.cancelOpenRequests).not.toHaveBeenCalled();
+  });
+});
+
+describe("signerService.getActivityBySigner", () => {
+  const PERIOD_ONE = "2026-11-01";
+  const PERIOD_TWO = "2026-11-02";
+  const window = {
+    startDate: new Date(2026, 10, 1),
+    endDate: new Date(2026, 10, 2, 12),
+    useDaily: true
+  };
+  const row = (signerId: string, signerName: string, period: string, success: number, failed = 0) => ({
+    signerId,
+    signerName,
+    period,
+    success,
+    failed
+  });
+
+  const buildActivityService = ({ isProjectAdmin }: { isProjectAdmin: boolean }) => {
+    const built = buildService();
+    built.deps.projectPermissionService.getProjectPermission.mockResolvedValue({
+      assert: vi.fn(),
+      hasRole: vi.fn().mockReturnValue(isProjectAdmin)
+    });
+    return built;
+  };
+
+  const sortFields = { orderBy: SigningActivityOrderBy.Total, orderDirection: OrderByDirection.DESC };
+  const signersNamed = (names: Record<string, string>) =>
+    Object.entries(names).map(([id, name]) => ({ id, name, projectId: PROJECT_ID }));
+
+  const getActivity = (service: ReturnType<typeof buildService>["service"], sort = sortFields) =>
+    service.getActivityBySigner({
+      ...actorFields,
+      projectId: PROJECT_ID,
+      range: SigningActivityRange.ThirtyDays,
+      ...sort
+    });
+
+  it("charts the six busiest signers and folds the rest into other, ordered by total then name", async () => {
+    const { service, deps } = buildActivityService({ isProjectAdmin: true });
+    deps.signerDAL.find.mockResolvedValue(
+      signersNamed({
+        "s-a": "zeta",
+        "s-b": "yankee",
+        "s-c": "xray",
+        "s-d": "whiskey",
+        "s-e": "beta",
+        "s-f": "alpha",
+        "s-g": "victor",
+        "s-idle": "idle"
+      })
+    );
+    deps.signingOperationDAL.getActivityBySigner.mockResolvedValue({
+      window,
+      rows: [
+        row("s-a", "zeta", PERIOD_ONE, 5, 1),
+        row("s-a", "zeta", PERIOD_TWO, 4),
+        row("s-b", "yankee", PERIOD_ONE, 8),
+        row("s-c", "xray", PERIOD_TWO, 0, 7),
+        row("s-d", "whiskey", PERIOD_ONE, 5),
+        row("s-e", "beta", PERIOD_ONE, 3),
+        row("s-f", "alpha", PERIOD_TWO, 3),
+        row("s-g", "victor", PERIOD_TWO, 1)
+      ]
+    });
+
+    const result = await getActivity(service);
+
+    expect(result.signerTotals.map(({ signerId }) => signerId)).toEqual([
+      "s-a",
+      "s-b",
+      "s-c",
+      "s-d",
+      "s-f",
+      "s-e",
+      "s-g",
+      "s-idle"
+    ]);
+    expect(result.signerTotals[7]).toEqual({ signerId: "s-idle", signerName: "idle", success: 0, failed: 0 });
+    expect(result.signerTotals[0]).toEqual({ signerId: "s-a", signerName: "zeta", success: 9, failed: 1 });
+    expect(result.periods).toEqual([
+      {
+        period: PERIOD_ONE,
+        signerCounts: { "s-a": 6, "s-b": 8, "s-c": 0, "s-d": 5, "s-f": 0, "s-e": 3 },
+        otherCount: 0
+      },
+      {
+        period: PERIOD_TWO,
+        signerCounts: { "s-a": 4, "s-b": 0, "s-c": 7, "s-d": 0, "s-f": 3, "s-e": 0 },
+        otherCount: 1
+      }
+    ]);
+  });
+
+  it("charts every signer with no other when there are seven or fewer", async () => {
+    const { service, deps } = buildActivityService({ isProjectAdmin: true });
+    const ids = ["s-a", "s-b", "s-c", "s-d", "s-e", "s-f", "s-g"];
+    deps.signerDAL.find.mockResolvedValue(signersNamed(Object.fromEntries(ids.map((id) => [id, id]))));
+    deps.signingOperationDAL.getActivityBySigner.mockResolvedValue({
+      window,
+      rows: ids.map((id, i) => row(id, id, PERIOD_ONE, 7 - i))
+    });
+
+    const result = await getActivity(service);
+
+    expect(Object.keys(result.periods[0].signerCounts)).toHaveLength(7);
+    expect(result.periods.map(({ otherCount }) => otherCount)).toEqual([0, 0]);
+  });
+
+  it("counts only the signers a non-admin can read and keeps their result out of the shared cache", async () => {
+    const { service, deps } = buildActivityService({ isProjectAdmin: false });
+    deps.membershipDAL.findResourceMembershipsForActor.mockResolvedValue([
+      { scopeResourceId: "s-readable" },
+      { scopeResourceId: "s-readable" },
+      { scopeResourceId: "s-hidden" },
+      { scopeResourceId: null }
+    ]);
+    deps.signerPermissionService.getSignerPermission.mockImplementation(async ({ signerId }: { signerId: string }) =>
+      signerId === "s-readable" ? abilityWith(SignerPermissionActions.Read) : abilityWith()
+    );
+    deps.signingOperationDAL.getActivityBySigner.mockResolvedValue({ window, rows: [] });
+
+    await getActivity(service);
+
+    expect(deps.signingOperationDAL.getActivityBySigner).toHaveBeenCalledWith(
+      expect.objectContaining({ signerIds: ["s-readable"] })
+    );
+    expect(deps.keyStore.getItem).not.toHaveBeenCalled();
+    expect(deps.keyStore.setItemWithExpiry).not.toHaveBeenCalled();
+  });
+
+  it("charts the signers first in the requested order, idle signers included", async () => {
+    const { service, deps } = buildActivityService({ isProjectAdmin: true });
+    deps.signerDAL.find.mockResolvedValue(
+      signersNamed(Object.fromEntries(["s-a", "s-b", "s-c", "s-d", "s-e", "s-f", "s-g", "s-h"].map((id) => [id, id])))
+    );
+    deps.signingOperationDAL.getActivityBySigner.mockResolvedValue({
+      window,
+      rows: [
+        row("s-a", "s-a", PERIOD_ONE, 9, 1),
+        row("s-b", "s-b", PERIOD_ONE, 1, 4),
+        row("s-c", "s-c", PERIOD_ONE, 0, 2),
+        row("s-d", "s-d", PERIOD_ONE, 3)
+      ]
+    });
+
+    const leastActive = await getActivity(service, {
+      orderBy: SigningActivityOrderBy.Total,
+      orderDirection: OrderByDirection.ASC
+    });
+    expect(leastActive.signerTotals.map(({ signerId }) => signerId)).toEqual([
+      "s-e",
+      "s-f",
+      "s-g",
+      "s-h",
+      "s-c",
+      "s-d",
+      "s-b",
+      "s-a"
+    ]);
+    expect(Object.keys(leastActive.periods[0].signerCounts)).toEqual(["s-e", "s-f", "s-g", "s-h", "s-c", "s-d"]);
+    expect(leastActive.periods[0].otherCount).toEqual(15);
+
+    const mostFailed = await getActivity(service, {
+      orderBy: SigningActivityOrderBy.Failed,
+      orderDirection: OrderByDirection.DESC
+    });
+    expect(mostFailed.signerTotals.slice(0, 4).map(({ signerId }) => signerId)).toEqual(["s-b", "s-c", "s-a", "s-d"]);
+  });
+
+  it("charts every requested signer, idle ones included, without folding or caching", async () => {
+    const { service, deps } = buildActivityService({ isProjectAdmin: true });
+    const requested = ["s-a", "s-b", "s-c", "s-d", "s-e", "s-f", "s-g"];
+    deps.signerDAL.find.mockResolvedValue(requested.map((id) => ({ id, name: `name-${id}`, projectId: PROJECT_ID })));
+    deps.signingOperationDAL.getActivityBySigner.mockResolvedValue({
+      window,
+      rows: [row("s-b", "name-s-b", PERIOD_ONE, 4), row("s-a", "name-s-a", PERIOD_TWO, 2, 1)]
+    });
+
+    const result = await service.getActivityBySigner({
+      ...actorFields,
+      projectId: PROJECT_ID,
+      range: SigningActivityRange.ThirtyDays,
+      signerIds: requested,
+      ...sortFields
+    });
+
+    expect(deps.signingOperationDAL.getActivityBySigner).toHaveBeenCalledWith(
+      expect.objectContaining({ signerIds: requested })
+    );
+    expect(result.signerTotals.map(({ signerId }) => signerId)).toEqual([
+      "s-b",
+      "s-a",
+      "s-c",
+      "s-d",
+      "s-e",
+      "s-f",
+      "s-g"
+    ]);
+    expect(result.signerTotals[2]).toEqual({ signerId: "s-c", signerName: "name-s-c", success: 0, failed: 0 });
+    expect(Object.keys(result.periods[0].signerCounts)).toHaveLength(7);
+    expect(result.periods.map(({ otherCount }) => otherCount)).toEqual([0, 0]);
+    expect(deps.keyStore.getItem).not.toHaveBeenCalled();
+  });
+
+  it("refuses a requested signer that is not in the project or that the caller cannot read", async () => {
+    const missing = buildActivityService({ isProjectAdmin: true });
+    missing.deps.signerDAL.find.mockResolvedValue([{ id: "s-a", name: "a", projectId: PROJECT_ID }]);
+    await expect(
+      missing.service.getActivityBySigner({
+        ...actorFields,
+        projectId: PROJECT_ID,
+        range: SigningActivityRange.ThirtyDays,
+        signerIds: ["s-a", "s-other-project"],
+        ...sortFields
+      })
+    ).rejects.toThrow(NotFoundError);
+    expect(missing.deps.signerDAL.find).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      $in: { id: ["s-a", "s-other-project"] }
+    });
+
+    const hidden = buildActivityService({ isProjectAdmin: false });
+    hidden.deps.signerDAL.find.mockResolvedValue([{ id: "s-hidden", name: "hidden", projectId: PROJECT_ID }]);
+    hidden.deps.signerPermissionService.getSignerPermission.mockResolvedValue(abilityWith());
+    await expect(
+      hidden.service.getActivityBySigner({
+        ...actorFields,
+        projectId: PROJECT_ID,
+        range: SigningActivityRange.ThirtyDays,
+        signerIds: ["s-hidden"],
+        ...sortFields
+      })
+    ).rejects.toThrow(ForbiddenRequestError);
+    expect(hidden.deps.signingOperationDAL.getActivityBySigner).not.toHaveBeenCalled();
   });
 });

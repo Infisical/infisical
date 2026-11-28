@@ -45,7 +45,10 @@ import {
 } from "@app/lib/csr/pkcs11-algorithm-map";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { groupBy } from "@app/lib/fn";
+import { fillActivityPeriods } from "@app/lib/knex/activity-periods";
 import { logger } from "@app/lib/logger";
+import { OrderByDirection } from "@app/lib/types";
 import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -146,6 +149,9 @@ import {
   TExportCertificateDTO,
   TGetPublicKeyDTO,
   TGetSignerDTO,
+  MAX_SIGNING_ACTIVITY_SIGNERS,
+  SigningActivityOrderBy,
+  TGetSigningActivityBySignerDTO,
   TGetSigningActivityTrendDTO,
   TGetSigningOperationDTO,
   TImportCertificateDTO,
@@ -163,6 +169,11 @@ import {
 import { TSigningOperationDALFactory } from "./signing-operation-dal";
 
 const MAX_DATA_BYTES = 128;
+const SIGNING_ACTIVITY_DAYS_BACK: Record<SigningActivityRange, number> = {
+  [SigningActivityRange.SevenDays]: 7,
+  [SigningActivityRange.ThirtyDays]: 30,
+  [SigningActivityRange.SixMonths]: 180
+};
 const DEFAULT_CERTIFICATE_TTL_DAYS = 365;
 const MAX_AUTO_RENEWAL_RETRY_BACKOFF_MS = 7 * 24 * 60 * 60 * 1000;
 const MIN_AUTO_RENEWAL_RETRY_BACKOFF_MS = 24 * 60 * 60 * 1000;
@@ -2937,6 +2948,59 @@ export const signerServiceFactory = ({
     };
   };
 
+  const $canReadSigner = async (signerId: string, projectId: string, actor: TActorContext) => {
+    const signerPermission = await $loadSignerResourcePermission(signerId, projectId, actor);
+    return signerPermission.can({ action: SignerPermissionActions.Read, subject: SignerPermissionSub.Signer });
+  };
+
+  const $resolveReadableSignerIds = async ({
+    projectId,
+    actor,
+    isProjectAdmin
+  }: {
+    projectId: string;
+    actor: TActorContext;
+    isProjectAdmin: boolean;
+  }) => {
+    if (isProjectAdmin) return undefined;
+
+    const memberships = await membershipDAL.findResourceMembershipsForActor({
+      projectId,
+      resourceType: ResourceType.Signer,
+      actorType: actor.principal.type === ActorType.IDENTITY ? ActorType.IDENTITY : ActorType.USER,
+      actorId: actor.principal.id
+    });
+    const memberSignerIds = Array.from(
+      new Set(memberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id)))
+    );
+    const readable = await Promise.all(memberSignerIds.map((id) => $canReadSigner(id, projectId, actor)));
+    return memberSignerIds.filter((_, i) => readable[i]);
+  };
+
+  const $resolveRequestedSigners = async ({
+    projectId,
+    actor,
+    signerIds
+  }: {
+    projectId: string;
+    actor: TActorContext;
+    signerIds: string[];
+  }) => {
+    const signers = await signerDAL.find({ projectId, $in: { id: signerIds } });
+    const missingSignerId = signerIds.find((id) => !signers.some((signer) => signer.id === id));
+    if (missingSignerId) {
+      throw new NotFoundError({ message: `Signer with ID '${missingSignerId}' not found` });
+    }
+    const readable = await Promise.all(signers.map((signer) => $canReadSigner(signer.id, projectId, actor)));
+    const unreadableSigner = signers.find((_, i) => !readable[i]);
+    if (unreadableSigner) {
+      throw new ForbiddenRequestError({
+        message: `You do not have permission to read signer '${unreadableSigner.id}'`
+      });
+    }
+    return signers;
+  };
+
   const getActivityTrend = async (dto: TGetSigningActivityTrendDTO) => {
     const permission = await projectPermissionService.getProjectPermission({
       actor: dto.actor,
@@ -2946,61 +3010,126 @@ export const signerServiceFactory = ({
 
     permission.assert({ action: ProjectPermissionCodeSigningActions.Read, subject: ProjectPermissionSub.CodeSigners });
 
-    const canReadSigner = async (signerId: string) => {
-      const signerPermission = await $loadSignerResourcePermission(signerId, dto.projectId, dto.actor);
-      return signerPermission.can({ action: SignerPermissionActions.Read, subject: SignerPermissionSub.Signer });
-    };
-
     const isProjectAdmin = permission.hasRole({ slug: ProjectMembershipRole.Admin });
-    const isCacheable = Boolean(dto.signerId) || isProjectAdmin;
+    const requestedSignerIds = dto.signerIds ?? (dto.signerId ? [dto.signerId] : undefined);
+    const isCacheable = requestedSignerIds ? requestedSignerIds.length === 1 : isProjectAdmin;
 
-    let signerIds: string[] | undefined;
-    if (dto.signerId) {
-      const signer = await signerDAL.findById(dto.signerId);
-      if (!signer || signer.projectId !== dto.projectId) {
-        throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
-      }
-      if (!(await canReadSigner(signer.id))) {
-        throw new ForbiddenRequestError({ message: `You do not have permission to read signer '${dto.signerId}'` });
-      }
-      signerIds = [signer.id];
-    } else if (!isProjectAdmin) {
-      const memberships = await membershipDAL.findResourceMembershipsForActor({
-        projectId: dto.projectId,
-        resourceType: ResourceType.Signer,
-        actorType: dto.actor.principal.type === ActorType.IDENTITY ? ActorType.IDENTITY : ActorType.USER,
-        actorId: dto.actor.principal.id
-      });
-      const memberSignerIds = Array.from(
-        new Set(memberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id)))
-      );
-      const readable = await Promise.all(memberSignerIds.map(canReadSigner));
-      signerIds = memberSignerIds.filter((_, i) => readable[i]);
-    }
-
-    const daysBackByRange: Record<SigningActivityRange, number> = {
-      [SigningActivityRange.SevenDays]: 7,
-      [SigningActivityRange.ThirtyDays]: 30,
-      [SigningActivityRange.SixMonths]: 180
-    };
+    const signerIds = requestedSignerIds
+      ? (
+          await $resolveRequestedSigners({ projectId: dto.projectId, actor: dto.actor, signerIds: requestedSignerIds })
+        ).map((signer) => signer.id)
+      : await $resolveReadableSignerIds({ projectId: dto.projectId, actor: dto.actor, isProjectAdmin });
 
     const fetchPeriods = () =>
       signingOperationDAL.getActivityTrend({
         projectId: dto.projectId,
         signerIds,
-        daysBack: daysBackByRange[dto.range]
+        daysBack: SIGNING_ACTIVITY_DAYS_BACK[dto.range]
       });
 
     const periods = isCacheable
       ? await withCache({
           keyStore,
-          key: KeyStorePrefixes.SigningActivityTrend(dto.projectId, dto.range, dto.signerId),
+          key: KeyStorePrefixes.SigningActivityTrend(dto.projectId, dto.range, requestedSignerIds?.[0]),
           ttlSeconds: KeyStoreTtls.SigningActivityTrendInSeconds,
           fetcher: fetchPeriods
         })
       : await fetchPeriods();
 
     return { periods };
+  };
+
+  const getActivityBySigner = async (dto: TGetSigningActivityBySignerDTO) => {
+    const permission = await projectPermissionService.getProjectPermission({
+      actor: dto.actor,
+      projectId: dto.projectId,
+      type: ProjectType.CertificateManager
+    });
+
+    permission.assert({ action: ProjectPermissionCodeSigningActions.Read, subject: ProjectPermissionSub.CodeSigners });
+
+    const isProjectAdmin = permission.hasRole({ slug: ProjectMembershipRole.Admin });
+    const requestedSigners = dto.signerIds
+      ? await $resolveRequestedSigners({ projectId: dto.projectId, actor: dto.actor, signerIds: dto.signerIds })
+      : undefined;
+    const signerIds = requestedSigners
+      ? requestedSigners.map((signer) => signer.id)
+      : await $resolveReadableSignerIds({ projectId: dto.projectId, actor: dto.actor, isProjectAdmin });
+
+    const fetchActivity = async () => {
+      const { window, rows } = await signingOperationDAL.getActivityBySigner({
+        projectId: dto.projectId,
+        signerIds,
+        daysBack: SIGNING_ACTIVITY_DAYS_BACK[dto.range]
+      });
+
+      const countOf = (item: { success: number; failed: number }) => item.success + item.failed;
+      const sumCounts = (items: { success: number; failed: number }[]) =>
+        items.reduce((sum, item) => sum + countOf(item), 0);
+
+      let signers = requestedSigners;
+      if (!signers) {
+        signers =
+          signerIds && !signerIds.length
+            ? []
+            : await signerDAL.find({ projectId: dto.projectId, ...(signerIds ? { $in: { id: signerIds } } : {}) });
+      }
+      const sortValue = (item: { success: number; failed: number }) =>
+        dto.orderBy === SigningActivityOrderBy.Failed ? item.failed : countOf(item);
+      const direction = dto.orderDirection === OrderByDirection.DESC ? -1 : 1;
+
+      const rowsBySignerId = groupBy(rows, (row) => row.signerId);
+      const signerTotals = signers
+        .map((signer) => {
+          const signerRows = rowsBySignerId[signer.id] ?? [];
+          return {
+            signerId: signer.id,
+            signerName: signer.name,
+            success: signerRows.reduce((sum, row) => sum + row.success, 0),
+            failed: signerRows.reduce((sum, row) => sum + row.failed, 0)
+          };
+        })
+        .sort(
+          (a, b) =>
+            direction * (sortValue(a) - sortValue(b)) ||
+            direction * (countOf(a) - countOf(b)) ||
+            a.signerName.localeCompare(b.signerName)
+        );
+      const chartedSignerIds = signerTotals
+        .slice(
+          0,
+          requestedSigners || signerTotals.length <= MAX_SIGNING_ACTIVITY_SIGNERS
+            ? signerTotals.length
+            : MAX_SIGNING_ACTIVITY_SIGNERS - 1
+        )
+        .map((totals) => totals.signerId);
+      const rowsByPeriod = groupBy(rows, (row) => row.period);
+
+      return {
+        signerTotals,
+        periods: fillActivityPeriods(window, (period) => {
+          const periodRows = rowsByPeriod[period] ?? [];
+          return {
+            signerCounts: Object.fromEntries(
+              chartedSignerIds.map((signerId) => [
+                signerId,
+                sumCounts(periodRows.filter((row) => row.signerId === signerId))
+              ])
+            ),
+            otherCount: sumCounts(periodRows.filter((row) => !chartedSignerIds.includes(row.signerId)))
+          };
+        })
+      };
+    };
+
+    return isProjectAdmin && !requestedSigners
+      ? withCache({
+          keyStore,
+          key: KeyStorePrefixes.SigningActivityBySigner(dto.projectId, dto.range, dto.orderBy, dto.orderDirection),
+          ttlSeconds: KeyStoreTtls.SigningActivityTrendInSeconds,
+          fetcher: fetchActivity
+        })
+      : fetchActivity();
   };
 
   const listOperations = async (dto: TListSigningOperationsDTO) => {
@@ -3140,6 +3269,7 @@ export const signerServiceFactory = ({
     sign,
     getPublicKey,
     getActivityTrend,
+    getActivityBySigner,
     listOperations,
     getOperationById,
     autoRenewCertificate,

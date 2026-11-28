@@ -2,7 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { SigningAlgorithm } from "@app/lib/crypto/sign/types";
-import { TActorInput } from "@app/lib/types";
+import { OrderByDirection, TActorInput } from "@app/lib/types";
 
 import {
   TCodeSigningRequestScopeInput,
@@ -121,9 +121,25 @@ export enum SigningActivityRange {
   SixMonths = "6m"
 }
 
+export enum SigningActivityOrderBy {
+  Total = "total",
+  Failed = "failed"
+}
+
+export const MAX_SIGNING_ACTIVITY_SIGNERS = 7;
+
 export type TGetSigningActivityTrendDTO = {
   range: SigningActivityRange;
   signerId?: string;
+  signerIds?: string[];
+  projectId: string;
+} & TActorInput;
+
+export type TGetSigningActivityBySignerDTO = {
+  range: SigningActivityRange;
+  signerIds?: string[];
+  orderBy: SigningActivityOrderBy;
+  orderDirection: OrderByDirection;
   projectId: string;
 } & TActorInput;
 

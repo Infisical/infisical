@@ -186,5 +186,66 @@ export const signingOperationDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findBySignerId, findByIdWithActor, countBySignerId, countByGrantId, getActivityTrend };
+  const getActivityBySigner = async (
+    { projectId, signerIds, daysBack }: { projectId: string; signerIds?: string[]; daysBack: number },
+    tx?: Knex
+  ) => {
+    try {
+      const window = getActivityPeriodWindow(daysBack);
+
+      if (signerIds && !signerIds.length) {
+        return { window, rows: [] };
+      }
+
+      let query = (tx || db.replicaNode())(TableName.PkiSigningOperations)
+        .where(`${TableName.PkiSigningOperations}.projectId`, projectId)
+        .whereIn(`${TableName.PkiSigningOperations}.status`, [
+          SigningOperationStatus.Success,
+          SigningOperationStatus.Failed,
+          SigningOperationStatus.Denied
+        ])
+        .where(`${TableName.PkiSigningOperations}.createdAt`, ">=", window.startDate)
+        .where(`${TableName.PkiSigningOperations}.createdAt`, "<=", window.endDate);
+
+      if (signerIds) {
+        query = query.whereIn(`${TableName.PkiSigningOperations}.signerId`, signerIds);
+      }
+
+      const rows = (await query
+        .select(
+          db.ref("signerId").withSchema(TableName.PkiSigningOperations),
+          selectActivityPeriod(db, window, TableName.PkiSigningOperations, "createdAt"),
+          db.raw(`count(*) filter (where "${TableName.PkiSigningOperations}".status = ?)::int as success`, [
+            SigningOperationStatus.Success
+          ]),
+          db.raw(`count(*) filter (where "${TableName.PkiSigningOperations}".status in (?, ?))::int as failed`, [
+            SigningOperationStatus.Failed,
+            SigningOperationStatus.Denied
+          ])
+        )
+        .groupBy(`${TableName.PkiSigningOperations}.signerId`, "period")) as unknown as {
+        signerId: string;
+        period: string;
+        success: number;
+        failed: number;
+      }[];
+
+      return {
+        window,
+        rows: rows.map((row) => ({ ...row, success: Number(row.success), failed: Number(row.failed) }))
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "GetSigningOperationActivityBySigner" });
+    }
+  };
+
+  return {
+    ...orm,
+    findBySignerId,
+    findByIdWithActor,
+    countBySignerId,
+    countByGrantId,
+    getActivityTrend,
+    getActivityBySigner
+  };
 };

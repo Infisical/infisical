@@ -1,43 +1,58 @@
 import { useState } from "react";
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   XAxis,
   YAxis
 } from "recharts";
 
 import {
   Button,
+  ButtonGroup,
   Card,
+  CardAction,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
   Empty,
-  EmptyHeader,
-  EmptyTitle,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
+  EmptyTitle
 } from "@app/components/v3";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
+  SigningActivityOrderBy,
+  SigningOperationStatus,
+  signingOperationStatusLabels,
   TGetSigningActivityTrendDTO,
+  useGetSigningActivityBySigner,
   useGetSigningActivityTrend,
   useListSigners
 } from "@app/hooks/api/signers";
 
-import { formatTickLabel, legendFormatter, nonZeroDot, TREND_COLORS } from "./chart-theme";
+import {
+  CHART_COLORS_HEX,
+  CHART_OTHER_COLOR,
+  formatTickLabel,
+  nonZeroDot,
+  TREND_COLORS
+} from "./chart-theme";
+import {
+  SigningActivityLegend,
+  SigningActivitySeries,
+  SigningActivityView
+} from "./SigningActivityLegend";
+import { SignerOption, SigningActivitySignerPicker } from "./SigningActivitySignerPicker";
 
 type Props = {
   projectId: string;
 };
 
-const ALL_SIGNERS = "__all__";
+const OTHER_SERIES_KEY = "__other__";
+const DIMMED_LINE_OPACITY = 0.15;
+const MIN_Y_AXIS_MAX = 4;
 
 const ranges: { label: string; value: TGetSigningActivityTrendDTO["range"] }[] = [
   { label: "7D", value: "7d" },
@@ -45,108 +60,242 @@ const ranges: { label: string; value: TGetSigningActivityTrendDTO["range"] }[] =
   { label: "6M", value: "6m" }
 ];
 
+const sumBy = <T,>(items: T[], getValue: (item: T) => number) =>
+  items.reduce((sum, item) => sum + getValue(item), 0);
+
 export const CodeSigningSection = ({ projectId }: Props) => {
-  const { data: signersData } = useListSigners({ projectId, limit: 100 });
-  const signers = signersData?.signers || [];
+  const { data: signerCountData } = useListSigners({ projectId, limit: 1 });
+  const signerCount = signerCountData?.totalCount ?? 0;
 
-  const [selectedSignerId, setSelectedSignerId] = useState<string>(ALL_SIGNERS);
+  const [selectedSigners, setSelectedSigners] = useState<SignerOption[]>([]);
   const [currentRange, setCurrentRange] = useState<TGetSigningActivityTrendDTO["range"]>("30d");
+  const [view, setView] = useState(SigningActivityView.Signer);
+  const [isolatedKey, setIsolatedKey] = useState<string | null>(null);
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const [orderBy, setOrderBy] = useState(SigningActivityOrderBy.Total);
+  const [orderDirection, setOrderDirection] = useState(OrderByDirection.DESC);
 
-  const { data: trendData = [] } = useGetSigningActivityTrend(
-    {
-      range: currentRange,
-      signerId: selectedSignerId === ALL_SIGNERS ? undefined : selectedSignerId
-    },
-    { enabled: signers.length > 0 }
+  const selectedSignerIds = selectedSigners.length
+    ? selectedSigners.map(({ id }) => id)
+    : undefined;
+
+  const { data: trendData = [], isError: isTrendError } = useGetSigningActivityTrend(
+    { range: currentRange, signerIds: selectedSignerIds },
+    { enabled: signerCount > 0 }
   );
-  const hasAnyData = trendData.some((d) => d.success > 0 || d.failed > 0);
+  const { data: allSignersData } = useGetSigningActivityBySigner(
+    {
+      projectId,
+      range: currentRange,
+      orderBy: SigningActivityOrderBy.Total,
+      orderDirection: OrderByDirection.DESC
+    },
+    { enabled: signerCount > 0 }
+  );
+  const { data: bySignerData, isError: isBySignerError } = useGetSigningActivityBySigner(
+    { projectId, range: currentRange, signerIds: selectedSignerIds, orderBy, orderDirection },
+    { enabled: signerCount > 0 }
+  );
 
-  if (signers.length === 0) {
+  if (signerCount === 0) {
     return null;
   }
 
+  const signerRows = (bySignerData?.signerTotals ?? []).map((signer) => ({
+    key: signer.signerId,
+    label: signer.signerName,
+    failed: signer.failed,
+    total: signer.success + signer.failed
+  }));
+  const chartedCount = Object.keys(bySignerData?.periods[0]?.signerCounts ?? {}).length;
+  const foldedRows = signerRows.slice(chartedCount);
+  const signerSeries: SigningActivitySeries[] = signerRows
+    .slice(0, chartedCount)
+    .map((row, idx) => ({ ...row, color: CHART_COLORS_HEX[idx] }));
+  if (foldedRows.length) {
+    signerSeries.push({
+      key: OTHER_SERIES_KEY,
+      label: "Other",
+      color: CHART_OTHER_COLOR,
+      failed: sumBy(foldedRows, (row) => row.failed),
+      total: sumBy(foldedRows, (row) => row.total),
+      groupedCount: foldedRows.length
+    });
+  }
+
+  const statusFailed = sumBy(trendData, (period) => period.failed);
+  const statusSeries: SigningActivitySeries[] = [
+    {
+      key: SigningOperationStatus.Success,
+      label: signingOperationStatusLabels[SigningOperationStatus.Success],
+      color: TREND_COLORS.renewed,
+      failed: 0,
+      total: sumBy(trendData, (period) => period.success)
+    },
+    {
+      key: SigningOperationStatus.Failed,
+      label: signingOperationStatusLabels[SigningOperationStatus.Failed],
+      color: TREND_COLORS.expired,
+      failed: statusFailed,
+      total: statusFailed
+    }
+  ];
+
+  const activityCounts = new Map(
+    (allSignersData?.signerTotals ?? []).map((signer) => [
+      signer.signerId,
+      signer.success + signer.failed
+    ])
+  );
+
+  const isSignerView = view === SigningActivityView.Signer;
+  const series = isSignerView ? signerSeries : statusSeries;
+  const chartData: Record<string, string | number>[] = isSignerView
+    ? (bySignerData?.periods ?? []).map(({ period, signerCounts, otherCount }) => ({
+        period,
+        ...signerCounts,
+        [OTHER_SERIES_KEY]: otherCount
+      }))
+    : trendData;
+  const legendTotal = sumBy(series, (row) => row.total);
+  const findSeriesKey = (key: string | null) => series.find((row) => row.key === key)?.key ?? null;
+  const activeIsolatedKey = findSeriesKey(isolatedKey);
+  const focusKey = activeIsolatedKey ?? findSeriesKey(hoveredKey);
+
+  const changeView = (nextView: SigningActivityView) => {
+    setView(nextView);
+    setIsolatedKey(null);
+  };
+
   return (
     <Card>
-      <CardHeader className="flex-row items-center gap-2">
-        <CardTitle className="text-sm">Code Signing Activity</CardTitle>
-        <div className="ml-auto flex items-center gap-2 pr-5">
-          <div className="flex gap-0.5">
-            {ranges.map((r) => (
+      <CardHeader>
+        <CardTitle>Code Signing Activity</CardTitle>
+        <CardDescription>
+          {selectedSigners.length === 1 && `Signing operations for ${selectedSigners[0].name}`}
+          {selectedSigners.length > 1 &&
+            `Signing operations for ${selectedSigners.length} selected signers`}
+          {!selectedSigners.length &&
+            `Signing operations across ${signerCount} ${signerCount === 1 ? "signer" : "signers"}`}
+        </CardDescription>
+        <CardAction>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <ButtonGroup>
               <Button
-                key={r.value}
                 size="xs"
-                variant={currentRange === r.value ? "neutral" : "ghost"}
-                onClick={() => setCurrentRange(r.value)}
+                variant={isSignerView ? "outline" : "neutral"}
+                onClick={() => changeView(SigningActivityView.Status)}
               >
-                {r.label}
+                By Status
               </Button>
-            ))}
-          </div>
-          <Select value={selectedSignerId} onValueChange={setSelectedSignerId}>
-            <SelectTrigger size="sm" className="w-[160px]">
-              <SelectValue placeholder="Select signer" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_SIGNERS}>All Signers</SelectItem>
-              {signers.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.name}
-                </SelectItem>
+              <Button
+                size="xs"
+                variant={isSignerView ? "neutral" : "outline"}
+                onClick={() => changeView(SigningActivityView.Signer)}
+              >
+                By Signer
+              </Button>
+            </ButtonGroup>
+            <div className="flex gap-0.5">
+              {ranges.map((r) => (
+                <Button
+                  key={r.value}
+                  size="xs"
+                  variant={currentRange === r.value ? "neutral" : "ghost"}
+                  onClick={() => {
+                    setCurrentRange(r.value);
+                    setIsolatedKey(null);
+                  }}
+                >
+                  {r.label}
+                </Button>
               ))}
-            </SelectContent>
-          </Select>
-        </div>
+            </div>
+            <SigningActivitySignerPicker
+              projectId={projectId}
+              value={selectedSigners}
+              onChange={(signers) => {
+                setSelectedSigners(signers);
+                setIsolatedKey(null);
+              }}
+              activityCounts={activityCounts}
+            />
+          </div>
+        </CardAction>
       </CardHeader>
       <CardContent>
-        {!hasAnyData ? (
-          <Empty className="h-[250px]">
-            <EmptyHeader>
-              <EmptyTitle>No signing activity in this period</EmptyTitle>
-            </EmptyHeader>
+        {(isSignerView ? isBySignerError : isTrendError) ? (
+          <Empty className="h-[260px]">
+            <EmptyTitle>Could not load signing activity</EmptyTitle>
           </Empty>
         ) : (
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={trendData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-              <XAxis
-                dataKey="period"
-                tickFormatter={formatTickLabel}
-                tick={{ fill: "var(--color-muted)", fontSize: 12 }}
-                axisLine={{ stroke: "var(--color-border)" }}
-              />
-              <YAxis
-                tick={{ fill: "var(--color-muted)", fontSize: 12 }}
-                axisLine={{ stroke: "var(--color-border)" }}
-                allowDecimals={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "var(--color-popover)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "6px",
-                  color: "var(--color-foreground)"
-                }}
-              />
-              <Legend formatter={legendFormatter} />
-              <Line
-                type="monotone"
-                dataKey="success"
-                stroke={TREND_COLORS.renewed}
-                strokeWidth={2}
-                dot={nonZeroDot("success", TREND_COLORS.renewed)}
-                activeDot={{ r: 4 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="failed"
-                stroke={TREND_COLORS.expired}
-                strokeWidth={2}
-                dot={nonZeroDot("failed", TREND_COLORS.expired)}
-                activeDot={{ r: 4 }}
-                strokeDasharray="4 2"
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch">
+            <div className="min-w-0 flex-1">
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={chartData} margin={{ top: 5, right: 8, bottom: 5, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                  <XAxis
+                    dataKey="period"
+                    tickFormatter={formatTickLabel}
+                    tick={{ fill: "var(--color-muted)", fontSize: 12 }}
+                    axisLine={{ stroke: "var(--color-border)" }}
+                  />
+                  <YAxis
+                    tick={{ fill: "var(--color-muted)", fontSize: 12 }}
+                    axisLine={{ stroke: "var(--color-border)" }}
+                    allowDecimals={false}
+                    domain={[0, (dataMax: number) => Math.max(dataMax, MIN_Y_AXIS_MAX)]}
+                  />
+                  <RechartsTooltip
+                    itemSorter={(item) => -Number(item.value ?? 0)}
+                    labelFormatter={(label) => formatTickLabel(String(label))}
+                    contentStyle={{
+                      backgroundColor: "var(--color-popover)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: "6px",
+                      color: "var(--color-foreground)"
+                    }}
+                  />
+                  {series.map((row) => {
+                    const isDimmed = Boolean(focusKey) && focusKey !== row.key;
+                    return (
+                      <Line
+                        key={row.key}
+                        type="monotone"
+                        dataKey={row.key}
+                        name={row.label}
+                        stroke={row.color}
+                        strokeOpacity={isDimmed ? DIMMED_LINE_OPACITY : 1}
+                        strokeWidth={2}
+                        strokeDasharray={
+                          row.groupedCount || row.key === SigningOperationStatus.Failed
+                            ? "4 2"
+                            : undefined
+                        }
+                        dot={isDimmed ? false : nonZeroDot(row.key, row.color)}
+                        activeDot={{ r: 4 }}
+                      />
+                    );
+                  })}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <SigningActivityLegend
+              view={view}
+              series={series}
+              total={legendTotal}
+              orderBy={orderBy}
+              orderDirection={orderDirection}
+              onSortChange={(nextOrderBy, nextOrderDirection) => {
+                setOrderBy(nextOrderBy);
+                setOrderDirection(nextOrderDirection);
+                setIsolatedKey(null);
+              }}
+              isolatedKey={activeIsolatedKey}
+              onIsolatedKeyChange={setIsolatedKey}
+              onHoveredKeyChange={setHoveredKey}
+            />
+          </div>
         )}
       </CardContent>
     </Card>

@@ -1,1 +1,2 @@
 export const SIGNER_TABLE_PAGE_SIZE = 25;
+export const MAX_SIGNING_ACTIVITY_SIGNERS = 7;

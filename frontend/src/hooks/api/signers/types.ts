@@ -1,6 +1,7 @@
 import { CaStatus, CaType } from "@app/hooks/api/ca/enums";
 import { CrlReason } from "@app/hooks/api/certificates/enums";
 import { SigningAlgorithm } from "@app/hooks/api/cmeks";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 export type TGetUserSignerPermissionDTO = {
   signerId: string;
@@ -421,11 +422,20 @@ export type TSignerRequest = {
   updatedAt: string;
 };
 
+export enum SignerOrderBy {
+  Name = "name",
+  CertificateNotAfter = "certificateNotAfter",
+  LastSignedAt = "lastSignedAt",
+  CreatedAt = "createdAt"
+}
+
 export type TListSignersDTO = {
   projectId: string;
   offset?: number;
   limit?: number;
   search?: string;
+  orderBy?: SignerOrderBy;
+  orderDirection?: OrderByDirection;
 };
 
 export type TListSignersResponse = {
@@ -532,13 +542,31 @@ export type TListSigningOperationsDTO = {
 
 export type TGetSigningActivityTrendDTO = {
   range: "7d" | "30d" | "6m";
-  signerId?: string;
+  signerIds?: string[];
 };
 
 export type TSigningActivityPeriod = {
   period: string;
   success: number;
   failed: number;
+};
+
+export enum SigningActivityOrderBy {
+  Total = "total",
+  Failed = "failed"
+}
+
+export type TGetSigningActivityBySignerDTO = {
+  projectId: string;
+  range: TGetSigningActivityTrendDTO["range"];
+  signerIds?: string[];
+  orderBy?: SigningActivityOrderBy;
+  orderDirection?: OrderByDirection;
+};
+
+export type TSigningActivityBySigner = {
+  signerTotals: { signerId: string; signerName: string; success: number; failed: number }[];
+  periods: { period: string; signerCounts: Record<string, number>; otherCount: number }[];
 };
 
 export type TListSigningOperationsResponse = {
