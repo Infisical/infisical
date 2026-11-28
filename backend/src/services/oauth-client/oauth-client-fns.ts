@@ -2,9 +2,9 @@ import crypto from "node:crypto";
 
 import { z } from "zod";
 
-import { TOauthClients } from "@app/db/schemas";
+import { TOauthClients, TOrganizations } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 
 import { OauthGrantType } from "./oauth-client-types";
 
@@ -193,6 +193,17 @@ export const getMcpOauthUrls = () => {
     mcpResource: MCP_SERVER_URL ?? `${SITE_URL}${MCP_ENDPOINT_PATH}`,
     mcpResourceMetadata: `${SITE_URL}/.well-known/oauth-protected-resource${MCP_ENDPOINT_PATH}`
   };
+};
+
+export const assertOrgAllowsMcp = (
+  org: Pick<TOrganizations, "name" | "mcpEnabled">,
+  buildError: (message: string) => Error = (message) => new ForbiddenRequestError({ message })
+) => {
+  if (!org.mcpEnabled) {
+    throw buildError(
+      `MCP access is turned off for the organization ${org.name}. An organization admin can turn it back on in Organization Settings.`
+    );
+  }
 };
 
 type TOauthClientGrantConfig = {

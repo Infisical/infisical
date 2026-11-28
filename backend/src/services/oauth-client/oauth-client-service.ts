@@ -30,6 +30,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TOauthClientDALFactory } from "./oauth-client-dal";
 import {
+  assertOrgAllowsMcp,
   assertValidOauthClientGrantConfig,
   computePkceChallenge,
   getMcpOauthUrls,
@@ -76,7 +77,7 @@ type TOauthClientServiceFactoryDep = {
     | "rotateRefreshToken"
     | "revokeSessionsByUserAgent"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership" | "primaryNode">;
   userDAL: Pick<TUserDALFactory, "findById">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
@@ -633,6 +634,15 @@ export const oauthClientServiceFactory = ({
     // user approve a request that authorizeConsent will reject anyway.
     const granted = parseRequestedScopes(scope, boundResource);
 
+    // A registered client's org is known before sign-in, so its consent page can refuse up front. Not named, because
+    // this endpoint has no session. A public client's org is the user's, which the consent page checks itself.
+    if (client.orgId && boundResource && !(await getClientOrg(client.orgId)).mcpEnabled) {
+      throw new ForbiddenRequestError({
+        message:
+          "MCP access is turned off for the organization this application belongs to. An organization admin can turn it back on in Organization Settings."
+      });
+    }
+
     return {
       clientName: client.name,
       clientDescription: client.description,
@@ -651,6 +661,14 @@ export const oauthClientServiceFactory = ({
         ...(refusal.name === FOREIGN_SSO_SESSION_ERROR_NAME ? { name: FOREIGN_SSO_SESSION_ERROR_NAME } : {})
       });
     }
+  };
+
+  // Consent, code exchange and every tool call check this, since turning MCP access off keeps existing connections.
+  // Read from the primary so a lagging replica can't keep MCP usable after an admin turns it off.
+  const assertOrgMcpAccess = async (orgId: string, buildError?: (message: string) => Error) => {
+    const org = await orgDAL.findById(orgId, orgDAL.primaryNode());
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+    assertOrgAllowsMcp(org, buildError);
   };
 
   const authorizeConsent = async (dto: TOauthConsentDTO) => {
@@ -700,6 +718,7 @@ export const oauthClientServiceFactory = ({
     // completed the matching MFA challenge, or the org trusts the MFA its IdP performed, the same waiver
     // org selection applies.
     const org = await getClientOrg(orgId);
+    if (resource) await assertOrgMcpAccess(orgId);
 
     if (!user) throw new UnauthorizedError({ message: "User not found" });
 
@@ -1031,6 +1050,14 @@ export const oauthClientServiceFactory = ({
         throw new BadRequestError({ message: "This OAuth client requires PKCE" });
       }
 
+      // A code outlives the consent that issued it, so one issued just before MCP access was turned off is refused here.
+      if (codePayload.resource) {
+        await assertOrgMcpAccess(
+          codePayload.orgId,
+          (message) => new OauthTokenError({ code: OauthTokenErrorCode.InvalidGrant, message })
+        );
+      }
+
       const tokenSession = await tokenService.getUserTokenSessionById(codePayload.tokenVersionId, codePayload.userId);
       if (!tokenSession) throw new UnauthorizedError({ message: "User session not found" });
 
@@ -1162,6 +1189,7 @@ export const oauthClientServiceFactory = ({
     rotateOauthClientSecret,
     getAuthorizeInfo,
     authorizeConsent,
+    assertOrgMcpAccess,
     exchangeToken
   };
 };

@@ -49,7 +49,8 @@ export const OrganizationsSchema = z.object({
   ssoMfaTrust: z.string().default("none"),
   aiConnectionId: z.string().uuid().nullable().optional(),
   aiModel: z.string().nullable().optional(),
-  allowedMfaMethods: z.string().array().nullable().optional()
+  allowedMfaMethods: z.string().array().nullable().optional(),
+  mcpEnabled: z.boolean().default(true)
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;

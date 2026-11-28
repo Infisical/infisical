@@ -4,6 +4,7 @@ import { OrgMembershipRole } from "@app/helpers/roles";
 import { OrgAiModelSection } from "../OrgAiModelSection";
 import { OrgDeleteSection } from "../OrgDeleteSection";
 import { OrgIncidentContactsSection } from "../OrgIncidentContactsSection";
+import { OrgMcpSection } from "../OrgMcpSection";
 import { OrgNameChangeSection, SubOrgNameChangeSection } from "../OrgNameChangeSection";
 
 export const OrgGeneralTab = () => {
@@ -13,6 +14,7 @@ export const OrgGeneralTab = () => {
     <div className="flex flex-col gap-4">
       {isSubOrganization ? <SubOrgNameChangeSection /> : <OrgNameChangeSection />}
       {!isSubOrganization && <OrgIncidentContactsSection />}
+      {!isSubOrganization && <OrgMcpSection />}
       <OrgAiModelSection />
       {hasOrgRole(OrgMembershipRole.Admin) && <OrgDeleteSection />}
     </div>

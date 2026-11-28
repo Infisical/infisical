@@ -924,6 +924,7 @@ tables:
       - requireGatewayPools
       - aiConnectionId
       - aiModel
+      - mcpEnabled
 
   - name: pam_accounts
     source: public.pam_accounts

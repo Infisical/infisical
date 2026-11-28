@@ -43,6 +43,7 @@ export type Organization = {
   blockDuplicateSecretSyncDestinations: boolean;
   allowCrossProjectSecretSharing: boolean;
   requireGatewayPools: boolean;
+  mcpEnabled: boolean;
   parentOrgId: string | null;
   rootOrgId: string | null;
   secretShareBrandConfig?: TSecretShareBrandConfig;
@@ -84,6 +85,7 @@ export type UpdateOrgDTO = {
   blockDuplicateSecretSyncDestinations?: boolean;
   allowCrossProjectSecretSharing?: boolean;
   requireGatewayPools?: boolean;
+  mcpEnabled?: boolean;
   secretShareBrandConfig?: TSecretShareBrandConfig;
 };
 
