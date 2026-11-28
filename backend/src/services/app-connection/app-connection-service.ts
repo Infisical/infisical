@@ -162,6 +162,7 @@ import { ValidateLaravelForgeConnectionCredentialsSchema } from "./laravel-forge
 import { laravelForgeConnectionService } from "./laravel-forge/laravel-forge-connection-service";
 import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
 import { ldapConnectionService } from "./ldap/ldap-connection-service";
+import { ValidateLinearConnectionCredentialsSchema } from "./linear";
 import { ValidateLiteLLMConnectionCredentialsSchema } from "./litellm";
 import { liteLLMConnectionService } from "./litellm/litellm-connection-service";
 import { ValidateMicrosoftIntuneConnectionCredentialsSchema } from "./microsoft-intune";
@@ -367,6 +368,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Jira]: ValidateJiraConnectionCredentialsSchema,
   [AppConnection.ClickHouse]: ValidateClickHouseConnectionCredentialsSchema,
   [AppConnection.IncidentIo]: ValidateIncidentIoConnectionCredentialsSchema,
+  [AppConnection.Linear]: ValidateLinearConnectionCredentialsSchema,
   [AppConnection.Rfc2136]: ValidateRfc2136ConnectionCredentialsSchema
 };
 
@@ -1016,6 +1018,25 @@ export const appConnectionServiceFactory = ({
         if (existingAccountId && updatedAccountId !== existingAccountId) {
           throw new BadRequestError({
             message: `This connection is bound to Stripe account ${existingAccountId}, but the app was authorized on account ${updatedAccountId}. Reconnect using the same account, or create a new connection for ${updatedAccountId}.`
+          });
+        }
+      }
+
+      // Rules store this workspace's team keys and statuses, so a key from another workspace would quietly stop matching
+      if (app === AppConnection.Linear) {
+        const existingCredentials = await decryptAppConnectionCredentials({
+          orgId: appConnection.orgId,
+          projectId: appConnection.projectId,
+          encryptedCredentials: appConnection.encryptedCredentials,
+          kmsDataKeyService
+        });
+
+        const existing = existingCredentials as { workspaceId?: string; workspaceUrlKey?: string };
+        const updated = updatedCredentials as { workspaceId?: string; workspaceUrlKey?: string };
+
+        if (existing.workspaceId && updated.workspaceId !== existing.workspaceId) {
+          throw new BadRequestError({
+            message: `This connection is for the Linear workspace ${existing.workspaceUrlKey ?? existing.workspaceId}, but the new API key belongs to ${updated.workspaceUrlKey ?? "another workspace"}. Use a key from the same workspace, or create a new connection for the other one.`
           });
         }
       }

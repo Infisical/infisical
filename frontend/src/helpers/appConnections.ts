@@ -83,6 +83,7 @@ import { JiraConnectionMethod } from "@app/hooks/api/appConnections/types/jira-c
 import { KeeperConnectionMethod } from "@app/hooks/api/appConnections/types/keeper-connection";
 import { KempLoadMasterConnectionMethod } from "@app/hooks/api/appConnections/types/kemp-loadmaster-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
+import { LinearConnectionMethod } from "@app/hooks/api/appConnections/types/linear-connection";
 import { LiteLLMConnectionMethod } from "@app/hooks/api/appConnections/types/litellm-connection";
 import { MicrosoftIntuneConnectionMethod } from "@app/hooks/api/appConnections/types/microsoft-intune-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
@@ -735,6 +736,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "MONITORING",
     description: "On-call schedules for PAM auto-approval."
   },
+  [AppConnection.Linear]: {
+    name: "Linear",
+    image: "Linear.svg",
+    category: "PRODUCTIVITY",
+    description: "Linear issues for PAM auto-approval."
+  },
   [AppConnection.Jenkins]: {
     name: "Jenkins",
     image: "Jenkins.png",
@@ -940,6 +947,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case PowerDnsConnectionMethod.ApiKey:
     case KeeperConnectionMethod.ApiKey:
     case IncidentIoConnectionMethod.ApiKey:
+    case LinearConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: KeyRoundIcon };

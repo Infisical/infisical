@@ -8,11 +8,13 @@ import { AppConnection } from "./app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "./app-connection-maps";
 import { TAppConnection } from "./app-connection-types";
 import { JIRA_AI_TOOLS } from "./jira/jira-ai-tools";
+import { LINEAR_AI_TOOLS } from "./linear/linear-ai-tools";
 
 // Apps listed here can be added as context to any AI feature
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const APP_CONNECTION_AI_TOOLS: Partial<Record<AppConnection, Record<string, TAppConnectionAiTool<any, any>>>> = {
-  [AppConnection.Jira]: JIRA_AI_TOOLS
+  [AppConnection.Jira]: JIRA_AI_TOOLS,
+  [AppConnection.Linear]: LINEAR_AI_TOOLS
 };
 
 export const AI_CONTEXT_APPS = Object.keys(APP_CONNECTION_AI_TOOLS) as AppConnection[];

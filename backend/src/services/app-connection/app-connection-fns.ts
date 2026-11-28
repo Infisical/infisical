@@ -235,6 +235,7 @@ import {
   validateLaravelForgeConnectionCredentials
 } from "./laravel-forge";
 import { getLdapConnectionListItem, LdapConnectionMethod, validateLdapConnectionCredentials } from "./ldap";
+import { getLinearConnectionListItem, LinearConnectionMethod, validateLinearConnectionCredentials } from "./linear";
 import { getLiteLLMConnectionListItem, LiteLLMConnectionMethod, validateLiteLLMConnectionCredentials } from "./litellm";
 import {
   getMicrosoftIntuneConnectionListItem,
@@ -425,7 +426,7 @@ const DELEGATED_APPROVAL_POLICY_APP_CONNECTION_MAP = Object.fromEntries(
 
 const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
 
-const PAM_APP_CONNECTIONS = [AppConnection.Jira, AppConnection.IncidentIo];
+const PAM_APP_CONNECTIONS = [AppConnection.Jira, AppConnection.IncidentIo, AppConnection.Linear];
 
 export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?: ProjectType) => {
   switch (projectType) {
@@ -577,6 +578,7 @@ export const listAppConnectionOptions = async (
     getJiraConnectionListItem(),
     getClickHouseConnectionListItem(),
     getIncidentIoConnectionListItem(),
+    getLinearConnectionListItem(),
     getRfc2136ConnectionListItem()
   ]
     .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
@@ -886,6 +888,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ClickHouse]: validateClickHouseConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.IncidentIo]: validateIncidentIoConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Linear]: validateLinearConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Rfc2136]: validateRfc2136ConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
@@ -1012,6 +1015,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case ImpervaConnectionMethod.ApiKey:
     case KeeperConnectionMethod.ApiKey:
     case IncidentIoConnectionMethod.ApiKey:
+    case LinearConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -1275,6 +1279,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Jira]: platformManagedCredentialsNotSupported,
   [AppConnection.ClickHouse]: platformManagedCredentialsNotSupported,
   [AppConnection.IncidentIo]: platformManagedCredentialsNotSupported,
+  [AppConnection.Linear]: platformManagedCredentialsNotSupported,
   [AppConnection.Rfc2136]: platformManagedCredentialsNotSupported
 };
 

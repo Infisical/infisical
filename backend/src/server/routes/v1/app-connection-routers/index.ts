@@ -55,6 +55,7 @@ import { registerKeeperConnectionRouter } from "./keeper-connection-router";
 import { registerKempLoadMasterConnectionRouter } from "./kemp-loadmaster-connection-router";
 import { registerLaravelForgeConnectionRouter } from "./laravel-forge-connection-router";
 import { registerLdapConnectionRouter } from "./ldap-connection-router";
+import { registerLinearConnectionRouter } from "./linear-connection-router";
 import { registerLiteLLMConnectionRouter } from "./litellm-connection-router";
 import { registerMicrosoftIntuneConnectionRouter } from "./microsoft-intune-connection-router";
 import { registerMongoDBConnectionRouter } from "./mongodb-connection-router";
@@ -204,5 +205,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Jira]: registerJiraConnectionRouter,
     [AppConnection.ClickHouse]: registerClickHouseConnectionRouter,
     [AppConnection.IncidentIo]: registerIncidentIoConnectionRouter,
+    [AppConnection.Linear]: registerLinearConnectionRouter,
     [AppConnection.Rfc2136]: registerRfc2136ConnectionRouter
   };

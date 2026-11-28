@@ -178,6 +178,7 @@ import {
   SanitizedLaravelForgeConnectionSchema
 } from "@app/services/app-connection/laravel-forge";
 import { LdapConnectionListItemSchema, SanitizedLdapConnectionSchema } from "@app/services/app-connection/ldap";
+import { LinearConnectionListItemSchema, SanitizedLinearConnectionSchema } from "@app/services/app-connection/linear";
 import {
   LiteLLMConnectionListItemSchema,
   SanitizedLiteLLMConnectionSchema
@@ -418,6 +419,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedJiraConnectionSchema.options,
   ...SanitizedClickHouseConnectionSchema.options,
   ...SanitizedIncidentIoConnectionSchema.options,
+  ...SanitizedLinearConnectionSchema.options,
   ...SanitizedRfc2136ConnectionSchema.options
 ]);
 
@@ -521,6 +523,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   JiraConnectionListItemSchema,
   ClickHouseConnectionListItemSchema,
   IncidentIoConnectionListItemSchema,
+  LinearConnectionListItemSchema,
   Rfc2136ConnectionListItemSchema
 ]);
 

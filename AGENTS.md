@@ -278,7 +278,7 @@ the provider reads that field alone and ignores `state`.
 One model per organization (an Anthropic connection plus a model ID on `organizations`, set under Organization
 Settings > General) serves every AI feature, through `backend/src/services/ai/`. An app connection becomes usable
 as AI context by adding read-only tools to `APP_CONNECTION_AI_TOOLS` (`services/app-connection/app-connection-ai-tools.ts`);
-Jira is the first. Requester text and tool results are untrusted: they stay out of the system prompt, and the
+Jira and Linear have them. Requester text and tool results are untrusted: they stay out of the system prompt, and the
 model is asked to answer through `submit_decision` (`tool_choice` stays `auto`, since thinking models reject a
 forced tool), and a reply without it does not approve.
 

@@ -100,6 +100,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Jira]: "Jira",
   [AppConnection.ClickHouse]: "ClickHouse",
   [AppConnection.IncidentIo]: "incident.io",
+  [AppConnection.Linear]: "Linear",
   [AppConnection.Rfc2136]: "DNS Server (RFC 2136)"
 };
 
@@ -203,5 +204,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Jira]: AppConnectionPlanType.Regular,
   [AppConnection.ClickHouse]: AppConnectionPlanType.Regular,
   [AppConnection.IncidentIo]: AppConnectionPlanType.Regular,
+  [AppConnection.Linear]: AppConnectionPlanType.Regular,
   [AppConnection.Rfc2136]: AppConnectionPlanType.Regular
 };

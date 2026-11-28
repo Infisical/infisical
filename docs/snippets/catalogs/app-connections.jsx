@@ -738,6 +738,14 @@ export const appConnections = [
     category: "Monitoring",
   },
   {
+    name: "Linear",
+    slug: "linear",
+    path: "/integrations/app-connections/linear",
+    description:
+      "Learn how to connect Linear so Infisical can read your Linear issues.",
+    category: "SaaS",
+  },
+  {
     name: "Jenkins",
     slug: "jenkins",
     path: "/integrations/app-connections/jenkins",
