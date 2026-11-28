@@ -46,8 +46,11 @@ To be more specific:
 </Accordion>
 
 <Note>
-  Infisical US/EU and dedicated instances are deployed with AWS ALB. TLS Certificate Auth must flow through our ALB mTLS pass-through in order to authenticate.
-  When you're authenticating with TLS Certificate Auth, you must use the port `8443` instead of the default `443`. Example: `https://app.infisical.com:8443/api/v1/auth/tls-cert-auth/login`
+  On Infisical Cloud and dedicated instances, send TLS Certificate Auth requests to port `8443`, not `443`. Use the address for your instance:
+
+  - US: `https://app.infisical.com:8443`
+  - EU: `https://mtls.eu.infisical.com:8443`
+  - Dedicated instance: your instance's address on port `8443`
 </Note>
 
 ## Guide
@@ -150,7 +153,7 @@ try {
   const clientCertificate = fs.readFileSync("client-cert.pem", "utf8");
   const clientKeyCertificate = fs.readFileSync("client-key.pem", "utf8");
 
-  const infisicalUrl = "https://app.infisical.com:8443"; // or your self-hosted Infisical URL
+  const infisicalUrl = "https://app.infisical.com:8443"; // EU: https://mtls.eu.infisical.com:8443. If you self-host, use your instance's URL
   const identityId = "<your-identity-id>";
 
   // Create HTTPS agent with client certificate and key
@@ -195,7 +198,7 @@ With binding enabled:
 
 The client must present its certificate on every API call, not only on login. A custom client using the [login example](#accessing-the-infisical-api-with-the-identity) must reuse the same HTTPS agent for its later API calls. The [Infisical Issuer for cert-manager](/documentation/platform/pki/guides/applications/k8s-cert-manager-issuer) supports this through the `tlsCert` method.
 
-On Infisical Cloud, send every API request made with a bound token to port `8443`, for example `https://app.infisical.com:8443`. Requests on port `443` carry no client certificate and are rejected.
+On Infisical Cloud, send every API request made with a bound token to `https://app.infisical.com:8443` in the US or `https://mtls.eu.infisical.com:8443` in the EU. Requests on port `443` carry no client certificate and are rejected.
 
 Turning the setting on revokes the identity's existing TLS Certificate Auth tokens, which were issued without a binding. Tokens issued while the setting was on stay bound until they expire, even after it's turned off.
 
