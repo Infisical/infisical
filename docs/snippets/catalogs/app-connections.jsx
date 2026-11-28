@@ -538,7 +538,7 @@ export const appConnections = [
     slug: "convex",
     path: "/integrations/app-connections/convex",
     description:
-      "Learn how to connect Convex to manage and rotate access keys with Infisical.",
+      "Learn how to connect Convex to sync secrets and rotate access keys with Infisical.",
     category: "SaaS",
   },
   {
