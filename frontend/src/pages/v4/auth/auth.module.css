@@ -1,4 +1,5 @@
 .page {
+  position: relative;
   display: grid;
   flex: 1 1 auto;
   grid-template-columns: minmax(0, 1fr);
