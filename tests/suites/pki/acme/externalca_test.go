@@ -190,13 +190,14 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 			cn        string
 			sans      []string
 			emptySANs bool
+			allowed   string
 			detail    string
 		}{
-			{"when the common name is not allowed and there are no SANs", "www", nil, true, "Invalid CSR: common_name value '%s' is not in allowed values list"},
-			{"when the common name is not allowed beside an allowed SAN", "www", []string{"san"}, false, "Invalid CSR: common_name value '%s' is not in allowed values list"},
-			{"when the only SAN is not allowed", "", []string{"www"}, false, "Invalid CSR: dns_name SAN value '%s' is not in allowed values list"},
-			{"when one SAN is not allowed beside an allowed one", "", []string{"san", "www"}, false, "Invalid CSR: dns_name SAN value '%s' is not in allowed values list"},
-			{"when the common name is allowed and one SAN is not", "cn", []string{"san", "www"}, false, "Invalid CSR: dns_name SAN value '%s' is not in allowed values list"},
+			{"when the common name is not allowed and there are no SANs", "www", nil, true, "cn", "Invalid CSR: common_name value '%s' is not in the allowed values: '%s'."},
+			{"when the common name is not allowed beside an allowed SAN", "www", []string{"san"}, false, "cn", "Invalid CSR: common_name value '%s' is not in the allowed values: '%s'."},
+			{"when the only SAN is not allowed", "", []string{"www"}, false, "san", "Invalid CSR: dns_name SAN value '%s' is not in the allowed values: '%s'."},
+			{"when one SAN is not allowed beside an allowed one", "", []string{"san", "www"}, false, "san", "Invalid CSR: dns_name SAN value '%s' is not in the allowed values: '%s'."},
+			{"when the common name is allowed and one SAN is not", "cn", []string{"san", "www"}, false, "san", "Invalid CSR: dns_name SAN value '%s' is not in the allowed values: '%s'."},
 		}
 		for _, row := range rows {
 			t.Run(row.name, func(t *testing.T) {
@@ -216,7 +217,7 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 				res := c.Finalize(t, o.Finalize, buildCSR(t, want))
 
 				// Assert
-				requireProblem(t, res, http.StatusBadRequest, "badCSR", fmt.Sprintf(row.detail, site.Name("www")))
+				requireProblem(t, res, http.StatusBadRequest, "badCSR", fmt.Sprintf(row.detail, site.Name("www"), site.Name(row.allowed)))
 				require.Empty(t, up.State(t).Orders)
 			})
 		}
@@ -234,17 +235,17 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 			hash                                  crypto.Hash
 			detail                                string
 		}{
-			{"RSA-4096", "SHA512-RSA", "RSA-2048", crypto.SHA512, "Invalid CSR: Key algorithm 'RSA_2048' is not allowed by this policy"},
-			{"RSA-4096", "SHA512-RSA", "RSA-3072", crypto.SHA512, "Invalid CSR: Key algorithm 'RSA_3072' is not allowed by this policy"},
-			{"RSA-4096", "ECDSA-SHA512", "ECDSA-P256", crypto.SHA512, "Invalid CSR: Key algorithm 'EC_prime256v1' is not allowed by this policy"},
-			{"RSA-4096", "ECDSA-SHA512", "ECDSA-P384", crypto.SHA512, "Invalid CSR: Key algorithm 'EC_secp384r1' is not allowed by this policy"},
-			{"RSA-4096", "ECDSA-SHA512", "ECDSA-P521", crypto.SHA512, "Invalid CSR: Key algorithm 'EC_secp521r1' is not allowed by this policy"},
-			{"RSA-2048", "SHA512-RSA", "RSA-2048", crypto.SHA384, "Invalid CSR: Signature algorithm 'RSA-SHA384' is not allowed by this policy"},
-			{"RSA-2048", "SHA512-RSA", "RSA-2048", crypto.SHA256, "Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by this policy"},
-			{"ECDSA-P256", "SHA512-RSA", "ECDSA-P256", crypto.SHA256, "Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by this policy"},
-			{"ECDSA-P384", "SHA512-RSA", "ECDSA-P384", crypto.SHA256, "Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by this policy"},
-			{"ECDSA-P521", "SHA512-RSA", "ECDSA-P521", crypto.SHA256, "Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by this policy"},
-			{"RSA-2048", "SHA512-RSA", "RSA-4096", crypto.SHA256, "Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by this policy, Key algorithm 'RSA_4096' is not allowed by this policy"},
+			{"RSA-4096", "SHA512-RSA", "RSA-2048", crypto.SHA512, "Invalid CSR: Key algorithm 'RSA_2048' is not allowed by the policy. Allowed key algorithms: RSA_4096."},
+			{"RSA-4096", "SHA512-RSA", "RSA-3072", crypto.SHA512, "Invalid CSR: Key algorithm 'RSA_3072' is not allowed by the policy. Allowed key algorithms: RSA_4096."},
+			{"RSA-4096", "ECDSA-SHA512", "ECDSA-P256", crypto.SHA512, "Invalid CSR: Key algorithm 'EC_prime256v1' is not allowed by the policy. Allowed key algorithms: RSA_4096."},
+			{"RSA-4096", "ECDSA-SHA512", "ECDSA-P384", crypto.SHA512, "Invalid CSR: Key algorithm 'EC_secp384r1' is not allowed by the policy. Allowed key algorithms: RSA_4096."},
+			{"RSA-4096", "ECDSA-SHA512", "ECDSA-P521", crypto.SHA512, "Invalid CSR: Key algorithm 'EC_secp521r1' is not allowed by the policy. Allowed key algorithms: RSA_4096."},
+			{"RSA-2048", "SHA512-RSA", "RSA-2048", crypto.SHA384, "Invalid CSR: Signature algorithm 'RSA-SHA384' is not allowed by the policy. Allowed signature algorithms: RSA-SHA512."},
+			{"RSA-2048", "SHA512-RSA", "RSA-2048", crypto.SHA256, "Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by the policy. Allowed signature algorithms: RSA-SHA512."},
+			{"ECDSA-P256", "SHA512-RSA", "ECDSA-P256", crypto.SHA256, "Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by the policy. Allowed signature algorithms: RSA-SHA512."},
+			{"ECDSA-P384", "SHA512-RSA", "ECDSA-P384", crypto.SHA256, "Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by the policy. Allowed signature algorithms: RSA-SHA512."},
+			{"ECDSA-P521", "SHA512-RSA", "ECDSA-P521", crypto.SHA256, "Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by the policy. Allowed signature algorithms: RSA-SHA512."},
+			{"RSA-2048", "SHA512-RSA", "RSA-4096", crypto.SHA256, "Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by the policy. Allowed signature algorithms: RSA-SHA512; Key algorithm 'RSA_4096' is not allowed by the policy. Allowed key algorithms: RSA_2048."},
 		}
 		for _, row := range rows {
 			t.Run(row.keyType+" "+row.hash.String()+" against "+row.allowedKey+" "+row.allowedSignature, func(t *testing.T) {

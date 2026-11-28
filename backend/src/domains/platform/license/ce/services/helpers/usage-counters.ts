@@ -8,6 +8,13 @@ export class CounterRegistry {
 
   constructor(counters: TUsageCounter[]) {
     counters.forEach((counter) => {
+      if (counter.meter.source !== "count") {
+        throw new Error(`'${counter.meter.key}' is recorded as events, so it can't have a usage counter`);
+      }
+      // Billing explains every billed count, so a counter without a breakdown would bill something it can't show.
+      if (typeof counter.breakdown !== "function") {
+        throw new Error(`The usage counter for '${counter.meter.key}' has no breakdown`);
+      }
       if (this.byKey.has(counter.meter.key)) {
         throw new Error(`Two usage counters were given for '${counter.meter.key}'`);
       }
@@ -32,10 +39,21 @@ export const seatUsageCounters = (organizationsService: TOrganizationsService): 
     count: async (orgId) => {
       const { users, identities } = await organizationsService.countBillableOrgActors(orgId);
       return users + identities;
+    },
+    breakdown: async (orgId) => {
+      const [{ users, identities }, rows] = await Promise.all([
+        organizationsService.countBillableOrgActors(orgId),
+        organizationsService.getBillableIdentityOwnershipBreakdown(orgId)
+      ]);
+      return { total: users + identities, users, rows };
     }
   },
   {
     meter: Meter.UserIdentities,
-    count: async (orgId) => (await organizationsService.countBillableOrgActors(orgId)).users
+    count: async (orgId) => (await organizationsService.countBillableOrgActors(orgId)).users,
+    breakdown: async (orgId) => {
+      const { users } = await organizationsService.countBillableOrgActors(orgId);
+      return { total: users, users, rows: [] };
+    }
   }
 ];

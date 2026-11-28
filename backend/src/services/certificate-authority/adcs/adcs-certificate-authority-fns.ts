@@ -47,6 +47,12 @@ import {
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
+import {
+  caAppConnectionNotFoundError,
+  caNotFoundError,
+  duplicateCaNameError,
+  externalCaNotSavedError
+} from "../certificate-authority-errors";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import {
@@ -186,7 +192,7 @@ export const ADCSCertificateAuthorityFns = ({
     const appConnection = await appConnectionDAL.findById(appConnectionId);
 
     if (!appConnection) {
-      throw new NotFoundError({ message: `App connection with ID '${appConnectionId}' not found` });
+      throw caAppConnectionNotFoundError(appConnectionId, AppConnection.ADCS);
     }
 
     if (appConnection.app !== AppConnection.ADCS) {
@@ -237,16 +243,14 @@ export const ADCSCertificateAuthorityFns = ({
         // 23505 = unique constraint violation
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
         if ((error as any)?.error?.code === "23505") {
-          throw new BadRequestError({
-            message: "Certificate authority with the same name already exists in your project"
-          });
+          throw duplicateCaNameError(name);
         }
         throw error;
       }
     });
 
     if (!caEntity.externalCa?.id) {
-      throw new BadRequestError({ message: "Failed to create ADCS certificate authority" });
+      throw externalCaNotSavedError(name);
     }
 
     return castDbEntryToADCSCertificateAuthority(caEntity);
@@ -267,7 +271,7 @@ export const ADCSCertificateAuthorityFns = ({
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(id);
     if (!ca || !ca.externalCa) {
-      throw new NotFoundError({ message: `Certificate authority with ID '${id}' not found` });
+      throw caNotFoundError(id);
     }
 
     if (configuration) {
@@ -275,7 +279,7 @@ export const ADCSCertificateAuthorityFns = ({
       const appConnection = await appConnectionDAL.findById(appConnectionId);
 
       if (!appConnection) {
-        throw new NotFoundError({ message: `App connection with ID '${appConnectionId}' not found` });
+        throw caAppConnectionNotFoundError(appConnectionId, AppConnection.ADCS);
       }
 
       if (appConnection.app !== AppConnection.ADCS) {

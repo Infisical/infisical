@@ -34,7 +34,7 @@ export const registerAzureAdCsCertificateAuthorityRouter = async (server: Fastif
       operationId: "getAzureAdcsTemplates",
       description: "Get available certificate templates from Azure AD CS CA",
       params: z.object({
-        caId: z.string().describe("Azure AD CS CA ID")
+        caId: z.string().trim().uuid().describe("Azure AD CS CA ID")
       }),
       querystring: z.object({
         projectId: z.string().optional().describe(openApiHidden())

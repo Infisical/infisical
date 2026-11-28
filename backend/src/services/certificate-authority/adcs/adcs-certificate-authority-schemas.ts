@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { CertificateAuthorities } from "@app/lib/api-docs/constants";
+
 import { CaType } from "../certificate-authority-enums";
 import {
   BaseCertificateAuthoritySchema,
@@ -25,9 +27,11 @@ export const ADCSCertificateAuthoritySchema = BaseCertificateAuthoritySchema.ext
 });
 
 export const CreateADCSCertificateAuthoritySchema = GenericCreateCertificateAuthorityFieldsSchema(CaType.ADCS).extend({
-  configuration: ADCSCertificateAuthorityConfigurationSchema
+  configuration: ADCSCertificateAuthorityConfigurationSchema.describe(CertificateAuthorities.CONFIGURATION(CaType.ADCS))
 });
 
 export const UpdateADCSCertificateAuthoritySchema = GenericUpdateCertificateAuthorityFieldsSchema(CaType.ADCS).extend({
-  configuration: ADCSCertificateAuthorityConfigurationSchema.optional()
+  configuration: ADCSCertificateAuthorityConfigurationSchema.optional().describe(
+    CertificateAuthorities.UPDATE_CONFIGURATION(CaType.ADCS)
+  )
 });

@@ -108,6 +108,25 @@ func TestAwsPcaCA_Issue(t *testing.T) {
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, again.StatusCode(), "the refused create should have stored no CA under its name: %s", apierr.Body(again.Body))
 	})
+
+	t.Run("should refuse to create the CA when AWS has no Private CA with that ARN, naming the ARN and region", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := pki.CertManager(t, tn)
+		conn := fixture.NewAppConnection(t, tn, fixture.AWSAccessKeyAppConnection)
+		aws.Open(t, conn.FakenetAdmin(t), conn.Nonce())
+		arn := aws.PrivateCAARN(conn.Nonce())
+
+		// Action
+		res, err := tn.Admin.API.CreateAwsPcaCertificateAuthorityV1WithResponse(t.Context(), awsPcaCABody(proj, conn, "pca-"+id.Short(), arn))
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
+		require.Equal(t, "AWS Private CA has no certificate authority '"+arn+"' in region 'us-east-1'. Check the ARN and the region.", apierr.Message(res.Body))
+	})
 }
 
 func TestAwsPcaCA_KnownIssues(t *testing.T) {

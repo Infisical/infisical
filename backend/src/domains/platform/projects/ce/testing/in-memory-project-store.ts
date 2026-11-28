@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { ProjectType } from "@app/db/schemas";
 
 import { Project, TProjectRecord } from "../models/project";
-import { TProjectStore } from "../services/dependencies";
+import { TProjectName, TProjectStore } from "../services/dependencies";
 
 const UNCOUNTED_WORKSPACE_TYPES: string[] = [
   ProjectType.CertificateManager,
@@ -52,6 +52,13 @@ export class InMemoryProjectStore implements TProjectStore {
         !UNCOUNTED_WORKSPACE_TYPES.includes(project.type) &&
         (project.orgId === orgId || project.rootOrgId === orgId)
     ).length;
+  }
+
+  async findProjectNames(projectIds: string[]): Promise<TProjectName[]> {
+    return projectIds
+      .map((id) => this.projects.get(id))
+      .filter((project): project is TStoredProject => Boolean(project && !project.deleteAfter))
+      .map(({ id, name, orgId }) => ({ id, name, orgId }));
   }
 
   async findById(projectId: string): Promise<Project | null> {

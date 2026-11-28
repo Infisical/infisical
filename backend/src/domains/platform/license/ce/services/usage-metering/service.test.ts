@@ -2,6 +2,7 @@ import { InstanceType } from "../../models/instance-entitlements";
 import { Meter } from "../../models/meter";
 import { buildLicense, OTHER_ROOT, ROOT, SUB_ORG_ID } from "../../testing/build-license";
 import { FakeLicenseServer } from "../../testing/fake-license-server";
+import { FakeUsageCounter } from "../../testing/fake-usage-counter";
 import { enterprisePlan } from "../../testing/test-features";
 
 vi.mock("@app/lib/logger", () => ({
@@ -67,5 +68,66 @@ describe("UsageMeteringService.syncSeats", () => {
 
     // Assert
     await expect(result).resolves.toBeUndefined();
+  });
+});
+
+describe("UsageMeteringService.getUsageBreakdown", () => {
+  test("should break a product meter down for the exact scope asked, even on self-hosted", async () => {
+    // Setup
+    const licenseServer = new FakeLicenseServer();
+    licenseServer.instance = { ...licenseServer.instance, instanceType: InstanceType.EnterpriseOnPrem };
+    const counter = new FakeUsageCounter(Meter.SecretIdentities).setBreakdown(ROOT.id, {
+      total: 3,
+      users: 1,
+      rows: [{ orgId: SUB_ORG_ID, projectId: "project-1", count: 2 }]
+    });
+    const { usageMeteringService } = await buildLicense({ licenseServer, counters: [counter] });
+
+    // Action
+    const breakdown = await usageMeteringService.getUsageBreakdown(Meter.SecretIdentities, ROOT.id);
+
+    // Assert
+    expect(breakdown).toEqual({ total: 3, users: 1, rows: [{ orgId: SUB_ORG_ID, projectId: "project-1", count: 2 }] });
+  });
+
+  test("should return null for a meter nothing counts", async () => {
+    // Setup
+    const { usageMeteringService } = await buildLicense();
+
+    // Action
+    const breakdown = await usageMeteringService.getUsageBreakdown(Meter.InternalCas, ROOT.id);
+
+    // Assert
+    expect(breakdown).toBeNull();
+  });
+
+  test("should split identities into unattributed users and machine identities by owner", async () => {
+    // Setup
+    const { usageMeteringService } = await buildLicense({
+      organizations: {
+        countBillableOrgActors: async () => ({ users: 4, identities: 2 }),
+        getBillableIdentityOwnershipBreakdown: async () => [
+          { orgId: ROOT.id, projectId: null, count: 1 },
+          { orgId: SUB_ORG_ID, projectId: "project-1", count: 1 }
+        ]
+      }
+    });
+
+    // Action
+    const [identities, users] = await Promise.all([
+      usageMeteringService.getUsageBreakdown(Meter.Identities, ROOT.id),
+      usageMeteringService.getUsageBreakdown(Meter.UserIdentities, ROOT.id)
+    ]);
+
+    // Assert
+    expect(identities).toEqual({
+      total: 6,
+      users: 4,
+      rows: [
+        { orgId: ROOT.id, projectId: null, count: 1 },
+        { orgId: SUB_ORG_ID, projectId: "project-1", count: 1 }
+      ]
+    });
+    expect(users).toEqual({ total: 4, users: 4, rows: [] });
   });
 });

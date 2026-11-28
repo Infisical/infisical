@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ApiDocsTags } from "@app/lib/api-docs";
+import { ApiDocsTags, CertificateAuthorities } from "@app/lib/api-docs";
 import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
@@ -97,7 +97,7 @@ export const registerCertificateAuthorityEndpoints = <
       operationId: `get${caTypeNameForOpId}CertificateAuthorityV1`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
-        id: z.string()
+        id: z.string().uuid().describe(CertificateAuthorities.ID)
       }),
       response: {
         200: responseSchema
@@ -138,6 +138,7 @@ export const registerCertificateAuthorityEndpoints = <
       hide: false,
       operationId: `create${caTypeNameForOpId}CertificateAuthorityV1`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: CertificateAuthorities.CREATE_DESCRIPTION(caType),
       body: createSchema,
       response: {
         200: responseSchema
@@ -196,8 +197,9 @@ export const registerCertificateAuthorityEndpoints = <
       hide: false,
       operationId: `update${caTypeNameForOpId}CertificateAuthorityV1`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: CertificateAuthorities.UPDATE_DESCRIPTION(caType),
       params: z.object({
-        id: z.string()
+        id: z.string().uuid().describe(CertificateAuthorities.ID)
       }),
       body: updateSchema,
       response: {
@@ -264,7 +266,7 @@ export const registerCertificateAuthorityEndpoints = <
       operationId: `delete${caTypeNameForOpId}CertificateAuthorityV1`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
-        id: z.string()
+        id: z.string().uuid().describe(CertificateAuthorities.ID)
       }),
       response: {
         200: responseSchema

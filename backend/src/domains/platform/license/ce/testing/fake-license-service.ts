@@ -32,7 +32,12 @@ export class FakeLicenseService implements TLicenseService {
     return Plan.restore(this.plans.get(orgId) ?? this.defaultPlan);
   };
 
-  refreshPlan = async () => undefined;
+  // Each refreshPlan, in order, with the options it was given.
+  refreshes: { orgId: string; options?: Parameters<TLicenseService["refreshPlan"]>[1] }[] = [];
+
+  refreshPlan: TLicenseService["refreshPlan"] = async (orgId, options) => {
+    this.refreshes.push({ orgId, options });
+  };
 
   getSeatUsage: TLicenseService["getSeatUsage"] = async () => noSeatsUsed();
 

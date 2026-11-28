@@ -50,6 +50,26 @@ func TestInternalCA_SignIntermediate(t *testing.T) {
 		require.Equal(t, "active", caStatus(t, tn.Admin.API, inter))
 	})
 
+	t.Run("should refuse a CSR that is not a PKCS#10 request as a bad request", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		p := pki.CertManager(t, tn)
+		root := pki.NewInternalCA(t, p)
+
+		// Action
+		res, err := tn.Admin.API.SignIntermediateCaWithResponse(t.Context(), root.ID.String(), api.SignIntermediateCaJSONRequestBody{
+			Csr:      "not a certificate signing request",
+			NotAfter: time.Now().AddDate(1, 0, 0).UTC().Format(time.RFC3339),
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
+		require.Equal(t, "The certificate signing request could not be parsed. Supply a PEM-encoded PKCS#10 request.", apierr.Message(res.Body))
+	})
+
 	t.Run("should refuse to sign an intermediate past the root's expiry and leave it pending", func(t *testing.T) {
 		t.Parallel()
 
@@ -59,7 +79,8 @@ func TestInternalCA_SignIntermediate(t *testing.T) {
 		root := pki.NewInternalCA(t, p)
 		inter := pki.NewPendingIntermediateCA(t, p)
 		csr := pki.PendingCSR(t, p, inter)
-		pastRoot := pki.CACertificate(t, tn.Admin, root.ID).NotAfter.AddDate(0, 0, 1)
+		rootNotAfter := pki.CACertificate(t, tn.Admin, root.ID).NotAfter
+		pastRoot := rootNotAfter.AddDate(0, 0, 1).Truncate(time.Second)
 
 		// Action
 		res, err := tn.Admin.API.SignIntermediateCaWithResponse(t.Context(), root.ID.String(), api.SignIntermediateCaJSONRequestBody{
@@ -70,7 +91,12 @@ func TestInternalCA_SignIntermediate(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
-		require.Equal(t, "notAfter date is after CA certificate's notAfter date", apierr.Message(res.Body))
+		require.Equal(t, "notAfter ("+isoMillis(pastRoot)+") is after the CA certificate's notAfter ("+isoMillis(rootNotAfter)+"). Choose a notAfter on or before it.", apierr.Message(res.Body))
 		require.Equal(t, "pending-certificate", caStatus(t, tn.Admin.API, inter))
 	})
+}
+
+// isoMillis formats a time the way JavaScript's toISOString does.
+func isoMillis(at time.Time) string {
+	return at.UTC().Format("2006-01-02T15:04:05.000Z")
 }

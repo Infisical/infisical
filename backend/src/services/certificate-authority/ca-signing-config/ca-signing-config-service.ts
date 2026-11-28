@@ -9,10 +9,13 @@ import {
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
+import { assertPkiResourceInActorOrg } from "@app/services/certificate-common/pki-org-scope-fns";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TCaAutoRenewalQueueFactory } from "../ca-auto-renewal-queue";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, InternalCaType } from "../certificate-authority-enums";
+import { caNotFoundError } from "../certificate-authority-errors";
 import { assertPathLengthMatchesCa } from "../certificate-authority-fns";
 import { TInternalCertificateAuthorityDALFactory } from "../internal/internal-certificate-authority-dal";
 import { TCaSigningConfigDALFactory } from "./ca-signing-config-dal";
@@ -45,6 +48,7 @@ type TCaSigningConfigServiceFactoryDep = {
   >;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "findOne" | "updateById">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   projectPermissionService: TProjectPermissionService;
   licenseService: TLicenseService;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
@@ -60,11 +64,23 @@ export const caSigningConfigServiceFactory = ({
   caSigningConfigDAL,
   certificateAuthorityDAL,
   internalCertificateAuthorityDAL,
+  projectDAL,
   projectPermissionService,
   licenseService,
   appConnectionService,
   caAutoRenewalQueue
 }: TCaSigningConfigServiceFactoryDep) => {
+  const $getCaInActorOrg = async (caId: string, actorOrgId: string) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: ca.projectId,
+      actorOrgId,
+      notFoundError: () => caNotFoundError(caId)
+    });
+    return ca;
+  };
+
   const getSigningConfigByCaId = async (internalCaId: string) => {
     const config = await caSigningConfigDAL.findByCaId(internalCaId);
     if (!config) {
@@ -95,8 +111,7 @@ export const caSigningConfigServiceFactory = ({
   }: TCreateCaSigningConfigDTO & {
     actor: TActorContext;
   }) => {
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    const ca = await $getCaInActorOrg(caId, actor.org.id);
 
     const permission = await projectPermissionService.getProjectPermission({
       actor,
@@ -197,8 +212,7 @@ export const caSigningConfigServiceFactory = ({
   }: TGetCaSigningConfigDTO & {
     actor: TActorContext;
   }) => {
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    const ca = await $getCaInActorOrg(caId, actor.org.id);
 
     const permission = await projectPermissionService.getProjectPermission({
       actor,
@@ -234,8 +248,7 @@ export const caSigningConfigServiceFactory = ({
   }: TUpdateCaSigningConfigDTO & {
     actor: TActorContext;
   }) => {
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    const ca = await $getCaInActorOrg(caId, actor.org.id);
 
     const permission = await projectPermissionService.getProjectPermission({
       actor,
@@ -314,8 +327,7 @@ export const caSigningConfigServiceFactory = ({
   }: TGetCaSigningConfigDTO & {
     actor: TActorContext;
   }) => {
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    const ca = await $getCaInActorOrg(caId, actor.org.id);
 
     const permission = await projectPermissionService.getProjectPermission({
       actor,
@@ -353,8 +365,7 @@ export const caSigningConfigServiceFactory = ({
     autoRenewalDaysBeforeExpiry?: number;
     actor: TActorContext;
   }) => {
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    const ca = await $getCaInActorOrg(caId, actor.org.id);
 
     const permission = await projectPermissionService.getProjectPermission({
       actor,
@@ -459,8 +470,7 @@ export const caSigningConfigServiceFactory = ({
     maxPathLength?: number;
     actor: TActorContext;
   }) => {
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    const ca = await $getCaInActorOrg(caId, actor.org.id);
 
     const permission = await projectPermissionService.getProjectPermission({
       actor,
@@ -512,8 +522,7 @@ export const caSigningConfigServiceFactory = ({
     maxPathLength?: number;
     actor: TActorContext;
   }) => {
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    const ca = await $getCaInActorOrg(caId, actor.org.id);
 
     const permission = await projectPermissionService.getProjectPermission({
       actor,
@@ -567,8 +576,7 @@ export const caSigningConfigServiceFactory = ({
     maxPathLength?: number;
     actor: TActorContext;
   }) => {
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    const ca = await $getCaInActorOrg(caId, actor.org.id);
 
     const permission = await projectPermissionService.getProjectPermission({
       actor,

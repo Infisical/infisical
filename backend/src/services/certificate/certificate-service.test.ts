@@ -68,9 +68,11 @@ const buildService = () => {
   const pkiCollectionItemDAL = { delete: vi.fn().mockResolvedValue([]) };
   const certificateSyncDAL = { find: vi.fn().mockResolvedValue([]) };
   const signerDAL = { findOne: vi.fn().mockResolvedValue(undefined) };
+  const projectDAL = { findById: vi.fn().mockResolvedValue({ id: "project-1", orgId: "org-1" }) };
 
   const deps = {
     certificateDAL,
+    projectDAL,
     certificateBodyDAL,
     certificateSecretDAL,
     pkiCollectionItemDAL,
@@ -97,7 +99,8 @@ const buildService = () => {
     certificateSecretDAL,
     pkiCollectionItemDAL,
     certificateSyncDAL,
-    signerDAL
+    signerDAL,
+    projectDAL
   };
 };
 
@@ -106,6 +109,15 @@ describe("certificateService.deleteCert", () => {
 
   beforeEach(() => {
     ctx = buildService();
+  });
+
+  it("answers a certificate in another organization like a missing one and deletes nothing", async () => {
+    ctx.projectDAL.findById.mockResolvedValue({ id: "project-1", orgId: "org-2" });
+
+    await expect(ctx.service.deleteCert({ id: "cert-1", ...actor })).rejects.toThrow(
+      "Certificate with ID 'cert-1' not found."
+    );
+    expect(ctx.certificateDAL.update).not.toHaveBeenCalled();
   });
 
   it("keeps the row and its sync links, stamps who deleted it, and removes its material and collection items", async () => {

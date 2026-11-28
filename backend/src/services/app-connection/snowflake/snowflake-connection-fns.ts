@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import snowflake from "snowflake-sdk";
 
 import { BadRequestError } from "@app/lib/errors";
@@ -9,10 +10,30 @@ import { TSnowflakeConnection, TSnowflakeConnectionConfig } from "./snowflake-co
 
 const noop = () => {};
 
+// Disable stage array-binding uploads in favor of inline binds.
+export const SNOWFLAKE_ARRAY_BINDING_THRESHOLD_DISABLED = Number.MAX_SAFE_INTEGER;
+
 const SNOWFLAKE_EXCLUDED_DATABASES = new Set(["SNOWFLAKE", "SNOWFLAKE_SAMPLE_DATA"]);
 const SNOWFLAKE_EXCLUDED_SCHEMAS = new Set(["INFORMATION_SCHEMA"]);
 
 export const SNOWFLAKE_SHOW_PAGE_SIZE = 100;
+
+const LEADING_SQL_COMMENTS_RE = new RE2(/^(?:[\s\v\u00A0\uFEFF]|(?:--|\/\/)[^\n]*|\/\*[\s\S]*?(?:\*\/|$))*/);
+
+// Matches snowflake-sdk's 3-char prefix check on both raw and comment-stripped SQL.
+const startsWithPutOrGet = (sqlText: string) => ["PUT", "GET"].includes(sqlText.trim().substring(0, 3).toUpperCase());
+
+export const isSnowflakeFileTransferStatement = (sqlText: string) =>
+  startsWithPutOrGet(sqlText) || startsWithPutOrGet(sqlText.replace(LEADING_SQL_COMMENTS_RE, ""));
+
+export const assertNotSnowflakeFileTransferStatement = (
+  sqlText: string,
+  message = "PUT and GET file transfer statements are not supported"
+) => {
+  if (isSnowflakeFileTransferStatement(sqlText)) {
+    throw new BadRequestError({ message });
+  }
+};
 
 const escapeSnowflakeStringLiteral = (value: string) => value.replace(/'/g, "''");
 
@@ -45,7 +66,8 @@ export const getSnowflakeClient = async (credentials: TSnowflakeConnection["cred
     account: credentials.account,
     username: credentials.username,
     password: credentials.password,
-    application: "Infisical"
+    application: "Infisical",
+    arrayBindingThreshold: SNOWFLAKE_ARRAY_BINDING_THRESHOLD_DISABLED
   });
 
   try {
@@ -77,6 +99,7 @@ export const executeSnowflakeSql = <TRow = Record<string, unknown>>(
   binds?: snowflake.Binds
 ): Promise<TRow[]> =>
   new Promise((resolve, reject) => {
+    assertNotSnowflakeFileTransferStatement(sqlText);
     client.execute({
       sqlText,
       binds,

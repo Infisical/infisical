@@ -2,7 +2,6 @@ import * as x509 from "@peculiar/x509";
 
 import { BadRequestError } from "@app/lib/errors";
 import { pick } from "@app/lib/fn";
-import { ms } from "@app/lib/ms";
 import {
   CertExtendedKeyUsage,
   CertKeyUsage,
@@ -28,6 +27,7 @@ import {
   includesSan,
   isRequestReference,
   isValidSanValue,
+  parsePolicyTtl,
   RequestReference
 } from "../certificate-policy/certificate-policy-fns";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
@@ -88,7 +88,7 @@ export const resolveEffectiveTtl = ({
     // Validate against policy's maxValidity (catch config drift)
     if (policyMaxValidity) {
       const profileTtlMs = profileDefaultTtlDays * 24 * 60 * 60 * 1000;
-      const policyMaxMs = ms(policyMaxValidity);
+      const policyMaxMs = parsePolicyTtl(policyMaxValidity);
 
       if (profileTtlMs > policyMaxMs) {
         throw new BadRequestError({

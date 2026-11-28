@@ -13,6 +13,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { caNotFoundError } from "@app/services/certificate-authority/certificate-authority-errors";
 import {
   expandInternalCa,
   getCaCertChain,
@@ -90,7 +91,7 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     const project = ca.internalCa?.id ? await projectDAL.findById(ca.projectId) : undefined;
     if (!ca.internalCa?.id || project?.orgId !== actorOrgId) {
-      throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+      throw caNotFoundError(caId);
     }
     return { ...ca, internalCa: ca.internalCa };
   };

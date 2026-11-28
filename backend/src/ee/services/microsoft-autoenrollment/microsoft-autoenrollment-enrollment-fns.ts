@@ -15,7 +15,7 @@ import {
   withActiveDirectoryErrors
 } from "@app/services/app-connection/ldap/ldap-directory-fns";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
-import { parsePolicyTtlMs } from "@app/services/certificate-policy/certificate-policy-fns";
+import { parsePolicyTtl } from "@app/services/certificate-policy/certificate-policy-fns";
 import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
 import {
   TMicrosoftAutoenrollmentAllowedGroup,
@@ -48,7 +48,7 @@ export const resolveMicrosoftAutoenrollmentTtl = async (
 ) => {
   const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
   const policyMaxValidity = policy?.validity?.max;
-  const policyMaxMs = policyMaxValidity ? parsePolicyTtlMs(policyMaxValidity) : null;
+  const policyMaxMs = policyMaxValidity ? parsePolicyTtl(policyMaxValidity) : null;
   return resolveEffectiveTtl({
     requestTtl: undefined,
     profileDefaultTtlDays: profile.defaults?.ttlDays,

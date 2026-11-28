@@ -1,6 +1,7 @@
 package organization_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -12,6 +13,87 @@ import (
 	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/stretchr/testify/require"
 )
+
+func TestOrganizationPlans_List(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should return the same plan as the plan route, unwrapped", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		single, err := tn.Admin.API.GetOrganizationPlanWithResponse(t.Context(), tn.OrgID.String(), &api.GetOrganizationPlanParams{})
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, single.StatusCode(), single.Body)
+
+		// Action
+		res, err := tn.Admin.API.ListOrganizationPlansWithResponse(t.Context(), tn.OrgID.String(), &api.ListOrganizationPlansParams{})
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		var wrapped struct {
+			Plan json.RawMessage `json:"plan"`
+		}
+		require.NoError(t, json.Unmarshal(single.Body, &wrapped))
+		require.JSONEq(t, string(wrapped.Plan), string(res.Body))
+		var plan map[string]any
+		require.NoError(t, json.Unmarshal(res.Body, &plan))
+		require.Equal(t, "enterprise", plan["slug"])
+	})
+
+	t.Run("should return the OSS defaults when the plan is free", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t, harness.WithPlan(license.Free))
+
+		// Action
+		res, err := tn.Admin.API.ListOrganizationPlansWithResponse(t.Context(), tn.OrgID.String(), &api.ListOrganizationPlansParams{})
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		var plan map[string]any
+		require.NoError(t, json.Unmarshal(res.Body, &plan))
+		require.Nil(t, plan["slug"])
+		require.Equal(t, false, plan["rbac"])
+	})
+
+	t.Run("should return the root org's plan to a sub-org's admin", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t, harness.WithPlan(license.Enterprise().Without(license.RBAC)))
+		sub := fixture.NewSubOrg(t, tn)
+
+		// Action
+		res, err := sub.Admin.API.ListOrganizationPlansWithResponse(t.Context(), sub.ID.String(), &api.ListOrganizationPlansParams{})
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		var plan map[string]any
+		require.NoError(t, json.Unmarshal(res.Body, &plan))
+		require.Equal(t, false, plan["rbac"])
+	})
+
+	t.Run("should refuse another tenant's admin", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		other := h.NewTenant(t)
+
+		// Action
+		res, err := other.Admin.API.ListOrganizationPlansWithResponse(t.Context(), tn.OrgID.String(), &api.ListOrganizationPlansParams{})
+
+		// Assert
+		require.NoError(t, err)
+		require.Contains(t, []int{http.StatusForbidden, http.StatusNotFound}, res.StatusCode())
+	})
+}
 
 func TestOrganizationPlan_Read(t *testing.T) {
 	t.Parallel()

@@ -37,6 +37,7 @@ import type { TCaKeySourceServiceFactory } from "../certificate-authority/ca-key
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaCapability, CaType } from "../certificate-authority/certificate-authority-enums";
+import { caNotFoundError } from "../certificate-authority/certificate-authority-errors";
 import {
   caSupportsCapability,
   CERTIFICATE_AUTHORITIES_TYPE_MAP
@@ -55,7 +56,10 @@ import {
 } from "../certificate-common/certificate-extension-fns";
 import { isSignatureAlgorithmCompatibleWithCaKey } from "../certificate-common/certificate-issuance-utils";
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
-import { describeUnsupportedCommonNameDefaultSans } from "../certificate-policy/certificate-policy-fns";
+import {
+  certificatePolicyNotFoundError,
+  describeUnsupportedCommonNameDefaultSans
+} from "../certificate-policy/certificate-policy-fns";
 import { TCertificatePolicyServiceFactory } from "../certificate-policy/certificate-policy-service";
 import { TCertificatePolicy, TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
@@ -76,6 +80,11 @@ import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-applica
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TCertificateProfileDALFactory } from "./certificate-profile-dal";
 import {
+  certificateProfileNotFoundError,
+  enrollmentTypeMismatchError,
+  profileDefaultsViolationError
+} from "./certificate-profile-errors";
+import {
   EnrollmentType,
   IssuerType,
   TCertificateProfile,
@@ -92,10 +101,13 @@ const validateIssuerTypeConstraints = (
   caId: string | null,
   existingCaId?: string | null
 ) => {
+  const isUpdate = existingCaId !== undefined;
   if (issuerType === IssuerType.CA) {
     if (!caId && !existingCaId) {
       throw new ForbiddenRequestError({
-        message: "CA issuer type requires a Certificate Authority to be selected"
+        message: isUpdate
+          ? "Issuer type 'ca' requires a certificate authority, and this profile has none. A certificate authority can't be added on update, so keep issuer type 'self-signed', or create a new profile with issuer type 'ca'."
+          : "Issuer type 'ca' requires a certificate authority. Set caId to one of your organization's certificate authorities, or use issuer type 'self-signed'."
       });
     }
   }
@@ -103,12 +115,14 @@ const validateIssuerTypeConstraints = (
   if (issuerType === IssuerType.SELF_SIGNED) {
     if (caId) {
       throw new ForbiddenRequestError({
-        message: "Self-signed issuer type cannot have a Certificate Authority"
+        message: isUpdate
+          ? "Issuer type 'self-signed' cannot have a certificate authority, and this profile has one. A certificate authority can't be removed on update, so keep issuer type 'ca', or create a new profile with issuer type 'self-signed'."
+          : "Issuer type 'self-signed' cannot have a certificate authority. Remove caId, or use issuer type 'ca'."
       });
     }
     if (enrollmentType !== EnrollmentType.API) {
       throw new ForbiddenRequestError({
-        message: "Self-signed issuer type only supports API enrollment"
+        message: `Issuer type 'self-signed' only supports API enrollment, but the profile uses '${enrollmentType}' enrollment. Use API enrollment, or issuer type 'ca'.`
       });
     }
   }
@@ -132,7 +146,7 @@ const validateDefaultSignatureAlgorithmAgainstCa = async (
 
   if (!isSignatureAlgorithmCompatibleWithCaKey(signatureAlgorithm, caKeyAlgorithm)) {
     throw new BadRequestError({
-      message: `Default signature algorithm ${signatureAlgorithm} is not compatible with the certificate authority's ${caKeyAlgorithm} key`
+      message: `Default signature algorithm '${signatureAlgorithm}' is not compatible with the certificate authority's ${caKeyAlgorithm} key. Choose a signature algorithm for a ${caKeyAlgorithm} key, or remove the default.`
     });
   }
 };
@@ -147,7 +161,8 @@ const validateTemplateByExternalCaType = (
     case CaType.AZURE_AD_CS:
       if (!externalConfigs?.template || typeof externalConfigs.template !== "string") {
         throw new ForbiddenRequestError({
-          message: "Azure ADCS Certificate Authority requires a template to be specified in external configs"
+          message:
+            "Azure AD CS certificate authorities require an AD CS certificate template. Set externalConfigs.template to the template name on the Azure AD CS server."
         });
       }
       break;
@@ -155,7 +170,7 @@ const validateTemplateByExternalCaType = (
       if (!externalConfigs?.template || typeof externalConfigs.template !== "string") {
         throw new ForbiddenRequestError({
           message:
-            "Active Directory Certificate Service Certificate Authority requires a template to be specified in external configs"
+            "Active Directory Certificate Services certificate authorities require an AD CS certificate template. Set externalConfigs.template to the template name on the AD CS server."
         });
       }
       break;
@@ -173,7 +188,7 @@ const validateAcmEnrollmentType = async (
   const externalCa = await externalCertificateAuthorityDAL.findOne({ caId });
   if (externalCa?.type === CaType.AWS_ACM_PUBLIC_CA && enrollmentType !== EnrollmentType.API) {
     throw new ForbiddenRequestError({
-      message: "AWS Certificate Manager only supports API enrollment"
+      message: `AWS Certificate Manager certificate authorities only support API enrollment, but the profile uses '${enrollmentType}' enrollment. Use API enrollment.`
     });
   }
 };
@@ -185,13 +200,8 @@ const validateCaProjectMatch = async (
 ) => {
   if (!caId) return;
   const ca = await certificateAuthorityDAL.findById(caId);
-  if (!ca) {
-    throw new NotFoundError({ message: "Certificate Authority not found" });
-  }
-  if (ca.projectId !== projectId) {
-    throw new ForbiddenRequestError({
-      message: "Invalid Certificate Authority"
-    });
+  if (!ca || ca.projectId !== projectId) {
+    throw caNotFoundError(caId);
   }
 };
 
@@ -199,26 +209,30 @@ const validateExternalConfigs = async (
   externalConfigs: Record<string, unknown> | null | undefined,
   caId: string | null,
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">,
-  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "findOne">
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "findOne">,
+  isUpdate = false
 ) => {
   if (!externalConfigs) return;
 
   if (!caId) {
     throw new ForbiddenRequestError({
-      message: "External configs can only be specified when a Certificate Authority is selected"
+      message: isUpdate
+        ? "externalConfigs can only be set when the profile has a certificate authority, and this profile has none. Remove externalConfigs."
+        : "externalConfigs can only be set when the profile has a certificate authority. Set caId, or remove externalConfigs."
     });
   }
 
   const ca = await certificateAuthorityDAL.findById(caId);
   if (!ca) {
-    throw new NotFoundError({ message: "Certificate Authority not found" });
+    throw caNotFoundError(caId);
   }
 
   const externalCa = await externalCertificateAuthorityDAL.findOne({ caId });
 
   if (!externalCa) {
     throw new ForbiddenRequestError({
-      message: "External configs can only be specified for external Certificate Authorities"
+      message:
+        "externalConfigs can only be set for external certificate authorities, and this profile uses an internal one. Remove externalConfigs."
     });
   }
 
@@ -516,15 +530,8 @@ export const certificateProfileServiceFactory = ({
 
     // Validate that certificate policy exists and belongs to the same project
     const policy = data.certificatePolicyId ? await certificatePolicyDAL.findById(data.certificatePolicyId) : undefined;
-    if (data.certificatePolicyId) {
-      if (!policy) {
-        throw new NotFoundError({ message: "Certificate policy not found" });
-      }
-      if (policy.projectId !== projectId) {
-        throw new ForbiddenRequestError({
-          message: "Certificate policy must belong to the same project"
-        });
-      }
+    if (data.certificatePolicyId && (!policy || policy.projectId !== projectId)) {
+      throw certificatePolicyNotFoundError(data.certificatePolicyId);
     }
 
     await validateCaProjectMatch(data.caId, projectId, certificateAuthorityDAL);
@@ -561,7 +568,7 @@ export const certificateProfileServiceFactory = ({
         };
         const result = certificatePolicyService.validateRequestAgainstPolicy(policy, request, { skipRequired: true });
         if (!result.isValid) {
-          throw new BadRequestError({ message: `Profile defaults violate policy: ${result.errors.join("; ")}` });
+          throw profileDefaultsViolationError(result.errors, result.ttlExceedsMax);
         }
       }
     }
@@ -820,9 +827,9 @@ export const certificateProfileServiceFactory = ({
     profileId: string;
     data: TCertificateProfileUpdate;
   }): Promise<TCertificateProfile> => {
-    const existingProfile = await certificateProfileDAL.findById(profileId);
-    if (!existingProfile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+    const existingProfile = await certificateProfileDAL.findByIdWithOwnerOrgId(profileId);
+    if (!existingProfile || existingProfile.ownerOrgId !== actor.org.id) {
+      throw certificateProfileNotFoundError(profileId);
     }
 
     const permission = await projectPermissionService.getProjectPermission({
@@ -851,15 +858,11 @@ export const certificateProfileServiceFactory = ({
     const finalCertificatePolicyId =
       data.certificatePolicyId !== undefined ? data.certificatePolicyId : existingProfile.certificatePolicyId;
     const finalCertificatePolicy = await certificatePolicyDAL.findById(finalCertificatePolicyId);
-    if (data.certificatePolicyId) {
-      if (!finalCertificatePolicy) {
-        throw new NotFoundError({ message: "Certificate policy not found" });
-      }
-      if (finalCertificatePolicy.projectId !== existingProfile.projectId) {
-        throw new ForbiddenRequestError({
-          message: "Certificate policy must belong to the same project"
-        });
-      }
+    if (
+      data.certificatePolicyId &&
+      (!finalCertificatePolicy || finalCertificatePolicy.projectId !== existingProfile.projectId)
+    ) {
+      throw certificatePolicyNotFoundError(data.certificatePolicyId);
     }
 
     if (data.slug && data.slug !== existingProfile.slug) {
@@ -908,7 +911,8 @@ export const certificateProfileServiceFactory = ({
         data.externalConfigs,
         finalCaId ?? null,
         certificateAuthorityDAL,
-        externalCertificateAuthorityDAL
+        externalCertificateAuthorityDAL,
+        true
       );
     }
 
@@ -947,7 +951,7 @@ export const certificateProfileServiceFactory = ({
         };
         const result = certificatePolicyService.validateRequestAgainstPolicy(policy, request, { skipRequired: true });
         if (!result.isValid) {
-          throw new BadRequestError({ message: `Profile defaults violate policy: ${result.errors.join("; ")}` });
+          throw profileDefaultsViolationError(result.errors, result.ttlExceedsMax);
         }
       }
     }
@@ -1119,9 +1123,10 @@ export const certificateProfileServiceFactory = ({
     actor: TActorContext;
     profileId: string;
   }): Promise<TCertificateProfile> => {
-    const profile = await certificateProfileDAL.findById(profileId);
-    if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+    const profile = await certificateProfileDAL.findByIdWithOwnerOrgId(profileId);
+    // A profile in another organization answers like a missing one, so the ID's existence is not confirmed.
+    if (!profile || profile.ownerOrgId !== actor.org.id) {
+      throw certificateProfileNotFoundError(profileId);
     }
 
     const permission = await projectPermissionService.getProjectPermission({
@@ -1161,8 +1166,9 @@ export const certificateProfileServiceFactory = ({
     profileId: string;
   }): Promise<TCertificateProfileWithConfigs> => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
-    if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+    // A profile in another organization answers like a missing one, so the ID's existence is not confirmed.
+    if (!profile || profile.project?.orgId !== actor.org.id) {
+      throw certificateProfileNotFoundError(profileId);
     }
 
     const permission = await projectPermissionService.getProjectPermission({
@@ -1261,7 +1267,9 @@ export const certificateProfileServiceFactory = ({
   }): Promise<TCertificateProfile> => {
     const profile = await certificateProfileDAL.findBySlugAndProjectId(slug, projectId);
     if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+      throw new NotFoundError({
+        message: `Certificate profile named '${slug}' not found in this organization. List your organization's certificate profiles with GET /api/v1/cert-manager/certificate-profiles to find the right name.`
+      });
     }
 
     const permission = await projectPermissionService.getProjectPermission({
@@ -1457,9 +1465,9 @@ export const certificateProfileServiceFactory = ({
     actor: TActorContext;
     profileId: string;
   }): Promise<TCertificateProfile> => {
-    const profile = await certificateProfileDAL.findById(profileId);
-    if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+    const profile = await certificateProfileDAL.findByIdWithOwnerOrgId(profileId);
+    if (!profile || profile.ownerOrgId !== actor.org.id) {
+      throw certificateProfileNotFoundError(profileId);
     }
 
     const permission = await projectPermissionService.getProjectPermission({
@@ -1512,9 +1520,9 @@ export const certificateProfileServiceFactory = ({
     status?: CertStatus;
     search?: string;
   }): Promise<TCertificateProfileCertificate[]> => {
-    const profile = await certificateProfileDAL.findById(profileId);
-    if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+    const profile = await certificateProfileDAL.findByIdWithOwnerOrgId(profileId);
+    if (!profile || profile.ownerOrgId !== actor.org.id) {
+      throw certificateProfileNotFoundError(profileId);
     }
 
     const permission = await projectPermissionService.getProjectPermission({
@@ -1547,9 +1555,9 @@ export const certificateProfileServiceFactory = ({
     actor: TActorContext;
     profileId: string;
   }) => {
-    const profile = await certificateProfileDAL.findById(profileId);
-    if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+    const profile = await certificateProfileDAL.findByIdWithOwnerOrgId(profileId);
+    if (!profile || profile.ownerOrgId !== actor.org.id) {
+      throw certificateProfileNotFoundError(profileId);
     }
 
     const permission = await projectPermissionService.getProjectPermission({
@@ -1673,13 +1681,16 @@ export const certificateProfileServiceFactory = ({
     const { profileId, applicationId, isInternal = false } = params;
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+      throw certificateProfileNotFoundError(profileId);
     }
 
     if (!isInternal) {
       const { actor } = params as {
         actor: TActorContext;
       };
+      if (profile.project?.orgId !== actor.org.id) {
+        throw certificateProfileNotFoundError(profileId);
+      }
 
       const permission = await projectPermissionService.getProjectPermission({
         actor,
@@ -1697,9 +1708,7 @@ export const certificateProfileServiceFactory = ({
     }
 
     if (!applicationId && profile.enrollmentType !== EnrollmentType.EST) {
-      throw new ForbiddenRequestError({
-        message: "Profile is not configured for EST enrollment"
-      });
+      throw enrollmentTypeMismatchError(profile.enrollmentType, EnrollmentType.EST);
     }
 
     if (applicationId && pkiApplicationProfileDAL) {
@@ -1742,8 +1751,8 @@ export const certificateProfileServiceFactory = ({
 
   const revealAcmeEabSecret = async ({ actor, profileId }: { actor: TActorContext; profileId: string }) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
-    if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+    if (!profile || profile.project?.orgId !== actor.org.id) {
+      throw certificateProfileNotFoundError(profileId);
     }
 
     const permission = await projectPermissionService.getProjectPermission({
@@ -1760,9 +1769,7 @@ export const certificateProfileServiceFactory = ({
     });
 
     if (profile.enrollmentType !== EnrollmentType.ACME) {
-      throw new ForbiddenRequestError({
-        message: "Profile is not configured for ACME enrollment"
-      });
+      throw enrollmentTypeMismatchError(profile.enrollmentType, EnrollmentType.ACME);
     }
     if (!profile.acmeConfig) {
       throw new NotFoundError({ message: "ACME configuration not found for this profile" });

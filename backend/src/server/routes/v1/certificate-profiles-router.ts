@@ -4,7 +4,7 @@ import { z } from "zod";
 import { PkiCertificateProfilesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
-import { ApiDocsTags, CERTIFICATE_PROFILES } from "@app/lib/api-docs";
+import { ApiDocsTags, CERTIFICATE_PROFILES, CERTIFICATES } from "@app/lib/api-docs";
 import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
@@ -35,44 +35,52 @@ import { CertStatus } from "@app/services/certificate/certificate-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SubjectAltNameDefaultSchema = z.object({
-  type: z.nativeEnum(CertSubjectAlternativeNameType),
-  value: z.string().trim().min(1)
+  type: z.nativeEnum(CertSubjectAlternativeNameType).describe(CERTIFICATES.ATTRIBUTES.altNameType),
+  value: z.string().trim().min(1).describe(CERTIFICATE_PROFILES.defaultAltNameValue)
 });
 
 const CustomExtensionDefaultsSchema = z
   .array(
     z.object({
-      oid: certificateExtensionOidSchema,
-      label: customExtensionLabelSchema.optional(),
-      critical: z.boolean().optional(),
-      value: customExtensionValueSchema.optional()
+      oid: certificateExtensionOidSchema.describe(CERTIFICATES.ATTRIBUTES.customExtensionOid),
+      label: customExtensionLabelSchema.optional().describe(CERTIFICATE_PROFILES.customExtensionLabel),
+      critical: z.boolean().optional().describe(CERTIFICATES.ATTRIBUTES.customExtensionCritical),
+      value: customExtensionValueSchema.optional().describe(CERTIFICATES.ATTRIBUTES.customExtensionValue)
     })
   )
   .max(MAX_CUSTOM_EXTENSIONS_PER_PROFILE)
-  .optional();
+  .optional()
+  .describe(CERTIFICATE_PROFILES.defaultCustomExtensions);
 
 // Subject defaults are stored as jsonb on the profile but are copied verbatim onto the certificate
 // request at issuance time, where each attribute lands in a varchar(255) column — so they carry the
 // same bound as an explicitly supplied subject attribute.
 const CertificateProfileDefaultsSchema = z
   .object({
-    ttlDays: z.number().int().positive().optional(),
-    commonName: subjectAttributeSchema.optional(),
-    keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
-    signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
-    keyUsages: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
-    extendedKeyUsages: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
+    ttlDays: z.number().int().positive().optional().describe(CERTIFICATE_PROFILES.defaultTtlDays),
+    commonName: subjectAttributeSchema.optional().describe(CERTIFICATES.ATTRIBUTES.commonName),
+    keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional().describe(CERTIFICATES.ATTRIBUTES.keyAlgorithm),
+    signatureAlgorithm: z
+      .nativeEnum(CertSignatureAlgorithm)
+      .optional()
+      .describe(CERTIFICATES.ATTRIBUTES.signatureAlgorithm),
+    keyUsages: z.array(z.nativeEnum(CertKeyUsageType)).optional().describe(CERTIFICATE_PROFILES.defaultKeyUsages),
+    extendedKeyUsages: z
+      .array(z.nativeEnum(CertExtendedKeyUsageType))
+      .optional()
+      .describe(CERTIFICATE_PROFILES.defaultExtendedKeyUsages),
     basicConstraints: z
       .object({
-        isCA: z.boolean(),
-        pathLength: z.number().int().min(0).optional()
+        isCA: z.boolean().describe(CERTIFICATES.ATTRIBUTES.isCA),
+        pathLength: z.number().int().min(0).optional().describe(CERTIFICATE_PROFILES.defaultPathLength)
       })
-      .optional(),
-    organization: subjectAttributeSchema.optional(),
-    organizationalUnit: subjectAttributeSchema.optional(),
-    country: subjectAttributeSchema.optional(),
-    state: subjectAttributeSchema.optional(),
-    locality: subjectAttributeSchema.optional(),
+      .optional()
+      .describe(CERTIFICATE_PROFILES.defaultBasicConstraints),
+    organization: subjectAttributeSchema.optional().describe(CERTIFICATES.ATTRIBUTES.organization),
+    organizationalUnit: subjectAttributeSchema.optional().describe(CERTIFICATES.ATTRIBUTES.organizationalUnit),
+    country: subjectAttributeSchema.optional().describe(CERTIFICATES.ATTRIBUTES.country),
+    state: subjectAttributeSchema.optional().describe(CERTIFICATES.ATTRIBUTES.state),
+    locality: subjectAttributeSchema.optional().describe(CERTIFICATES.ATTRIBUTES.locality),
     subjectAltNames: z
       .array(
         SubjectAltNameDefaultSchema.extend({
@@ -81,10 +89,11 @@ const CertificateProfileDefaultsSchema = z
       )
       .optional()
       .describe(CERTIFICATE_PROFILES.DEFAULT_SUBJECT_ALT_NAMES),
-    domainComponents: domainComponentsSchema.optional(),
+    domainComponents: domainComponentsSchema.optional().describe(CERTIFICATES.ATTRIBUTES.domainComponents),
     customExtensions: CustomExtensionDefaultsSchema
   })
-  .nullish();
+  .nullish()
+  .describe(CERTIFICATE_PROFILES.defaults);
 
 const CertificateProfileDefaultsResponseSchema = z
   .object({
@@ -125,19 +134,21 @@ export const registerCertificateProfilesRouter = async (
       hide: false,
       ...(enableOperationId ? { operationId: "createCertificateProfile" } : {}),
       tags: [ApiDocsTags.PkiCertificateProfiles],
+      description: CERTIFICATE_PROFILES.CREATE_DESCRIPTION,
       body: z
         .object({
           projectId: z.string().min(1).optional().describe(openApiHidden()),
-          caId: z.string().uuid().optional(),
-          certificatePolicyId: z.string().uuid(),
+          caId: z.string().uuid().optional().describe(CERTIFICATE_PROFILES.caId),
+          certificatePolicyId: z.string().uuid().describe(CERTIFICATE_PROFILES.certificatePolicyId),
           slug: z
             .string()
             .min(1)
             .max(255)
-            .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens"),
-          description: pkiDescriptionSchema.optional(),
+            .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens")
+            .describe(CERTIFICATE_PROFILES.slug),
+          description: pkiDescriptionSchema.optional().describe(CERTIFICATE_PROFILES.description),
           enrollmentType: z.enum(PROFILE_ENROLLMENT_TYPES).optional().describe(openApiHidden()),
-          issuerType: z.nativeEnum(IssuerType).default(IssuerType.CA),
+          issuerType: z.nativeEnum(IssuerType).default(IssuerType.CA).describe(CERTIFICATE_PROFILES.issuerType),
           estConfig: z
             .object({
               disableBootstrapCaValidation: z.boolean().default(false),
@@ -171,7 +182,7 @@ export const registerCertificateProfilesRouter = async (
             })
             .optional()
             .describe(openApiHidden()),
-          externalConfigs: ExternalConfigUnionSchema,
+          externalConfigs: ExternalConfigUnionSchema.describe(CERTIFICATE_PROFILES.externalConfigs),
           defaults: CertificateProfileDefaultsSchema
         })
         .refine(
@@ -580,8 +591,9 @@ export const registerCertificateProfilesRouter = async (
       hide: false,
       ...(enableOperationId ? { operationId: "updateCertificateProfile" } : {}),
       tags: [ApiDocsTags.PkiCertificateProfiles],
+      description: CERTIFICATE_PROFILES.UPDATE_DESCRIPTION,
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().uuid().describe(CERTIFICATE_PROFILES.id)
       }),
       body: z
         .object({
@@ -590,10 +602,11 @@ export const registerCertificateProfilesRouter = async (
             .min(1)
             .max(255)
             .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens")
-            .optional(),
-          description: pkiDescriptionSchema.nullable().optional(),
+            .optional()
+            .describe(CERTIFICATE_PROFILES.slug),
+          description: pkiDescriptionSchema.nullable().optional().describe(CERTIFICATE_PROFILES.description),
           enrollmentType: z.enum(PROFILE_ENROLLMENT_TYPES).optional().describe(openApiHidden()),
-          issuerType: z.nativeEnum(IssuerType).optional(),
+          issuerType: z.nativeEnum(IssuerType).optional().describe(CERTIFICATE_PROFILES.updateIssuerType),
           estConfig: z
             .object({
               disableBootstrapCaValidation: z.boolean().default(false),
@@ -627,7 +640,7 @@ export const registerCertificateProfilesRouter = async (
             })
             .optional()
             .describe(openApiHidden()),
-          externalConfigs: ExternalConfigUnionSchema,
+          externalConfigs: ExternalConfigUnionSchema.describe(CERTIFICATE_PROFILES.externalConfigs),
           defaults: CertificateProfileDefaultsSchema
         })
         .refine(
