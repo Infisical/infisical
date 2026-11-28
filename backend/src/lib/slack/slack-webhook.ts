@@ -4,7 +4,7 @@ export type TSlackBlock =
   | { type: "header"; text: { type: "plain_text"; text: string; emoji?: boolean } }
   | { type: "section"; text: { type: "mrkdwn"; text: string } }
   | { type: "section"; fields: Array<{ type: "mrkdwn"; text: string }> }
-  | { type: "context"; elements: Array<{ type: "mrkdwn"; text: string }> }
+  | { type: "context"; elements: Array<{ type: "mrkdwn" | "plain_text"; text: string }> }
   | { type: "divider" }
   | {
       type: "actions";

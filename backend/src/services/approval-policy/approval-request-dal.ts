@@ -231,15 +231,22 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  const markExpiredRequests = async (): Promise<number> => {
+  const markExpiredRequests = async ({ limit }: { limit: number }, tx?: Knex) => {
     try {
-      const rows = await db(TableName.ApprovalRequests)
+      const dbInstance = tx || db;
+      return await dbInstance(TableName.ApprovalRequests)
+        .whereIn(
+          "id",
+          dbInstance(TableName.ApprovalRequests)
+            .select("id")
+            .where("status", ApprovalRequestStatus.Pending)
+            .whereNotNull("expiresAt")
+            .where("expiresAt", "<", new Date())
+            .limit(limit)
+        )
         .where("status", ApprovalRequestStatus.Pending)
-        .whereNotNull("expiresAt")
-        .where("expiresAt", "<", new Date())
         .update({ status: ApprovalRequestStatus.Expired })
-        .returning<{ id: string }[]>("id");
-      return rows.length;
+        .returning("*");
     } catch (error) {
       throw new DatabaseError({ error, name: "Mark expired approval requests" });
     }

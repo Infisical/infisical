@@ -181,6 +181,33 @@ type TPostHogEventBody<T> = T extends unknown
 
 export type TAlertTelemetryEvent = TPostHogEventBody<TPostHogEvent>;
 
+export enum AlertMessageOutcome {
+  Approved = "approved",
+  Denied = "denied",
+  BreakGlass = "break-glass",
+  Cancelled = "cancelled",
+  Expired = "expired"
+}
+
+export type TAlertMessageResolution = {
+  outcome: AlertMessageOutcome;
+  resolvedAt: Date;
+  actorName?: string | null;
+  comment?: string | null;
+};
+
+export type TAlertMessageResolver = {
+  openingEvents: string[];
+  // May include event keys that no alert can subscribe to, such as a request being cancelled.
+  closingEvents: string[];
+  // Reads each target's current state and returns only the targets that are closed.
+  resolveTargets(input: {
+    orgId: string;
+    projectId?: string | null;
+    targetIds: string[];
+  }): Promise<Map<string, TAlertMessageResolution>>;
+};
+
 export interface IResourceAlertProvider<TTarget = unknown> {
   // Dot-namespaced, e.g. "pki.certificate", "identity.ua-secret".
   resourceType: string;
@@ -254,4 +281,7 @@ export interface IResourceAlertProvider<TTarget = unknown> {
   // cannot be bound to a foreign/out-of-scope resource. When there is no resourceId (a filter-based
   // alert), there is nothing to bind-check, so implementations return immediately.
   assertResourceInScope(input: { orgId: string; projectId?: string | null; resourceId?: string | null }): Promise<void>;
+
+  // Lets channels that can edit a sent message (Slack app) mark an opening event's message with its outcome.
+  messageResolver?: TAlertMessageResolver;
 }

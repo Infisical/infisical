@@ -54,6 +54,7 @@ export enum TableName {
   AlertChannelMembership = "alert_channel_memberships",
   AlertHistory = "alert_history",
   AlertHistoryTarget = "alert_history_target",
+  AlertSlackMessage = "alert_slack_messages",
   EventOutbox = "event_outbox",
   Groups = "groups",
   GroupProjectMembership = "group_project_memberships",

@@ -10,7 +10,8 @@ import {
   AlertRunStatus,
   AlertTriggerType,
   IResourceAlertProvider,
-  TAlertContext
+  TAlertContext,
+  TAlertMessageResolver
 } from "./alert-types";
 import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
 
@@ -124,19 +125,26 @@ const buildEngine = (opts: {
   failEmailFor?: string;
   failHistoryWrite?: boolean;
   failHistoryWriteTimes?: number;
+  messageResolver?: TAlertMessageResolver;
+  failMessageResolution?: boolean;
 }) => {
   const registry = alertProviderRegistryFactory();
   let findScheduledTargetsCalls = 0;
   const eventPayloads: Record<string, unknown>[] = [];
-  registry.register(
-    makeProvider(
+  registry.register({
+    ...makeProvider(
       opts.targets,
       () => {
         findScheduledTargetsCalls += 1;
       },
       (payload) => eventPayloads.push(payload)
-    ) as IResourceAlertProvider
-  );
+    ),
+    messageResolver: opts.messageResolver
+  } as IResourceAlertProvider);
+  const resolveMessages = vi.fn(async () => {
+    if (opts.failMessageResolution) throw new Error("slack down");
+    return [] as string[];
+  });
 
   const sentMail: Array<{ recipients: string[] }> = [];
   const historyWrites: Array<{ deliveries: TDelivery[]; status: string; eventId?: string }> = [];
@@ -189,6 +197,7 @@ const buildEngine = (opts: {
       }
     },
     alertProviderRegistry: registry,
+    alertMessageResolution: { resolveMessages },
     alertRecipientResolver: {
       resolveMany: async (rowsByChannel: Map<string, unknown[]>) => {
         const resolved = opts.recipients ?? [{ userId: "u1", email: "user@example.com", firstName: "U" }];
@@ -221,6 +230,7 @@ const buildEngine = (opts: {
     channelLookups,
     eventLookups,
     eventPayloads,
+    resolveMessages,
     getHistoryAttempts: () => historyAttempts,
     getPeakConcurrentSends: () => peakConcurrentSends,
     getFindScheduledTargetsCalls: () => findScheduledTargetsCalls
@@ -736,5 +746,94 @@ describe("alert engine, event path", () => {
     const outcome = await engine.runAlertForEvent(eventAlert(), EVENT);
 
     expect(outcome).toBe(AlertDispatchOutcome.DeliveryFailed);
+  });
+});
+
+describe("alert engine, messages a later event can update", () => {
+  const eventAlert = () => ({ ...makeAlert(), triggerType: "event", eventType: "test.resource.opened" });
+  const event = (targetIds: string[]) => ({
+    eventId: "9",
+    eventType: "test.resource.opened",
+    occurredAt: new Date(),
+    targetIds,
+    payload: { targetIds }
+  });
+  const messageResolver: TAlertMessageResolver = {
+    openingEvents: ["test.resource.opened"],
+    closingEvents: ["test.resource.closed"],
+    resolveTargets: async () => new Map()
+  };
+  const slackAppChannel = {
+    id: "c-slack-app",
+    channelType: "slack-app",
+    encryptedConfig: encConfig({}),
+    enabled: true
+  };
+
+  const runCapturingPayload = async (opts: Parameters<typeof buildEngine>[0], targetIds: string[]) => {
+    const payloads: TAlertPayload[] = [];
+    const send = vi
+      .spyOn(ALERT_CHANNEL_REGISTRY[AlertChannelType.SLACK_APP], "send")
+      .mockImplementation(async (ctx) => {
+        payloads.push(ctx.payload);
+        return { success: true };
+      });
+    const built = buildEngine(opts);
+    const outcome = await built.engine.runAlertForEvent(eventAlert(), event(targetIds));
+    send.mockRestore();
+    return { ...built, outcome, payloads };
+  };
+
+  test("marks a single-target opening message as resolvable and checks whether the target already closed", async () => {
+    const { payloads, resolveMessages } = await runCapturingPayload(
+      { targets: [{ id: "t1" }], channels: [slackAppChannel], messageResolver },
+      ["t1"]
+    );
+
+    expect(payloads[0].resolvableTargetId).toBe("t1");
+    expect(resolveMessages).toHaveBeenCalledWith({
+      orgId: "org-1",
+      projectId: null,
+      resourceType: RESOURCE_TYPE,
+      targetIds: ["t1"]
+    });
+  });
+
+  test("leaves a message covering several targets unmarked", async () => {
+    const { payloads } = await runCapturingPayload(
+      { targets: [{ id: "t1" }, { id: "t2" }], channels: [slackAppChannel], messageResolver },
+      ["t1", "t2"]
+    );
+
+    expect(payloads[0].resolvableTargetId).toBeUndefined();
+  });
+
+  test("leaves messages unmarked for a provider without a resolver", async () => {
+    const { payloads, resolveMessages } = await runCapturingPayload(
+      { targets: [{ id: "t1" }], channels: [slackAppChannel] },
+      ["t1"]
+    );
+
+    expect(payloads[0].resolvableTargetId).toBeUndefined();
+    expect(resolveMessages).not.toHaveBeenCalled();
+  });
+
+  test("reports a partial delivery when the follow-up update fails, so the event retries it", async () => {
+    const { outcome } = await runCapturingPayload(
+      { targets: [{ id: "t1" }], channels: [slackAppChannel], messageResolver, failMessageResolution: true },
+      ["t1"]
+    );
+
+    expect(outcome).toBe(AlertDispatchOutcome.DeliveryPartial);
+  });
+
+  test("runs the follow-up update again on a retry whose channels were all delivered", async () => {
+    const { outcome, resolveMessages } = await runCapturingPayload(
+      { targets: [{ id: "t1" }], channels: [slackAppChannel], messageResolver, deliveredForEvent: ["c-slack-app"] },
+      ["t1"]
+    );
+
+    expect(outcome).toBe(AlertDispatchOutcome.NoChannels);
+    expect(resolveMessages).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,15 +1,21 @@
 import { ErrorCode } from "@slack/web-api";
 
 import { SlackAppChannelConfigSchema, TAlertChannelDeps, TAlertPayload } from "../alert-channel-types";
-import { assertSlackAppConfigInScope, sendSlackAppNotification } from "./alert-channel-slack-app-fns";
+import {
+  assertSlackAppConfigInScope,
+  sendSlackAppNotification,
+  SlackMessageUpdateResult,
+  updateSlackAppMessage
+} from "./alert-channel-slack-app-fns";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
   initLogger: () => {}
 }));
 
-const { postMessage, clientOptions } = vi.hoisted(() => ({
+const { postMessage, update, clientOptions } = vi.hoisted(() => ({
   postMessage: vi.fn<(args: { channel: string; text: string }) => Promise<unknown>>(),
+  update: vi.fn<(args: { channel: string; ts: string; text: string }) => Promise<unknown>>(),
   clientOptions: [] as unknown[]
 }));
 
@@ -17,7 +23,7 @@ vi.mock("@slack/web-api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@slack/web-api")>()),
   WebClient: vi.fn().mockImplementation((_token: string, options: unknown) => {
     clientOptions.push(options);
-    return { chat: { postMessage } };
+    return { chat: { postMessage, update } };
   })
 }));
 
@@ -196,5 +202,136 @@ describe("sendSlackAppNotification", () => {
     const result = await send();
     expect(result.error).toContain("Slack rate limited the message to #team-payments");
     expect(result.error).toContain("Could not reach Slack to post to #security");
+  });
+});
+
+describe("sendSlackAppNotification message tracking", () => {
+  beforeEach(() => {
+    postMessage.mockReset();
+  });
+
+  const trackingDeps = (create = vi.fn(async () => ({}))) =>
+    ({
+      ...deps(),
+      kmsDataKeyService: {
+        createCipherPairWithDataKey: vi.fn(async () => ({
+          encryptor: ({ plainText }: { plainText: Buffer }) => ({
+            cipherTextBlob: Buffer.concat([Buffer.from("enc:"), plainText])
+          }),
+          decryptor: () => Buffer.from("xoxb-token")
+        }))
+      },
+      alertSlackMessageDAL: { create }
+    }) as unknown as TAlertChannelDeps;
+
+  const sendResolvable = (dependencies: TAlertChannelDeps) =>
+    sendSlackAppNotification({
+      channelId: "chan-1",
+      config,
+      payload: { ...payload(), resolvableTargetId: "cert-a" },
+      deps: dependencies
+    });
+
+  test("stores each posted message so a later event can update it", async () => {
+    postMessage.mockImplementation(async ({ channel }) => ({ ok: true, channel, ts: `${channel}.ts` }));
+    const create = vi.fn(async () => ({}));
+
+    const result = await sendResolvable(trackingDeps(create));
+
+    expect(result).toEqual({ success: true });
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orgId: ORG_ID,
+        workflowIntegrationId: INTEGRATION_ID,
+        slackChannelId: "C0123ABCD",
+        messageTs: "C0123ABCD.ts",
+        resourceType: "cert-manager",
+        targetId: "cert-a"
+      })
+    );
+    const stored = (create.mock.calls[0] as unknown as [{ encryptedMessage: Buffer }])[0].encryptedMessage.toString();
+    expect(stored.startsWith("enc:")).toBe(true);
+    expect(JSON.parse(stored.slice(4))).toMatchObject({ text: expect.stringContaining("prod-cert-expiry") as unknown });
+  });
+
+  test("stores nothing when the payload has no resolvable target", async () => {
+    postMessage.mockResolvedValue({ ok: true, channel: "C0123ABCD", ts: "1.1" });
+    const create = vi.fn(async () => ({}));
+
+    await sendSlackAppNotification({ channelId: "chan-1", config, payload: payload(), deps: trackingDeps(create) });
+
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  test("still reports delivery when storing the message fails, so a retry doesn't post it twice", async () => {
+    postMessage.mockResolvedValue({ ok: true, channel: "C0123ABCD", ts: "1.1" });
+
+    const result = await sendResolvable(trackingDeps(vi.fn(async () => Promise.reject(new Error("db down")))));
+
+    expect(result).toEqual({ success: true });
+  });
+});
+
+describe("updateSlackAppMessage", () => {
+  beforeEach(() => {
+    update.mockReset();
+  });
+
+  const message = { text: "Resolved", blocks: [], attachments: [] };
+  const target = {
+    orgId: ORG_ID,
+    workflowIntegrationId: INTEGRATION_ID,
+    slackChannelId: "C0123ABCD",
+    messageTs: "1.1",
+    message
+  };
+
+  test("edits the stored message in place", async () => {
+    update.mockResolvedValue({ ok: true });
+
+    await expect(updateSlackAppMessage(deps(), target)).resolves.toEqual({ result: SlackMessageUpdateResult.Updated });
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ channel: "C0123ABCD", ts: "1.1", text: "Resolved" }));
+  });
+
+  test("gives up on a message Slack no longer has", async () => {
+    update.mockRejectedValue(platformError("message_not_found"));
+
+    await expect(updateSlackAppMessage(deps(), target)).resolves.toEqual({
+      result: SlackMessageUpdateResult.Gone,
+      error: "message_not_found"
+    });
+  });
+
+  test("gives up when the Slack integration was deleted", async () => {
+    const result = await updateSlackAppMessage(deps(null), target);
+
+    expect(result.result).toBe(SlackMessageUpdateResult.Gone);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  test("gives up on an edit Slack rejects as invalid, since a retry fails the same way", async () => {
+    update.mockRejectedValue(platformError("invalid_blocks"));
+
+    await expect(updateSlackAppMessage(deps(), target)).resolves.toEqual({
+      result: SlackMessageUpdateResult.Gone,
+      error: "invalid_blocks"
+    });
+  });
+
+  test("asks for a retry when Slack has an outage", async () => {
+    update.mockRejectedValue(platformError("internal_error"));
+
+    await expect(updateSlackAppMessage(deps(), target)).resolves.toMatchObject({
+      result: SlackMessageUpdateResult.Retry
+    });
+  });
+
+  test("asks for a retry when Slack rate limits the edit", async () => {
+    update.mockRejectedValue(Object.assign(new Error("rate limited"), { code: ErrorCode.RateLimitedError }));
+
+    await expect(updateSlackAppMessage(deps(), target)).resolves.toMatchObject({
+      result: SlackMessageUpdateResult.Retry
+    });
   });
 });

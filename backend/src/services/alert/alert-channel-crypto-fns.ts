@@ -4,7 +4,7 @@ export type TAlertEncryptor = (data: { plainText: Buffer }) => { cipherTextBlob:
 export type TAlertDecryptor = (data: { cipherTextBlob: Buffer }) => Buffer;
 
 export const getAlertChannelCipher = (
-  kmsDataKeyService: TKmsDataKeyService,
+  kmsDataKeyService: Pick<TKmsDataKeyService, "createCipherPairWithDataKey">,
   scope: { orgId: string; projectId?: string | null }
 ) =>
   kmsDataKeyService.createCipherPairWithDataKey(

@@ -11,7 +11,8 @@ import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { TUserNotificationDALFactory } from "@app/services/notification/user-notification-dal";
 
-import { TApprovalRequestDALFactory, TApprovalRequestGrantsDALFactory } from "../approval-policy/approval-request-dal";
+import { TApprovalPolicyServiceFactory } from "../approval-policy/approval-policy-service";
+import { TApprovalRequestGrantsDALFactory } from "../approval-policy/approval-request-dal";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenRevocationDALFactory } from "../identity-access-token/identity-access-token-revocation-dal";
@@ -39,7 +40,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   userNotificationDAL: Pick<TUserNotificationDALFactory, "pruneNotifications">;
   keyValueStoreDAL: Pick<TKeyValueStoreDALFactory, "pruneExpiredKeys">;
   scimService: Pick<TScimServiceFactory, "notifyExpiringTokens">;
-  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "markExpiredRequests">;
+  approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "expireOverdueRequests">;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "markExpiredGrants">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "markExpiredApprovalRequests">;
   scepTransactionDAL: Pick<TScepTransactionDALFactory, "pruneExpiredTransactions">;
@@ -66,7 +67,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   orgService,
   userNotificationDAL,
   keyValueStoreDAL,
-  approvalRequestDAL,
+  approvalPolicyService,
   approvalRequestGrantsDAL,
   certificateRequestDAL,
   scepTransactionDAL,
@@ -163,7 +164,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       handler: async () => {
         logger.info(`cron[${CronJobName.FrequentResourceCleanup}]: task started`);
         await identityAccessTokenDAL.removeExpiredTokens();
-        const newlyExpired = await approvalRequestDAL.markExpiredRequests();
+        const newlyExpired = await approvalPolicyService.expireOverdueRequests();
         if (newlyExpired > 0) {
           await certificateRequestDAL.markExpiredApprovalRequests();
         }

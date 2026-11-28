@@ -1,8 +1,9 @@
-import { ApprovalNotificationEvent } from "@app/services/approval-policy/approval-policy-enums";
+import { ApprovalNotificationEvent, ApprovalRequestClosure } from "@app/services/approval-policy/approval-policy-enums";
 
 import {
   buildPamAccessRequestEvent,
   PAM_FOLDER_RESOURCE_TYPE,
+  PamAccessRequestClosedEvent,
   PamAccessRequestEvent
 } from "./pam-access-request-events";
 
@@ -27,5 +28,14 @@ describe("buildPamAccessRequestEvent", () => {
         targetIds: ["request-1"]
       }
     });
+  });
+
+  test("emits closed events for cancelled and expired requests", () => {
+    expect(buildPamAccessRequestEvent({ ...request, event: ApprovalRequestClosure.Cancelled })?.type).toBe(
+      PamAccessRequestClosedEvent.Cancelled
+    );
+    expect(buildPamAccessRequestEvent({ ...request, event: ApprovalRequestClosure.Expired })?.type).toBe(
+      PamAccessRequestClosedEvent.Expired
+    );
   });
 });

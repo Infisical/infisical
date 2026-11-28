@@ -8,6 +8,7 @@ import { TAlertDALFactory } from "./alert-dal";
 import { TAlertEngine } from "./alert-engine";
 import { TAlertHistoryDALFactory } from "./alert-history-dal";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
+import { TAlertSlackMessageDALFactory } from "./alert-slack-message-dal";
 import { ALERT_HISTORY_RETENTION_DAYS } from "./alert-types";
 
 type TAlertQueueServiceFactoryDep = {
@@ -15,6 +16,7 @@ type TAlertQueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
   alertDAL: Pick<TAlertDALFactory, "findEnabledByResourceType" | "findActiveById">;
   alertHistoryDAL: Pick<TAlertHistoryDALFactory, "deleteExpiredHistory">;
+  alertSlackMessageDAL: Pick<TAlertSlackMessageDALFactory, "deleteCreatedBefore">;
   alertProviderRegistry: TAlertProviderRegistry;
   alertEngine: Pick<TAlertEngine, "runAlert">;
 };
@@ -26,6 +28,7 @@ export const alertQueueServiceFactory = ({
   queueService,
   alertDAL,
   alertHistoryDAL,
+  alertSlackMessageDAL,
   alertProviderRegistry,
   alertEngine
 }: TAlertQueueServiceFactoryDep) => {
@@ -57,6 +60,12 @@ export const alertQueueServiceFactory = ({
 
   const pruneExpiredHistory = async () => {
     const before = new Date(Date.now() - ALERT_HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    try {
+      const deletedSlackMessages = await alertSlackMessageDAL.deleteCreatedBefore(before);
+      logger.info(`cron[daily-alert-processing]: pruned stored Slack alert messages [deleted=${deletedSlackMessages}]`);
+    } catch (err) {
+      logger.error(err, "cron[daily-alert-processing]: failed to prune stored Slack alert messages");
+    }
     const { deleted, hasMore } = await alertHistoryDAL.deleteExpiredHistory({ before });
 
     logger.info(

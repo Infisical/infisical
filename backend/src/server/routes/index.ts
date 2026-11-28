@@ -261,10 +261,13 @@ import { alertDALFactory } from "@app/services/alert/alert-dal";
 import { alertEngineFactory } from "@app/services/alert/alert-engine";
 import { alertEventConsumerFactory } from "@app/services/alert/alert-event-consumer";
 import { alertHistoryDALFactory } from "@app/services/alert/alert-history-dal";
+import { alertMessageResolutionConsumerFactory } from "@app/services/alert/alert-message-resolution-consumer";
+import { alertMessageResolutionFactory } from "@app/services/alert/alert-message-resolution-fns";
 import { alertProviderRegistryFactory } from "@app/services/alert/alert-provider-registry";
 import { alertQueueServiceFactory } from "@app/services/alert/alert-queue";
 import { alertRecipientResolverFactory } from "@app/services/alert/alert-recipient-resolver";
 import { alertServiceFactory } from "@app/services/alert/alert-service";
+import { alertSlackMessageDALFactory } from "@app/services/alert/alert-slack-message-dal";
 import { auditLogStreamAlertDALFactory } from "@app/services/alert/providers/audit-log-stream-alert-dal";
 import { auditLogStreamAlertProviderFactory } from "@app/services/alert/providers/audit-log-stream-alert-provider";
 import { certManagerAlertProviderFactory } from "@app/services/alert/providers/cert-manager-alert-provider";
@@ -1026,6 +1029,7 @@ export const registerRoutes = async (
   const alertChannelDAL = alertChannelDALFactory(db);
   const alertChannelMembershipDAL = alertChannelMembershipDALFactory(db);
   const alertHistoryDAL = alertHistoryDALFactory(db);
+  const alertSlackMessageDAL = alertSlackMessageDALFactory(db);
   const certManagerCertificateAlertDAL = certManagerCertificateAlertDALFactory(db);
   const certManagerProjectResolver = certManagerProjectResolverFactory({
     orgDAL,
@@ -1125,6 +1129,12 @@ export const registerRoutes = async (
     groupProjectDAL,
     emailDomainDAL
   });
+  const alertMessageResolution = alertMessageResolutionFactory({
+    alertProviderRegistry,
+    alertSlackMessageDAL,
+    slackIntegrationDAL,
+    kmsDataKeyService
+  });
   const alertEngine = alertEngineFactory({
     alertChannelDAL,
     alertChannelRecipientDAL,
@@ -1133,13 +1143,16 @@ export const registerRoutes = async (
     alertRecipientResolver,
     kmsDataKeyService,
     smtpService,
-    slackIntegrationDAL
+    slackIntegrationDAL,
+    alertSlackMessageDAL,
+    alertMessageResolution
   });
   const alertQueue = alertQueueServiceFactory({
     cronJob,
     queueService,
     alertDAL,
     alertHistoryDAL,
+    alertSlackMessageDAL,
     alertProviderRegistry,
     alertEngine
   });
@@ -1148,6 +1161,12 @@ export const registerRoutes = async (
       alertDAL,
       alertEngine,
       alertProviderRegistry
+    })
+  );
+  domains.events.registerConsumer(
+    alertMessageResolutionConsumerFactory({
+      alertProviderRegistry,
+      alertMessageResolution
     })
   );
 
@@ -3245,32 +3264,6 @@ export const registerRoutes = async (
     licenseService
   });
 
-  // DAILY
-  const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
-    scimService,
-    auditLogDAL,
-    auditLogService,
-    cronJob,
-    secretVersionDAL,
-    secretFolderVersionDAL: folderVersionDAL,
-    identityAccessTokenDAL,
-    identityAccessTokenRevocationDAL,
-    secretSharingDAL,
-    secretVersionV2DAL: secretVersionV2BridgeDAL,
-    identityUniversalAuthClientSecretDAL: identityUaClientSecretDAL,
-    serviceTokenService,
-    orgService,
-    userNotificationDAL,
-    keyValueStoreDAL,
-    approvalRequestDAL,
-    approvalRequestGrantsDAL,
-    certificateRequestDAL,
-    scepTransactionDAL,
-    honeyTokenCleanupQueue,
-    agentVaultSessionInlineServiceDAL,
-    agentVaultSessionInlineSkillDAL
-  });
-
   const healthAlert = healthAlertServiceFactory({
     gatewayV2Service,
     cronJob,
@@ -4228,6 +4221,32 @@ export const registerRoutes = async (
     eventEmitter,
     autoApprovalService,
     resources: approvalResources
+  });
+
+  // DAILY
+  const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
+    scimService,
+    auditLogDAL,
+    auditLogService,
+    cronJob,
+    secretVersionDAL,
+    secretFolderVersionDAL: folderVersionDAL,
+    identityAccessTokenDAL,
+    identityAccessTokenRevocationDAL,
+    secretSharingDAL,
+    secretVersionV2DAL: secretVersionV2BridgeDAL,
+    identityUniversalAuthClientSecretDAL: identityUaClientSecretDAL,
+    serviceTokenService,
+    orgService,
+    userNotificationDAL,
+    keyValueStoreDAL,
+    approvalPolicyService,
+    approvalRequestGrantsDAL,
+    certificateRequestDAL,
+    scepTransactionDAL,
+    honeyTokenCleanupQueue,
+    agentVaultSessionInlineServiceDAL,
+    agentVaultSessionInlineSkillDAL
   });
 
   const certificateService = certificateServiceFactory({
