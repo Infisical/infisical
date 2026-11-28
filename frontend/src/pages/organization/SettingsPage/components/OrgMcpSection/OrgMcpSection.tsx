@@ -11,7 +11,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  Badge,
   Card,
   CardContent,
   CardDescription,
@@ -34,12 +33,7 @@ export const OrgMcpSection = () => {
   const [isTurnOffOpen, setIsTurnOffOpen] = useState(false);
 
   const updateMcpEnabled = async (mcpEnabled: boolean) => {
-    try {
-      await mutateAsync({ orgId: currentOrg.id, mcpEnabled });
-    } catch {
-      // The request error toast already says why, and the dialog stays open to retry.
-      return;
-    }
+    await mutateAsync({ orgId: currentOrg.id, mcpEnabled });
     setIsTurnOffOpen(false);
     createNotification({
       text: `MCP access turned ${mcpEnabled ? "on" : "off"}`,
@@ -64,10 +58,7 @@ export const OrgMcpSection = () => {
           <FieldGroup>
             <Field orientation="horizontal">
               <FieldContent>
-                <FieldTitle>
-                  Allow MCP Clients
-                  {!currentOrg.mcpEnabled && <Badge variant="neutral">Off</Badge>}
-                </FieldTitle>
+                <FieldTitle>Allow MCP Clients</FieldTitle>
                 <FieldDescription>
                   Members can connect AI tools such as Claude Code and use them within their own
                   permissions.
