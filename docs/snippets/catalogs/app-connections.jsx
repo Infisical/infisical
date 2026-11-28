@@ -738,6 +738,14 @@ export const appConnections = [
     category: "Monitoring",
   },
   {
+    name: "Rippling",
+    slug: "rippling",
+    path: "/integrations/app-connections/rippling",
+    description:
+      "Learn how to connect Rippling so Infisical can check device posture before PAM access.",
+    category: "Security",
+  },
+  {
     name: "Jenkins",
     slug: "jenkins",
     path: "/integrations/app-connections/jenkins",

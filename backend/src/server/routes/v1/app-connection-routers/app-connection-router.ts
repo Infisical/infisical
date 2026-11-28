@@ -251,6 +251,10 @@ import {
   SanitizedRfc2136ConnectionSchema
 } from "@app/services/app-connection/rfc2136";
 import {
+  RipplingConnectionListItemSchema,
+  SanitizedRipplingConnectionSchema
+} from "@app/services/app-connection/rippling";
+import {
   RundeckConnectionListItemSchema,
   SanitizedRundeckConnectionSchema
 } from "@app/services/app-connection/rundeck";
@@ -418,6 +422,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedJiraConnectionSchema.options,
   ...SanitizedClickHouseConnectionSchema.options,
   ...SanitizedIncidentIoConnectionSchema.options,
+  ...SanitizedRipplingConnectionSchema.options,
   ...SanitizedRfc2136ConnectionSchema.options
 ]);
 
@@ -521,6 +526,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   JiraConnectionListItemSchema,
   ClickHouseConnectionListItemSchema,
   IncidentIoConnectionListItemSchema,
+  RipplingConnectionListItemSchema,
   Rfc2136ConnectionListItemSchema
 ]);
 

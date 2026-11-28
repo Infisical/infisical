@@ -45,6 +45,7 @@ To use the template, choose it when you [add an account](/documentation/platform
 | **Allow Auto-Approval** | Requests that pass one of the folder's rules are approved as soon as they're submitted (see [Auto-approval](/documentation/platform/pam/access-requests/auto-approval)) |
 | **Allow Break-Glass** | Named responders can approve their own access requests in an emergency (see [Break-glass access](/documentation/platform/pam/access-requests/break-glass)) |
 | **Require MFA** | Users must complete an MFA challenge before they connect |
+| **Require Device Posture** | Users must connect from a company-managed device that passes the checks you choose, such as disk encryption in Rippling (see [Device posture](/documentation/platform/pam/templates/device-posture)) |
 | **Require Reason** | Users must give a reason before they connect |
 | **Max Session Duration** | Infisical ends each session after this many seconds (60 to 86,400, or 900 to 86,400 for [AWS IAM](/documentation/platform/pam/accounts/aws-iam#session-duration)). It doesn't limit how long approved access lasts |
 | **Max Access Duration** | The longest access a user can request, in seconds (60 to 604,800, or 900 to 604,800 for [AWS IAM](/documentation/platform/pam/accounts/aws-iam#session-duration)). Without it, users can request up to 7 days. Only available with **Require Approval** |
@@ -55,7 +56,7 @@ To use the template, choose it when you [add an account](/documentation/platform
 
 **Max Session Duration** and **Max Access Duration** limit different things. For example, with a **Max Access Duration** of 1 day and a **Max Session Duration** of 1 hour, an approved user can start sessions for 1 day, and each session ends after 1 hour or when the access ends, whichever comes first.
 
-Machine identities can't complete an MFA challenge. They can't connect to accounts whose template has **Require MFA** on. If an [AI agent](/documentation/platform/pam/ai-agents/overview#accounts-that-require-mfa) runs as you, it gives you a link to complete MFA in your browser. If an agent runs as a machine identity and needs an account, use **Require Approval** instead.
+Machine identities can't complete an MFA challenge. They can't connect to accounts whose template has **Require MFA** on. If an [AI agent](/documentation/platform/pam/ai-agents/overview#accounts-that-require-mfa) runs as you, it gives you a link to complete MFA in your browser. If an agent runs as a machine identity and needs an account, use **Require Approval** instead. Machine identities also can't use accounts whose template has **Require Device Posture**, because they have no device.
 
 ### Output masking
 

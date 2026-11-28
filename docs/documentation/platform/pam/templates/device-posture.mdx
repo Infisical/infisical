@@ -1,0 +1,141 @@
+---
+title: "Device posture"
+sidebarTitle: "Device posture"
+description: "Require users to have a company-managed device that passes the checks you choose before they reach PAM accounts."
+---
+
+Device posture checks require users to have a computer your company manages before they reach sensitive [accounts](/documentation/platform/pam/accounts/overview). For example, you can require that users have a laptop that Rippling manages, that's assigned to them, and that has its disk encrypted before they reach a production database. The checks rely on the serial number the user's computer reports, so they confirm the user has a compliant managed device, not which computer the request came from. See [Device identification](#device-identification).
+
+To turn the checks on, a [Product Admin](/documentation/platform/pam/concepts/access-control#product-membership) adds the **Require Device Posture** policy to an [account template](/documentation/platform/pam/templates/overview). The policy then applies to every account that uses the template.
+
+## Device checks
+
+The policy lists one or more device posture providers, each with its own checks. The device must pass the checks of every provider. Rippling, a device management (MDM) service, is the only provider.
+
+### Actions that trigger a check
+
+Infisical requires a passed device check, and refuses the action without one, when a user does one of the following on an account that requires device posture. A passed check can be used for 5 minutes, for the same account and action:
+
+- Submits an [access request](/documentation/platform/pam/access-requests/overview)
+- Starts a [session](/documentation/platform/pam/sessions/overview), from the CLI or the browser
+- Reveals the account's [credentials](/documentation/platform/pam/accounts/view-credentials)
+
+Machine identities have no device, so they can't use accounts whose template has **Require Device Posture**.
+
+Every device check adds a **Check PAM Device Posture** event to the [audit log](/documentation/platform/pam/auditing), with the result, the device's serial number, and the checks that failed.
+
+### Device identification
+
+The [Infisical CLI](/cli/overview) reads the computer's hardware serial number, and Infisical looks up the device with that serial number in Rippling. Everything else Infisical checks, such as disk encryption and the OS version, comes from Rippling, not from the computer. The CLI can read the serial number on macOS and Windows. On Linux, the serial number must be readable by the user who runs the CLI.
+
+<Warning>
+  Device checks aren't hardware-backed attestation. Infisical trusts the serial number that the CLI sends from the user's computer, so a user could send the serial number of another device that Rippling assigns to them. Treat a passed check as confirmation that the user is on a company-managed device, not as proof of which computer sent the request.
+</Warning>
+
+## Prerequisites
+
+- The [Product Admin](/documentation/platform/pam/concepts/access-control#product-membership) role in PAM
+- A [Rippling connection](/integrations/app-connections/rippling) whose API token can read the devices and workers that your users connect from
+- The [Infisical CLI](/cli/overview) on each user's computer
+
+## Set up device posture
+
+<Steps>
+  <Step>
+    Go to **Privileged Access Management** > **Account Templates** and open the template.
+  </Step>
+  <Step>
+    On the **General** tab, next to **Require Device Posture**, select **Add Provider** and choose **Rippling**.
+  </Step>
+  <Step>
+    Under **Connection**, choose your Rippling connection. If you haven't created one yet, you can create it from the same list.
+  </Step>
+  <Step>
+    Under **Checks**, choose the [Rippling checks](#rippling-checks) the device must pass. A new Rippling provider starts with **Disk Encrypted** and **Recent Check-In** selected.
+  </Step>
+  <Step>
+    Select **Save Changes**.
+  </Step>
+</Steps>
+
+To stop checking devices, remove every provider from the policy and save the template.
+
+### Rippling checks
+
+Every Rippling provider runs the **Managed Device** check, which passes when:
+
+- Rippling manages the device
+- Rippling assigns the device to a worker whose work email matches the user's email address in Infisical
+- The device isn't locked, lost, wiped, or otherwise inactive
+- Rippling has a worker with the user's Infisical email, and that worker isn't terminated
+
+You can add these checks:
+
+| Check | Passes when |
+| --- | --- |
+| **Disk Encrypted** | FileVault or BitLocker is on |
+| **Minimum OS Version** | The device's OS version is at least the minimum you enter for its platform. macOS and Windows have separate minimums, such as `15.0` and `10.0.22631`. If you leave a platform empty, any version passes. The check doesn't apply to Linux devices |
+| **No Pending OS Update** | Rippling has no OS update queued for the device |
+| **Recent Check-In** | The device reported to Rippling within the number of hours you enter (1 to 720, default 24) |
+
+If Infisical can't reach Rippling, or Rippling rejects the connection's token, the device check fails.
+
+## Check your device
+
+Users check their device with the Infisical CLI, whether they connect from the CLI or from the browser.
+
+<Tabs>
+  <Tab title="CLI">
+    [`infisical pam access`](/cli/reference#pam-access) checks the device automatically when the account needs it, before it opens the session. It also checks the device when it files an access request. The CLI prints each check, grouped by provider, and stops if a check fails.
+  </Tab>
+  <Tab title="Browser">
+    <Steps>
+      <Step>
+        When you launch a session or reveal credentials, Infisical starts the device check on its own. When you request access, select **Verify Device**.
+      </Step>
+      <Step>
+        In a terminal on the same computer, run the [`infisical pam verify-device`](/cli/reference#pam-verify-device) command that Infisical shows, such as `infisical pam verify-device ABCD-EF23`. The CLI must be logged in as the same user as the browser, and the code expires after 5 minutes.
+      </Step>
+      <Step>
+        Return to your browser. Infisical shows each check and whether the device passed.
+      </Step>
+    </Steps>
+
+    A passed check is valid for 5 minutes. If a check fails, fix the problem, then select **Check Again**. Changes in Rippling can take a few minutes to show up.
+  </Tab>
+</Tabs>
+
+## Auto-approve requests from a passing device
+
+A folder's [auto-approval](/documentation/platform/pam/access-requests/auto-approval#device-posture) rules can also check the requester's device. If the device passes the rule's checks, Infisical approves the request without waiting for an approver. Access that the rule approves can only be used from the device that was checked.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="The device isn't in Rippling">
+    The check shows that the serial number isn't in Rippling, or that Rippling doesn't manage the device. Enroll the device in Rippling, or connect from a device that Rippling already manages.
+  </Accordion>
+  <Accordion title="The device is assigned to a different person">
+    Rippling assigns the device to a worker whose work email doesn't match your email address in Infisical. Ask your IT team to assign the device to you in Rippling, or to make your Rippling work email match your Infisical email address.
+  </Accordion>
+  <Accordion title="The CLI can't read the serial number on Linux">
+    On most Linux systems, only root can read the serial number. Ask your IT team to make `/sys/class/dmi/id/product_serial` readable by your user, for example with a `udev` rule. Don't run the CLI as root for this, since the whole session would then run as root. Virtual machines and some hardware don't have a readable serial number.
+  </Accordion>
+  <Accordion title="The code expired">
+    Each code works once and expires after 5 minutes. Select **Try Again** in the browser to get a new code, then run the new command.
+  </Accordion>
+  <Accordion title="Rippling rejected the API token">
+    Rippling revokes an API token that goes unused for 30 days. Until you replace the token, every device check fails with an error that says Rippling rejected the token. [Create a new token](/integrations/app-connections/rippling#step-1-create-an-api-token) in Rippling, then update the Rippling connection in Infisical with it.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Account templates" icon="layer-group" href="/documentation/platform/pam/templates/overview">
+    See the other policies a template can set.
+  </Card>
+  <Card title="Auto-approval" icon="bolt" href="/documentation/platform/pam/access-requests/auto-approval">
+    Approve requests from a device that passes your checks.
+  </Card>
+</CardGroup>

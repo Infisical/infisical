@@ -2,6 +2,7 @@ import { registerPamAccessRequestRouter } from "./pam-access-request-router";
 import { registerPamAccountRouter } from "./pam-account-router";
 import { registerPamAccountTemplateRouter } from "./pam-account-template-router";
 import { registerPamApprovalConfigurationRouter } from "./pam-approval-configuration-router";
+import { registerPamDeviceVerificationRouter } from "./pam-device-verification-router";
 import { registerPamDiscoveryRouter } from "./pam-discovery-router";
 import { registerPamFolderRouter } from "./pam-folder-router";
 import {
@@ -44,4 +45,5 @@ export const registerPamRouters = async (server: FastifyZodProvider) => {
     { prefix: "/sessions" }
   );
   await server.register(registerPamAccessRequestRouter, { prefix: "/access-requests" });
+  await server.register(registerPamDeviceVerificationRouter, { prefix: "/device-verifications" });
 };

@@ -8,6 +8,8 @@ import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gatewa
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { PAM_DEVICE_POSTURE_PROVIDER_APPS } from "@app/ee/services/pam-device-posture/pam-device-posture-enums";
+import { PamDevicePosturePolicySchema } from "@app/ee/services/pam-device-posture/pam-device-posture-schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAiServiceFactory } from "@app/services/ai/ai-service";
@@ -32,6 +34,7 @@ import {
   evaluateAutoApprovalRules,
   getAutoApprovalSubjectKey,
   isAiCondition,
+  isDevicePostureCondition,
   TAiConditionResult,
   TResolvedAutoApprovalSubject
 } from "./auto-approval-fns";
@@ -51,6 +54,10 @@ import {
 import {
   AUTO_APPROVAL_AI_CONSTRAINT,
   AUTO_APPROVAL_AI_CONSTRAINT_LABEL,
+  AUTO_APPROVAL_DEVICE_POSTURE_CONSTRAINT,
+  AUTO_APPROVAL_DEVICE_POSTURE_CONSTRAINT_LABEL,
+  AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT,
+  AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT_LABEL,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AUTO_APPROVAL_UNUSED_CONSTRAINT,
   AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL,
@@ -270,6 +277,19 @@ export const autoApprovalServiceFactory = ({
       });
     }
 
+    const devicePostureConnections = new Map<string, AppConnection>();
+    config.rules.forEach((rule) =>
+      rule.conditions.forEach((condition) => {
+        if (!isDevicePostureCondition(condition)) return;
+        condition.devicePosture?.providers.forEach((provider) =>
+          devicePostureConnections.set(provider.connectionId, PAM_DEVICE_POSTURE_PROVIDER_APPS[provider.provider])
+        );
+      })
+    );
+    for await (const [connectionId, app] of devicePostureConnections) {
+      await appConnectionService.validateAppConnectionUsageById([app], { connectionId, projectId }, actor);
+    }
+
     for await (const connectionId of contextConnectionIds) {
       await appConnectionService.validateAppConnectionUsageById(AI_CONTEXT_APPS, { connectionId, projectId }, actor);
     }
@@ -317,6 +337,10 @@ export const autoApprovalServiceFactory = ({
       const name = rule.name.trim();
       const connectionIdByKind = new Map<string, string>();
 
+      if (rule.conditions.filter(isDevicePostureCondition).length > 1) {
+        throw new BadRequestError({ message: `Rule '${name}' has more than one device posture check` });
+      }
+
       if (rule.conditions.filter(isAiCondition).length > 1) {
         throw new BadRequestError({
           message: `Rule '${name}' has more than one AI check. Combine their instructions into one.`
@@ -358,6 +382,43 @@ export const autoApprovalServiceFactory = ({
           throw new BadRequestError({
             message: `Rule '${name}': only AI checks take instructions and context connections`
           });
+        }
+
+        if (isDevicePostureCondition(condition)) {
+          const check = `${AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT_LABEL} ${AUTO_APPROVAL_DEVICE_POSTURE_CONSTRAINT_LABEL}`;
+          if (condition.connectionId || condition.values.length) {
+            throw new BadRequestError({
+              message: `Rule '${name}': '${check}' takes no connection or values. Set its providers instead.`
+            });
+          }
+          if (condition.constraint !== AUTO_APPROVAL_DEVICE_POSTURE_CONSTRAINT) {
+            throw new BadRequestError({
+              message: `Rule '${name}' uses '${condition.constraint}', which is not a device check. Use: ${AUTO_APPROVAL_DEVICE_POSTURE_CONSTRAINT}`
+            });
+          }
+          if (!condition.devicePosture) {
+            throw new BadRequestError({
+              message: `Rule '${name}': '${check}' needs the device posture providers the device must pass`
+            });
+          }
+          const parsed = PamDevicePosturePolicySchema.safeParse(condition.devicePosture);
+          if (!parsed.success) {
+            throw new BadRequestError({
+              message: `Rule '${name}': '${check}' ${parsed.error.issues.map((issue) => issue.message).join("; ")}`
+            });
+          }
+          return {
+            ...condition,
+            connectionId: null,
+            values: [],
+            prompt: null,
+            contextConnectionIds: [],
+            devicePosture: parsed.data
+          };
+        }
+
+        if (condition.devicePosture) {
+          throw new BadRequestError({ message: `Rule '${name}': only device checks take device posture providers` });
         }
 
         if (isRequesterCheck(condition)) {
@@ -498,14 +559,15 @@ export const autoApprovalServiceFactory = ({
       id: rule.id,
       name: rule.name,
       conditions: rule.conditions.map(
-        ({ id, connectionId, subject, constraint, values, prompt, contextConnectionIds }) => ({
+        ({ id, connectionId, subject, constraint, values, prompt, contextConnectionIds, devicePosture }) => ({
           id,
           connectionId,
           subject,
           constraint,
           values,
           prompt,
-          contextConnectionIds
+          contextConnectionIds,
+          devicePosture: devicePosture ?? null
         })
       )
     }))
@@ -772,6 +834,21 @@ export const autoApprovalServiceFactory = ({
         label: REQUESTER_CHECKS.label,
         definition: REQUESTER_CHECKS,
         ...(await $resolveRequesterChecks({ projectId, requesterId, conditions: requesterChecks }))
+      });
+    }
+    if (ctx.device && stored.rules.some((rule) => rule.conditions.some(isDevicePostureCondition))) {
+      resolved.set(AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT, {
+        connectionId: null,
+        subject: AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT,
+        inputId: null,
+        label: AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT_LABEL,
+        definition: null,
+        facts: {
+          verificationId: ctx.device.verificationId,
+          serialNumber: ctx.device.serialNumber,
+          providers: ctx.device.facts
+        },
+        error: null
       });
     }
     const stableIdByInputId = new Map(

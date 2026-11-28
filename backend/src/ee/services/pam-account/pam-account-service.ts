@@ -40,6 +40,7 @@ import {
 } from "../pam-account-heartbeat/pam-heartbeat-fns";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
+import { TPamDevicePostureServiceFactory } from "../pam-device-posture/pam-device-posture-service";
 import { TPamDiscoverySourceDALFactory } from "../pam-discovery/pam-discovery-source-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
@@ -107,6 +108,7 @@ import {
 } from "./pam-account-types";
 
 type TPamAccountServiceFactoryDep = {
+  pamDevicePostureService: Pick<TPamDevicePostureServiceFactory, "enforce">;
   pamAccountDAL: TPamAccountDALFactory;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findById">;
   pamAccountTemplateDAL: Pick<TPamAccountTemplateDALFactory, "findById">;
@@ -445,6 +447,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         supportsCredentialReveal: revealableById.get(a.id) ?? false,
         requireReason,
         maxAccessDurationSeconds,
+        requireDevicePosture: Boolean(resolveAccessControls(a.templatePolicies).devicePosture),
         accessStatus: requiresApproval
           ? (statusEntry?.accessStatus ?? ApprovalAccessStatus.None)
           : ApprovalAccessStatus.None,
@@ -517,6 +520,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     reason,
     mfaSessionId,
     tokenVersionId,
+    deviceVerificationId,
     actor: ctx
   }: TGetPamAccountCredentialsDTO & TActorInput) => {
     await verifyMembership(projectId, ctx);
@@ -548,7 +552,6 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           message: "Approval is required to view this account's credentials"
         });
       }
-
       if (grant.expiresAt) {
         if (new Date(grant.expiresAt).getTime() <= Date.now()) {
           throw new ForbiddenRequestError({
@@ -566,6 +569,14 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         message: "A reason is required to view this account's credentials"
       });
     }
+
+    const { grant: deviceGrant } = await deps.pamDevicePostureService.enforce({
+      account,
+      accessType: PamAccessType.Credential,
+      deviceVerificationId,
+      actor: ctx
+    });
+    if (deviceGrant) grantExpiresAt = deviceGrant.expiresAt ? new Date(deviceGrant.expiresAt) : null;
 
     if (policy.requireMfa) {
       if (ctx.principal.type !== ActorType.USER) {
@@ -1358,6 +1369,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           requiresApproval,
           requireReason,
           maxAccessDurationSeconds,
+          requireDevicePosture: Boolean(resolveAccessControls(a.templatePolicies).devicePosture),
           // Machine identities cannot satisfy MFA, so launch rejects them outright (see
           // pam-session-service). Callers acting as an identity should treat this as unusable.
           requireMfa,

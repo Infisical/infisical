@@ -96,6 +96,7 @@ export enum AppConnection {
   Jira = "jira",
   ClickHouse = "clickhouse",
   IncidentIo = "incident-io",
+  Rippling = "rippling",
   Jenkins = "jenkins",
   Coolify = "coolify",
   Rfc2136 = "rfc2136"

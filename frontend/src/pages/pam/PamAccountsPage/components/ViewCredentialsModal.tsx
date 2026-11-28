@@ -22,13 +22,19 @@ import {
 } from "@app/components/v3";
 import { useTimedReset } from "@app/hooks";
 import {
+  PAM_DEVICE_VERIFICATION_REQUIRED,
+  PamAccessType,
   PamAccountType,
   TPamAccountCredentials,
   usePamAccountCredentials,
   usePamAccountTypeMap
 } from "@app/hooks/api/pam";
 
+import { DeviceVerification } from "../../components/DeviceVerification";
 import { extractMfaSessionId, useMfaChallenge } from "../../components/useMfaChallenge";
+
+const getErrorCode = (err: unknown) =>
+  (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
 
 type Props = {
   accountId?: string;
@@ -111,6 +117,8 @@ export const ViewCredentialsModal = ({
   const [credentials, setCredentials] = useState<TPamAccountCredentials>();
   const [errorMessage, setErrorMessage] = useState("");
   const [isVerifyingMfa, setIsVerifyingMfa] = useState(false);
+  const [needsDeviceCheck, setNeedsDeviceCheck] = useState(false);
+  const [deviceVerificationId, setDeviceVerificationId] = useState<string>();
 
   const openAccountId = useRef(accountId);
 
@@ -121,11 +129,13 @@ export const ViewCredentialsModal = ({
       setCredentials(undefined);
       setErrorMessage("");
       setIsVerifyingMfa(false);
+      setNeedsDeviceCheck(false);
+      setDeviceVerificationId(undefined);
     }
   }, [isOpen, accountId]);
 
   // Recurses at most once: a retry already carrying an MFA session never re-enters the challenge
-  const reveal = async (mfaSessionId?: string) => {
+  const reveal = async (mfaSessionId?: string, verificationId = deviceVerificationId) => {
     if (!accountId) return;
     const isStale = () => openAccountId.current !== accountId;
     setErrorMessage("");
@@ -134,11 +144,18 @@ export const ViewCredentialsModal = ({
       const revealed = await fetchCredentials.mutateAsync({
         accountId,
         reason: reason.trim() || undefined,
-        mfaSessionId
+        mfaSessionId,
+        deviceVerificationId: verificationId
       });
       if (!isStale()) setCredentials(revealed);
     } catch (err) {
       if (isStale()) return;
+
+      if (getErrorCode(err) === PAM_DEVICE_VERIFICATION_REQUIRED) {
+        setDeviceVerificationId(undefined);
+        setNeedsDeviceCheck(true);
+        return;
+      }
 
       const challengeId = mfaSessionId ? undefined : extractMfaSessionId(err);
       if (!challengeId) return;
@@ -148,7 +165,7 @@ export const ViewCredentialsModal = ({
       if (isStale()) return;
 
       setIsVerifyingMfa(false);
-      if (outcome === "verified") await reveal(challengeId);
+      if (outcome === "verified") await reveal(challengeId, verificationId);
       else setErrorMessage(MFA_FAILURE_MESSAGE[outcome]);
     }
   };
@@ -219,6 +236,20 @@ export const ViewCredentialsModal = ({
               />
             </FieldContent>
           </Field>
+        )}
+
+        {!credentials && needsDeviceCheck && accountId && (
+          <DeviceVerification
+            accountId={accountId}
+            accessType={PamAccessType.Credential}
+            onExpired={() => setDeviceVerificationId(undefined)}
+            autoStart
+            onVerified={(verificationId) => {
+              setDeviceVerificationId(verificationId);
+              setNeedsDeviceCheck(false);
+              reveal(undefined, verificationId);
+            }}
+          />
         )}
 
         <DialogFooter>

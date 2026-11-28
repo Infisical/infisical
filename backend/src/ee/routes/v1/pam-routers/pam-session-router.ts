@@ -298,6 +298,13 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           .optional()
           .describe("Session duration (e.g. '1h', '30m'). Capped at the account's max session duration."),
         mfaSessionId: z.string().max(64).optional().describe("MFA session ID from a completed MFA verification"),
+        deviceVerificationId: z
+          .string()
+          .uuid()
+          .optional()
+          .describe(
+            "A passed device check from POST /api/v1/pam/device-verifications. Required when the account's template requires device posture, or the access was approved for one device."
+          ),
         accessMethod: z
           .nativeEnum(PamAccessMethod)
           .optional()
@@ -360,7 +367,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         mfaSessionId: req.body.mfaSessionId,
         tokenVersionId: isUserSessionAuth(req.auth) ? req.auth.tokenVersionId : undefined,
         accessMethod: req.body.accessMethod === "web" ? PamAccessMethod.Web : PamAccessMethod.Cli,
-        targetHost: req.body.targetHost
+        targetHost: req.body.targetHost,
+        deviceVerificationId: req.body.deviceVerificationId
       });
 
       await server.services.auditLog.createAuditLog({
@@ -425,6 +433,13 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           .optional()
           .describe("Optional reason for the session"),
         mfaSessionId: z.string().max(64).optional().describe("MFA session ID from a completed MFA verification"),
+        deviceVerificationId: z
+          .string()
+          .uuid()
+          .optional()
+          .describe(
+            "A passed device check from POST /api/v1/pam/device-verifications. Required when the account's template requires device posture, or the access was approved for one device."
+          ),
         selectedHost: z
           .string()
           .trim()
@@ -455,7 +470,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         auditLogInfo: req.auditLogInfo,
         reason: req.body.reason,
         mfaSessionId: req.body.mfaSessionId,
-        selectedHost: req.body.selectedHost
+        selectedHost: req.body.selectedHost,
+        deviceVerificationId: req.body.deviceVerificationId
       });
 
       return { ticket };

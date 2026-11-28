@@ -1,6 +1,7 @@
 import {
   ApproverType,
   AUTO_APPROVAL_AI_SUBJECT,
+  AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT,
   AUTO_APPROVAL_REQUESTER_CONSTRAINT,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AutoApprovalConstraintValue,
@@ -10,6 +11,8 @@ import {
   TAutoApprovalConfig,
   TAutoApprovalConfigResponse
 } from "@app/hooks/api/approvalPolicies";
+import { TPamDevicePosturePolicy } from "@app/hooks/api/pam";
+import { getDevicePosturePolicyError } from "@app/pages/pam/components/policyEditors/DevicePosturePolicyEditor";
 
 // Client keys keep React rows stable while rules and conditions are edited
 export type TDraftCondition = {
@@ -21,6 +24,7 @@ export type TDraftCondition = {
   values: string[];
   prompt?: string;
   contextConnectionIds?: string[];
+  devicePosture?: TPamDevicePosturePolicy | null;
 };
 
 export type TDraftRule = { key: string; name: string; conditions: TDraftCondition[] };
@@ -87,6 +91,9 @@ export const toAutoApprovalDraft = (config?: TAutoApprovalConfigResponse): TAuto
       ...(condition.subject === AUTO_APPROVAL_AI_SUBJECT && {
         prompt: condition.prompt ?? "",
         contextConnectionIds: condition.contextConnectionIds
+      }),
+      ...(condition.subject === AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT && {
+        devicePosture: condition.devicePosture ?? { providers: [] }
       })
     }))
   }))
@@ -97,8 +104,25 @@ export const toAutoApprovalConfig = (draft: TAutoApprovalDraft): TAutoApprovalCo
   rules: draft.rules.map((rule) => ({
     name: rule.name.trim(),
     conditions: rule.conditions.map(
-      ({ connectionId, subject, constraint, values, prompt, contextConnectionIds }) =>
-        subject === AUTO_APPROVAL_AI_SUBJECT
+      ({
+        connectionId,
+        subject,
+        constraint,
+        values,
+        prompt,
+        contextConnectionIds,
+        devicePosture
+      }) => {
+        if (subject === AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT) {
+          return {
+            connectionId: null,
+            subject,
+            constraint,
+            values: [],
+            devicePosture: devicePosture ?? { providers: [] }
+          };
+        }
+        return subject === AUTO_APPROVAL_AI_SUBJECT
           ? {
               connectionId: null,
               subject,
@@ -107,7 +131,8 @@ export const toAutoApprovalConfig = (draft: TAutoApprovalDraft): TAutoApprovalCo
               prompt: prompt?.trim() ?? "",
               contextConnectionIds: contextConnectionIds ?? []
             }
-          : { connectionId: connectionId || null, subject, constraint, values }
+          : { connectionId: connectionId || null, subject, constraint, values };
+      }
     )
   }))
 });
@@ -154,10 +179,15 @@ export const isRequesterCheck = (condition: Pick<TDraftCondition, "subject" | "c
 export const isAiCondition = (condition: Pick<TDraftCondition, "subject">) =>
   condition.subject === AUTO_APPROVAL_AI_SUBJECT;
 
+export const isDevicePostureCondition = (condition: Pick<TDraftCondition, "subject">) =>
+  condition.subject === AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT;
+
 export const getConditionError = (
   condition: TDraftCondition,
   catalog: TAutoApprovalCatalogConnection[] | undefined
 ): string | null => {
+  if (isDevicePostureCondition(condition))
+    return getDevicePosturePolicyError(condition.devicePosture);
   if (isAiCondition(condition)) {
     if (!condition.prompt?.trim()) return "Describe when the AI should approve";
     if (condition.prompt.length > AUTO_APPROVAL_LIMITS.aiPromptLength) {

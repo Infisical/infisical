@@ -1,6 +1,10 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import {
+  PamDevicePosturePolicySchema,
+  TPamDevicePosturePolicy
+} from "../pam-device-posture/pam-device-posture-schemas";
 import { PamAccountType } from "./pam-enums";
 
 export enum PamPolicyType {
@@ -12,7 +16,8 @@ export enum PamPolicyType {
   MaxSessionDuration = "max-session-duration",
   MaxAccessDuration = "max-access-duration",
   CommandBlocking = "command-blocking",
-  OutputMasking = "output-masking"
+  OutputMasking = "output-masking",
+  DevicePosture = "device-posture"
 }
 
 export const PAM_MAX_ACCESS_DURATION_SECONDS = 604_800;
@@ -141,6 +146,12 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
     description: "Users must re-authenticate with MFA before accessing.",
     appliesTo: "all",
     schema: z.boolean()
+  },
+  [PamPolicyType.DevicePosture]: {
+    label: "Require Device Posture",
+    description: "Users must connect from a managed device that passes the checks you choose.",
+    appliesTo: "all",
+    schema: PamDevicePosturePolicySchema
   },
   [PamPolicyType.RequireReason]: {
     label: "Require Reason",
@@ -278,6 +289,7 @@ export type TPamAccessControls = {
   requireMfa: boolean;
   maxSessionDurationSeconds: number | null;
   maxAccessDurationSeconds: number | null;
+  devicePosture: TPamDevicePosturePolicy | null;
 };
 
 const PamPolicyRulePatternSchema = z.object({ patterns: z.array(z.string()) });
@@ -373,6 +385,16 @@ export const outputMaskingGatewayOptions = (account: {
       }
     : {};
 
+// A stored policy that no longer parses still requires a device check, which then fails closed
+const resolveDevicePosture = (policyMap: unknown): TPamDevicePosturePolicy | null => {
+  const raw =
+    policyMap && typeof policyMap === "object"
+      ? (policyMap as Record<string, unknown>)[PamPolicyType.DevicePosture]
+      : undefined;
+  if (raw === undefined || raw === null) return null;
+  return (resolvePolicy(policyMap, PamPolicyType.DevicePosture) as TPamDevicePosturePolicy | null) ?? { providers: [] };
+};
+
 export const resolveAccessControls = (policyMap: unknown): TPamAccessControls => {
   const duration = resolvePolicy(policyMap, PamPolicyType.MaxSessionDuration);
   const accessDuration = resolvePolicy(policyMap, PamPolicyType.MaxAccessDuration);
@@ -384,6 +406,7 @@ export const resolveAccessControls = (policyMap: unknown): TPamAccessControls =>
     requireReason: resolvePolicy(policyMap, PamPolicyType.RequireReason) === true,
     requireMfa: resolvePolicy(policyMap, PamPolicyType.RequireMfa) === true,
     maxSessionDurationSeconds: typeof duration === "number" ? duration : null,
-    maxAccessDurationSeconds: requiresApproval && typeof accessDuration === "number" ? accessDuration : null
+    maxAccessDurationSeconds: requiresApproval && typeof accessDuration === "number" ? accessDuration : null,
+    devicePosture: resolveDevicePosture(policyMap)
   };
 };

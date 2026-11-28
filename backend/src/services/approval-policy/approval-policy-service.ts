@@ -89,7 +89,11 @@ import {
   TApprovalRequestStepsDALFactory
 } from "./approval-request-dal";
 import { createApprovalRequestWithSteps } from "./approval-request-fns";
-import { getClosestFailedRule, toAutoApprovalOutcome } from "./auto-approval/auto-approval-fns";
+import {
+  getClosestFailedRule,
+  isDevicePostureCondition,
+  toAutoApprovalOutcome
+} from "./auto-approval/auto-approval-fns";
 import { TAutoApprovalServiceFactory } from "./auto-approval/auto-approval-service";
 import {
   AUTO_APPROVAL_UNUSED_CONSTRAINT,
@@ -418,6 +422,10 @@ export const approvalPolicyServiceFactory = ({
       throw new BadRequestError({
         message: `Auto-approval rules aren't available for ${policyType} policies`
       });
+    }
+    const checksDevice = autoApproval?.rules.some((rule) => rule.conditions.some(isDevicePostureCondition));
+    if (checksDevice && !resources[policyType]?.supportsDevicePosture) {
+      throw new BadRequestError({ message: `Device posture checks aren't available for ${policyType} policies` });
     }
   };
 
@@ -1455,6 +1463,13 @@ export const approvalPolicyServiceFactory = ({
           projectId,
           requesterId: actor.id,
           ctx: {
+            device: resource.getAutoApprovalDevice
+              ? await resource.getAutoApprovalDevice({
+                  projectId,
+                  requestData: requestData as TApprovalRequestData,
+                  actor
+                })
+              : null,
             requester: { email: requesterEmail || null },
             request: {
               policyType,
@@ -2359,12 +2374,16 @@ export const approvalPolicyServiceFactory = ({
     data: TApprovalPolicyInputs | TApprovalRequestData
   ) => {
     const stored = (await autoApprovalService.findByPolicyIds([policyId])).get(policyId);
-    if (!stored?.rules.length) return { applies: false, inputs: [] };
+    if (!stored?.rules.length) return { applies: false, inputs: [], checksDevice: false };
 
     const allowed = (await resources[policyType]?.allowsAutoApproval?.({ projectId, requestData: data })) ?? true;
-    if (!allowed) return { applies: false, inputs: [] };
+    if (!allowed) return { applies: false, inputs: [], checksDevice: false };
 
-    return { applies: true, inputs: stored.inputs.length ? await autoApprovalService.getInputDetails(stored) : [] };
+    return {
+      applies: true,
+      inputs: stored.inputs.length ? await autoApprovalService.getInputDetails(stored) : [],
+      checksDevice: stored.rules.some((rule) => rule.conditions.some(isDevicePostureCondition))
+    };
   };
 
   const checkPolicyMatch = async (
@@ -2495,6 +2514,18 @@ export const approvalPolicyServiceFactory = ({
     const now = new Date();
 
     return matched.find((grant) => !grant.expiresAt || new Date(grant.expiresAt) > now) ?? matched[0] ?? null;
+  };
+
+  const getActiveGrants = async (
+    policyType: ApprovalPolicyType,
+    projectId: string,
+    actor: TApprovalSubjectActor,
+    inputs: TApprovalPolicyInputs
+  ) => {
+    const now = new Date();
+    return (await $matchingGrants(policyType, projectId, actor, inputs)).filter(
+      (grant) => !grant.expiresAt || new Date(grant.expiresAt) > now
+    );
   };
 
   const getAccessStatuses = async (
@@ -2798,11 +2829,18 @@ export const approvalPolicyServiceFactory = ({
 
     const autoApproval = policy
       ? await $getAutoApprovalRequestState(policyType, projectId, policy.id, inputs)
-      : { applies: false, inputs: [] };
+      : { applies: false, inputs: [], checksDevice: false };
     // With no approvers, a request is only granted if a rule approves it when it's submitted
     const autoApprovalOnly = autoApproval.applies && !steps.some((step) => step.approvers.length > 0);
 
-    if (steps.length === 0) return { steps: [], autoApprovalInputs: autoApproval.inputs, autoApprovalOnly };
+    if (steps.length === 0) {
+      return {
+        steps: [],
+        autoApprovalInputs: autoApproval.inputs,
+        autoApprovalOnly,
+        autoApprovalDevicePosture: autoApproval.checksDevice
+      };
+    }
 
     const approvers = steps.flatMap((step) => step.approvers);
     const userIds = approvers.filter((a) => a.type === ApproverType.User).map((a) => a.id);
@@ -2826,6 +2864,7 @@ export const approvalPolicyServiceFactory = ({
     return {
       autoApprovalInputs: autoApproval.inputs,
       autoApprovalOnly,
+      autoApprovalDevicePosture: autoApproval.checksDevice,
       steps: steps.map((step) => ({
         requiredApprovals: step.requiredApprovals,
         approvers: step.approvers.map((a) =>
@@ -2965,6 +3004,7 @@ export const approvalPolicyServiceFactory = ({
       $resource(policyType).matchPolicy(projectId, inputs),
     isPendingRequestUndecidable,
     getActiveGrant,
+    getActiveGrants,
     getAccessStatuses,
     getRequestableScopes,
     getBypassableScopeIds,

@@ -4,7 +4,7 @@ sidebarTitle: "Auto-approval"
 description: "Approve PAM access requests as soon as they're submitted when they pass one of the folder's rules."
 ---
 
-Auto-approval approves an [access request](/documentation/platform/pam/access-requests/overview) as soon as it's submitted, if the request passes one of the folder's rules. A rule can check a record the requester links, such as a Jira ticket, check whether the requester is on call in incident.io, check who the requester is or which [groups](/documentation/platform/groups) they're in, have your organization's AI model review the request against your instructions, or combine these. For example, a rule can require that the linked Jira ticket is assigned to the requester and approved in Jira. If no rule passes, the request waits for the folder's approvers, as it would without auto-approval. If the folder has no approvers, the request is rejected as soon as it's submitted. The requester sees why.
+Auto-approval approves an [access request](/documentation/platform/pam/access-requests/overview) as soon as it's submitted, if the request passes one of the folder's rules. A rule can check a record the requester links, such as a Jira ticket, check whether the requester is on call in incident.io, check whether the requester's device passes [device posture](/documentation/platform/pam/templates/device-posture) checks in Rippling, check who the requester is or which [groups](/documentation/platform/groups) they're in, have your organization's AI model review the request against your instructions, or combine these. For example, a rule can require that the linked Jira ticket is assigned to the requester and approved in Jira. If no rule passes, the request waits for the folder's approvers, as it would without auto-approval. If the folder has no approvers, the request is rejected as soon as it's submitted. The requester sees why.
 
 Auto-approval has two settings, each managed by a different role:
 
@@ -19,11 +19,12 @@ Infisical reads each service through an [app connection](/integrations/app-conne
 | --- | --- | --- |
 | Jira Cloud and Jira Data Center | A Jira ticket that the requester links | [Jira connection](/integrations/app-connections/jira) |
 | incident.io | Whether the requester is on call | [incident.io connection](/integrations/app-connections/incident-io) |
+| Rippling | Whether the requester's device passes the posture checks | [Rippling connection](/integrations/app-connections/rippling) |
 
 ## Prerequisites
 
 - Accounts that [require approval](/documentation/platform/pam/access-requests/overview#set-up-approval)
-- If your rules check linked records or the requester's account outside Infisical, an app connection to a [supported service](#supported-services) that can read what your rules check, such as Jira tickets or incident.io schedules
+- If your rules check linked records or the requester's account outside Infisical, an app connection to a [supported service](#supported-services) that can read what your rules check, such as Jira tickets, incident.io schedules, or Rippling devices
 - If your rules use [AI checks](#ai-checks), your organization's [AI model](#set-up-the-ai-model)
 
 ## Turn on auto-approval in a template
@@ -112,6 +113,17 @@ Infisical only checks the schedule when the request is submitted, so the access 
 
 This check doesn't need an app connection. To let engineers access the folder's accounts without waiting for an approver, add a rule with a single **Requester is** condition and select your Engineering group.
 
+### Device posture
+
+The **Device passes the posture checks** condition passes if the requester's device passes the checks of every provider you add to the condition. It has the same providers and checks as the [Require Device Posture](/documentation/platform/pam/templates/device-posture#rippling-checks) template policy. A rule can have one device condition. To add it, select **Add Condition** and choose **Device passes the posture checks**, then select **Add Provider**, choose **Rippling**, and choose the connection and checks.
+
+The requester [checks their device](/documentation/platform/pam/templates/device-posture#check-your-device) when they submit the request. The CLI checks it automatically, and in the browser the requester selects **Verify Device** on the request form. After the request is submitted:
+
+- If the device passes and the rule's other conditions pass, the request is approved
+- If the device fails, or the requester doesn't check it, the request goes to the approvers
+
+If a rule with a device condition approves a request, the access can only be used from the device that was checked. Infisical refuses sessions and credential reveals from any other computer.
+
 ## AI checks
 
 An AI check has your organization's AI model review a request against instructions you write. Use it for criteria the other checks can't express, such as whether a linked ticket describes an open incident.
@@ -188,6 +200,7 @@ Infisical checks the rules once, when the request is submitted, by reading each 
 - If Infisical can't read a schedule from incident.io, the requester doesn't count as on call in that schedule
 - A record can be linked to any number of requests, and each request passes as long as the record still passes the rule (unless the rule also requires that the record **hasn't been used before**)
 - Rules only apply to requests from users. A machine identity's request waits for the folder's approvers, or is rejected if the folder has none
+- A **Device passes the posture checks** condition reads the device check the requester ran with the Infisical CLI when they submitted the request. Without a check from the last 5 minutes, the condition fails
 
 <Warning>
   Infisical trusts what each service reports. It can't tell whether a requester approved their own ticket, assigned another person's ticket to themselves before linking it, or added themselves to an incident.io schedule. Prevent these in the service itself. For example, in Jira Service Management, exclude the reporter and assignee from approving requests, and limit who can assign tickets. In incident.io, limit who can edit the schedules your rules name and add overrides to them.

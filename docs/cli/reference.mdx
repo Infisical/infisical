@@ -1117,6 +1117,8 @@ In a terminal, the CLI asks before it files an access request for an account tha
 
 To check whether a request was approved, run `infisical pam accounts get <folder/account>`. After approval, run the command again. After a person completes MFA, run the command again with `--mfa-session` and the value from the error.
 
+If the account's template [requires device posture](/documentation/platform/pam/templates/device-posture), the CLI reads this computer's hardware serial number, checks the device before it opens the session, and prints each check, grouped by provider. If a check fails, the CLI exits with an error. The CLI also checks the device before it files an access request. If only an auto-approval rule checks the device and the device fails, the CLI still files the request, and the request goes to an approver. On Linux, reading the serial number usually needs `sudo`.
+
 Every error says what went wrong. Most errors also give the command to run next. The CLI's own errors exit with `1`. A command that can't be started exits with `127`, and a command stopped by a signal exits with `128` plus the signal number.
 
 </CLICommand>
@@ -1158,6 +1160,26 @@ List the PAM accounts you can access, with each account's type and access status
 - `unavailable`: the account can't be used right now. Name the account to see why, or read `disabledReason` with `-o json`
 
 Name one account as `folder/account` to see its details, any reason or MFA it requires, and a command that connects to it. A bare account name finds the account in any folder. With `-o json`, each account also has an `example` field holding that command, which is empty for an unavailable account.
+
+</CLICommand>
+
+<CLICommand
+  id="pam-verify-device"
+  command="pam verify-device"
+  usage="<code>"
+  args={[
+    { name: "code", usage: "<code>", required: true, description: "The code the browser shows, such as `ABCD-EF23`." },
+  ]}
+  examples={[
+    { title: "Check this computer for a browser session", code: "infisical pam verify-device ABCD-EF23" },
+  ]}
+>
+
+Check this computer against an account's device posture policy to finish a [device check](/documentation/platform/pam/templates/device-posture#check-your-device) started in the browser. The browser shows a code. Run this command with that code in a terminal on the same computer, logged in as the user who started the check.
+
+The CLI reads the computer's hardware serial number, and Infisical looks up the device in your device management provider, such as Rippling. The CLI prints each check, grouped by provider, and exits with an error if the device fails. After the device passes, return to your browser. The passed check is valid for 5 minutes.
+
+A code works once and expires after 5 minutes. On Linux, reading the serial number usually needs `sudo`.
 
 </CLICommand>
 

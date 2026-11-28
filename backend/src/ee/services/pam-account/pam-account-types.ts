@@ -52,6 +52,7 @@ export type TGetPamAccountCredentialsDTO = {
   reason?: string;
   mfaSessionId?: string;
   tokenVersionId?: string;
+  deviceVerificationId?: string;
 };
 
 export type TListPamAccountsDTO = {

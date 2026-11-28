@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useContext, useRef, useState } from "react";
 import { Loader2, ShieldAlert, TriangleAlert } from "lucide-react";
 
 import { Button, Label, TextArea } from "@app/components/v3";
@@ -7,6 +7,7 @@ import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaS
 import { PamPolicyType, TPamAccount, useAccessPamAccount } from "@app/hooks/api/pam";
 import { getAccessErrorMessage } from "@app/pages/pam/access-error";
 
+import { isDeviceVerificationRequired, PamDeviceVerificationContext } from "./ReasonGate";
 import { WebAccessStatusCard } from "./WebAccessStatusCard";
 
 const resolvePolicy = (account: TPamAccount) => {
@@ -25,6 +26,7 @@ type Props = {
 
 export const AwsIamAccessContent = ({ account }: Props) => {
   const accessPamAccount = useAccessPamAccount();
+  const { deviceVerificationId, requestDeviceCheck } = useContext(PamDeviceVerificationContext);
 
   const [step, setStep] = useState<"reason" | "mfa" | "loading" | "error">("reason");
   const [reason, setReason] = useState("");
@@ -50,7 +52,8 @@ export const AwsIamAccessContent = ({ account }: Props) => {
           path: `${account.folderName}/${account.name}`,
           reason: reason.trim() || undefined,
           accessMethod: "web",
-          mfaSessionId
+          mfaSessionId,
+          deviceVerificationId
         });
 
         const consoleUrl = response.metadata?.consoleUrl;
@@ -63,6 +66,10 @@ export const AwsIamAccessContent = ({ account }: Props) => {
         popupRef.current?.close();
         window.location.href = consoleUrl;
       } catch (err: unknown) {
+        if (isDeviceVerificationRequired(err)) {
+          requestDeviceCheck();
+          return;
+        }
         const axiosErr = err as {
           response?: {
             data?: {
@@ -109,7 +116,14 @@ export const AwsIamAccessContent = ({ account }: Props) => {
         setStep("error");
       }
     },
-    [account.folderName, account.name, reason, accessPamAccount]
+    [
+      account.folderName,
+      account.name,
+      reason,
+      accessPamAccount,
+      deviceVerificationId,
+      requestDeviceCheck
+    ]
   );
 
   const handleReasonSubmit = useCallback(() => {

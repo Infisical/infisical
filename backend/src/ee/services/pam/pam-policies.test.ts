@@ -106,7 +106,8 @@ describe("resolveAccessControls", () => {
     requireReason: false,
     requireMfa: false,
     maxSessionDurationSeconds: null,
-    maxAccessDurationSeconds: null
+    maxAccessDurationSeconds: null,
+    devicePosture: null
   };
 
   test("falls back to defaults for a missing or non-object map", () => {

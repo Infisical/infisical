@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Copy, Globe, Rocket, Terminal } from "lucide-react";
+import { Copy, Globe, Laptop, Rocket, Terminal } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
   Button,
   Card,
   CardContent,
@@ -135,6 +137,17 @@ const LaunchTab = ({
                 </FieldLabel>
               </RadioGroup>
             </div>
+          )}
+
+          {account.requireDevicePosture && (
+            <Alert variant="info">
+              <Laptop />
+              <AlertDescription>
+                {effectiveMethod === "browser"
+                  ? "This account requires a managed device. You'll verify this device with the Infisical CLI before the session opens."
+                  : "This account requires a managed device. The CLI checks this device when you run the command."}
+              </AlertDescription>
+            </Alert>
           )}
 
           {effectiveMethod === "browser" && (

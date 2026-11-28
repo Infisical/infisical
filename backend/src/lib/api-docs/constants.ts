@@ -3681,6 +3681,10 @@ export const AppConnections = {
     INCIDENT_IO: {
       apiKey: "The incident.io API key used to read on-call schedules. It needs the View on-call resources permission."
     },
+    RIPPLING: {
+      apiToken:
+        "The Rippling API token used to read devices and workers. It needs the devices.read and workers.read scopes."
+    },
     JIRA: {
       instanceUrl:
         "The URL of your Jira site (e.g., 'https://your-domain.atlassian.net' for Jira Cloud or 'https://jira.example.com' for Jira Data Center).",
@@ -6024,11 +6028,13 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
   conditionConnectionId:
     "The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'. Omit it for an 'ai' condition, or for a 'requester' condition that checks the requester's Infisical user or groups.",
   conditionSubject:
-    "What the condition checks: one of the inputs' subjects, 'requester' for the requester's own account (in the connected service, or in Infisical when the condition has no connection), or 'ai' to have the organization's AI model review the request.",
+    "What the condition checks: one of the inputs' subjects, 'requester' for the requester's own account (in the connected service, or in Infisical when the condition has no connection), or 'ai' to have the organization's AI model review the request, or 'device-posture' to check the requester's device (PAM access policies only).",
   conditionPrompt:
     "For an 'ai' condition, the instructions the AI model checks the request against. The model receives the request details and every request form field value.",
   conditionContextConnectionIds:
     "For an 'ai' condition, the IDs of App Connections the AI model can read from with read-only lookups (e.g. a Jira connection).",
+  conditionDevicePosture:
+    "For a 'device-posture' condition (PAM access policies only), the device posture providers and checks the requester's device must pass, in the same shape as the account template's device posture policy. The requester checks their device with the Infisical CLI when they submit the request, and the access it approves is limited to that device.",
   constraint:
     "Which check to run, from the subject's constraints in the auto-approval catalog (e.g. 'status'). A 'requester' condition without a connection uses 'is-one-of'.",
   values:

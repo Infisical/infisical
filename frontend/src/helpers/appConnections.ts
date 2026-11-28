@@ -27,6 +27,7 @@ import {
   DaytonaConnectionMethod,
   DbtConnectionMethod,
   DevinConnectionMethod,
+  RipplingConnectionMethod,
   FlyioConnectionMethod,
   GcpConnectionMethod,
   GitHubConnectionMethod,
@@ -606,6 +607,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "AI",
     description: "Manage Devin API access."
   },
+  [AppConnection.Rippling]: {
+    name: "Rippling",
+    image: "Rippling.svg",
+    category: "SECURITY",
+    description: "Check device posture with Rippling MDM before PAM access."
+  },
   [AppConnection.Ona]: {
     name: "Ona",
     image: "Ona.png",
@@ -869,6 +876,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case BitbucketConnectionMethod.ApiToken:
     case ZabbixConnectionMethod.ApiToken:
     case DigitalOceanConnectionMethod.ApiToken:
+    case RipplingConnectionMethod.ApiToken:
     case NorthflankConnectionMethod.ApiToken:
     case OktaConnectionMethod.ApiToken:
     case LaravelForgeConnectionMethod.ApiToken:

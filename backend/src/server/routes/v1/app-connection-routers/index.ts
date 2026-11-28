@@ -79,6 +79,7 @@ import { registerRailwayConnectionRouter } from "./railway-connection-router";
 import { registerRedisConnectionRouter } from "./redis-connection-router";
 import { registerRenderConnectionRouter } from "./render-connection-router";
 import { registerRfc2136ConnectionRouter } from "./rfc2136-connection-router";
+import { registerRipplingConnectionRouter } from "./rippling-connection-router";
 import { registerRundeckConnectionRouter } from "./rundeck-connection-router";
 import { registerS3CompatibleConnectionRouter } from "./s3-compatible-connection-router";
 import { registerSalesforceConnectionRouter } from "./salesforce-connection-router";
@@ -204,5 +205,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Jira]: registerJiraConnectionRouter,
     [AppConnection.ClickHouse]: registerClickHouseConnectionRouter,
     [AppConnection.IncidentIo]: registerIncidentIoConnectionRouter,
+    [AppConnection.Rippling]: registerRipplingConnectionRouter,
     [AppConnection.Rfc2136]: registerRfc2136ConnectionRouter
   };

@@ -385,6 +385,7 @@ export enum EventType {
   PAM_SESSION_CHUNK_UPLOAD = "pam-session-chunk-upload",
   PAM_SESSION_UPLOAD_TOKEN_INVALID = "pam-session-upload-token-invalid",
   PAM_ACCESS_REQUEST_CREATE = "pam-access-request-create",
+  PAM_DEVICE_POSTURE_CHECK = "pam-device-posture-check",
   PAM_ACCESS_REQUEST_REVIEW = "pam-access-request-review",
   PAM_ACCESS_GRANT_REVOKE = "pam-access-grant-revoke",
   PAM_ACCOUNT_ROTATE_CREDENTIALS = "pam-account-rotate-credentials",

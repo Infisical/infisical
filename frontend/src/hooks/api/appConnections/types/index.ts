@@ -79,6 +79,7 @@ import { TRailwayConnection } from "./railway-connection";
 import { TRedisConnection } from "./redis-connection";
 import { TRenderConnection } from "./render-connection";
 import { TRfc2136Connection } from "./rfc2136-connection";
+import { TRipplingConnection } from "./rippling-connection";
 import { TRundeckConnection } from "./rundeck-connection";
 import { TS3CompatibleConnection } from "./s3-compatible-connection";
 import { TSalesforceConnection } from "./salesforce-connection";
@@ -102,6 +103,7 @@ import { TWinRMConnection } from "./winrm-connection";
 import { TZabbixConnection } from "./zabbix-connection";
 
 export * from "./1password-connection";
+export * from "./rippling-connection";
 export * from "./adcs-connection";
 export * from "./auth0-connection";
 export * from "./aws-connection";
@@ -270,6 +272,7 @@ export type TAppConnection =
   | TDopplerConnection
   | TOvhConnection
   | TDevinConnection
+  | TRipplingConnection
   | TOnaConnection
   | TDigiCertConnection
   | TGoDaddyConnection

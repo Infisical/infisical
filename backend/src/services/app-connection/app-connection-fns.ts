@@ -297,6 +297,11 @@ import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnect
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
 import { getRfc2136ConnectionListItem, Rfc2136ConnectionMethod, validateRfc2136ConnectionCredentials } from "./rfc2136";
+import {
+  getRipplingConnectionListItem,
+  RipplingConnectionMethod,
+  validateRipplingConnectionCredentials
+} from "./rippling";
 import { getRundeckConnectionListItem, RundeckConnectionMethod, validateRundeckConnectionCredentials } from "./rundeck";
 import {
   getS3CompatibleConnectionListItem,
@@ -425,7 +430,7 @@ const DELEGATED_APPROVAL_POLICY_APP_CONNECTION_MAP = Object.fromEntries(
 
 const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
 
-const PAM_APP_CONNECTIONS = [AppConnection.Jira, AppConnection.IncidentIo];
+const PAM_APP_CONNECTIONS = [AppConnection.Jira, AppConnection.IncidentIo, AppConnection.Rippling];
 
 export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?: ProjectType) => {
   switch (projectType) {
@@ -577,6 +582,7 @@ export const listAppConnectionOptions = async (
     getJiraConnectionListItem(),
     getClickHouseConnectionListItem(),
     getIncidentIoConnectionListItem(),
+    getRipplingConnectionListItem(),
     getRfc2136ConnectionListItem()
   ]
     .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
@@ -886,6 +892,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ClickHouse]: validateClickHouseConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.IncidentIo]: validateIncidentIoConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Rippling]: validateRipplingConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Rfc2136]: validateRfc2136ConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
@@ -948,6 +955,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case CoolifyConnectionMethod.ApiToken:
     case DatadogConnectionMethod.Token:
     case JiraConnectionMethod.ApiToken:
+    case RipplingConnectionMethod.ApiToken:
       return "API Token";
     case JiraConnectionMethod.PersonalAccessToken:
       return "Personal Access Token";
@@ -1275,6 +1283,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Jira]: platformManagedCredentialsNotSupported,
   [AppConnection.ClickHouse]: platformManagedCredentialsNotSupported,
   [AppConnection.IncidentIo]: platformManagedCredentialsNotSupported,
+  [AppConnection.Rippling]: platformManagedCredentialsNotSupported,
   [AppConnection.Rfc2136]: platformManagedCredentialsNotSupported
 };
 

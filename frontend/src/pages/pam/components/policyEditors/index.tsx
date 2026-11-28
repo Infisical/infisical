@@ -3,6 +3,7 @@ import { ComponentType } from "react";
 import { PamAccountType, PamPolicyType } from "@app/hooks/api/pam";
 
 import { BooleanPolicyEditor } from "./BooleanPolicyEditor";
+import { DevicePosturePolicyEditor } from "./DevicePosturePolicyEditor";
 import { DurationPolicyEditor } from "./DurationPolicyEditor";
 import { OutputMaskingPolicyEditor } from "./OutputMaskingPolicyEditor";
 import { TextAreaPolicyEditor } from "./TextAreaPolicyEditor";
@@ -39,7 +40,8 @@ export const POLICY_EDITORS: Partial<Record<PamPolicyType, ComponentType<PolicyE
   [PamPolicyType.MaxSessionDuration]: DurationPolicyEditor,
   [PamPolicyType.MaxAccessDuration]: MaxAccessDurationEditor,
   [PamPolicyType.CommandBlocking]: CommandBlockingEditor,
-  [PamPolicyType.OutputMasking]: OutputMaskingPolicyEditor
+  [PamPolicyType.OutputMasking]: OutputMaskingPolicyEditor,
+  [PamPolicyType.DevicePosture]: DevicePosturePolicyEditor
 };
 
 export type { PolicyEditorProps } from "./types";

@@ -1,3 +1,4 @@
+import { evaluateDevicePosture } from "@app/ee/services/pam-device-posture/pam-device-posture-fns";
 import { logger } from "@app/lib/logger";
 import { TAiJudgeResult } from "@app/services/ai/ai-types";
 
@@ -5,6 +6,9 @@ import {
   AUTO_APPROVAL_AI_CONSTRAINT_LABEL,
   AUTO_APPROVAL_AI_SUBJECT,
   AUTO_APPROVAL_AI_SUBJECT_LABEL,
+  AUTO_APPROVAL_DEVICE_POSTURE_CONSTRAINT_LABEL,
+  AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT,
+  AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT_LABEL,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AUTO_APPROVAL_UNUSED_CONSTRAINT,
   AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL,
@@ -19,6 +23,25 @@ export const getAutoApprovalSubjectKey = (condition: { inputId: string | null; c
   condition.inputId ?? `${AUTO_APPROVAL_REQUESTER_SUBJECT}:${condition.connectionId}`;
 
 export const isAiCondition = (condition: { subject: string }) => condition.subject === AUTO_APPROVAL_AI_SUBJECT;
+
+export const isDevicePostureCondition = (condition: { subject: string }) =>
+  condition.subject === AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT;
+
+const evaluateDevicePostureCondition = (
+  condition: TStoredAutoApproval["rules"][number]["conditions"][number],
+  ctx: TAutoApprovalContext
+): { passed: boolean; reason: string | null } => {
+  if (!condition.devicePosture) return { passed: false, reason: "This check is no longer available" };
+  if (!ctx.device) {
+    return { passed: false, reason: "No recent device check for auto-approval was attached to the request" };
+  }
+  const result = evaluateDevicePosture(condition.devicePosture, ctx.device.facts);
+  if (result.error) return { passed: false, reason: result.error };
+  const failed = result.checks.find((check) => !check.passed);
+  return failed
+    ? { passed: false, reason: `${failed.provider} ${failed.label}: ${failed.detail}` }
+    : { passed: true, reason: null };
+};
 
 export type TAiConditionResult = { passed: boolean; reason: string | null; ai: TAiJudgeResult | null };
 
@@ -78,6 +101,22 @@ export const evaluateAutoApprovalRules = (
           passed: result?.passed ?? false,
           reason: result ? result.reason : "The AI didn't review this request",
           ai: result?.ai ?? null
+        };
+      }
+
+      if (isDevicePostureCondition(condition)) {
+        return {
+          id: condition.id,
+          connectionId: null,
+          subject: condition.subject,
+          constraint: condition.constraint,
+          values: [],
+          description: describeAutoApprovalCondition(
+            AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT_LABEL,
+            AUTO_APPROVAL_DEVICE_POSTURE_CONSTRAINT_LABEL,
+            []
+          ),
+          ...evaluateDevicePostureCondition(condition, ctx)
         };
       }
 

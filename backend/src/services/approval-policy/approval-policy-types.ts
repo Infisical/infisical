@@ -23,6 +23,7 @@ import {
 } from "./approval-policy-enums";
 import {
   TAutoApprovalConfig,
+  TAutoApprovalContext,
   TAutoApprovalEvidence,
   TAutoApprovalInputValue,
   TAutoApprovalOutcome,
@@ -244,6 +245,14 @@ export type TApprovalResource<
 
   // Policies of this type can hold auto-approval rules
   supportsAutoApproval?: boolean;
+  // Their rules can check the requester's device, read through getAutoApprovalDevice
+  supportsDevicePosture?: boolean;
+  // A passed device check attached to the request, for the rules' device posture conditions
+  getAutoApprovalDevice?: (args: {
+    projectId: string;
+    requestData: TApprovalRequestData;
+    actor: TApprovalActorContext;
+  }) => Promise<TAutoApprovalContext["device"]>;
   // Whether the policy's auto-approval rules may decide this request
   allowsAutoApproval?: (args: {
     projectId: string;

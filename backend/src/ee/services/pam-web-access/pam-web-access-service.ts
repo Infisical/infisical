@@ -35,6 +35,7 @@ import {
   resolveSelectedHost,
   webAccessUnavailableReason
 } from "../pam-account/pam-account-schemas";
+import { TPamDevicePostureServiceFactory } from "../pam-device-posture/pam-device-posture-service";
 import { assertUserStillActiveInOrg } from "../pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { reportPamSessionEnded } from "../pam-session/pam-session-fns";
@@ -62,6 +63,7 @@ import {
 } from "./pam-web-access-types";
 
 type TPamWebAccessServiceFactoryDep = {
+  pamDevicePostureService: Pick<TPamDevicePostureServiceFactory, "enforce">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails">;
   pamAccessRequestService: Pick<TPamAccessRequestServiceFactory, "checkGrant">;
   pamPermissionService: TPamPermissionService;
@@ -122,6 +124,7 @@ type THandleWebSocketConnectionDTO = {
 export const pamWebAccessServiceFactory = ({
   pamAccountDAL,
   pamAccessRequestService,
+  pamDevicePostureService,
   pamPermissionService,
   auditLogService,
   tokenService,
@@ -191,7 +194,8 @@ export const pamWebAccessServiceFactory = ({
     auditLogInfo,
     reason,
     mfaSessionId,
-    selectedHost
+    selectedHost,
+    deviceVerificationId
   }: TIssueWebSocketTicketDTO) => {
     const account = await pamAccountDAL.findByIdWithDetails(accountId);
     if (!account || account.projectId !== projectId) {
@@ -265,6 +269,11 @@ export const pamWebAccessServiceFactory = ({
         name: "PAM_REASON_REQUIRED",
         message: "A reason is required to access this account"
       });
+    }
+
+    const { grant: deviceGrant } = await pamDevicePostureService.enforce({ account, deviceVerificationId, actor });
+    if (deviceGrant) {
+      grantRemainingMs = deviceGrant.expiresAt ? new Date(deviceGrant.expiresAt).getTime() - Date.now() : null;
     }
 
     if (policy.requireMfa) {

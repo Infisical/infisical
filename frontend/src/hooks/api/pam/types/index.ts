@@ -257,6 +257,7 @@ export type TGetPamAccountCredentialsDTO = {
   accountId: string;
   reason?: string;
   mfaSessionId?: string;
+  deviceVerificationId?: string;
 };
 
 export type TPamFolder = {
@@ -370,6 +371,7 @@ export type TAccessiblePamAccount = {
   canLaunch: boolean;
   requiresApproval?: boolean;
   requireReason?: boolean;
+  requireDevicePosture?: boolean;
   accessStatus?: PamAccessStatus;
   grantId?: string | null;
   grantExpiresAt?: string | null;
@@ -808,6 +810,7 @@ export type TCreatePamAccessRequestDTO = {
   duration: string;
   accessType?: PamAccessType;
   autoApprovalInputs?: TAutoApprovalInputValue[];
+  deviceVerificationId?: string;
 };
 
 export type TReviewPamAccessRequestDTO = {
@@ -839,4 +842,36 @@ export type TSetPamApprovalConfigDTO = {
   // Omit to leave the folder's auto-approval rules unchanged
   autoApproval?: TAutoApprovalConfig;
   emailApproversOnRequest?: boolean;
+};
+
+export const PAM_DEVICE_VERIFICATION_REQUIRED = "DEVICE_VERIFICATION_REQUIRED";
+
+export enum PamDeviceVerificationStatus {
+  Pending = "pending",
+  Passed = "passed",
+  Failed = "failed",
+  Error = "error",
+  Expired = "expired"
+}
+
+export type TPamDeviceVerificationTicket = {
+  id: string;
+  code: string;
+  expiresAt: string;
+};
+
+export type TPamDevicePostureCheckResult = {
+  provider: string;
+  check: string;
+  label: string;
+  passed: boolean;
+  detail: string;
+};
+
+export type TPamDeviceVerification = {
+  id: string;
+  status: PamDeviceVerificationStatus;
+  message?: string;
+  device?: { serial: string; model?: string; os?: string };
+  checks?: TPamDevicePostureCheckResult[];
 };

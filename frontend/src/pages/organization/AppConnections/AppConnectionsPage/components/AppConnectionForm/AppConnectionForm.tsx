@@ -94,6 +94,7 @@ import { RailwayConnectionForm } from "./RailwayConnectionForm";
 import { RedisConnectionForm } from "./RedisConnectionForm";
 import { RenderConnectionForm } from "./RenderConnectionForm";
 import { Rfc2136ConnectionForm } from "./Rfc2136ConnectionForm";
+import { RipplingConnectionForm } from "./RipplingConnectionForm";
 import { RundeckConnectionForm } from "./RundeckConnectionForm";
 import { S3CompatibleConnectionForm } from "./S3CompatibleConnectionForm";
 import { SalesforceConnectionForm } from "./SalesforceConnectionForm";
@@ -355,6 +356,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <FireworksConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Devin:
         return <DevinConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Rippling:
+        return <RipplingConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Daytona:
         return <DaytonaConnectionForm onSubmit={onSubmit} />;
       case AppConnection.ServiceNow:
@@ -689,6 +692,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <FireworksConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Devin:
         return <DevinConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Rippling:
+        return <RipplingConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Daytona:
         return <DaytonaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.ServiceNow:

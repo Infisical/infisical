@@ -39,7 +39,11 @@ import {
   TApprovalRequestDALFactory,
   TApprovalRequestGrantsDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
-import { getAutoApprovalSummary } from "@app/services/approval-policy/auto-approval/auto-approval-fns";
+import {
+  getAutoApprovalSummary,
+  isDevicePostureCondition
+} from "@app/services/approval-policy/auto-approval/auto-approval-fns";
+import { TAutoApprovalEvidence } from "@app/services/approval-policy/auto-approval/auto-approval-types";
 import {
   effectivePamAccessDurationMs,
   exceedsPamMaxAccessDuration,
@@ -66,6 +70,10 @@ import {
   noRevealableCredentialMessage,
   normalizeCredentialAuthMethod
 } from "../pam-account/pam-account-schemas";
+import { PAM_DEVICE_VERIFICATION_VALIDITY_MS } from "../pam-device-posture/pam-device-posture-enums";
+import { TDevicePostureFacts } from "../pam-device-posture/pam-device-posture-fns";
+import { enforceDevicePosture } from "../pam-device-posture/pam-device-posture-service";
+import { TPamDeviceVerificationDALFactory } from "../pam-device-posture/pam-device-verification-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { terminatePamSessions } from "../pam-session/pam-session-fns";
@@ -103,6 +111,7 @@ type TPamAccessApprovalResourceDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   kmsDataKeyService: TKmsDataKeyService;
   pamFolderNotificationConfigDAL: Pick<TPamFolderNotificationConfigDALFactory, "findByFolderIdWithIntegration">;
+  pamDeviceVerificationDAL: Pick<TPamDeviceVerificationDALFactory, "findById">;
 };
 
 type TPamRequestDecoration = {
@@ -148,6 +157,16 @@ const requestDataOf = (request: { requestData?: unknown }) =>
   (request.requestData as { version: number; requestData: TPamAccessRequestData } | null)?.requestData ?? null;
 
 // Everything PAM-specific about its approvals; the lifecycle itself lives in approval-policy-service
+export const getAutoApprovedDeviceSerialNumber = (evidence: unknown) => {
+  const typed = evidence as TAutoApprovalEvidence | null;
+  const rule = typed?.rules?.find((candidate) => candidate.id === typed.approvedByRuleId);
+  if (!rule?.conditions.some((condition) => isDevicePostureCondition(condition) && condition.passed)) return null;
+  const facts = typed?.subjects?.find((subject) => isDevicePostureCondition(subject))?.facts as {
+    serialNumber?: unknown;
+  } | null;
+  return typeof facts?.serialNumber === "string" ? facts.serialNumber : null;
+};
+
 export const pamAccessApprovalResourceFactory = ({
   approvalPolicyDAL,
   userGroupMembershipDAL,
@@ -164,7 +183,8 @@ export const pamAccessApprovalResourceFactory = ({
   userDAL,
   gatewayV2Service,
   kmsDataKeyService,
-  pamFolderNotificationConfigDAL
+  pamFolderNotificationConfigDAL,
+  pamDeviceVerificationDAL
 }: TPamAccessApprovalResourceDep): TPamAccessApprovalResource => {
   const $assertFolderInProject = async (folderId: string, projectId: string) => {
     const folder = await pamFolderDAL.findById(folderId);
@@ -288,6 +308,9 @@ export const pamAccessApprovalResourceFactory = ({
     const { maxAccessDurationSeconds } = resolveAccessControls(account?.templatePolicies);
     const durationMs = effectivePamAccessDurationMs(inputs.duration, maxAccessDurationSeconds);
 
+    const deviceSerialNumber = getAutoApprovedDeviceSerialNumber(
+      (request as { autoApprovalEvidence?: unknown }).autoApprovalEvidence
+    );
     const grant = await approvalRequestGrantsDAL.create(
       {
         projectId: request.projectId,
@@ -300,7 +323,8 @@ export const pamAccessApprovalResourceFactory = ({
         attributes: {
           accountId: inputs.accountId,
           folderId: inputs.folderId,
-          accessType: inputs.accessType ?? PAM_DEFAULT_ACCESS_TYPE
+          accessType: inputs.accessType ?? PAM_DEFAULT_ACCESS_TYPE,
+          ...(deviceSerialNumber && { deviceSerialNumber })
         },
         expiresAt: durationMs === null ? null : new Date(Date.now() + durationMs),
         isBreakGlass: Boolean(breakGlass),
@@ -442,6 +466,17 @@ export const pamAccessApprovalResourceFactory = ({
       });
     }
 
+    await enforceDevicePosture(
+      { pamDeviceVerificationDAL },
+      {
+        account,
+        accessType: inputs.accessType ?? PamAccessType.Session,
+        deviceVerificationId: inputs.deviceVerificationId,
+        actorType: actor.type,
+        actorId: actor.id
+      }
+    );
+
     if (isCredentialRequest) {
       const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
@@ -535,6 +570,32 @@ export const pamAccessApprovalResourceFactory = ({
     if (tx && (account.folderId ?? null) !== (folderId ?? null)) return false;
 
     return resolveAccessControls(account.templatePolicies).allowAutoApproval;
+  };
+
+  const getAutoApprovalDevice: NonNullable<TPamAccessApprovalResource["getAutoApprovalDevice"]> = async ({
+    requestData,
+    actor
+  }) => {
+    const { accountId, deviceVerificationId, accessType } = requestData as TPamAccessRequestData;
+    if (!deviceVerificationId) return null;
+    const row = await pamDeviceVerificationDAL.findById(deviceVerificationId);
+    if (
+      !row ||
+      row.userId !== actor.id ||
+      row.accountId !== accountId ||
+      row.accessType !== (accessType ?? PamAccessType.Session) ||
+      !row.forAutoApproval ||
+      !row.completedAt ||
+      !row.deviceSerialNumber ||
+      Date.now() - new Date(row.completedAt).getTime() > PAM_DEVICE_VERIFICATION_VALIDITY_MS
+    ) {
+      return null;
+    }
+    return {
+      verificationId: row.id,
+      serialNumber: row.deviceSerialNumber,
+      facts: (row.facts as TDevicePostureFacts | null) ?? {}
+    };
   };
 
   const assertCanReview: NonNullable<TPamAccessApprovalResource["assertCanReview"]> = async ({
@@ -1213,6 +1274,8 @@ export const pamAccessApprovalResourceFactory = ({
     assertCanCreateRequest,
     assertCanReview,
     supportsAutoApproval: true,
+    supportsDevicePosture: true,
+    getAutoApprovalDevice,
     allowsAutoApproval,
     isBreakGlassEligible,
     assertBreakGlassEligible,

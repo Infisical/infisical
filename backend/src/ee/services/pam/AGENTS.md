@@ -12,20 +12,21 @@ table) and let the code carry the detail.
 
 All PAM services live under `backend/src/ee/services/pam-*/`:
 
-| Directory                          | Purpose                                                                                                                |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Directory                          | Purpose                                                                                                                 |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `pam/`                             | Shared enums, permission adapters (`pam-permission.ts`), validators, policy registry (`pam-policies.ts`), and this file |
-| `pam-folder/`                      | Folder CRUD + folder-level permission checks                                                                           |
-| `pam-account/`                     | Account CRUD, credential encryption, gateway attachment, SSH CA, account-type config                                   |
-| `pam-account-template/`            | Account templates (type + policies + settings)                                                                         |
-| `pam-account-rotation/`            | Scheduled + on-demand SQL credential rotation                                                                          |
-| `pam-session/` + `pam-web-access/` | Session lifecycle and WebSocket session handlers (Postgres/SSH/RDP)                                                    |
-| `pam-session-recording/`           | Recording chunk storage/retrieval + storage providers                                                                  |
-| `pam-session-activity/`            | Turns each newly stored recording chunk into events for log streams that opted into session activity                   |
-| `pam-membership/`                  | Product + resource membership management                                                                               |
-| `pam-project/`                     | PAM project bootstrap + resolver                                                                                       |
-| `pam-access-request/`              | PAM's face on the shared approvals system: folder config, notifications, read models, approval resource               |
-| `pam-discovery/`                   | Discovery sources → staged accounts for import                                                                         |
+| `pam-folder/`                      | Folder CRUD + folder-level permission checks                                                                            |
+| `pam-account/`                     | Account CRUD, credential encryption, gateway attachment, SSH CA, account-type config                                    |
+| `pam-account-template/`            | Account templates (type + policies + settings)                                                                          |
+| `pam-account-rotation/`            | Scheduled + on-demand SQL credential rotation                                                                           |
+| `pam-session/` + `pam-web-access/` | Session lifecycle and WebSocket session handlers (Postgres/SSH/RDP)                                                     |
+| `pam-session-recording/`           | Recording chunk storage/retrieval + storage providers                                                                   |
+| `pam-session-activity/`            | Turns each newly stored recording chunk into events for log streams that opted into session activity                    |
+| `pam-membership/`                  | Product + resource membership management                                                                                |
+| `pam-project/`                     | PAM project bootstrap + resolver                                                                                        |
+| `pam-access-request/`              | PAM's face on the shared approvals system: folder config, notifications, read models, approval resource                 |
+| `pam-discovery/`                   | Discovery sources → staged accounts for import                                                                          |
+| `pam-device-posture/`              | Require Device Posture: device checks against MDM providers (Rippling), verification codes, enforcement                 |
 
 Routes: `backend/src/ee/routes/v1/pam-routers/`. DI wiring: `backend/src/server/routes/index.ts` (narrow
 new deps with `Pick<>`).
@@ -212,7 +213,7 @@ backend list gateways read. Hosts beyond the built-in providers come from the se
 `allowedStorageHostnames`, which `serve-ui.ts` also adds to the CSP `connect-src`, since browsers fetch chunks directly.
 
 **Break-glass** lets a requester self-approve their own pending request, and needs **both** gates open:
-the account's template carries `allow-break-glass`, *and* the folder's approval policy names the actor in
+the account's template carries `allow-break-glass`, _and_ the folder's approval policy names the actor in
 `approval_policy_bypassers`. Neither alone is sufficient, and an empty bypasser list means **nobody** —
 the shared service's default reads an empty list as everybody, which is the opposite rule, so PAM
 overrides it from the resource (`isBreakGlassEligible`) rather than anyone re-deriving the predicate. The
@@ -246,7 +247,7 @@ error as a `BadRequestError` carrying only its message, so a provider maps drive
 never-imported ones are deleted, imported ones are flagged stale (reappearing self-heals). Only accounts in a
 re-checked scope are touched, so an unreachable host can't mass-flag (same guardrail as dependency pruning). A
 managed account's staleness is derived from its discovered row (not stored on the account) and is **purely
-informational** — it is deliberately *not* an accessibility issue and gates nothing: rotation (scheduled and
+informational** — it is deliberately _not_ an accessibility issue and gates nothing: rotation (scheduled and
 on-demand), session launch, web access, and import all behave exactly as they do for a non-stale account. The
 only surfaces are `isStale` on the account and the source's Stale Accounts tab (`GET
 /pam/discovery-sources/:sourceId/stale-accounts`), so an admin can decide whether to delete it. Don't add a
@@ -309,3 +310,13 @@ migration. Tracked items:
   `aiInsightsStatus`, `aiInsightsError`, `encryptedLogsBlob`.
 - **Stale Redis queue entries** in `queue-service.ts`: `pam-account-rotation`, `pam-session-ai-summary`,
   `pam-discovery-scan` (remove once all deployments have booted on the new code).
+
+## Device posture
+
+`pam-device-posture/` checks the user's device (identified by the hardware serial the CLI reads) against the
+template's **Require Device Posture** policy and the folder's `device-posture` auto-approval conditions. Every
+gated path (access request create in the approval resource, CLI `access`, web access tickets, credential reveal)
+calls `enforceDevicePosture` with a `deviceVerificationId`, before MFA so a CLI retry can reuse its MFA session.
+A verification is valid for 5 minutes, for one user, account and access type. A grant a device rule approved
+carries `deviceSerialNumber` in its attributes, and enforcement then requires a verification for that serial.
+The posture facts come from the provider, never from the client. Failures fail closed.
