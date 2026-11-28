@@ -41,6 +41,8 @@ export type TIdentityPrincipal = {
 export type TServiceTokenPrincipal = {
   type: ActorType.SERVICE;
   id: string;
+  // The token's name, which audit logs record.
+  name: string;
   projectId: string;
 };
 

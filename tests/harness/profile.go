@@ -75,5 +75,8 @@ func infisicalOptions(cfg *config) []infisical.Option {
 	for _, f := range cfg.files {
 		opts = append(opts, infisical.WithFile(f.Src, f.Dst))
 	}
+	if cfg.clickhouse {
+		opts = append(opts, infisical.WithClickHouse())
+	}
 	return opts
 }

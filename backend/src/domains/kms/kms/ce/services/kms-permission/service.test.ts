@@ -1,11 +1,13 @@
 import { ProjectType } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
+import { FakeActorAuditConfig } from "@app/domains/lib/actor-context/testing/fake-actor-audit-config";
 import { ProjectPermission, TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 
 import { KmsPermissionService } from "./service";
 
 const actor: TActorContext = {
+  audit: new FakeActorAuditConfig(),
   principal: {
     type: ActorType.USER,
     id: "user-1",

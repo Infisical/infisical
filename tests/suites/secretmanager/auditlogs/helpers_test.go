@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture"
@@ -19,6 +20,10 @@ type event struct {
 	ActorType string
 	Actor     map[string]any
 	Metadata  map[string]any
+	// ExpiresAt and ProjectName are pointers: the response omits them when unset.
+	CreatedAt   time.Time
+	ExpiresAt   *time.Time
+	ProjectName *string
 }
 
 type filter = api.ListOrganizationAuditLogsParams
@@ -47,11 +52,14 @@ func listEvents(ctx context.Context, proj *fixture.Project, f filter) ([]event, 
 		actor, _ := l.Actor.Metadata.(map[string]any)
 		metadata, _ := l.Event.Metadata.(map[string]any)
 		out = append(out, event{
-			Type:      l.Event.Type,
-			Class:     string(l.Event.Class),
-			ActorType: l.Actor.Type,
-			Actor:     actor,
-			Metadata:  metadata,
+			Type:        l.Event.Type,
+			Class:       string(l.Event.Class),
+			ActorType:   l.Actor.Type,
+			Actor:       actor,
+			Metadata:    metadata,
+			CreatedAt:   l.CreatedAt,
+			ExpiresAt:   l.ExpiresAt,
+			ProjectName: l.ProjectName,
 		})
 	}
 	return out, nil

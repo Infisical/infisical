@@ -72,4 +72,56 @@ export class InMemoryKeyStore implements TDomainKeyStore {
   };
 
   pgGetIntItem = async (key: string, prefix?: string) => this.counters.get(InMemoryKeyStore.key(key, prefix));
+
+  // Stream ids are "<ms>-<seq>" like Redis; here the seq counts up from one shared clock so order is total.
+  streamAdd = async (key: string, _id: string, fieldValue: Record<string, string>): Promise<string | null> => {
+    this.streamSeq += 1;
+    const id = `${this.streamSeq}-0`;
+    const stream = this.streams.get(key) ?? [];
+    stream.push([id, Object.entries(fieldValue).flat()]);
+    this.streams.set(key, stream);
+    return id;
+  };
+
+  streamCollect = async (key: string, batchSize: number, maxEntries: number) => {
+    const all = this.streams.get(key) ?? [];
+    const limit = Math.min(maxEntries, Math.ceil(maxEntries / batchSize) * batchSize);
+    const entries = all.slice(0, limit);
+    return { entries, lastId: entries.length ? entries[entries.length - 1][0] : null };
+  };
+
+  // MINID trimming: inclusive drops minId itself too.
+  streamTrim = async (key: string, minId: string, inclusive = false): Promise<number> => {
+    const all = this.streams.get(key) ?? [];
+    const cut = InMemoryKeyStore.streamSeqOf(minId);
+    const kept = all.filter(([id]) => {
+      const seq = InMemoryKeyStore.streamSeqOf(id);
+      return inclusive ? seq > cut : seq >= cut;
+    });
+    this.streams.set(key, kept);
+    return all.length - kept.length;
+  };
+
+  // A lock held elsewhere refuses at once, like a redlock acquire with retryCount 0.
+  acquireLock = async (resources: string[]) => {
+    const held = resources.filter((resource) => this.locks.has(resource));
+    if (held.length) throw new Error(`lock held: ${held.join(",")}`);
+    resources.forEach((resource) => this.locks.add(resource));
+    return {
+      release: async () => {
+        resources.forEach((resource) => this.locks.delete(resource));
+        return { attempts: [], start: 0 } as never;
+      }
+    };
+  };
+
+  private readonly streams = new Map<string, [string, string[]][]>();
+
+  private streamSeq = 0;
+
+  private readonly locks = new Set<string>();
+
+  private static streamSeqOf(id: string): number {
+    return Number(id.split("-")[0]);
+  }
 }

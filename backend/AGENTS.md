@@ -1128,11 +1128,18 @@ Only exempt a mode that refuses pools outright, the way gateway Kubernetes auth 
 **Gate gateway features on `capabilities`, never on `cliVersion`.** The version comes from the gateway's
 `User-Agent`, which anyone holding its credential sets, and source builds report `devel`; it is for display.
 
+### Recording Audit Logs
+
+Code in a domain records through `auditLogRecorderService.record(actor, { projectId?, event })` from the audit log
+domain, after its transaction commits, and never reads the plan, the project's retention or the audit settings: the
+actor context's `audit` key supplies them. Legacy code keeps calling `auditLogService.createAuditLog`, which goes
+through the same recorder. Read `src/domains/platform/audit-log/AGENTS.md` before changing either.
+
 ### Audit Log Storage
 
 Audit logs live in **one** store at a time. When a ClickHouse client is configured and
-`CLICKHOUSE_AUDIT_LOG_ENABLED` is on (its default), `insertBatch` in `audit-log-queue.ts` writes only to
-ClickHouse and Postgres `audit_logs` receives nothing new. So **every reader of audit logs has to pick
+`CLICKHOUSE_AUDIT_LOG_ENABLED` is on (its default), the audit log domain's ingestion
+(`domains/platform/audit-log/ee/`) writes only to ClickHouse and Postgres `audit_logs` receives nothing new. So **every reader of audit logs has to pick
 the store the same way** (`CLICKHOUSE_AUDIT_LOG_ENABLED && clickhouseAuditLogDAL`), as `auditLogService`,
 the audit report generators and insights do. A reader that only queries Postgres goes silently empty on
 ClickHouse instances, with no error anywhere; that is how the project insights cards broke. Postgres rows

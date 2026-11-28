@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { ProjectMembershipRole, ProjectType, RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
+import { FakeActorAuditConfig } from "@app/domains/lib/actor-context/testing/fake-actor-audit-config";
 import { PermissionDeniedError, RuleViolationError } from "@app/domains/lib/errors";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { accessControlServices } from "@app/domains/platform/access-control/ce/testing/access-control-services";
@@ -57,6 +58,7 @@ describe("PamPermissionService.getPamPermission", () => {
       actorGrantsService: accessControlServices(h.db).actorGrantsService
     });
     const actor: TActorContext = {
+      audit: new FakeActorAuditConfig(),
       principal: {
         type: ActorType.USER,
         id: user.id,
@@ -171,6 +173,7 @@ describe("PamProjectRoles.rulesFor", () => {
     });
     const { projectPermissionService } = buildProjectsModule(h.db, { projectRoles: [new PamProjectRoles()] });
     const actor: TActorContext = {
+      audit: new FakeActorAuditConfig(),
       principal: {
         type: ActorType.USER,
         id: user.id,

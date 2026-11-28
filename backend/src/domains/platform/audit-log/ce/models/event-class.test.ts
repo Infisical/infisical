@@ -7,8 +7,8 @@ import {
   getAuditLogEventClass,
   getEventTypesForClasses,
   resolveEventClassFilter
-} from "./audit-log-event-classes";
-import { EventType } from "./audit-log-types";
+} from "./event-class";
+import { EventType } from "./event-type";
 
 describe("audit log event classes", () => {
   test("every event type belongs to exactly one class", () => {

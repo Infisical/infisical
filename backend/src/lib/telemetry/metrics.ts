@@ -357,9 +357,9 @@ export const recordLocalRefreshRunMetric = (params: {
   });
 };
 
-// Audit log lifecycle metrics. Wired in audit-log-queue.ts: enqueued when an event is appended to
-// the Redis ingest stream, dropped when the request-path push fails, persist duration around the
-// batch insert in the unified consumer.
+// Audit log lifecycle metrics, wired in the audit log domain (domains/platform/audit-log): enqueued when
+// an event is appended to the Redis ingest stream, dropped when recording fails, persist duration around
+// the batch insert in ingestion.
 export const auditLogEnqueuedCounter = infisicalCoreMeter.createCounter("infisical.audit_log.enqueued.count", {
   description: "Audit log events appended to the ingest stream for persistence, by event type and actor type.",
   unit: "{event}"

@@ -2,6 +2,7 @@ import { packRules } from "@casl/ability/extra";
 
 import { ProjectType, RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
+import { FakeActorAuditConfig } from "@app/domains/lib/actor-context/testing/fake-actor-audit-config";
 import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { ActorGrants, Grant, TMembershipRecord } from "@app/domains/platform/access-control/ce/module";
 import { FakeActorGrantsService } from "@app/domains/platform/access-control/ce/testing/fake-actor-grants-service";
@@ -19,6 +20,7 @@ import {
 import { pamActorKey, PamPermissionService } from "./service";
 
 const actor: TActorContext = {
+  audit: new FakeActorAuditConfig(),
   principal: {
     type: ActorType.USER,
     id: "user-1",

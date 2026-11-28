@@ -227,7 +227,7 @@ describe("SecretsPermissionService.getSecretsPermission", () => {
       scopes: [{ environment: "prod", secretPath: "/app" }],
       permissions: ["read"]
     });
-    const token: TPrincipal = { type: ActorType.SERVICE, id: tokenId, projectId: t.projectId };
+    const token: TPrincipal = { type: ActorType.SERVICE, id: tokenId, name: "token", projectId: t.projectId };
 
     // Action
     const { permission, folderGrants } = await t.service.getSecretsPermission({
@@ -250,7 +250,7 @@ describe("SecretsPermissionService.getSecretsPermission", () => {
     // Setup
     const t = buildSecretsPermission();
     const tokenId = randomUUID();
-    const token: TPrincipal = { type: ActorType.SERVICE, id: tokenId, projectId: t.projectId };
+    const token: TPrincipal = { type: ActorType.SERVICE, id: tokenId, name: "token", projectId: t.projectId };
 
     // Action
     const result = t.service.getSecretsPermission({ actor: t.actor(token), projectId: t.projectId });
@@ -308,7 +308,7 @@ describe("SecretsPermissionService.getProjectPermissionWithFolderGrants", () => 
       permissions: ["read"]
     });
     t.projectStore.rows.set(t.projectId, { ...t.projectStore.rows.get(t.projectId)!, type: ProjectType.KMS });
-    const token: TPrincipal = { type: ActorType.SERVICE, id: tokenId, projectId: t.projectId };
+    const token: TPrincipal = { type: ActorType.SERVICE, id: tokenId, name: "token", projectId: t.projectId };
 
     // Action
     const result = t.service.getProjectPermissionWithFolderGrants({ actor: t.actor(token), projectId: t.projectId });

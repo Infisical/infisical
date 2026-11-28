@@ -70,6 +70,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -204,7 +205,7 @@ type TProjectServiceFactoryDep = {
   usageMeteringService: TUsageMeteringService;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership" | "listOrganizationsWithSubOrgs">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl" | "deleteItem">;
   roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
@@ -822,6 +823,12 @@ export const projectServiceFactory = ({
     return results;
   };
 
+  // The audit log caches a project's name and retention (server/lib/audit-config-source.ts).
+  const clearAuditConfigCache = (projectId: string) =>
+    keyStore.deleteItem(KeyStorePrefixes.AuditLogProjectConfig(projectId)).catch((error: unknown) => {
+      logger.warn(error, `Failed to clear the audit log project cache [projectId=${projectId}]`);
+    });
+
   const deleteProject = async ({ actor, filter, hardDelete = false }: TDeleteProjectDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
 
@@ -1249,6 +1256,7 @@ export const projectServiceFactory = ({
         enforceEncryptedSecretManagerSecretMetadata: update.enforceEncryptedSecretManagerSecretMetadata,
         auditLogsRetentionDays: update.auditLogsRetentionDays
       });
+      await clearAuditConfigCache(project.id);
 
       return updatedProject;
     } catch (err) {
@@ -1337,7 +1345,9 @@ export const projectServiceFactory = ({
       });
     }
 
-    return projectDAL.updateById(project.id, { auditLogsRetentionDays });
+    const updatedProject = await projectDAL.updateById(project.id, { auditLogsRetentionDays });
+    await clearAuditConfigCache(project.id);
+    return updatedProject;
   };
 
   const updateName = async ({ projectId, actor, name }: TUpdateProjectNameDTO) => {
@@ -1345,6 +1355,7 @@ export const projectServiceFactory = ({
     permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Settings });
 
     const updatedProject = await projectDAL.updateById(projectId, { name });
+    await clearAuditConfigCache(projectId);
     return updatedProject;
   };
 

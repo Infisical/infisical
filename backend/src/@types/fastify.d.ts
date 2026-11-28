@@ -4,6 +4,7 @@ import { Cluster, Redis } from "ioredis";
 
 import { TUsers } from "@app/db/schemas";
 import { TAgentVaultAccessService, TAgentVaultUsageService } from "@app/domains/agent-vault/agent-vault/ce/module";
+import type { TAuditLogRecorderService } from "@app/domains/platform/audit-log/ce/module";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
@@ -393,6 +394,7 @@ declare module "fastify" {
     scim: TScimServiceFactory;
     ldap: TLdapConfigServiceFactory;
     auditLog: TAuditLogServiceFactory;
+    auditLogRecorderService: TAuditLogRecorderService;
     auditLogStream: TAuditLogStreamServiceFactory;
     auditLogSettings: TAuditLogSettingsServiceFactory;
     certificate: TCertificateServiceFactory;

@@ -23,6 +23,7 @@ import (
 	"github.com/Infisical/infisical/tests/fakes/oauth"
 	"github.com/Infisical/infisical/tests/harness/infisical"
 	"github.com/Infisical/infisical/tests/infra"
+	"github.com/Infisical/infisical/tests/infra/clickhouse"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/id"
 )
@@ -54,10 +55,11 @@ type Stack struct {
 type Option func(*config)
 
 type config struct {
-	extra []infra.Module
-	plan  *license.Plan
-	env   map[string]string
-	files []infra.File
+	extra      []infra.Module
+	plan       *license.Plan
+	env        map[string]string
+	files      []infra.File
+	clickhouse bool
 }
 
 // WithInfra adds a container the harness does not know about, for a suite that needs
@@ -85,9 +87,28 @@ func WithInfisicalFile(src, dst string) Option {
 	return func(c *config) { c.files = append(c.files, infra.File{Src: src, Dst: dst}) }
 }
 
+// WithClickHouse runs a ClickHouse and has the package's Infisical store audit logs there instead of Postgres.
+// Isolated only, same reason as WithInfisicalEnv.
+func WithClickHouse() Option {
+	return func(c *config) {
+		c.extra = append(c.extra, clickhouse.Module())
+		c.clickhouse = true
+	}
+}
+
 // WithDefaultPlan sets the entitlements a tenant gets unless it asks for others.
 func WithDefaultPlan(p license.Plan) Option {
 	return func(c *config) { c.plan = &p }
+}
+
+// checkInstanceOptions refuses options that change the instance's environment on a Shared profile: a shared instance
+// is adopted by name and keeps the environment it was created with, so the option would silently not apply, or apply
+// to every other shared suite.
+func checkInstanceOptions(profile Profile, cfg *config) error {
+	if (len(cfg.env) > 0 || len(cfg.files) > 0 || cfg.clickhouse) && profile != Isolated {
+		return fmt.Errorf("harness: WithInfisicalEnv, WithInfisicalFile and WithClickHouse need harness.Isolated; a shared instance keeps the environment it was created with")
+	}
+	return nil
 }
 
 // Main brings the stack up, runs the package's tests, and tears down what it owns.
@@ -173,8 +194,8 @@ func bringUp(ctx context.Context, profile Profile, cfg *config, pkg string) (*St
 		return nil, nil, err
 	}
 
-	if (len(cfg.env) > 0 || len(cfg.files) > 0) && profile != Isolated {
-		return nil, nil, fmt.Errorf("harness: WithInfisicalEnv and WithInfisicalFile need harness.Isolated; a shared instance keeps the environment it was created with")
+	if err := checkInstanceOptions(profile, cfg); err != nil {
+		return nil, nil, err
 	}
 	mods, scopes := profile.modules(img, fnImg, caFile, infisicalOptions(cfg), cfg.extra...)
 	plan, err := infra.Resolve(mods, scopes)
