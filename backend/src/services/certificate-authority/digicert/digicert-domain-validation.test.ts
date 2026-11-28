@@ -57,7 +57,6 @@ const activateValidations = (domainId: number) => {
 const client = {
   listDomains: vi.fn(),
   addDomain: vi.fn(),
-  activateDomain: vi.fn(),
   submitDomainValidation: vi.fn(),
   setDomainDcvMethod: vi.fn(),
   validateDomainDcv: vi.fn()
@@ -193,17 +192,40 @@ describe("DigiCert domain validation before an order", () => {
       {
         id: 5,
         name: "example.com",
-        is_active: false,
+        is_active: true,
         validations: [{ type: DigiCertDomainValidationType.Ov, status: "expired" as DigiCertDomainValidationStatus }]
       }
     ];
 
     await expect(validateDomains({ dnsNames: ["example.com"] })).resolves.toEqual([]);
     expect(client.addDomain).not.toHaveBeenCalled();
-    expect(client.activateDomain).toHaveBeenCalledWith(5);
     expect(client.setDomainDcvMethod).toHaveBeenCalledWith(5);
     expect(cloudflareUpsertTxtRecord).toHaveBeenCalledTimes(1);
     expect(client.validateDomainDcv).toHaveBeenCalledWith(5);
+  });
+
+  test("leaves a domain deactivated in CertCentral alone and reports why", async () => {
+    digicertDomains = [
+      {
+        id: 5,
+        name: "example.com",
+        is_active: false,
+        validations: [{ type: DigiCertDomainValidationType.Ov, status: DigiCertDomainValidationStatus.Active }]
+      }
+    ];
+
+    await expect(validateDomains({ dnsNames: ["example.com"] })).resolves.toEqual([
+      "Couldn't validate example.com automatically: the domain is deactivated in DigiCert CertCentral. Activate it there to validate it automatically"
+    ]);
+    expect(client.setDomainDcvMethod).not.toHaveBeenCalled();
+    expect(cloudflareUpsertTxtRecord).not.toHaveBeenCalled();
+  });
+
+  test("validates an EV-only legacy product with an EV validation", async () => {
+    await validateDomains({ dnsNames: ["example.com"], productNameId: "ssl_ev_plus" });
+    expect(client.addDomain).toHaveBeenCalledWith(
+      expect.objectContaining({ validationType: DigiCertDomainValidationType.Ev })
+    );
   });
 
   test("writes the record once when two requests validate the same domain at once", async () => {

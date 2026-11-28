@@ -198,7 +198,7 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string, options
       return data;
     }, `list order status changes (seconds=${seconds})`);
 
-  const listDomains = async (organizationId: number) =>
+  const listDomains = async (organizationId: number, abortSignal?: AbortSignal) =>
     wrap(async () => {
       const domains: TDigiCertDomain[] = [];
       let isComplete = false;
@@ -207,6 +207,7 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string, options
         const { data } = await request.get<TDigiCertDomainsResponse>(`${baseURL}/domain`, {
           headers,
           timeout: DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS,
+          signal: abortSignal,
           params: {
             include_validation: true,
             limit: DIGICERT_DOMAINS_PAGE_SIZE,
@@ -217,12 +218,17 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string, options
         domains.push(...pageDomains);
 
         const total = data.page?.total;
-        isComplete = total === undefined ? pageDomains.length < DIGICERT_DOMAINS_PAGE_SIZE : domains.length >= total;
+        isComplete =
+          pageDomains.length === 0 ||
+          (total === undefined ? pageDomains.length < DIGICERT_DOMAINS_PAGE_SIZE : domains.length >= total);
       }
 
       if (!isComplete) {
         logger.warn(
           `DigiCert domain listing hit the page cap and is truncated [organizationId=${organizationId}] [collected=${domains.length}]`
+        );
+        throw new Error(
+          `DigiCert lists more than ${DIGICERT_DOMAINS_MAX_PAGES * DIGICERT_DOMAINS_PAGE_SIZE} domains on this account, too many to check for automatic validation`
         );
       }
       return domains.filter((domain) => domain.organization?.id === organizationId);
@@ -251,11 +257,6 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string, options
       );
       return data;
     }, `domain creation for ${name}`);
-
-  const activateDomain = async (domainId: number) =>
-    wrap(async () => {
-      await request.put(`${baseURL}/domain/${domainId}/activate`, null, domainWriteConfig);
-    }, `domain activation for ${domainId}`);
 
   const submitDomainValidation = async (domainId: number, validationType: DigiCertDomainValidationType) =>
     wrap(async () => {
@@ -315,7 +316,6 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string, options
     listOrderStatusChanges,
     listDomains,
     addDomain,
-    activateDomain,
     submitDomainValidation,
     setDomainDcvMethod,
     validateDomainDcv

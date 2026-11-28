@@ -96,7 +96,8 @@ export const route53AppendTxtRecord = async (
   connection: TAwsConnectionConfig,
   hostedZoneId: string,
   record: { name: string; value: string; ttl: number },
-  instanceConfigService: TInstanceConfigService
+  instanceConfigService: TInstanceConfigService,
+  abortSignal?: AbortSignal
 ) => {
   const route53Client = await buildRoute53Client(connection, instanceConfigService);
   const { ResourceRecordSets } = await route53Client.send(
@@ -105,7 +106,8 @@ export const route53AppendTxtRecord = async (
       StartRecordName: record.name,
       StartRecordType: "TXT",
       MaxItems: 1
-    })
+    }),
+    { abortSignal }
   );
   const existing = ResourceRecordSets?.find(
     (recordSet) => recordSet.Type === "TXT" && recordSet.Name?.toLowerCase() === `${record.name.toLowerCase()}.`
@@ -132,6 +134,7 @@ export const route53AppendTxtRecord = async (
           }
         ]
       }
-    })
+    }),
+    { abortSignal }
   );
 };

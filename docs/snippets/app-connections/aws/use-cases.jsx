@@ -278,6 +278,31 @@ export const awsUseCaseGroups = [
             }
           ]
         }
+      },
+      {
+        id: "digicert-route53",
+        label: "DigiCert CA with Route 53",
+        policy: {
+          statements: [
+            {
+              Sid: "AllowRoute53HostedZoneForDigiCert",
+              Effect: "Allow",
+              Action: ["route53:GetHostedZone", "route53:ListResourceRecordSets"],
+              Resource: "arn:aws:route53:::hostedzone/<hosted-zone-id>"
+            },
+            {
+              Sid: "AllowRoute53TxtRecordsForDigiCert",
+              Effect: "Allow",
+              Action: ["route53:ChangeResourceRecordSets"],
+              Resource: "arn:aws:route53:::hostedzone/<hosted-zone-id>",
+              Condition: {
+                "ForAllValues:StringEquals": {
+                  "route53:ChangeResourceRecordSetsRecordTypes": ["TXT"]
+                }
+              }
+            }
+          ]
+        }
       }
     ]
   },

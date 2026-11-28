@@ -111,6 +111,8 @@ DigiCert issues an OV or EV certificate only after it validates that your organi
 
 ### Link a DNS zone
 
+Before you link a zone, allow the persistent DNS TXT record method in DigiCert CertCentral: go to **Settings** > **Preferences** > **Advanced Settings** > **Domain Control Validation (DCV)**, select **Persistent DNS TXT record**, then select **Save Settings**. Without it, DigiCert refuses to switch a domain to the persistent record, and every order waits for validation in CertCentral.
+
 <Tabs>
   <Tab title="Infisical UI">
     <Steps>
@@ -121,7 +123,10 @@ DigiCert issues an OV or EV certificate only after it validates that your organi
         Under **Domain Validation**, select **Add DNS Zone**, then select the DNS provider that hosts the zone.
       </Step>
       <Step>
-        Select the **DNS App Connection** for that provider, such as a [Cloudflare connection](/integrations/app-connections/cloudflare), then select the **Zone**. For Google Cloud DNS, select the **GCP Project** before the zone. For Route 53, enter the **Hosted Zone ID** of a public hosted zone.
+        Select the **DNS App Connection** for that provider, such as a [Cloudflare connection](/integrations/app-connections/cloudflare), then select the **Zone**. For Google Cloud DNS, select the **GCP Project** before the zone. For Route 53, enter the **Hosted Zone ID** of a public hosted zone. For DNS Server (RFC 2136), enter the **Zone** name, such as `example.com`.
+      </Step>
+      <Step>
+        Select **Create** or **Update** to save the CA with its linked zones.
       </Step>
     </Steps>
   </Tab>
@@ -132,7 +137,7 @@ DigiCert issues an OV or EV certificate only after it validates that your organi
   </Tab>
 </Tabs>
 
-A CA can link up to 20 zones from any mix of DNS providers. The DNS App Connection needs permission to read the zone and its TXT records and to create TXT records in it. For Route 53, that means `route53:GetHostedZone`, `route53:ListResourceRecordSets` and `route53:ChangeResourceRecordSets` on the hosted zone.
+A CA can link up to 20 zones from any mix of DNS providers. The DNS App Connection needs permission to read the zone and its TXT records and to create TXT records in it. For Route 53, that means `route53:GetHostedZone`, `route53:ListResourceRecordSets` and `route53:ChangeResourceRecordSets` on the hosted zone, as in the **DigiCert CA with Route 53** policy on the [AWS connection page](/integrations/app-connections/aws). For DNS Server (RFC 2136), the TSIG key must be allowed to update TXT records at `_validation-persist.<zone>`. Grant that name the same way the [RFC 2136 connection](/integrations/app-connections/rfc2136) setup grants `_acme-challenge` names, such as `grant infisical-acme name _validation-persist.example.com. TXT;` in BIND.
 
 You can't delete an App Connection while a DigiCert CA links a zone through it. Remove the zone from the CA first.
 
@@ -145,6 +150,8 @@ Before each new order, renewal, or reissue, each domain on the certificate is ch
 3. Once DigiCert sees the record, the order is placed.
 
 The record stays in the zone after the order, and DigiCert rechecks it on its own, so the zone's domain stays validated. If someone deletes the record and the validation expires, the record is written again before the next order.
+
+The record also stays when you remove the zone from the CA, move the CA to another DigiCert account, or delete the CA, and while it's there that DigiCert account can keep validating the domain. If that account shouldn't validate the domain anymore, remove its value from the `_validation-persist` record in your DNS provider. The record can hold values for more than one DigiCert account, so keep the others.
 
 <Note>
   If a [certificate policy](/documentation/platform/pki/settings/policies#subject-alternative-names-sans) allows a name in a linked zone, anyone who can request a certificate under that policy can have the zone's domain validated in DigiCert, which covers every name in the zone. Link only the zones this CA should issue for, and limit the names the policy allows.

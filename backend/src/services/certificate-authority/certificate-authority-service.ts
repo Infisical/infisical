@@ -136,7 +136,7 @@ import {
 } from "./venafi-tpp/venafi-tpp-certificate-authority-types";
 
 type TCertificateAuthorityServiceFactoryDep = {
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById" | "findExistingIdsForKeyShare">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   certificateAuthorityDAL: Pick<
     TCertificateAuthorityDALFactory,
@@ -152,7 +152,10 @@ type TCertificateAuthorityServiceFactoryDep = {
     | "countInternalCasByOrgId"
     | "countCasByOrgId"
   >;
-  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
+  externalCertificateAuthorityDAL: Pick<
+    TExternalCertificateAuthorityDALFactory,
+    "create" | "update" | "findOne" | "findDigiCertConfigurationForUpdate"
+  >;
   internalCertificateAuthorityService: TInternalCertificateAuthorityServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;

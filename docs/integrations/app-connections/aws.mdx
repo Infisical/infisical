@@ -37,7 +37,7 @@ An AWS connection authenticates Infisical to your AWS account, either by assumin
     - An [AWS Private CA](https://docs.aws.amazon.com/privateca/latest/userguide/create-CA.html) for Infisical to issue certificates from
 </UseCase>
 
-<UseCase use="acm-public-ca,acme-route53" hideWhenEmpty>
+<UseCase use="acm-public-ca,acme-route53,digicert-route53" hideWhenEmpty>
     - A [Route 53 hosted zone](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/CreatingHostedZone.html) for the domain you'll issue certificates for
 </UseCase>
 
@@ -78,7 +78,7 @@ Next, add the required policies to the IAM role or user from [Step 1](#step-1-cr
 
         <CombinedIamPolicy groups={awsUseCaseGroups} />
 
-        <UseCase use="pam-recording,agent-vault-session-logs,private-ca,acm-public-ca,acme-route53" hideWhenEmpty>
+        <UseCase use="pam-recording,agent-vault-session-logs,private-ca,acm-public-ca,acme-route53,digicert-route53" hideWhenEmpty>
             Then replace the placeholders for the integrations you picked:
         </UseCase>
 
@@ -94,7 +94,7 @@ Next, add the required policies to the IAM role or user from [Step 1](#step-1-cr
             - `<region>`, `<account-id>`, and `<ca-id>`: the parts of your CA's ARN (to use several CAs, list each ARN in a `Resource` array)
         </UseCase>
 
-        <UseCase use="acm-public-ca,acme-route53" hideWhenEmpty>
+        <UseCase use="acm-public-ca,acme-route53,digicert-route53" hideWhenEmpty>
             - `<hosted-zone-id>`: the ID of the Route 53 hosted zone for your domain
         </UseCase>
 
@@ -113,7 +113,7 @@ Next, add the required policies to the IAM role or user from [Step 1](#step-1-cr
             If a sync encrypts with a customer managed KMS key, select its KMS checkbox above the policy. If that key doesn't use the default key policy, also add the IAM role or user under **Key users** on the key's page in the AWS KMS console.
         </UseCase>
 
-        <UseCase use="secrets-manager,parameter-store,iam-rotation,honey-tokens,acm-sync,elb-sync,pki-secrets-manager,private-ca,acm-public-ca,acme-route53,pam-recording,agent-vault-session-logs" hideWhenEmpty>
+        <UseCase use="secrets-manager,parameter-store,iam-rotation,honey-tokens,acm-sync,elb-sync,pki-secrets-manager,private-ca,acm-public-ca,acme-route53,digicert-route53,pam-recording,agent-vault-session-logs" hideWhenEmpty>
             <Warning>
                 If you use the **Access Key** method, AWS may reject the policy as too large, because IAM users allow less inline policy than roles do.
                 
@@ -286,6 +286,11 @@ Now that your AWS app connection is configured, you can use it to set up the fol
     <UseCase use="acme-route53">
         <Card title="ACME CA with Route 53" icon="landmark" href="/documentation/platform/pki/ca/acme-ca">
             Prove domain ownership for an ACME CA through Route 53.
+        </Card>
+    </UseCase>
+    <UseCase use="digicert-route53">
+        <Card title="DigiCert CA with Route 53" icon="landmark" href="/documentation/platform/pki/ca/digicert-direct#domain-validation-with-dns-zones">
+            Validate domains for a DigiCert CA with a persistent DNS TXT record in Route 53.
         </Card>
     </UseCase>
     <UseCase use="honey-tokens">

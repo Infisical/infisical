@@ -274,7 +274,7 @@ const waitForDnsPropagation = async (
   }
 };
 
-const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppConnection> = {
+export const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppConnection> = {
   [AcmeDnsProvider.Route53]: AppConnection.AWS,
   [AcmeDnsProvider.Cloudflare]: AppConnection.Cloudflare,
   [AcmeDnsProvider.DNSMadeEasy]: AppConnection.DNSMadeEasy,

@@ -28,7 +28,7 @@ const DigiCertDnsZoneSchema = z.object({
     .string()
     .trim()
     .min(1)
-    .max(255)
+    .max(1024)
     .describe(CertificateAuthorities.CONFIGURATIONS.DIGICERT.dnsZoneHostedZoneId)
 });
 

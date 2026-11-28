@@ -113,7 +113,12 @@ describe("certificate issuance queue, DigiCert renewals", () => {
     await runJob({ externalConfiguration: { reissue: true } });
 
     expect(digicertFns.reissueCertificate).toHaveBeenCalledWith(
-      expect.objectContaining({ caId: CA_ID, orderId: ORDER_ID, originalCertificateId: ORIGINAL_CERTIFICATE_ID })
+      expect.objectContaining({
+        caId: CA_ID,
+        orderId: ORDER_ID,
+        originalCertificateId: ORIGINAL_CERTIFICATE_ID,
+        onBeforeOrder: expect.any(Function) as unknown
+      })
     );
     expect(digicertFns.orderCertificate).not.toHaveBeenCalled();
   });
@@ -124,7 +129,11 @@ describe("certificate issuance queue, DigiCert renewals", () => {
     await runJob({});
 
     expect(digicertFns.orderCertificate).toHaveBeenCalledWith(
-      expect.objectContaining({ caId: CA_ID, renewalOfOrderId: ORDER_ID })
+      expect.objectContaining({
+        caId: CA_ID,
+        renewalOfOrderId: ORDER_ID,
+        onBeforeOrder: expect.any(Function) as unknown
+      })
     );
     expect(digicertFns.reissueCertificate).not.toHaveBeenCalled();
   });

@@ -23,8 +23,7 @@ import { TAcmeDnsZone } from "./AcmeFields";
 import { GcpCloudDnsZoneFields } from "./GcpCloudDnsZoneFields";
 import { FormData } from "./schema";
 
-const DIGICERT_ZONE_TOOLTIP =
-  "Before each order, domains in this zone and its subdomains get a persistent DNS TXT record so DigiCert can validate them. Domains outside your linked zones wait for validation in CertCentral.";
+const DIGICERT_ZONE_TOOLTIP = "The DNS zone the persistent DNS TXT record is written to.";
 
 type Props = {
   control: Control<FormData>;
@@ -73,7 +72,8 @@ export const DnsZoneField = ({ control, name, provider, connectionId }: Props) =
                   <Info />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-md">
-                  The ID of the public Route 53 hosted zone. {DIGICERT_ZONE_TOOLTIP}
+                  The ID of the public Route 53 hosted zone the persistent DNS TXT record is written
+                  to.
                 </TooltipContent>
               </Tooltip>
             </FieldLabel>
@@ -99,7 +99,8 @@ export const DnsZoneField = ({ control, name, provider, connectionId }: Props) =
                   <Info />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-md">
-                  The zone name on your DNS server. {DIGICERT_ZONE_TOOLTIP}
+                  The name of the zone on your DNS server that the persistent DNS TXT record is
+                  written to.
                 </TooltipContent>
               </Tooltip>
             </FieldLabel>

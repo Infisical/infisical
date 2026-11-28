@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { ProjectType, TableName, TAppConnections } from "@app/db/schemas";
+import { ProjectType, TAppConnections } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
@@ -261,7 +261,7 @@ export type TAppConnectionServiceFactoryDep = {
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne" | "upsertConnectionLink">;
   externalCertificateAuthorityDAL: Pick<
     TExternalCertificateAuthorityDALFactory,
-    "findDigiCertCaNamesByDnsZoneConnectionId"
+    "hasDigiCertCaLinkingDnsZoneConnection"
   >;
   keyStore: Pick<
     TKeyStoreFactory,
@@ -1242,19 +1242,12 @@ export const appConnectionServiceFactory = ({
 
     try {
       const deletedAppConnection = await appConnectionDAL.transaction(async (tx) => {
-        await tx(TableName.AppConnection).where({ id: connectionId }).forUpdate().first();
+        await appConnectionDAL.lockByIdForUpdate(connectionId, tx);
 
-        const digiCertCaNames = await externalCertificateAuthorityDAL.findDigiCertCaNamesByDnsZoneConnectionId(
-          appConnection.id,
-          tx
-        );
-        if (digiCertCaNames.length) {
-          const quotedCaNames = digiCertCaNames.map((name) => `"${name}"`).join(", ");
-          const isSingleCa = digiCertCaNames.length === 1;
+        if (await externalCertificateAuthorityDAL.hasDigiCertCaLinkingDnsZoneConnection(appConnection.id, tx)) {
           throw new BadRequestError({
-            message: isSingleCa
-              ? `Cannot delete this App Connection because the DigiCert certificate authority ${quotedCaNames} validates domains in a DNS zone linked through it. Remove that DNS zone from the certificate authority first.`
-              : `Cannot delete this App Connection because the DigiCert certificate authorities ${quotedCaNames} validate domains in DNS zones linked through it. Remove those DNS zones from the certificate authorities first.`
+            message:
+              "Cannot delete this App Connection because one or more DigiCert certificate authorities validate domains in DNS zones linked through it. Remove those DNS zones from the certificate authorities first."
           });
         }
 

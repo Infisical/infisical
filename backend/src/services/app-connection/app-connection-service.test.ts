@@ -65,18 +65,7 @@ const buildService = (
   };
 
   const connectionRowLock = vi.fn();
-  const connectionRowQuery = {
-    where: vi.fn(() => connectionRowQuery),
-    forUpdate: vi.fn(() => {
-      connectionRowLock();
-      return connectionRowQuery;
-    }),
-    first: vi.fn(async () => ({ id: CONNECTION_ID }))
-  };
-  const connectionRowTx = Object.assign(
-    vi.fn(() => connectionRowQuery),
-    { raw: vi.fn() }
-  );
+  const connectionRowTx = { raw: vi.fn() };
 
   const appConnectionDAL = {
     findById: vi.fn(async () => ({
@@ -86,6 +75,10 @@ const buildService = (
       ...connection
     })),
     deleteById: vi.fn(),
+    lockByIdForUpdate: vi.fn(async () => {
+      connectionRowLock();
+      return { id: CONNECTION_ID };
+    }),
     transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => callback(connectionRowTx))
   };
 
@@ -271,7 +264,7 @@ describe("deleteAppConnection", () => {
       },
       {
         externalCertificateAuthorityDAL: {
-          findDigiCertCaNamesByDnsZoneConnectionId: vi.fn(async () => ["digicert-ca"])
+          hasDigiCertCaLinkingDnsZoneConnection: vi.fn(async () => true)
         }
       }
     );
@@ -282,9 +275,9 @@ describe("deleteAppConnection", () => {
 
   test("checks for linked DigiCert DNS zones under the connection row lock and checks deferred keys before the delete returns", async () => {
     const callOrder: string[] = [];
-    const findDigiCertCaNamesByDnsZoneConnectionId = vi.fn(async () => {
+    const hasDigiCertCaLinkingDnsZoneConnection = vi.fn(async () => {
       callOrder.push("guard");
-      return [];
+      return false;
     });
     const { service, appConnectionDAL, connectionRowLock, connectionRowTx } = buildService(
       { orgId: ACTOR_ORG_ID, projectId: null },
@@ -293,7 +286,7 @@ describe("deleteAppConnection", () => {
           rules: [{ action: OrgPermissionAppConnectionActions.Delete, subject: OrgPermissionSubjects.AppConnections }]
         })
       },
-      { externalCertificateAuthorityDAL: { findDigiCertCaNamesByDnsZoneConnectionId } }
+      { externalCertificateAuthorityDAL: { hasDigiCertCaLinkingDnsZoneConnection } }
     );
     connectionRowLock.mockImplementation(() => callOrder.push("lock"));
     connectionRowTx.raw.mockImplementation(async (sql: string) => {
@@ -307,14 +300,12 @@ describe("deleteAppConnection", () => {
     await service.deleteAppConnection(AppConnection.AWS, CONNECTION_ID, actor).catch(() => undefined);
 
     expect(callOrder).toEqual(["lock", "guard", "SET CONSTRAINTS ALL IMMEDIATE", "delete"]);
-    expect(findDigiCertCaNamesByDnsZoneConnectionId).toHaveBeenCalledWith(CONNECTION_ID, connectionRowTx);
+    expect(hasDigiCertCaLinkingDnsZoneConnection).toHaveBeenCalledWith(CONNECTION_ID, connectionRowTx);
     expect(appConnectionDAL.deleteById).toHaveBeenCalledWith(CONNECTION_ID, connectionRowTx);
   });
 
   test("checks DigiCert DNS zones by the stored connection ID, not the spelling in the request", async () => {
-    const findDigiCertCaNamesByDnsZoneConnectionId = vi.fn(async (id: string) =>
-      id === CONNECTION_ID ? ["digicert-ca"] : []
-    );
+    const hasDigiCertCaLinkingDnsZoneConnection = vi.fn(async (id: string) => id === CONNECTION_ID);
     const { service, appConnectionDAL } = buildService(
       { orgId: ACTOR_ORG_ID, projectId: null },
       {
@@ -322,13 +313,13 @@ describe("deleteAppConnection", () => {
           rules: [{ action: OrgPermissionAppConnectionActions.Delete, subject: OrgPermissionSubjects.AppConnections }]
         })
       },
-      { externalCertificateAuthorityDAL: { findDigiCertCaNamesByDnsZoneConnectionId } }
+      { externalCertificateAuthorityDAL: { hasDigiCertCaLinkingDnsZoneConnection } }
     );
 
     await expect(service.deleteAppConnection(AppConnection.AWS, CONNECTION_ID.toUpperCase(), actor)).rejects.toThrow(
       BadRequestError
     );
-    expect(findDigiCertCaNamesByDnsZoneConnectionId).toHaveBeenCalledWith(CONNECTION_ID, expect.anything());
+    expect(hasDigiCertCaLinkingDnsZoneConnection).toHaveBeenCalledWith(CONNECTION_ID, expect.anything());
     expect(appConnectionDAL.deleteById).not.toHaveBeenCalled();
   });
 });

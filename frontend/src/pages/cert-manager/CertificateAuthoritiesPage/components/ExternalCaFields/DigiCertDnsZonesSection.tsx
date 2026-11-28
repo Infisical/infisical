@@ -26,7 +26,6 @@ import {
   ACME_DNS_PROVIDER_APP_CONNECTION_MAP,
   ACME_DNS_PROVIDER_NAME_MAP
 } from "@app/hooks/api/ca/constants";
-import { TDigiCertDnsZone } from "@app/hooks/api/ca/types";
 import { PkiDocsUrls } from "@app/pages/cert-manager/pki-docs-urls";
 
 import { AppConnectionSelectField } from "./AppConnectionSelectField";
@@ -52,9 +51,9 @@ const AddDnsZoneMenu = ({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button type="button" variant="outline" size="sm" isDisabled={isDisabled}>
-          <PlusIcon className="size-4" />
+          <PlusIcon />
           Add DNS Zone
-          <ChevronDownIcon className="size-4" />
+          <ChevronDownIcon />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={4} className="min-w-56">
@@ -92,14 +91,12 @@ const DnsZoneCard = ({
   setValue,
   index,
   provider,
-  savedZones,
   onRemove
 }: {
   control: Control<FormData>;
   setValue: UseFormSetValue<FormData>;
   index: number;
   provider: AcmeDnsProvider;
-  savedZones?: TDigiCertDnsZone[];
   onRemove: () => void;
 }) => {
   const { currentProject } = useProject();
@@ -112,11 +109,6 @@ const DnsZoneCard = ({
   );
 
   const zone = useWatch({ control, name: `configuration.dnsZones.${index}` });
-  const title =
-    savedZones?.find(
-      (savedZone) =>
-        savedZone.provider === provider && savedZone.hostedZoneId === zone?.hostedZoneId
-    )?.zoneName ?? providerName;
 
   return (
     <div className="flex flex-col rounded-md border border-border px-4 pt-4">
@@ -127,15 +119,10 @@ const DnsZoneCard = ({
             alt={`${providerName} logo`}
             className="size-4 shrink-0 object-contain"
           />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="truncate text-sm font-medium text-foreground">{title}</span>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-md break-all">{title}</TooltipContent>
-          </Tooltip>
+          <span className="truncate text-sm font-medium text-foreground">{providerName}</span>
         </div>
         <IconButton aria-label="Remove DNS zone" variant="ghost" size="xs" onClick={onRemove}>
-          <TrashIcon className="size-4" />
+          <TrashIcon />
         </IconButton>
       </div>
       <AppConnectionSelectField
@@ -164,10 +151,9 @@ const DnsZoneCard = ({
 type Props = {
   control: Control<FormData>;
   setValue: UseFormSetValue<FormData>;
-  savedZones?: TDigiCertDnsZone[];
 };
 
-export const DigiCertDnsZonesSection = ({ control, setValue, savedZones }: Props) => {
+export const DigiCertDnsZonesSection = ({ control, setValue }: Props) => {
   const { fields, append, remove } = useFieldArray({ control, name: "configuration.dnsZones" });
 
   const addZone = (provider: AcmeDnsProvider) =>
@@ -182,9 +168,8 @@ export const DigiCertDnsZonesSection = ({ control, setValue, savedZones }: Props
             <DocumentationLinkBadge variant="minified" href={PkiDocsUrls.ca.digicertDirect} />
           </Label>
           <span className="text-xs text-muted">
-            Before each order, a domain DigiCert hasn&apos;t validated gets a persistent DNS TXT
-            record in its linked zone so DigiCert can validate it. Domains outside these zones wait
-            for validation in CertCentral.
+            Each linked zone gets one persistent DNS TXT record at its top so DigiCert can validate
+            every domain in it. Domains outside these zones wait for validation in CertCentral.
           </span>
         </div>
         {fields.length > 0 && (
@@ -206,7 +191,6 @@ export const DigiCertDnsZonesSection = ({ control, setValue, savedZones }: Props
             setValue={setValue}
             index={index}
             provider={field.provider}
-            savedZones={savedZones}
             onRemove={() => remove(index)}
           />
         ))

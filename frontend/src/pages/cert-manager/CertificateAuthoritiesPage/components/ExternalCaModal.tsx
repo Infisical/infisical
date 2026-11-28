@@ -1210,13 +1210,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle, onComplete }: Props)
                 {caType === CaType.DIGICERT &&
                   digicertPurpose === DigiCertCaPurpose.Ssl &&
                   Boolean(digicertProductNameId) && (
-                    <DigiCertDnsZonesSection
-                      control={control}
-                      setValue={setValue}
-                      savedZones={
-                        ca?.type === CaType.DIGICERT ? ca.configuration.dnsZones : undefined
-                      }
-                    />
+                    <DigiCertDnsZonesSection control={control} setValue={setValue} />
                   )}
                 {caType === CaType.AWS_ACM_PUBLIC_CA && (
                   <AwsAcmPublicCaFields

@@ -135,7 +135,7 @@ describe("rfc2136 public nameserver check", () => {
     resolveTxtByServer.set("45.33.10.2", missing);
 
     await expect(waitForPublicNameservers("corp.com", NAME, "token")).rejects.toThrow(
-      "Nameserver 'ns2.corp.com' still doesn't serve the challenge record"
+      "Nameserver 'ns2.corp.com' still doesn't serve the TXT record"
     );
   });
 
@@ -209,7 +209,7 @@ describe("rfc2136 public nameserver check", () => {
     resolveTxtByServer.set("45.33.10.1", missing);
 
     await expect(rfc2136InsertTxtRecord(connection, "corp.com", NAME, "token", deps)).rejects.toThrow(
-      "Nameserver 'ns1.corp.com' still doesn't serve the challenge record"
+      "Nameserver 'ns1.corp.com' still doesn't serve the TXT record"
     );
     expect(dnsMock.promises.resolveNs).toHaveBeenCalledWith("corp.com");
   });

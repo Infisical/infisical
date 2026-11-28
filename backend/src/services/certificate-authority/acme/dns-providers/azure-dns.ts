@@ -48,14 +48,18 @@ export const azureDnsInsertTxtRecord = async (
   }
 };
 
-type TAzureTxtRecordSet = { properties?: { TTL?: number; TXTRecords?: { value: string[] }[] } };
+type TAzureTxtRecordSet = {
+  etag?: string;
+  properties?: { TTL?: number; metadata?: Record<string, string>; TXTRecords?: { value: string[] }[] };
+};
 
 export const azureDnsAppendTxtRecord = async (
   connection: TAzureDnsConnection,
   hostedZoneId: string,
   recordName: string,
   value: string,
-  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">,
+  abortSignal?: AbortSignal
 ) => {
   validateAzureDnsZoneResourceId(hostedZoneId);
   const unquotedValue = value.replaceAll('"', "");
@@ -67,7 +71,7 @@ export const azureDnsAppendTxtRecord = async (
 
     let existing: TAzureTxtRecordSet | undefined;
     try {
-      existing = (await request.get<TAzureTxtRecordSet>(recordUrl, { headers })).data;
+      existing = (await request.get<TAzureTxtRecordSet>(recordUrl, { headers, signal: abortSignal })).data;
     } catch (error) {
       if (!isAxiosError(error) || error.response?.status !== 404) throw error;
     }
@@ -79,11 +83,20 @@ export const azureDnsAppendTxtRecord = async (
       recordUrl,
       {
         properties: {
+          ...(existing?.properties?.metadata ? { metadata: existing.properties.metadata } : {}),
           TTL: existing?.properties?.TTL ?? 60,
           TXTRecords: [...existingRecords, { value: [unquotedValue] }]
         }
       },
-      { headers: { ...headers, "Content-Type": "application/json" } }
+      {
+        headers: {
+          ...headers,
+          "Content-Type": "application/json",
+          ...(existing?.etag ? { "If-Match": existing.etag } : {}),
+          ...(existing ? {} : { "If-None-Match": "*" })
+        },
+        signal: abortSignal
+      }
     );
   } catch (error) {
     if (isAxiosError(error)) {

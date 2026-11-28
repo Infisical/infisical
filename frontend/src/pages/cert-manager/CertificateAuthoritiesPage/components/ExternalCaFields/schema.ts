@@ -106,13 +106,25 @@ const digicertConfigurationSchema = z
       .optional(),
     dnsZones: z
       .array(
-        z.object({
-          provider: z.nativeEnum(AcmeDnsProvider),
-          appConnection: z
-            .object({ id: z.string(), name: z.string() })
-            .refine(({ id }) => Boolean(id), { message: "DNS App Connection is required" }),
-          hostedZoneId: z.string().trim().min(1, "Zone is required").max(255)
-        })
+        z
+          .object({
+            provider: z.nativeEnum(AcmeDnsProvider),
+            appConnection: z
+              .object({ id: z.string(), name: z.string() })
+              .refine(({ id }) => Boolean(id), { message: "DNS App Connection is required" }),
+            hostedZoneId: z.string().trim().max(1024)
+          })
+          .superRefine(({ provider, hostedZoneId }, ctx) => {
+            if (hostedZoneId) return;
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["hostedZoneId"],
+              message:
+                provider === AcmeDnsProvider.ROUTE53
+                  ? "Hosted Zone ID is required"
+                  : "Zone is required"
+            });
+          })
       )
       .max(DIGICERT_MAX_DNS_ZONES)
       .optional()

@@ -204,8 +204,22 @@ export const appConnectionDALFactory = (db: TDbClient) => {
     return parseInt(String(result?.count || "0"), 10);
   };
 
+  const lockByIdForUpdate = async (id: string, tx: Knex) =>
+    tx(TableName.AppConnection).where({ id }).forUpdate().first<Pick<TAppConnections, "id"> | undefined>("id");
+
+  const findExistingIdsForKeyShare = async (ids: string[], tx: Knex) => {
+    const rows = await tx(TableName.AppConnection)
+      .whereIn("id", ids)
+      .orderBy("id")
+      .forKeyShare()
+      .select<Pick<TAppConnections, "id">[]>("id");
+    return rows.map(({ id }) => id);
+  };
+
   return {
     ...appConnectionOrm,
+    lockByIdForUpdate,
+    findExistingIdsForKeyShare,
     findAppConnectionUsageById,
     findWithProjectDetails,
     findByGatewayId,

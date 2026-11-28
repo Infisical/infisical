@@ -57,6 +57,12 @@ export enum DigiCertDomainValidationStatus {
 
 export const DIGICERT_EV_PRODUCT_NAME_IDS = new Set([
   "ssl_ev_basic",
+  "ssl_ev_plus",
+  "ssl_ev_multi_domain",
+  "ssl_ev_securesite",
+  "ssl_ev_securesite_multi_domain",
+  "ssl_ev_thawte_webserver",
+  "ssl_ev_geotrust_truebizid",
   "ssl_ev_securesite_flex",
   "ssl_ev_securesite_pro"
 ]);

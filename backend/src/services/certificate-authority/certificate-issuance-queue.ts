@@ -85,7 +85,7 @@ import {
   TDigiCertBeforeOrderHook
 } from "./digicert/digicert-certificate-authority-fns";
 import { TDigiCertCertificateRequestMetadata } from "./digicert/digicert-certificate-authority-types";
-import { digiCertDomainValidationFactory } from "./digicert/digicert-domain-validation";
+import { appendDomainValidationFailures, digiCertDomainValidationFactory } from "./digicert/digicert-domain-validation";
 import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
 import { GoDaddyCertificateAuthorityFns } from "./godaddy/godaddy-certificate-authority-fns";
 import { VenafiTppCertificateAuthorityFns } from "./venafi-tpp/venafi-tpp-certificate-authority-fns";
@@ -167,9 +167,12 @@ export type TIssueCertificateFromProfileJobData = {
 
 type TCertificateIssuanceQueueFactoryDep = {
   certificateAuthorityDAL: TCertificateAuthorityDALFactory;
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById" | "findExistingIdsForKeyShare">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
+  externalCertificateAuthorityDAL: Pick<
+    TExternalCertificateAuthorityDALFactory,
+    "create" | "update" | "findOne" | "findDigiCertConfigurationForUpdate"
+  >;
   certificateDAL: TCertificateDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "findById">;
   kmsDataKeyService: TKmsDataKeyService;
@@ -959,12 +962,9 @@ export const certificateIssuanceQueueFactory = ({
           await setPending("Submitting the request to DigiCert");
         };
         const withDomainValidationFailures = (error: unknown) => {
-          if (error instanceof Error && domainValidationFailures.length) {
+          if (error instanceof Error) {
             // eslint-disable-next-line no-param-reassign
-            error.message = [
-              error.message.endsWith(".") ? error.message.slice(0, -1) : error.message,
-              ...domainValidationFailures
-            ].join(". ");
+            error.message = appendDomainValidationFailures(error.message, domainValidationFailures);
           }
           return error;
         };

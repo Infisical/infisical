@@ -176,4 +176,34 @@ describe("processDigiCertPendingValidationRequest pending message", () => {
       )
     );
   });
+
+  test("keeps the automatic domain validation failures when the order times out", async () => {
+    const { deps } = buildDeps();
+    const request = buildRequest(new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString());
+    const metadata = JSON.parse(request.metadata as string) as { digicert: Record<string, unknown> };
+    metadata.digicert.domainValidationFailures = ["Couldn't validate example.com automatically: Authentication error"];
+    const client = {
+      getOrder: vi.fn().mockResolvedValue({
+        id: ORDER_ID,
+        status: "reissue_pending",
+        certificate: { id: PREVIOUS_CERTIFICATE_ID }
+      }),
+      checkValidation: vi.fn().mockResolvedValue({ order_status: "reissue_pending" })
+    };
+
+    await processDigiCertPendingValidationRequest(
+      deps,
+      { ...request, metadata: JSON.stringify(metadata) },
+      buildClientCache(client)
+    );
+
+    expect(deps.certificateRequestService.updateCertificateRequestStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: CertificateRequestStatus.FAILED,
+        errorMessage: expect.stringContaining(
+          "Submit a new request to reissue again. When the order was placed: Couldn't validate example.com automatically: Authentication error"
+        ) as string
+      })
+    );
+  });
 });

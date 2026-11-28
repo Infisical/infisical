@@ -1009,7 +1009,7 @@ A new `AcmeDnsProvider` also needs an entry in `DNS_TXT_RECORD_PROVIDERS`
 (`services/certificate-authority/dns-providers/dns-txt-records.ts`), whose `getZone` returns the provider's
 canonical zone id, or the backend type-check fails. Any CA that keeps an app connection id inside its JSON
 `configuration` must be covered by the delete guard in `appConnectionService.deleteAppConnection` (as
-`findDigiCertCaNamesByDnsZoneConnectionId` does), because no foreign key stops the connection from being deleted under it.
+`hasDigiCertCaLinkingDnsZoneConnection` does, under a row lock on the connection), because no foreign key stops the connection from being deleted under it.
 
 ### Cross-signed CA certificates and issued chains
 
