@@ -4,6 +4,9 @@ on:
   pull_request:
     types: [opened, edited, synchronize, reopened, ready_for_review]
 
+permissions:
+  pull-requests: read
+
 jobs:
   validate-pr-description:
     name: Validate PR Description
@@ -83,3 +86,130 @@ jobs:
             }
 
             console.log(`✅ Type selected: ${checked.join(', ')}`);
+
+            // The ticked box and the fragment files have to agree both ways.
+            const impactStart = lines.findIndex((line) =>
+              /^\s{0,3}#{1,6}\s*self-hosted upgrade impact\b/i.test(line)
+            );
+
+            const impactFooter = `
+            **How to fix:** edit the PR description and tick exactly one box under the \`## Self-hosted upgrade impact\` heading:
+
+            \`\`\`markdown
+            ## Self-hosted upgrade impact
+
+            - [x] None
+            - [ ] Yes, I added a fragment under \`upgrade-impact/changes/\`
+            \`\`\`
+
+            Tick **Yes** when a self-hosted operator has to do or know something to upgrade, and add a fragment as described in [upgrade-impact/changes/README.md](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/upgrade-impact/changes/README.md). This check re-runs automatically once the description is saved or a commit is pushed.
+            `;
+
+            if (impactStart === -1) {
+              core.setFailed(`
+            ❌ **PR description is missing the Self-hosted upgrade impact section**
+
+            Every PR states whether it affects self-hosted upgrades, so the release notes operators read can be built from what authors declared.
+            ${impactFooter}`);
+              return;
+            }
+
+            const afterImpact = lines.slice(impactStart + 1);
+            const impactEnd = afterImpact.findIndex((line) => /^\s{0,3}#{1,6}\s+\S/.test(line));
+            const impactChecked = (impactEnd === -1 ? afterImpact : afterImpact.slice(0, impactEnd))
+              .filter((line) => /^\s*[-*]\s*\[[xX]\]/.test(line))
+              .map((line) => line.replace(/^\s*[-*]\s*\[[xX]\]\s*/, '').trim().toLowerCase());
+
+            const saysNone = impactChecked.some((label) => label.startsWith('none'));
+            const saysYes = impactChecked.some((label) => label.startsWith('yes'));
+
+            if (impactChecked.length !== 1 || saysNone === saysYes) {
+              core.setFailed(`
+            ❌ **Self-hosted upgrade impact is not declared**
+
+            Exactly one of **None** and **Yes** has to be ticked, and ${impactChecked.length} boxes are.
+            ${impactFooter}`);
+              return;
+            }
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100
+            });
+            const isFragment = (name) => /^upgrade-impact\/changes\/[^/]+\.yaml$/.test(name);
+            const fragments = files
+              .filter((file) => file.status === 'added' && isFragment(file.filename))
+              .map((file) => file.filename);
+
+            // A release collects a fragment once, when it is added, and its release PR deletes only
+            // files that still match the tag. An edited or moved fragment is never collected again
+            // and never deleted.
+            const editedFragments = files
+              .filter((file) =>
+                file.status === 'renamed' ? isFragment(file.previous_filename) : file.status === 'modified' && isFragment(file.filename)
+              )
+              .map((file) => (file.status === 'renamed' ? `${file.previous_filename} (renamed)` : file.filename));
+
+            if (editedFragments.length > 0) {
+              core.setFailed(`
+            ❌ **This PR changes a fragment that is already on the base branch**
+
+            This PR edits or renames ${editedFragments.map((file) => `\`${file}\``).join(', ')}. A release reads a fragment once, when it is added, so the change would never reach the upgrade notes, and the release PR would no longer delete the file.
+
+            **How to fix:** restore the fragment to what the base branch has. To correct a note that was already released, edit that release's file under \`upgrade-impact/data/releases/\`. See the rules in [upgrade-impact/changes/README.md](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/upgrade-impact/changes/README.md#rules).
+            `);
+              return;
+            }
+
+            if (saysYes && fragments.length === 0) {
+              core.setFailed(`
+            ❌ **"Yes" is ticked but this PR adds no fragment**
+
+            Add a file named \`upgrade-impact/changes/<short-kebab-case-name>.yaml\`, or tick **None** if operators need to do nothing.
+            ${impactFooter}`);
+              return;
+            }
+
+            if (saysNone && fragments.length > 0) {
+              core.setFailed(`
+            ❌ **"None" is ticked but this PR adds a fragment**
+
+            This PR adds ${fragments.map((file) => `\`${file}\``).join(', ')}. Tick **Yes**, or remove the fragment.
+            ${impactFooter}`);
+              return;
+            }
+
+            const isBreaking = checked.some((label) => /^breaking\b/i.test(label)) || /^[a-z]+(\([^)]*\))?!:/i.test(pr.title);
+
+            if (isBreaking && fragments.length === 0) {
+              core.setFailed(`
+            ❌ **This PR is marked breaking but adds no fragment**
+
+            The \`Breaking\` type is ticked, or the title has a \`!\`, so self-hosted operators need to be told what breaks and what to do. Add a fragment and tick **Yes**.
+            ${impactFooter}`);
+              return;
+            }
+
+            // Hint only: most changes here need no operator action, and failing on them would
+            // teach people to ignore the check.
+            const sensitive = files
+              .map((file) => file.filename)
+              .filter((name) =>
+                [
+                  'backend/src/lib/config/env.ts',
+                  'Dockerfile',
+                  'docker-compose.prod.yml',
+                  'standalone-entrypoint.sh',
+                  'backend/src/db/migrations/'
+                ].some((prefix) => name.startsWith(prefix))
+              );
+
+            if (saysNone && sensitive.length > 0) {
+              core.warning(
+                `This PR declares no self-hosted upgrade impact but changes ${sensitive.join(', ')}. Confirm that no env var was removed, renamed or made required, the image still starts the same way, and any migration is safe to run unattended. If not, add a fragment.`
+              );
+            }
+
+            console.log(`✅ Self-hosted upgrade impact: ${saysYes ? fragments.join(', ') : 'none'}`);

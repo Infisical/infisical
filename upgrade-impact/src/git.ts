@@ -38,51 +38,72 @@ export const getStableTags = () =>
     .filter(isStableVersion)
     .sort(compareVersions);
 
-export const getPreviousStableTag = (tag: string) => {
+// The newest stable tag below this one that already has upgrade impact data. A release whose data
+// was never generated is passed over, so the next release's range covers its changes too.
+export const getPreviousReleasedTag = (tag: string, releasedVersions: ReadonlySet<string>) => {
   const stableTags = getStableTags();
   const index = stableTags.indexOf(tag);
 
-  if (index <= 0) {
-    return null;
-  }
-
-  return stableTags[index - 1];
+  return (
+    stableTags
+      .slice(0, Math.max(index, 0))
+      .reverse()
+      .find((candidate) => releasedVersions.has(candidate)) ?? null
+  );
 };
 
 export const getTagDate = (tag: string) => runGit(["log", "-1", "--format=%cI", tag]);
 
-export const getChangedFiles = (fromTag: string | null, toTag: string) => {
+const getFilesWithStatus = (fromTag: string | null, toTag: string, wantedStatus: "A" | "M") => {
   if (!fromTag) {
     return [];
   }
 
-  return runGit(["diff", "--name-only", `${fromTag}..${toTag}`])
-    .split("\n")
-    .map((file) => file.trim())
-    .filter(Boolean);
-};
-
-export const getAddedFiles = (fromTag: string | null, toTag: string) => {
-  if (!fromTag) {
-    return [];
-  }
-
-  return runGit(["diff", "--name-status", `${fromTag}..${toTag}`])
+  // Without --no-renames git can pair a new fragment with one the last release deleted and call it
+  // a rename, which hides the add.
+  return runGit(["diff", "--name-status", "--no-renames", `${fromTag}..${toTag}`])
     .split("\n")
     .map((line) => line.split("\t"))
-    .filter(([status]) => status === "A")
+    .filter(([status]) => status === wantedStatus)
     .map(([, file]) => file)
     .filter(Boolean);
 };
 
-export const getCommitSummaries = (fromTag: string | null, toTag: string) => {
-  const range = fromTag ? `${fromTag}..${toTag}` : toTag;
+export const getAddedFiles = (fromTag: string | null, toTag: string) => getFilesWithStatus(fromTag, toTag, "A");
 
-  return runGit(["log", "--pretty=format:%H%x09%s", range])
+export const getModifiedFiles = (fromTag: string | null, toTag: string) => getFilesWithStatus(fromTag, toTag, "M");
+
+export const getFileAtRef = (ref: string, file: string) => runGit(["show", `${ref}:${file}`]);
+
+export const getFilesAtRef = (ref: string, dir: string) =>
+  runGit(["ls-tree", "-r", "--name-only", "--full-tree", ref, dir]).split("\n").filter(Boolean);
+
+export const getFileDiff = (base: string, head: string, file: string, contextLines: number) =>
+  // Paths are repo-root relative, but git reads pathspecs from the cwd.
+  runGit(["diff", `--unified=${contextLines}`, base, head, "--", `:(top)${file}`]);
+
+export const getAddingCommit = (fromTag: string, toTag: string, file: string) => {
+  const lines = runGit([
+    "log",
+    // Stay on the release line so a merge-commit PR resolves to the merge (its subject has the PR
+    // number), not the author's branch commit.
+    "--first-parent",
+    "--no-renames",
+    "--diff-filter=A",
+    "--pretty=format:%H%x09%s",
+    `${fromTag}..${toTag}`,
+    "--",
+    // Paths are repo-root relative, but git reads pathspecs from the cwd.
+    `:(top)${file}`
+  ])
     .split("\n")
-    .map((line) => {
-      const [sha, ...subjectParts] = line.split("\t");
-      return { sha, subject: subjectParts.join("\t") };
-    })
-    .filter(({ sha }) => Boolean(sha));
+    .filter(Boolean);
+  const oldest = lines[lines.length - 1];
+
+  if (!oldest) {
+    return null;
+  }
+
+  const [sha, ...subjectParts] = oldest.split("\t");
+  return { sha, subject: subjectParts.join("\t") };
 };

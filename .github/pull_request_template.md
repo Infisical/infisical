@@ -19,6 +19,13 @@
 - [ ] Docs
 - [ ] Chore
 
+## Self-hosted upgrade impact
+
+<!-- Tick exactly one. "Yes" if a self-hosted operator has to do or know something to upgrade (see upgrade-impact/changes/README.md). CI fails if the box and the files disagree. -->
+
+- [ ] None
+- [ ] Yes, I added a fragment under `upgrade-impact/changes/`
+
 ## Checklist
 
 - [ ] Title follows the [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/#summary) format: `type(scope): short description` (scope is optional, e.g., `fix: prevent crash on sync` or `fix(api): handle null response`). 

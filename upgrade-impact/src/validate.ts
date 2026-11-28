@@ -3,11 +3,13 @@ import path from "node:path";
 
 import { parse } from "yaml";
 
+import { FRAGMENT_FILE_NAME, MIGRATIONS_ENTRY_TITLE, parseFragment } from "./fragments.js";
 import { compareVersions, getAddedFiles, hasGitRef } from "./git.js";
 import { ReleaseImpact, ReleaseImpactSchema, ReleaseIndex, ReleaseIndexSchema } from "./schema.js";
 
 type ValidateUpgradeImpactDataOptions = {
   dataDir: string;
+  changesDir?: string;
   skipGitChecks?: boolean;
 };
 
@@ -79,6 +81,8 @@ const unclearActionPatterns = [
   /update any automation/i
 ];
 
+const isUnclearAction = (action: string) => unclearActionPatterns.some((pattern) => pattern.test(action));
+
 const validateDuplicateContent = (release: ReleaseImpact, file: string, errors: string[]) => {
   const seenEntryTitles = new Map<string, string>();
   const sections = [
@@ -101,11 +105,8 @@ const validateDuplicateContent = (release: ReleaseImpact, file: string, errors: 
         seenEntryTitles.set(titleKey, entryRef);
       }
 
-      for (const pattern of unclearActionPatterns) {
-        if (pattern.test(entry.action)) {
-          errors.push(`${file} uses unclear operator action in ${entryRef}: ${entry.action}`);
-          break;
-        }
+      if (isUnclearAction(entry.action)) {
+        errors.push(`${file} uses unclear operator action in ${entryRef}: ${entry.action}`);
       }
 
       const seenEvidence = new Set<string>();
@@ -178,8 +179,66 @@ const validateReleaseFile = async (
   return release;
 };
 
+const validateFragments = async (changesDir: string, errors: string[]) => {
+  let files: string[];
+
+  try {
+    files = (await fs.readdir(changesDir)).sort();
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return;
+    }
+
+    throw error;
+  }
+
+  const fileByTitle = new Map<string, string>();
+
+  for (const file of files) {
+    if (file === "README.md") {
+      continue;
+    }
+
+    if (!FRAGMENT_FILE_NAME.test(file)) {
+      errors.push(`changes/${file} must be named <lowercase-kebab-case>.yaml`);
+      continue;
+    }
+
+    try {
+      const { title, action } = parseFragment(
+        await fs.readFile(path.join(changesDir, file), "utf8"),
+        `changes/${file}`
+      );
+
+      // A release copies these verbatim and fails on the same rules, when it's too late to edit.
+      if (isUnclearAction(action)) {
+        errors.push(`changes/${file} uses unclear operator action: ${action}`);
+      }
+
+      const titleKey = normalizeEntryKey(title);
+
+      if (titleKey === normalizeEntryKey(MIGRATIONS_ENTRY_TITLE)) {
+        errors.push(
+          `changes/${file} uses the title "${title}", which is reserved for the entry a release adds for its migrations. Name the specific change instead.`
+        );
+      }
+
+      const fileWithSameTitle = fileByTitle.get(titleKey);
+
+      if (fileWithSameTitle) {
+        errors.push(`changes/${file} repeats the title of changes/${fileWithSameTitle}: "${title}"`);
+      } else {
+        fileByTitle.set(titleKey, file);
+      }
+    } catch (error) {
+      errors.push((error as Error).message);
+    }
+  }
+};
+
 export const validateUpgradeImpactData = async ({
   dataDir,
+  changesDir,
   skipGitChecks = false
 }: ValidateUpgradeImpactDataOptions): Promise<ValidateUpgradeImpactDataResult> => {
   const errors: string[] = [];
@@ -238,6 +297,10 @@ export const validateUpgradeImpactData = async ({
         `Skipping ${file}; it is not listed in index.yaml. A release may have been skipped or its impact data not yet indexed.\n`
       );
     }
+  }
+
+  if (changesDir) {
+    await validateFragments(changesDir, errors);
   }
 
   return { errors };

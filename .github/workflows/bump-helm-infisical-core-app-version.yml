@@ -71,6 +71,12 @@ jobs:
             echo "generate=true" >> "$GITHUB_OUTPUT"
           fi
 
+          # Releases waiting on the open PR's branch were already collected, so the range this
+          # release collects must start after them.
+          if [ -n "$OPEN_PR" ] && git rev-parse --verify --quiet "origin/${BRANCH_NAME}" >/dev/null; then
+            echo "data_ref=origin/${BRANCH_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Node
         if: steps.impact.outputs.generate == 'true'
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -97,19 +103,20 @@ jobs:
       # The chart's upgrade notes come from this data, so the chart is never bumped without it.
       - name: Generate upgrade impact data
         if: steps.impact.outputs.generate == 'true'
-        run: npm run generate -- --tag "${{ steps.release.outputs.tag }}"
-        working-directory: upgrade-impact
         env:
-          UPGRADE_TOOL_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TAG_NAME: ${{ steps.release.outputs.tag }}
+          DATA_REF: ${{ steps.impact.outputs.data_ref }}
+        run: npm run generate -- --tag "$TAG_NAME" ${DATA_REF:+--data-ref "$DATA_REF"}
+        working-directory: upgrade-impact
 
       - name: Validate upgrade impact data
         if: steps.impact.outputs.generate == 'true'
         run: npm run validate
         working-directory: upgrade-impact
 
-      # The data was generated on main. It is set aside and written again on each attempt below,
-      # because index.yaml on the release branch may have gained other releases since.
+      # Generated on main, but index.yaml on the release branch may have gained releases since, so
+      # stash it and rewrite it on each attempt below. The rewrite also drops every fragment
+      # the tag contains: this release's, and any an earlier release PR was cut too early to delete.
       - name: Set generated data aside
         if: steps.impact.outputs.generate == 'true'
         env:
@@ -160,6 +167,11 @@ jobs:
             GITHUB_OUTPUT="$BUMP_OUTPUT" ./helm-charts/bump-infisical-core-app-version.sh "$TAG_NAME"
 
             git add helm-charts/infisical-standalone-postgres upgrade-impact/data
+            # A release branch cut before fragments existed has no such directory, and git add
+            # fails on a path that matches nothing.
+            if [ -d upgrade-impact/changes ]; then
+              git add upgrade-impact/changes
+            fi
             if git diff --cached --quiet; then
               echo "Nothing to commit for ${TAG_NAME} on ${BASE}."
               PUSHED=false
@@ -230,9 +242,7 @@ jobs:
 
           Adds the generated upgrade impact data for each Infisical release below and points the \`infisical-standalone\` Helm chart at Infisical \`${TAG_NAME}\`. ${CHART_LINE} If a newer release ships before this merges, this PR is updated in place.
 
-          Before merging:
-          - Review each release's generated YAML for self-hosted upgrade accuracy.
-          - Review the upgrade notes generated from those breaking changes in the chart \`${CHART_VERSION}\` CHANGELOG section.
+          The upgrade impact data is aggregated from the fragments each pull request added under \`upgrade-impact/changes/\`, which were reviewed in those pull requests, so it needs no second review here. This PR deletes the fragments it collected.
 
           ### Releases in this PR
 
@@ -252,6 +262,11 @@ jobs:
           - [ ] Breaking
           - [ ] Docs
           - [x] Chore
+
+          ## Self-hosted upgrade impact
+
+          - [x] None
+          - [ ] Yes, I added a fragment under \`upgrade-impact/changes/\`
           EOF
 
       - name: Open or update PR
