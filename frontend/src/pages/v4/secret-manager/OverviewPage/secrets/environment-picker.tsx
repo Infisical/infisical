@@ -4,6 +4,7 @@ import { Checkbox } from "@infisical/cipher/ui/checkbox";
 import {
   Command,
   CommandEmpty,
+  CommandFooter,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -18,9 +19,9 @@ import {
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
 import { Field } from "@infisical/cipher/ui/field";
-import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
+import { MultiSelectFooterAction } from "@infisical/cipher/ui/multi-select";
 import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
@@ -277,27 +278,25 @@ export function EnvironmentPicker({
                 ))}
               </CommandGroup>
             </CommandList>
-            <CommandSeparator alwaysRender />
-            <CommandGroup forceMount>
-              <CommandItem
-                forceMount
-                value="__add__"
-                keywords={[]}
+            <CommandFooter>
+              <MultiSelectFooterAction
+                icon="plus"
                 disabled={!canCreate}
-                onSelect={() => {
+                onClick={() => {
                   changeOpen(false);
                   guard("environment", () => setAdding(true));
                 }}
               >
-                <Icon name="plus" />
                 Add environment
-              </CommandItem>
-            </CommandGroup>
-            <p className={styles.envHint}>
-              {canCreate
-                ? "Use the checkboxes to select multiple environments."
-                : "Use the checkboxes to select multiple environments. You don't have permission to add environments."}
-            </p>
+              </MultiSelectFooterAction>
+            </CommandFooter>
+            <CommandFooter>
+              <p className={styles.envHint}>
+                {canCreate
+                  ? "Use the checkboxes to select multiple environments."
+                  : "Use the checkboxes to select multiple environments. You don't have permission to add environments."}
+              </p>
+            </CommandFooter>
           </Command>
         </PopoverContent>
       </Popover>
