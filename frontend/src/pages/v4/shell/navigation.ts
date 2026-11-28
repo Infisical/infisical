@@ -222,10 +222,9 @@ export const orgSections = (isSubOrganization: boolean): readonly ShellNavSectio
           ? []
           : [tab("security", "Security", "shield-check", "tab-org-security")]),
         tab("encryption", "Encryption", "key", "tab-org-encryption"),
-        tab("product", "Product settings", "settings", "product-settings"),
         ...(isSubOrganization
           ? []
-          : [tab("sub-orgs", "Sub organizations", "building", "tab-sub-organizations")])
+          : [tab("sub-orgs", "Sub-organizations", "building", "tab-sub-organizations")])
       ])
     ]
   }
