@@ -1,15 +1,7 @@
 import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx";
 
-<AgentVaultBranch agent="none">
-  For example, with Claude:
-
-  ```bash
-  infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- claude
-  ```
-</AgentVaultBranch>
-
 <AgentVaultBranch agent="claude-code">
-  For Claude Code, the command is `claude`:
+  On the machine that will run the agent, paste the command you copied in the previous step. Replace `<proxy-host>` with the address of the proxy's host, and `<agent-command>` with `claude`:
 
   ```bash
   infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- claude
@@ -17,16 +9,11 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
 </AgentVaultBranch>
 
 <AgentVaultBranch agent="codex">
-  For Codex, the command is `codex`:
+  On the machine that will run the agent, paste the command you copied in the previous step. Replace `<proxy-host>` with the address of the proxy's host, and `<agent-command>` with `codex`:
 
   ```bash
   infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- codex
   ```
-
-  <Note>
-  Codex first tries to reach the OpenAI API over a WebSocket, which [fails through the proxy](/documentation/platform/agent-vault/proxies#supported-connections). You may see a few connection errors before Codex switches to HTTPS and responds.
-  </Note>
-  
 </AgentVaultBranch>
 
 <AgentVaultBranch agent="hermes">
@@ -36,7 +23,7 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
     Hermes treats some values as an unset key, including `dummy`, `placeholder`, `changeme`, `none`, and values made only of `x` characters, such as `sk-xxxx`. If you use one of these values, Hermes reports the key as missing instead of sending it to the proxy.
   </Warning>
 
-  Then start Hermes. For Hermes Agent, the command is `hermes --tui`:
+  Then, on the machine that will run the agent, paste the command you copied in the previous step. Replace `<proxy-host>` with the address of the proxy's host, and `<agent-command>` with `hermes --tui`:
 
   ```bash
   infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- hermes --tui
@@ -44,7 +31,7 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
 </AgentVaultBranch>
 
 <AgentVaultBranch agent="opencode">
-  For OpenCode, the command is `opencode`:
+  On the machine that will run the agent, paste the command you copied in the previous step. Replace `<proxy-host>` with the address of the proxy's host, and `<agent-command>` with `opencode`:
 
   ```bash
   infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- opencode
@@ -56,7 +43,7 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
 
   Then create `~/.openclaw/.env`, or add to it if it already exists, with a placeholder for the key, such as `OPENAI_API_KEY=agent-vault-openai`. The proxy attaches the real key, so OpenClaw only needs a value to send. If the service uses a [substitution](/documentation/platform/agent-vault/http-apis#substitutions), use the exact value you entered in **Replace** instead.
 
-  Then start OpenClaw's terminal UI in local mode, so it runs without a separate Gateway. For OpenClaw, the command is `openclaw tui --local`:
+  Then, on the machine that will run the agent, paste the command you copied in the previous step. Replace `<proxy-host>` with the address of the proxy's host, and `<agent-command>` with `openclaw tui --local`, which starts OpenClaw's terminal UI without a separate Gateway:
 
   ```bash
   infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- openclaw tui --local

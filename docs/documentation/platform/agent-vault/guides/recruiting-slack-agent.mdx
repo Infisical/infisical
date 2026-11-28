@@ -1,0 +1,25 @@
+---
+title: "Recruiting Slack agent with Agent Vault"
+sidebarTitle: "Recruiting Slack agent"
+description: "Answer questions about jobs and candidates from Ashby in Slack with an agent that holds no API keys."
+icon: "contact"
+---
+
+The recruiting agent is a Slack agent for your hiring team. When you mention it in the team's channel, it answers questions about open jobs, candidates, and where each candidate is in the pipeline, from Ashby.
+
+<Card title="Recruiting Slack agent reference architecture" icon="github" href="https://github.com/Infisical/agent-reference-architectures/tree/main/slack-agents/recruiting" horizontal>
+  The code and the setup steps for Docker and a virtual machine, in the reference repo.
+</Card>
+
+## How it works
+
+1. A Slack bridge receives each mention and runs the agent with the message. The reference architecture uses Claude Code as the agent.
+2. The agent reads Ashby through Ashby's [MCP server](/documentation/platform/agent-vault/mcp-servers), signed in with OAuth. The proxy hides every Ashby tool except the read tools you allow, so the agent can't change anything.
+3. Every request goes through an Agent Vault [proxy](/documentation/platform/agent-vault/proxies), which attaches the real credential for Anthropic, Ashby, and Slack, and blocks hosts outside the agent's [access bundle](/documentation/platform/agent-vault/access-bundles).
+
+## Prerequisites
+
+- An [Agent Vault project](/documentation/platform/agent-vault/projects) where you have the [**Admin** role](/documentation/platform/agent-vault/access-control#product-membership)
+- A Slack workspace where you can [create apps](https://api.slack.com/apps), and a private channel for your hiring team
+- An [Ashby](https://www.ashbyhq.com/) account whose access matches what the hiring team may see
+- [Docker](https://docs.docker.com/get-started/get-docker/) with Docker Compose, or a Debian or Ubuntu virtual machine

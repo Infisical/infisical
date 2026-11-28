@@ -1,0 +1,31 @@
+---
+title: "Deploy OpenClaw on a DigitalOcean Droplet with Agent Vault"
+sidebarTitle: "DigitalOcean Droplet"
+description: "Host your own OpenClaw on a Droplet and message it from Telegram without giving it your API keys."
+---
+
+This guide sets up your own [OpenClaw](https://docs.openclaw.ai/) on a DigitalOcean Droplet, so you can message it from Telegram. OpenClaw keeps running when your computer is off, and it holds no API keys.
+
+<Card title="Deploy OpenClaw on a DigitalOcean Droplet" icon="github" href="https://github.com/Infisical/agent-reference-architectures/tree/main/telegram-agents/openclaw" horizontal>
+  The systemd services and the full setup steps, in the reference repo.
+</Card>
+
+To run OpenClaw on your own computer instead, see [Getting started](/documentation/platform/agent-vault/guides/openclaw).
+
+## How it works
+
+1. The [OpenClaw gateway](/documentation/platform/agent-vault/guides/openclaw-gateway) runs under [`infisical agent-vault run`](/cli/reference#agent-vault-run), which sends all of the gateway's traffic through an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) on the same Droplet.
+2. The gateway polls Telegram for your messages and sends them to Anthropic.
+3. The proxy puts the real bot token in each Telegram request's URL and attaches the Anthropic key, and blocks hosts outside OpenClaw's [access bundle](/documentation/platform/agent-vault/access-bundles).
+
+The Droplet's firewall allows only SSH in, because the gateway connects out to Telegram.
+
+<Note>
+  The gateway polls Telegram every few seconds, and each poll counts as a brokered request, even when nobody messages OpenClaw. An idle gateway uses thousands of requests a day, so stop it when you're not using it.
+</Note>
+
+## Prerequisites
+
+- An [Agent Vault project](/documentation/platform/agent-vault/projects) where you have the [**Admin** role](/documentation/platform/agent-vault/access-control#product-membership)
+- A [Telegram](https://telegram.org/) account
+- A DigitalOcean account, with an [SSH key added to it](https://docs.digitalocean.com/platform/teams/upload-ssh-keys/)

@@ -1,0 +1,26 @@
+---
+title: "Team assistant with Agent Vault"
+sidebarTitle: "Team assistant"
+description: "Run one Slack assistant for your team that works with the access of whoever asks it."
+icon: "users"
+---
+
+The team assistant is a Slack assistant that works with the access of whoever asks it. When someone sends it a direct message or mentions it in a channel, it does the work with that person's own GitHub, Linear, and Notion access. Each message runs in a fresh sandbox that can't reach the internet except through an Agent Vault proxy.
+
+<Card title="Team assistant reference architecture" icon="github" href="https://github.com/Infisical/agent-reference-architectures/tree/main/slack-agents/team-assistant" horizontal>
+  The code and the setup steps for Modal and Daytona, in the reference repo.
+</Card>
+
+## How it works
+
+1. An orchestrator receives each message, and starts an Agent Vault [session on behalf of](/documentation/platform/agent-vault/sessions-on-behalf-of-users) the Infisical user with the sender's Slack email. If the delegation doesn't cover them, the bot says so and starts nothing.
+2. It runs the agent in a fresh sandbox, behind a [proxy](/documentation/platform/agent-vault/proxies) that only that sandbox can reach. The proxy attaches that person's own sign-ins, so the agent works with their access and nothing else. The reference architecture uses Claude Code as the agent.
+3. The bot posts the answer in the thread, then the orchestrator revokes the session and deletes the sandbox.
+
+## Prerequisites
+
+- An [Agent Vault project](/documentation/platform/agent-vault/projects) where you have the [**Admin** role](/documentation/platform/agent-vault/access-control#product-membership)
+- A Slack workspace where you can [create apps](https://api.slack.com/apps)
+- A [Modal](/documentation/platform/agent-vault/guides/modal) workspace, or a [Daytona](/documentation/platform/agent-vault/guides/daytona) organization on [Tier 3 or 4](https://www.daytona.io/docs/en/network-limits/#tier-based-network-restrictions) (on lower tiers, Daytona can't limit a sandbox to reaching the proxy)
+- A host for the orchestrator that runs [Docker](https://docs.docker.com/get-started/get-docker/) containers, such as a small virtual machine or Render
+- For each person who uses it: a grant on the access bundle, a place in the delegation, their own sign-in for each [MCP service](/documentation/platform/agent-vault/mcp-servers#member-provided-credentials), and the same email in Slack and Infisical

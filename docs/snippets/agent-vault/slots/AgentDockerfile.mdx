@@ -1,0 +1,64 @@
+import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx";
+
+<AgentVaultBranch agent="claude-code">
+  ```dockerfile Dockerfile
+  FROM node:24-bookworm-slim
+  RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
+  RUN npm install -g @infisical/cli@<cli-version> @anthropic-ai/claude-code
+  USER node
+  WORKDIR /home/node
+  ENTRYPOINT ["infisical", "agent-vault", "run", "--"]
+  CMD ["claude"]
+  ```
+</AgentVaultBranch>
+
+<AgentVaultBranch agent="codex">
+  ```dockerfile Dockerfile
+  FROM node:24-bookworm-slim
+  RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
+  RUN npm install -g @infisical/cli@<cli-version> @openai/codex
+  USER node
+  WORKDIR /home/node
+  ENTRYPOINT ["infisical", "agent-vault", "run", "--"]
+  CMD ["codex"]
+  ```
+</AgentVaultBranch>
+
+<AgentVaultBranch agent="opencode">
+  ```dockerfile Dockerfile
+  FROM node:24-bookworm-slim
+  RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
+  RUN npm install -g @infisical/cli@<cli-version> opencode-ai
+  USER node
+  WORKDIR /home/node
+  ENTRYPOINT ["infisical", "agent-vault", "run", "--"]
+  CMD ["opencode"]
+  ```
+</AgentVaultBranch>
+
+<AgentVaultBranch agent="openclaw">
+  ```dockerfile Dockerfile
+  FROM node:24-bookworm-slim
+  RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
+  RUN npm install -g @infisical/cli@<cli-version> openclaw
+  USER node
+  WORKDIR /home/node
+  ENTRYPOINT ["infisical", "agent-vault", "run", "--"]
+  CMD ["openclaw", "tui", "--local"]
+  ```
+</AgentVaultBranch>
+
+<AgentVaultBranch agent="hermes">
+  ```dockerfile Dockerfile
+  FROM debian:bookworm-slim
+  RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git xz-utils libatomic1 && rm -rf /var/lib/apt/lists/*
+  RUN curl -1sLf https://artifacts-cli.infisical.com/setup.deb.sh | bash && apt-get install -y infisical=<cli-version> && rm -rf /var/lib/apt/lists/*
+  RUN useradd -m hermes
+  USER hermes
+  WORKDIR /home/hermes
+  RUN curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --non-interactive
+  ENV PATH=/home/hermes/.local/bin:$PATH
+  ENTRYPOINT ["infisical", "agent-vault", "run", "--"]
+  CMD ["hermes", "--tui"]
+  ```
+</AgentVaultBranch>

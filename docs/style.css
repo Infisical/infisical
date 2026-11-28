@@ -1358,6 +1358,15 @@ a.ifx-card__title:hover .ifx-card__chevron {
   color: var(--ifx-selected-fg);
 }
 
+/* Filters with a logo, in the Agent Vault guide index (snippets/AgentVaultGuides.jsx), mark selection with an
+   outline instead of a fill, like the quickstart configurator's tiles, so each logo keeps its colors. */
+.ifx-catalog__filter--logo[aria-pressed="true"],
+.ifx-catalog__filter--logo[aria-pressed="true"]:hover {
+  border-color: var(--ifx-accent-ink);
+  background-color: transparent;
+  color: var(--ifx-accent-ink);
+}
+
 /* No color on the focus rings: Mintlify's global :focus-visible supplies --primary, or
    --primary-light in dark, as it does for its own controls. */
 .ifx-catalog__filter:focus-visible {
@@ -2925,4 +2934,90 @@ html.dark img[src*="/images/agent-vault-agents/hermes.png"],
 html.dark img[src*="/images/agent-vault-agents/opencode.svg"],
 html.dark img[src*="/images/agent-vault-agents/daytona.svg"] {
   filter: invert(1);
+}
+
+/* Agent Vault's "By compute", "By agent", and "By use case" sidebar icons are a row of logos, so they keep their width. */
+img[src*="/stack-agents."],
+img[src*="/stack-compute."],
+img[src*="/stack-use-cases."] {
+  width: auto !important;
+  height: 1.125rem !important;
+}
+
+/* The row of logos goes after the page title, so the titles line up with the rest of the sidebar. */
+div:has(> img[src*="/stack-agents."]),
+div:has(> img[src*="/stack-compute."]),
+div:has(> img[src*="/stack-use-cases."]) {
+  order: 1;
+}
+
+/* An Agent Vault guide card (snippets/AgentVaultGuides.jsx) shows every agent and platform it combines in place of
+   Card's single icon. The logos use the quickstart configurator's chip icons, sized to a Card icon. */
+.ifx-avg__card-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+}
+
+.ifx-avg__card-icons .ifx-avqs__chip-icon {
+  margin-right: 0;
+}
+
+/* The services a guide has you add to Agent Vault, as a quiet row of logos under its card's description. A
+   service without a logo shows its name. */
+.ifx-avg__card-services {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--ifx-muted);
+}
+
+.ifx-avg__card-services .ifx-avqs__chip-icon {
+  margin-right: 0;
+}
+
+/* The Agent Vault guide index's filter menus (snippets/AgentVaultGuides.jsx) reuse the use case picker's list rows,
+   as buttons with a checkmark on the selected row. */
+.ifx-avg__menu {
+  width: 14rem;
+}
+
+.ifx-avg__option {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+}
+
+.ifx-avg__option[aria-selected="true"] {
+  color: var(--ifx-control-text-hover);
+}
+
+.ifx-avg__check {
+  margin-left: auto;
+  color: var(--ifx-accent-ink);
+}
+
+/* A guide card that links to GitHub shows the GitHub logo beside Mintlify's external-link arrow. The arrow is 16px
+   square, 20px from the top and right of the card's content box, so the logo sits 4px to its left at the same size. */
+.ifx-avg__card-github {
+  position: absolute;
+  top: 20px;
+  right: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.ifx-avg__card-github .ifx-avqs__chip-icon {
+  margin-right: 0;
 }

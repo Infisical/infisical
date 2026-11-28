@@ -1,0 +1,25 @@
+---
+title: "Coding Slack agent with Agent Vault"
+sidebarTitle: "Coding Slack agent"
+description: "Ask for code changes and pull requests from Slack with an agent that holds no API keys."
+icon: "code"
+---
+
+The coding agent is a Slack agent that works on your repository. When you mention it in a channel, it answers questions about the repository, or makes the change you ask for on a branch and opens a pull request.
+
+<Card title="Coding Slack agent reference architecture" icon="github" href="https://github.com/Infisical/agent-reference-architectures/tree/main/slack-agents/coding" horizontal>
+  The code and the setup steps for Docker and a virtual machine, in the reference repo.
+</Card>
+
+## How it works
+
+1. A Slack bridge receives each mention and runs the agent with the message, in a clone of your repository that it keeps between messages. The reference architecture uses Claude Code as the agent.
+2. The agent changes the code, runs the repository's tests, and uses `git` and `gh` to push a branch and open a pull request.
+3. Every request goes through an Agent Vault [proxy](/documentation/platform/agent-vault/proxies), which attaches the real credential for Anthropic, GitHub, and Slack, and blocks hosts outside the agent's [access bundle](/documentation/platform/agent-vault/access-bundles).
+
+## Prerequisites
+
+- An [Agent Vault project](/documentation/platform/agent-vault/projects) where you have the [**Admin** role](/documentation/platform/agent-vault/access-control#product-membership)
+- A Slack workspace where you can [create apps](https://api.slack.com/apps)
+- A [GitHub](https://github.com/) repository with at least one commit
+- [Docker](https://docs.docker.com/get-started/get-docker/) with Docker Compose, or a Debian or Ubuntu virtual machine

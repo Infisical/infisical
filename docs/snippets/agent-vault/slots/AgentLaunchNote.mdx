@@ -1,0 +1,7 @@
+import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx";
+
+<AgentVaultBranch agent="codex">
+  <Note>
+    Codex first tries to reach the OpenAI API over a WebSocket, which [fails through the proxy](/documentation/platform/agent-vault/proxies#supported-connections). You may see a few connection errors before Codex switches to HTTPS and responds.
+  </Note>
+</AgentVaultBranch>
