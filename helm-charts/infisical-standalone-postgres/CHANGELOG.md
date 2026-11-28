@@ -1,3 +1,7 @@
+## 1.12.7
+Changes:
+* Updated the default Infisical image (`appVersion`) from `v0.167.16` to `v0.167.17`.
+
 ## 1.12.6
 Changes:
 * Updated the default Infisical image (`appVersion`) from `v0.167.15` to `v0.167.16`.

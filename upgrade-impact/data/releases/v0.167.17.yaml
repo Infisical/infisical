@@ -1,0 +1,41 @@
+version: v0.167.17
+releasedAt: 2026-11-27T23:33:33+04:00
+sourceTag: v0.167.17
+previousTag: v0.167.16
+impactLevel: low
+summary: Two startup migrations add SAML MFA attribute values and backfill SSO
+  delete permission on org roles.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: SAML MFA attribute values
+    description: Startup adds a nullable text[] column on SAML configs for custom
+      MFA attribute values. Existing records remain valid.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261125120000_saml-mfa-attribute-values.ts
+        path: backend/src/db/migrations/20261125120000_saml-mfa-attribute-values.ts
+        description: Adds nullable mfaAttributeValues column
+  - title: Org SSO delete permission
+    description: Startup backfills org roles that can edit SSO so they also get
+      delete on SSO. This supports the OIDC config delete permission change.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261124120000_backfill-org-sso-delete-permission.ts
+        path: backend/src/db/migrations/20261124120000_backfill-org-sso-delete-permission.ts
+        description: Backfills delete permission for SSO roles
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-11-27T23:36:02.599Z
+  sourceRange:
+    from: v0.167.16
+    to: v0.167.17
