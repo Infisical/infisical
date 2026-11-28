@@ -1,3 +1,16 @@
 @import "@infisical/cipher/tailwind.css";
 @import "@infisical/cipher/modules.css";
 @source ".";
+
+/* Temporary until the Cipher release with the --cipher-kind-* tokens is pinned; delete this block then. */
+.cipher {
+  --cipher-kind-folder: var(--cipher-folder);
+  --cipher-kind-rotation: var(--cipher-info);
+  --cipher-kind-import: #1d6670;
+  --cipher-kind-dynamic-secret: #a24d17;
+}
+.cipher[data-scheme="dark"],
+.cipher[data-theme="dark"] {
+  --cipher-kind-import: #8ccfd6;
+  --cipher-kind-dynamic-secret: #eb9a68;
+}
