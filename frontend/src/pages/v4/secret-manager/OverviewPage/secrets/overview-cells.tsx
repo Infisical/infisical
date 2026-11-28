@@ -123,12 +123,12 @@ export function TruncatedLabel({ children }: { children: string }) {
 
 export type KindOverlay = "rotation" | "honey";
 export function KindIcon({ kind, overlay }: { kind: ResourceKind; overlay?: KindOverlay }) {
-  if (!overlay) return <Icon {...kindGlyphs[kind]} />;
+  if (!overlay) return <Icon {...kindGlyphs[kind]} className={styles.kindIcon} data-kind={kind} />;
   return (
     <span className={styles.overlayIcon}>
-      <Icon {...kindGlyphs[kind]} />
+      <Icon {...kindGlyphs[kind]} className={styles.kindIcon} data-kind={kind} />
       <span className={styles.overlayMark} data-overlay={overlay}>
-        <Icon {...kindGlyphs[overlay]} size={10} />
+        <Icon {...kindGlyphs[overlay]} size={10} className={styles.kindIcon} data-kind={overlay} />
       </span>
     </span>
   );

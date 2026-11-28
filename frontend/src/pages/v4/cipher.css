@@ -1,3 +1,19 @@
 @import "@infisical/cipher/tailwind.css";
 @import "@infisical/cipher/modules.css";
 @source ".";
+
+/* v4-check-ignore raw-color -- temporary copies of Cipher's --cipher-kind-* tokens until the release that ships them is pinned; delete this block then */
+.cipher {
+  --cipher-kind-folder: var(--cipher-folder);
+  --cipher-kind-rotation: var(--cipher-info);
+  /* v4-check-ignore raw-color -- see above */
+  --cipher-kind-import: #1d6670;
+  /* v4-check-ignore raw-color -- see above */
+  --cipher-kind-dynamic-secret: #a24d17;
+}
+.cipher[data-scheme="dark"] {
+  /* v4-check-ignore raw-color -- see above */
+  --cipher-kind-import: #8ccfd6;
+  /* v4-check-ignore raw-color -- see above */
+  --cipher-kind-dynamic-secret: #eb9a68;
+}
