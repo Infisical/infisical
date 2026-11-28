@@ -1,17 +1,8 @@
-import { memo, type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { memo, type ReactNode } from "react";
 import { Badge, type BadgeTone } from "@infisical/cipher/ui/badge";
-import { Button } from "@infisical/cipher/ui/button";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { RowLink } from "@infisical/cipher/ui/row-link";
-import {
-  Sheet,
-  SheetBody,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger
-} from "@infisical/cipher/ui/sheet";
 import {
   type RowActionList,
   RowActions,
@@ -26,17 +17,19 @@ import {
   TableRow,
   TableRowIndicators
 } from "@infisical/cipher/ui/table";
+import { StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
-import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import {
   ActivityIcon,
   ArrowDownUpIcon,
   BanIcon,
+  ClockIcon,
   FileKeyIcon,
   FolderInputIcon,
   HandshakeIcon,
   ListIcon,
+  RefreshCwIcon,
   TriangleAlertIcon,
   UsersIcon,
   XIcon
@@ -69,7 +62,6 @@ import { childPath } from "./flows/shared";
 import {
   ChildSelectCell,
   ChildSelectHead,
-  type EnvironmentOption,
   ExpandCell,
   KindIcon,
   RowStateBadges,
@@ -851,114 +843,117 @@ function FolderRowView({
   );
 }
 
-function SiteLink({ site }: { site: EnvironmentOption }) {
-  return (
-    <Badge asChild tone="outline">
-      <Link
-        from={OVERVIEW_ROUTE}
-        to="."
-        search={(previous) =>
-          withoutDefaults(
-            { ...previous, environments: [site.value], search: "" },
-            { secretPath: "/", search: "", environments: [] }
-          )
-        }
-      >
-        <Icon name="layers" />
-        {site.label}
-      </Link>
-    </Badge>
-  );
-}
+const environmentLabel = (slug: string) =>
+  environments.find((option) => option.value === slug)?.label ?? slug;
 
-function SiteList({ sites }: { sites: EnvironmentOption[] }) {
-  return (
-    <ul className={styles.importSites}>
-      {sites.map((site) => (
-        <li key={site.value} className={styles.importSite}>
-          <SiteLink site={site} />
-        </li>
-      ))}
-    </ul>
-  );
-}
+const sourceLabelOf = (entry: Of<"import">) =>
+  `${environmentLabel(entry.source.environment)} ${entry.source.path}`;
 
-function ImportedIn({ sites }: { sites: EnvironmentOption[] }) {
-  const fit = useRef<HTMLSpanElement>(null);
-  const measure = useRef<HTMLSpanElement>(null);
-  const [shown, setShown] = useState(sites.length);
-  const [reserve, setReserve] = useState(0);
-  const [listOpen, setListOpen] = useState(false);
-  const signature = sites.map((site) => site.value).join("|");
-  useLayoutEffect(() => {
-    const box = fit.current;
-    const ruler = measure.current;
-    if (listOpen || !box || !ruler) return undefined;
-    const update = () => {
-      const [more, ...items] = [...ruler.children].map(
-        (child) => (child as HTMLElement).offsetWidth
-      );
-      const gap = parseFloat(getComputedStyle(ruler).columnGap) || 0;
-      const space = box.clientWidth;
-      setReserve(more);
-      const total = items.reduce((sum, width) => sum + width + gap, -gap);
-      if (total <= space) {
-        setShown(items.length);
-        return;
-      }
-      const room = space - more - gap;
-      let used = -gap;
-      let count = 0;
-      while (count < items.length && used + gap + items[count] <= room) {
-        used += gap + items[count];
-        count += 1;
-      }
-      setShown(count);
+const secretCount = (count: number) => `${count} ${count === 1 ? "secret" : "secrets"}`;
+
+const replicationOf = (entry: Of<"import">, count?: number, single = false) => {
+  const from = count === undefined ? "" : ` ${secretCount(count)} from ${sourceLabelOf(entry)}.`;
+  if (entry.replicationStatus === "pending" || !entry.lastReplicated)
+    return {
+      tone: "neutral" as const,
+      icon: ClockIcon,
+      label: "Pending",
+      reason: "Waiting for the first replication."
     };
-    update();
-    if (typeof ResizeObserver === "undefined") return undefined;
-    const observer = new ResizeObserver(update);
-    observer.observe(box);
-    return () => observer.disconnect();
-  }, [signature, listOpen]);
-  const hidden = sites.length - shown;
+  const when = formatDistanceToNow(new Date(entry.lastReplicated), { addSuffix: true });
+  if (entry.replicationStatus === "failed")
+    return {
+      tone: "bad" as const,
+      icon: TriangleAlertIcon,
+      label: "Failed",
+      reason: `Replication failed ${when}. ${entry.replicationDetails ?? "No reason was recorded."} ${single ? "Resync to try again." : `Resync from the ${environmentLabel(entry.environment)} view.`}`
+    };
+  return {
+    tone: "ok" as const,
+    icon: RefreshCwIcon,
+    label: "Synced",
+    reason: `Replicated ${when}.${from}`
+  };
+};
+
+export type ImportSource = {
+  secrets: (entry: Of<"import">) => Secret[];
+  state: (entry: Of<"import">) => ScopeState;
+  missing: (entry: Of<"import">) => boolean;
+  ownKeys: (entry: Of<"import">) => Set<string>;
+};
+
+function ImportEnvCell({ entry, source }: { entry?: Of<"import">; source: ImportSource }) {
+  if (!entry) return <StatusCell status="missing" />;
+  const status = (() => {
+    if (entry.revoked)
+      return {
+        tone: "neutral" as const,
+        icon: BanIcon,
+        label: "Revoked",
+        reason: `${entry.sourceProjectName ?? "The source project"} revoked access to these secrets.`
+      };
+    if (source.missing(entry))
+      return {
+        tone: "warn" as const,
+        icon: TriangleAlertIcon,
+        label: "Source missing",
+        reason: `${sourceLabelOf(entry)} no longer exists, so this import adds no secrets.`
+      };
+    const state = source.state(entry);
+    const count = state === "loaded" ? source.secrets(entry).length : undefined;
+    if (entry.replicated) return replicationOf(entry, count);
+    if (state === "failed")
+      return {
+        tone: "bad" as const,
+        icon: TriangleAlertIcon,
+        label: "Unavailable",
+        reason: "Couldn't load the secrets in this folder."
+      };
+    return {
+      count,
+      reason:
+        count === undefined ? undefined : `${secretCount(count)} from ${sourceLabelOf(entry)}.`
+    };
+  })();
   return (
-    <Sheet open={listOpen} onOpenChange={setListOpen}>
-      <span className={styles.importedIn}>
-        <span className={styles.subtle}>Imported in</span>
-        <span ref={fit} className={styles.importedBadges} style={{ minWidth: reserve }}>
-          {sites.slice(0, shown).map((site) => (
-            <SiteLink key={site.value} site={site} />
-          ))}
-          {hidden > 0 && (
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="xs">
-                {`+${hidden} more`}
-              </Button>
-            </SheetTrigger>
-          )}
-        </span>
-        <span ref={measure} className={styles.importedRuler} aria-hidden="true">
-          <Button variant="ghost" size="xs" asChild>
-            <span>{`+${sites.length} more`}</span>
-          </Button>
-          {sites.map((site) => (
-            <Badge key={site.value} tone="outline">
-              <Icon name="layers" />
-              {site.label}
-            </Badge>
-          ))}
-        </span>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>{`Imported in ${sites.length} environments`}</SheetTitle>
-          </SheetHeader>
-          <SheetBody>
-            <SiteList sites={sites} />
-          </SheetBody>
-        </SheetContent>
-      </span>
-    </Sheet>
+    <TableCell className={styles.importCell}>
+      {"label" in status ? (
+        <StatusText size="sm" tone={status.tone} icon={status.icon} reason={status.reason}>
+          {status.label}
+        </StatusText>
+      ) : (
+        <StatusText size="sm" loading={status.count === undefined} reason={status.reason}>
+          {status.count ?? ""}
+        </StatusText>
+      )}
+    </TableCell>
+  );
+}
+
+function ImportedKeyCell({
+  entry,
+  name,
+  source
+}: {
+  entry?: Of<"import">;
+  name: string;
+  source: ImportSource;
+}) {
+  const imported =
+    entry && !entry.revoked && source.secrets(entry).some((secret) => secret.name === name);
+  if (!imported) return <StatusCell status="missing" />;
+  if (!source.ownKeys(entry).has(name))
+    return <StatusCell status="present" label="Imported into environment" />;
+  return (
+    <TableCell className={styles.importCell}>
+      <StatusText
+        size="sm"
+        reason={`${environmentLabel(entry.environment)} sets its own ${name}, so this value is not used there.`}
+      >
+        Overridden
+      </StatusText>
+    </TableCell>
   );
 }
 
@@ -972,19 +967,15 @@ export function ImportRow({
   rowKey,
   entries,
   ctx,
-  sourceSecrets,
-  sourceState,
+  source,
   projectId,
-  sites,
   revealAll
 }: {
   rowKey: string;
   entries: Of<"import">[];
   ctx: RowContext;
-  sourceSecrets: (entry: Of<"import">) => Secret[];
-  sourceState: (entry: Of<"import">) => ScopeState;
+  source: ImportSource;
   projectId: string;
-  sites: EnvironmentOption[];
   revealAll: boolean;
 }) {
   const expanded = ctx.expanded.includes(rowKey);
@@ -1020,24 +1011,17 @@ export function ImportRow({
       </span>
     </>
   );
-  const replication = (entry: Of<"import">) =>
-    entry.replicated &&
-    entry.lastReplicated && (
-      <Tooltip
-        content={`Last replication ${new Date(entry.lastReplicated).toLocaleString("en-US")}${entry.replicationStatus === "failed" ? `. Fail reason: ${entry.replicationDetails ?? "unknown"}` : ""}`}
-      >
-        <span
-          className={styles.hint}
-          data-tone={entry.replicationStatus === "failed" ? "bad" : undefined}
-        >
-          <Icon
-            icon={entry.replicationStatus === "failed" ? TriangleAlertIcon : undefined}
-            name={entry.replicationStatus === "failed" ? undefined : "info"}
-            label="Replication status"
-          />
+  const replication = (entry: Of<"import">) => {
+    if (!entry.replicated) return null;
+    const status = replicationOf(entry, undefined, true);
+    return (
+      <Tooltip content={status.reason}>
+        <span className={styles.hint} data-tone={status.tone === "bad" ? "bad" : undefined}>
+          <Icon icon={status.icon} label={`Replication ${status.label.toLowerCase()}`} />
         </span>
       </Tooltip>
     );
+  };
   const importGate = (entry: Of<"import">, action: ProjectPermissionActions, verb: string) =>
     gate(
       ctx,
@@ -1085,8 +1069,22 @@ export function ImportRow({
       </>
     ) : undefined
   };
-  const keys = expanded && !first.revoked ? sourceSecrets(first) : [];
-  const emptyMessage = keys.length === 0 ? EMPTY_IMPORT_MESSAGES[sourceState(first)] : undefined;
+  const keys = expanded && !first.revoked ? source.secrets(first) : [];
+  const emptyMessage = keys.length === 0 ? EMPTY_IMPORT_MESSAGES[source.state(first)] : undefined;
+  const entryAt = (environment: string) =>
+    entries.find((entry) => entry.environment === environment);
+  const readable = entries.filter((entry) => !entry.revoked);
+  const importedKeys =
+    !ctx.single && expanded
+      ? [
+          ...new Set(
+            readable.flatMap((entry) => source.secrets(entry).map((secret) => secret.name))
+          )
+        ]
+      : [];
+  const multiEmpty = readable.length
+    ? EMPTY_IMPORT_MESSAGES[source.state(readable[0])]
+    : "Access to this source was revoked, so its secrets are not shown.";
   return (
     <>
       <RowContextMenu {...rowActions}>
@@ -1113,7 +1111,7 @@ export function ImportRow({
               </span>
               {label}
               <RowStateBadges rowKey={rowKey} ctx={ctx} />
-              {first.revoked && (
+              {ctx.single && first.revoked && (
                 <span className={styles.push}>
                   <Badge tone="bad">
                     <Icon icon={XIcon} />
@@ -1124,19 +1122,13 @@ export function ImportRow({
               {ctx.single && <TableRowIndicators>{replication(first)}</TableRowIndicators>}
             </div>
           </TableCell>
-          {!ctx.single && expanded && (
-            <TableCell
-              pin="viewport"
-              colSpan={ctx.environments.length}
-              className={styles.importedInCell}
-            >
-              <ImportedIn sites={sites} />
-            </TableCell>
-          )}
           {!ctx.single &&
-            !expanded &&
             ctx.environments.map((environment) => (
-              <StatusCell key={environment.value} status={presenceOf(entries, environment.value)} />
+              <ImportEnvCell
+                key={environment.value}
+                entry={entryAt(environment.value)}
+                source={source}
+              />
             ))}
           <TableActionsCell slots={ROW_ACTION_SLOTS} onClick={stopRowClick}>
             {ctx.single && <RowActions lazy {...rowActions} />}
@@ -1182,54 +1174,29 @@ export function ImportRow({
           </TableCell>
         </TableRow>
       )}
-      {!ctx.single && expanded && (
-        <TableRow className={styles.nestedRow}>
-          <TableCell
-            pin="viewport"
-            colSpan={ctx.environments.length + 3}
-            className={styles.nestedCell}
-          >
-            <Table className={styles.nestedTable}>
-              <TableHeader>
-                <TableRow>
-                  <TableHead selection divider={false} />
-                  <TableHead className={styles.envName}>Name</TableHead>
-                  <TableHead>Value</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {first.revoked ? (
-                  <TableRow>
-                    <TableCell selection divider={false} />
-                    <TableCell colSpan={2} className={styles.subtle}>
-                      Access to this source was revoked, so its secrets are not shown.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  <>
-                    {keys.map((secret) => (
-                      <TableRow key={secret.id} className={styles.row}>
-                        <TableCell selection divider={false} />
-                        <TableCell className={styles.envName}>
-                          <span className={styles.truncate}>{secret.name}</span>
-                        </TableCell>
-                        <TableCell className={styles.valueCell}>
-                          <SecretValue secret={secret} visible={revealAll} />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {emptyMessage && (
-                      <TableRow>
-                        <TableCell selection divider={false} />
-                        <TableCell colSpan={2} className={styles.subtle}>
-                          {emptyMessage}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </>
-                )}
-              </TableBody>
-            </Table>
+      {!ctx.single &&
+        importedKeys.map((name) => (
+          <TableRow key={name} className={styles.importedRow}>
+            <TableCell pin="start" selection divider={false} />
+            <TableCell pin="start" pinOffset="var(--cipher-size-row)" className={styles.nameCell}>
+              <span className={styles.truncate}>{name}</span>
+            </TableCell>
+            {ctx.environments.map((environment) => (
+              <ImportedKeyCell
+                key={environment.value}
+                entry={entryAt(environment.value)}
+                name={name}
+                source={source}
+              />
+            ))}
+            <TableActionsCell slots={ROW_ACTION_SLOTS} />
+          </TableRow>
+        ))}
+      {!ctx.single && expanded && importedKeys.length === 0 && (
+        <TableRow className={styles.importedRow}>
+          <TableCell pin="start" selection divider={false} />
+          <TableCell colSpan={ctx.environments.length + 2} className={styles.subtle}>
+            {multiEmpty}
           </TableCell>
         </TableRow>
       )}

@@ -34,8 +34,9 @@ export const providerLabel = (type: string) => {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 };
-const replicationOf = (replicated?: boolean, success?: boolean) => {
+const replicationOf = (replicated?: boolean, success?: boolean, lastReplicated?: string) => {
   if (!replicated) return undefined;
+  if (!lastReplicated) return "pending" as const;
   return success === false ? ("failed" as const) : ("succeeded" as const);
 };
 const dynamicStatusOf = (status?: DynamicSecretStatus) => {
@@ -196,7 +197,11 @@ export const buildResources = ({
         revoked: Boolean(entry.isAccessRevoked),
         replicated: Boolean(entry.isReplication),
         position: Number(entry.position),
-        replicationStatus: replicationOf(entry.isReplication, entry.isReplicationSuccess),
+        replicationStatus: replicationOf(
+          entry.isReplication,
+          entry.isReplicationSuccess,
+          entry.lastReplicated
+        ),
         replicationDetails: entry.replicationStatus,
         lastReplicated: entry.lastReplicated,
         createdAt: entry.createdAt,
