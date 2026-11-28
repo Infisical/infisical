@@ -18,8 +18,14 @@ import { SignerIdParamsSchema } from "./schemas";
 
 const SigningActivitySignerIdsSchema = z
   .string()
+  .max(MAX_SIGNING_ACTIVITY_SIGNERS * 40, `Provide up to ${MAX_SIGNING_ACTIVITY_SIGNERS} signer IDs`)
   .transform((val) => Array.from(new Set(val.split(",").map((id) => id.trim().toLowerCase()))))
-  .pipe(z.array(z.string().uuid()).min(1).max(MAX_SIGNING_ACTIVITY_SIGNERS))
+  .pipe(
+    z
+      .array(z.string().uuid())
+      .min(1)
+      .max(MAX_SIGNING_ACTIVITY_SIGNERS, `Provide up to ${MAX_SIGNING_ACTIVITY_SIGNERS} signer IDs`)
+  )
   .optional()
   .describe(`Comma-separated signer IDs to limit the activity to, up to ${MAX_SIGNING_ACTIVITY_SIGNERS}.`);
 

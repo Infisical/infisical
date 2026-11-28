@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { PointerEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChevronDownIcon, XIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -11,12 +11,10 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
   Popover,
   PopoverAnchor,
   PopoverContent,
+  PopoverTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -42,6 +40,8 @@ type Props = {
 };
 
 const PICKER_PAGE_SIZE = 100;
+const OVERFLOW_OPEN_DELAY_MS = 100;
+const OVERFLOW_CLOSE_DELAY_MS = 150;
 const CHIP_GAP_PX = 4;
 const CHIP_CLASS =
   "flex h-5 max-w-full min-w-0 shrink-0 items-center gap-0.5 rounded-sm bg-foreground/10 px-1 text-xs text-foreground";
@@ -56,6 +56,35 @@ export const SigningActivitySignerPicker = ({
   activityCounts
 }: Props) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isOverflowOpen, setIsOverflowOpen] = useState(false);
+  const overflowCloseTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const overflowOpenTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const isOverflowOpenedByHover = useRef(false);
+  const overflowContentRef = useRef<HTMLDivElement>(null);
+  const openOverflow = (byHover: boolean) => {
+    clearTimeout(overflowCloseTimer.current);
+    clearTimeout(overflowOpenTimer.current);
+    isOverflowOpenedByHover.current = byHover;
+    setIsOverflowOpen(true);
+  };
+  const openOverflowOnHover = (event: PointerEvent) => {
+    if (event.pointerType !== "mouse") return;
+    if (isOverflowOpen && !isOverflowOpenedByHover.current) return;
+    clearTimeout(overflowCloseTimer.current);
+    if (isOverflowOpen) return;
+    clearTimeout(overflowOpenTimer.current);
+    overflowOpenTimer.current = setTimeout(() => openOverflow(true), OVERFLOW_OPEN_DELAY_MS);
+  };
+  const closeOverflowSoon = (event: PointerEvent) => {
+    if (event.pointerType !== "mouse") return;
+    clearTimeout(overflowOpenTimer.current);
+    if (!isOverflowOpenedByHover.current) return;
+    clearTimeout(overflowCloseTimer.current);
+    overflowCloseTimer.current = setTimeout(
+      () => setIsOverflowOpen(false),
+      OVERFLOW_CLOSE_DELAY_MS
+    );
+  };
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const { data, isFetching } = useListSigners({
@@ -117,6 +146,10 @@ export const SigningActivitySignerPicker = ({
 
   const visibleSigners = value.slice(0, visibleCount);
   const hiddenSigners = value.slice(visibleCount);
+
+  useEffect(() => {
+    if (!hiddenSigners.length) setIsOverflowOpen(false);
+  }, [hiddenSigners.length]);
 
   const renderChip = (signer: SignerOption) => (
     <span key={signer.id} className={CHIP_CLASS}>
@@ -183,17 +216,37 @@ export const SigningActivitySignerPicker = ({
           <div ref={chipAreaRef} className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
             {visibleSigners.map(renderChip)}
             {hiddenSigners.length > 0 && (
-              <HoverCard openDelay={100} closeDelay={150}>
-                <HoverCardTrigger asChild>
+              <Popover open={isOverflowOpen} onOpenChange={setIsOverflowOpen}>
+                <PopoverTrigger asChild>
                   <button
                     type="button"
                     aria-label={`${hiddenSigners.length} more selected signers`}
                     className={twMerge(CHIP_CLASS, "hover:bg-foreground/15")}
+                    onPointerEnter={openOverflowOnHover}
+                    onPointerLeave={closeOverflowSoon}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      if (isOverflowOpen && !isOverflowOpenedByHover.current) {
+                        setIsOverflowOpen(false);
+                        return;
+                      }
+                      openOverflow(false);
+                    }}
                   >
                     +{hiddenSigners.length}
                   </button>
-                </HoverCardTrigger>
-                <HoverCardContent align="end" className="w-64 p-1">
+                </PopoverTrigger>
+                <PopoverContent
+                  align="end"
+                  className="w-64 p-1"
+                  ref={overflowContentRef}
+                  onOpenAutoFocus={(event) => {
+                    if (isOverflowOpenedByHover.current) event.preventDefault();
+                  }}
+                  onClick={(event) => event.stopPropagation()}
+                  onPointerEnter={openOverflowOnHover}
+                  onPointerLeave={closeOverflowSoon}
+                >
                   {hiddenSigners.map((signer) => (
                     <div
                       key={signer.id}
@@ -215,8 +268,8 @@ export const SigningActivitySignerPicker = ({
                       </button>
                     </div>
                   ))}
-                </HoverCardContent>
-              </HoverCard>
+                </PopoverContent>
+              </Popover>
             )}
             {!value.length && <span className="truncate pl-1 text-muted">All signers</span>}
           </div>
@@ -246,7 +299,10 @@ export const SigningActivitySignerPicker = ({
         align="end"
         className="w-80 overflow-hidden p-0"
         onInteractOutside={(event) => {
-          if (anchorRef.current?.contains(event.target as Node)) event.preventDefault();
+          const target = event.target as Node;
+          if (anchorRef.current?.contains(target) || overflowContentRef.current?.contains(target)) {
+            event.preventDefault();
+          }
         }}
       >
         <Command shouldFilter={false} className="min-w-0">
