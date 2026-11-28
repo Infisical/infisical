@@ -19,6 +19,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
+import { SECRET_IMPORT_REPLICATION_QUEUED } from "@app/ee/services/secret-replication/secret-replication-constants";
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-fns";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -61,7 +62,7 @@ type TSecretImportServiceFactoryDep = {
     TSecretV2BridgeDALFactory,
     "find" | "findByFolderIds" | "invalidateSecretCacheByProjectId" | "countKeysNotInFolder"
   >;
-  keyStore: Pick<TKeyStoreFactory, "getItems" | "setItemWithExpiry">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findById">;
   projectEnvDAL: TProjectEnvDALFactory;
@@ -695,7 +696,7 @@ export const secretImportServiceFactory = ({
       await keyStore.setItemWithExpiry(
         KeyStorePrefixes.SecretImportReplicationRunning(secretImportDoc.id),
         KeyStoreTtls.SecretImportReplicationRunningInSeconds,
-        1
+        SECRET_IMPORT_REPLICATION_QUEUED
       );
       await secretQueueService.replicateSecrets({
         orgId: actorOrgId,
@@ -1106,6 +1107,12 @@ export const secretImportServiceFactory = ({
     const countableSourceFolderIds = imports.map((imp, idx) => {
       const sourceFolder = sourceFolders[idx];
       if (!shouldUseSecretV2Bridge || !sourceFolder || imp.isAccessRevoked) return undefined;
+      const canDescribeDestination = hasSecretReadValueOrDescribePermission(
+        permission,
+        ProjectPermissionSecretActions.DescribeSecret,
+        { environment: imp.environment, secretPath }
+      );
+      if (!canDescribeDestination) return undefined;
       const isCrossProject = Boolean(imp.importEnv.projectId) && imp.importEnv.projectId !== projectId;
       const canDescribeSource =
         isCrossProject ||
@@ -1126,8 +1133,10 @@ export const secretImportServiceFactory = ({
         count
       ])
     );
-    const running = await keyStore.getItems(
-      imports.map((imp) => KeyStorePrefixes.SecretImportReplicationRunning(imp.id))
+    const running = await Promise.all(
+      imports.map((imp) =>
+        imp.isReplication ? keyStore.getItem(KeyStorePrefixes.SecretImportReplicationRunning(imp.id)) : null
+      )
     );
 
     return imports.map((imp, idx) => {

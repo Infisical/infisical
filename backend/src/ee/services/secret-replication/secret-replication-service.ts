@@ -41,7 +41,7 @@ import { SecretOperations } from "@app/services/secret/secret-types";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 
-import { MAX_REPLICATION_DEPTH } from "./secret-replication-constants";
+import { MAX_REPLICATION_DEPTH, SECRET_IMPORT_REPLICATION_QUEUED } from "./secret-replication-constants";
 import { findOrCreateReplicationFolder, getReplicationFolderName } from "./secret-replication-fns";
 
 type TSecretReplicationServiceFactoryDep = {
@@ -80,7 +80,7 @@ type TSecretReplicationServiceFactoryDep = {
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
   queueService: Pick<TQueueServiceFactory, "start" | "listen" | "queue" | "stopJobById">;
   secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicy">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "deleteItemIfValue">;
   secretTagDAL: Pick<
     TSecretTagDALFactory,
     | "findManyTagsById"
@@ -280,15 +280,21 @@ export const secretReplicationServiceFactory = ({
       ? destinationReplicatedSecretImports.filter(({ id }) => pickOnlyImportIds?.includes(id))
       : destinationReplicatedSecretImports;
     if (!destinationReplicatedSecretImports.length) return;
-    await Promise.all(
-      destinationReplicatedSecretImports.map(({ id }) =>
-        keyStore.setItemWithExpiry(
-          KeyStorePrefixes.SecretImportReplicationRunning(id),
-          KeyStoreTtls.SecretImportReplicationRunningInSeconds,
-          1
+    const jobToken = String(job.id);
+    const markReplicationRunning = () =>
+      Promise.all(
+        destinationReplicatedSecretImports.map(({ id }) =>
+          keyStore.setItemWithExpiry(
+            KeyStorePrefixes.SecretImportReplicationRunning(id),
+            KeyStoreTtls.SecretImportReplicationRunningInSeconds,
+            jobToken
+          )
         )
-      )
-    );
+      );
+    const clearReplicationRunning = (importIds: string[]) =>
+      Promise.all(
+        importIds.map((id) => keyStore.deleteItemIfValue(KeyStorePrefixes.SecretImportReplicationRunning(id), jobToken))
+      );
 
     if (shouldUseSecretV2Bridge) {
       const { secretManager: projectCipher, blindIndexer } = await prepareSecretWriteCiphers({
@@ -354,6 +360,7 @@ export const secretReplicationServiceFactory = ({
       );
 
       try {
+        await markReplicationRunning();
         /*  eslint-disable no-await-in-loop */
         for (const destinationSecretImport of destinationReplicatedSecretImports) {
           try {
@@ -657,12 +664,13 @@ export const secretReplicationServiceFactory = ({
               isReplicationSuccess: false
             });
           } finally {
-            await keyStore.deleteItem(KeyStorePrefixes.SecretImportReplicationRunning(destinationSecretImport.id));
+            await clearReplicationRunning([destinationSecretImport.id]);
           }
         }
         /*  eslint-enable no-await-in-loop */
       } finally {
         await lock.release();
+        await clearReplicationRunning(destinationReplicatedSecretImports.map(({ id }) => id));
         logger.info(job.data, "Replication finished");
       }
       return;
@@ -688,6 +696,7 @@ export const secretReplicationServiceFactory = ({
     );
 
     try {
+      await markReplicationRunning();
       /*  eslint-disable no-await-in-loop */
       for (const destinationSecretImport of destinationReplicatedSecretImports) {
         try {
@@ -886,17 +895,27 @@ export const secretReplicationServiceFactory = ({
             isReplicationSuccess: false
           });
         } finally {
-          await keyStore.deleteItem(KeyStorePrefixes.SecretImportReplicationRunning(destinationSecretImport.id));
+          await clearReplicationRunning([destinationSecretImport.id]);
         }
       }
       /*  eslint-enable no-await-in-loop */
     } finally {
       await lock.release();
+      await clearReplicationRunning(destinationReplicatedSecretImports.map(({ id }) => id));
       logger.info(job.data, "Replication finished");
     }
   });
 
   queueService.listen(QueueName.SecretReplication, "failed", (job, err) => {
     logger.error(err, "Failed to replicate secret", job?.data);
+    if (!job || job.attemptsMade < (job.opts.attempts || 1)) return;
+    void Promise.all(
+      (job.data.pickOnlyImportIds ?? []).map((id) =>
+        keyStore.deleteItemIfValue(
+          KeyStorePrefixes.SecretImportReplicationRunning(id),
+          SECRET_IMPORT_REPLICATION_QUEUED
+        )
+      )
+    ).catch((error) => logger.error(error, `Failed to clear replication running markers [jobId=${job.id}]`));
   });
 };

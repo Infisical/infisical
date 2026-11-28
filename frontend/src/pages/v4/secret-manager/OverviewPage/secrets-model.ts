@@ -63,6 +63,7 @@ export type Resource =
       replicationDetails?: string;
       lastReplicated?: string;
       replicationRunning?: boolean;
+      resyncRequestedAt?: number;
       sourceMissing?: boolean;
       importedCount?: number;
     })

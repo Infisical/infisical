@@ -456,7 +456,7 @@ export const useResourceApply = ({
           if (
             from.lastReplicated !== to.lastReplicated ||
             from.replicationStatus !== to.replicationStatus ||
-            (!from.replicationRunning && to.replicationRunning)
+            from.resyncRequestedAt !== to.resyncRequestedAt
           )
             return record(
               to.environment,

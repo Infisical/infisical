@@ -52,7 +52,7 @@ export function ImportActions({
       (current) =>
         current.map((resource) =>
           resource.id === resync.id && resource.kind === "import"
-            ? { ...resource, replicationRunning: true }
+            ? { ...resource, replicationRunning: true, resyncRequestedAt: Date.now() }
             : resource
         ),
       { title: "Resync of replicated secrets started" }
