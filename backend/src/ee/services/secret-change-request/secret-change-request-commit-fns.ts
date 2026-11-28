@@ -157,6 +157,7 @@ export const secretApprovalRequestCommitFnsFactory = ({
     const commits: TSecretApprovalCommit[] = [];
     const commitTagIds: Record<string, string[]> = {};
     const existingTagIds: Record<string, string[]> = {};
+    const existingTagSlugs: Record<string, string[]> = {};
     const renamedFromKey: Record<string, string> = {};
 
     const { encryptor: secretManagerEncryptor } = await dataKeysOn(
@@ -243,7 +244,10 @@ export const secretApprovalRequestCommitFnsFactory = ({
       );
 
       secretsToUpdateStoredInDB.forEach((el) => {
-        if (el.tags?.length) existingTagIds[el.key] = el.tags.map((i) => i.id);
+        if (el.tags?.length) {
+          existingTagIds[el.key] = el.tags.map((i) => i.id);
+          existingTagSlugs[el.key] = el.tags.map((i) => i.slug);
+        }
       });
 
       const existingKeys = new Set(secretsToUpdateStoredInDB.map((el) => el.key));
@@ -532,18 +536,21 @@ export const secretApprovalRequestCommitFnsFactory = ({
         }
       });
 
-      const originalKey = commit.op === SecretOperations.Update ? renamedFromKey[commit.key] : undefined;
-      if (originalKey) {
-        permission.assert({
-          action: ProjectPermissionSecretActions.Edit,
-          subject: ProjectPermissionSub.Secrets,
-          fields: {
-            environment,
-            secretPath,
-            secretName: originalKey,
-            secretTags: existingTagIds[originalKey]?.map((secretTagId) => tagsGroupById[secretTagId][0].slug)
-          }
-        });
+      if (commit.op === SecretOperations.Update) {
+        const sourceKey = renamedFromKey[commit.key] ?? commit.key;
+        const sourceTagSlugs = existingTagSlugs[sourceKey];
+        if (renamedFromKey[commit.key] || sourceTagSlugs?.length) {
+          permission.assert({
+            action: ProjectPermissionSecretActions.Edit,
+            subject: ProjectPermissionSub.Secrets,
+            fields: {
+              environment,
+              secretPath,
+              secretName: sourceKey,
+              secretTags: sourceTagSlugs
+            }
+          });
+        }
       }
     });
 

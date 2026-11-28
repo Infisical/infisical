@@ -364,6 +364,77 @@ describe("buildSecretApprovalCommits", () => {
       )
     ).rejects.toThrow("Project requires all metadata to be encrypted");
   });
+
+  test("rejects in-place updates on tag-restricted secrets even when clearing or replacing tagIds", async () => {
+    const stored = [{ id: "secret-1", key: "PROD_KEY", version: 1, tags: [{ id: "tag-prod", slug: "prod" }] }];
+    const tags = [
+      { id: "tag-prod", slug: "prod" },
+      { id: "tag-dev", slug: "dev" }
+    ];
+    const permission = createMongoAbility<ProjectPermissionSet>(
+      [
+        {
+          action: ProjectPermissionSecretActions.Edit,
+          subject: ProjectPermissionSub.Secrets
+        },
+        {
+          inverted: true,
+          action: ProjectPermissionSecretActions.Edit,
+          subject: ProjectPermissionSub.Secrets,
+          conditions: { secretTags: { $in: ["prod"] } }
+        }
+      ],
+      { conditionsMatcher }
+    );
+
+    const { fns, deps } = buildFns({ stored, tags, permission });
+    deps.secretTagDAL.findManyTagsById.mockImplementation((_projectId: string, ids: string[]) =>
+      Promise.resolve(tags.filter((t) => ids.includes(t.id)))
+    );
+
+    await expect(
+      fns.buildSecretApprovalCommits(
+        input({
+          data: {
+            [SecretOperations.Update]: [{ secretKey: "PROD_KEY", secretValue: "pwned", tagIds: [] }]
+          }
+        })
+      )
+    ).rejects.toBeInstanceOf(PermissionDeniedError);
+
+    await expect(
+      fns.buildSecretApprovalCommits(
+        input({
+          data: {
+            [SecretOperations.Update]: [{ secretKey: "PROD_KEY", secretValue: "pwned", tagIds: ["tag-dev"] }]
+          }
+        })
+      )
+    ).rejects.toBeInstanceOf(PermissionDeniedError);
+
+    await expect(
+      fns.buildSecretApprovalCommits(
+        input({
+          data: {
+            [SecretOperations.Update]: [
+              { secretKey: "PROD_KEY", newSecretName: "DEV_KEY", secretValue: "pwned", tagIds: [] }
+            ]
+          }
+        })
+      )
+    ).rejects.toBeInstanceOf(PermissionDeniedError);
+
+    const allowed = buildFns({ stored, tags });
+    const bundle = await allowed.fns.buildSecretApprovalCommits(
+      input({
+        data: {
+          [SecretOperations.Update]: [{ secretKey: "PROD_KEY", secretValue: "rotated", tagIds: [] }]
+        }
+      })
+    );
+    expect(bundle.commits[0]).toMatchObject({ op: SecretOperations.Update, key: "PROD_KEY" });
+    expect(bundle.commitTagIds).toEqual({ PROD_KEY: [] });
+  });
 });
 
 describe("pickApprovalCommitColumns", () => {
