@@ -6,6 +6,7 @@ import axios from "axios";
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 import { getAccessErrorMessage } from "@app/pages/pam/access-error";
+import { extractMfaSessionId, useMfaChallenge } from "@app/pages/pam/components/useMfaChallenge";
 
 import "@devolutions/iron-remote-desktop";
 
@@ -101,6 +102,8 @@ export const useRdpSession = ({
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const onSessionEndRef = useRef(onSessionEnd);
+  const mfaSessionIdRef = useRef(mfaSessionId);
+  const runMfaChallenge = useMfaChallenge();
   useEffect(() => {
     onSessionEndRef.current = onSessionEnd;
   }, [onSessionEnd]);
@@ -141,12 +144,38 @@ export const useRdpSession = ({
     await ensureRdpBackend();
     if (!isCurrent()) return;
 
-    const { data } = await apiRequest.post<{ ticket: string }>(
-      `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-      { reason, mfaSessionId, selectedHost }
-    );
+    const requestTicket = async (ticketMfaSessionId?: string) => {
+      const { data } = await apiRequest.post<{ ticket: string }>(
+        `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
+        { reason, mfaSessionId: ticketMfaSessionId, selectedHost }
+      );
+      return data.ticket;
+    };
+
+    // The backend consumes an MFA session on first use, so later connects must run a fresh challenge
+    const initialMfaSessionId = mfaSessionIdRef.current;
+    mfaSessionIdRef.current = undefined;
+
+    let ticket: string;
+    try {
+      ticket = await requestTicket(initialMfaSessionId);
+    } catch (err) {
+      const challengeMfaSessionId = extractMfaSessionId(err);
+      if (!challengeMfaSessionId || !isCurrent()) throw err;
+      const outcome = await runMfaChallenge(challengeMfaSessionId);
+      if (!isCurrent()) return;
+      if (outcome === "blocked") {
+        throw new Error(
+          "Allow pop-ups for this site to complete MFA verification, then reconnect."
+        );
+      }
+      if (outcome === "failed") {
+        throw new Error("MFA verification timed out or failed. Reconnect to try again.");
+      }
+      ticket = await requestTicket(challengeMfaSessionId);
+    }
     if (!isCurrent()) return;
-    const proxyAddress = buildProxyAddress(data.ticket);
+    const proxyAddress = buildProxyAddress(ticket);
 
     const el = document.createElement("iron-remote-desktop");
     (el as unknown as { module: typeof Backend }).module = Backend;
@@ -198,7 +227,7 @@ export const useRdpSession = ({
 
     containerRef.current.appendChild(el);
     elementRef.current = el;
-  }, [accountId, accountName, reason, mfaSessionId, selectedHost, buildProxyAddress, teardown]);
+  }, [accountId, accountName, reason, selectedHost, buildProxyAddress, teardown, runMfaChallenge]);
 
   const handleConnectError = useCallback((err: unknown) => {
     let message = "Failed to start RDP session";

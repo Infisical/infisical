@@ -3,8 +3,10 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { cn } from "@app/components/v3/utils";
 
+import { useComposedRefs } from "../DataGrid/compose-refs";
 import { rowLinkContainerClassName } from "../RowLink";
 import { Skeleton } from "../Skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../Tooltip";
 
 const Table = React.forwardRef<
   HTMLDivElement,
@@ -163,6 +165,7 @@ const TableRow = React.forwardRef<
         "border-b border-border transition-colors duration-75 hover:bg-container-hover data-[state=selected]:bg-container-hover",
         props.onClick && "cursor-pointer select-none",
         linked && rowLinkContainerClassName,
+        linked && "translate-x-0",
         className
       )}
       {...props}
@@ -251,6 +254,8 @@ function TableCell({
   isWrappable,
   isTopAligned,
   variant = "default",
+  children,
+  ref,
   ...props
 }: React.ComponentProps<"td"> & {
   isTruncatable?: boolean;
@@ -258,8 +263,13 @@ function TableCell({
   isTopAligned?: boolean;
   variant?: TableColumnVariant;
 }) {
-  return (
+  const cellRef = React.useRef<HTMLTableCellElement>(null);
+  const composedRef = useComposedRefs(ref, cellRef);
+  const [isTooltipOpen, setIsTooltipOpen] = React.useState(false);
+
+  const cell = (
     <td
+      ref={composedRef}
       data-slot="table-cell"
       data-variant={variant}
       className={cn(
@@ -271,7 +281,24 @@ function TableCell({
         className
       )}
       {...props}
-    />
+    >
+      {children}
+    </td>
+  );
+
+  if (!isTruncatable || typeof children !== "string" || props.title !== undefined) return cell;
+
+  return (
+    <Tooltip
+      open={isTooltipOpen}
+      onOpenChange={(open) => {
+        const node = cellRef.current;
+        setIsTooltipOpen(open && !!node && node.scrollWidth > node.clientWidth);
+      }}
+    >
+      <TooltipTrigger asChild>{cell}</TooltipTrigger>
+      <TooltipContent className="max-w-md wrap-anywhere">{children}</TooltipContent>
+    </Tooltip>
   );
 }
 

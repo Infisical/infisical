@@ -22,13 +22,14 @@ import {
   type UpdateSecretCommandInput
 } from "@aws-sdk/client-secrets-manager";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { isAwsError } from "@app/lib/aws/error";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { AwsSecretsManagerSyncMappingBehavior } from "@app/services/secret-sync/aws-secrets-manager/aws-secrets-manager-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
-import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { matchesSchema, preservesFolderStructure } from "@app/services/secret-sync/secret-sync-fns";
 import { getKeyWithSchema, TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
@@ -39,12 +40,16 @@ type TAwsSecretValuesRecord = Record<string, SecretValueEntry>;
 type TAwsSecretDescriptionsRecord = Record<string, DescribeSecretResponse>;
 
 const MAX_RETRIES = 10;
+const MAX_SECRET_NAME_LENGTH = 512;
 const BATCH_SIZE = 20;
 
-const getSecretsManagerClient = async (secretSync: TAwsSecretsManagerSyncWithCredentials) => {
+const getSecretsManagerClient = async (
+  secretSync: TAwsSecretsManagerSyncWithCredentials,
+  instanceConfigService: TInstanceConfigService
+) => {
   const { destinationConfig, connection } = secretSync;
 
-  const config = await getAwsConnectionConfig(connection, destinationConfig.region);
+  const config = await getAwsConnectionConfig(connection, instanceConfigService, destinationConfig.region);
 
   const secretsManagerClient = new SecretsManagerClient({
     region: config.region,
@@ -61,10 +66,48 @@ const sleep = async () =>
     setTimeout(resolve, 1000);
   });
 
+// Secrets Manager has no folders, so a mirrored name below the source folder starts with "/", as a
+// Parameter Store name does: "DB_URL" in the source folder, "/api/DB_URL" below it. A secret in the
+// source folder keeps the name it has without the option, so turning the option on doesn't rename it.
+const getMirroredSecretMap = (payload: TSecretSyncPayload): TSecretMap =>
+  Object.fromEntries(
+    Object.entries(payload.mirror()).map(([key, secret]) => [key.includes("/") ? `/${key}` : key, secret])
+  );
+
+// Folders add to a mirrored name, and they can be nested after the sync is saved, so check every name
+// before writing any rather than failing partway. An empty value is never written, so it can't be too long.
+const assertWithinNameLengthLimit = (secretMap: TSecretMap) => {
+  const tooLong = Object.entries(secretMap).find(
+    ([name, { value }]) => value && name.length > MAX_SECRET_NAME_LENGTH
+  )?.[0];
+
+  if (tooLong) {
+    const shown = tooLong.length > 200 ? `${tooLong.slice(0, 80)}...${tooLong.slice(-80)}` : tooLong;
+
+    throw new SecretSyncError({
+      message: `"${shown}" is ${tooLong.length} characters long, more than the ${MAX_SECRET_NAME_LENGTH} AWS Secrets Manager allows. Shorten the secret's folder names, move it to a shallower folder, or turn off preserving folder structure.`,
+      shouldRetry: false
+    });
+  }
+};
+
+// With folders mirrored, a name is the sync's only if it's shaped like one getMirroredSecretMap
+// builds, so another sync's "team-a/DB_URL" or a bare "/DB_URL" is left alone.
+const isSyncedSecretName = (name: string, environment: string, keySchema?: string, mirroredFolders?: Set<string>) => {
+  if (!mirroredFolders) return matchesSchema(name, environment, keySchema);
+
+  const key = name.startsWith("/") ? name.substring(1) : name;
+  if (name.startsWith("/") !== key.includes("/")) return false;
+
+  return matchesSchema(key, environment, keySchema, { mirroredFolders });
+};
+
 const getSecretsRecord = async (
   client: SecretsManagerClient,
   environment: string,
-  keySchema?: string
+  keySchema?: string,
+  mirroredFolders?: Set<string>,
+  secretMap?: TSecretMap
 ): Promise<TAwsSecretsRecord> => {
   const awsSecretsRecord: TAwsSecretsRecord = {};
   let hasNext = true;
@@ -80,7 +123,14 @@ const getSecretsRecord = async (
 
       if (output.SecretList) {
         output.SecretList.forEach((secretEntry) => {
-          if (secretEntry.Name && matchesSchema(secretEntry.Name, environment, keySchema)) {
+          // A name the sync writes is always its own. isSyncedSecretName alone can miss one: a stored
+          // key containing "/" adds folders to its mirrored name, and the key schema is checked
+          // against the last segment only.
+          if (
+            secretEntry.Name &&
+            ((secretMap && Object.hasOwn(secretMap, secretEntry.Name)) ||
+              isSyncedSecretName(secretEntry.Name, environment, keySchema, mirroredFolders))
+          ) {
             awsSecretsRecord[secretEntry.Name] = secretEntry;
           }
         });
@@ -356,16 +406,20 @@ const getSingleSecretValue = async (
 };
 
 export const AwsSecretsManagerSyncFns = {
-  syncSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials, payload: TSecretSyncPayload) => {
+  syncSecrets: async (
+    secretSync: TAwsSecretsManagerSyncWithCredentials,
+    payload: TSecretSyncPayload,
+    instanceConfigService: TInstanceConfigService
+  ) => {
     const { destinationConfig, syncOptions, environment } = secretSync;
+    const preserveFolderStructure = preservesFolderStructure(secretSync);
 
-    // The many-to-one mapping combines every secret into one AWS secret's JSON body under its
-    // own (unprefixed) key, so this destination needs both views: the schema-applied map for
-    // the one-to-one path below, and the raw-key map for that JSON body.
-    const secretMap = payload.flatten();
-    const unmodifiedSecretMap = payload.flatten({ disableKeySchema: true });
+    const secretMap = preserveFolderStructure ? getMirroredSecretMap(payload) : payload.flatten();
+    const mirroredFolders = preserveFolderStructure ? payload.mirroredFolders() : undefined;
 
-    const client = await getSecretsManagerClient(secretSync);
+    if (preserveFolderStructure) assertWithinNameLengthLimit(secretMap);
+
+    const client = await getSecretsManagerClient(secretSync, instanceConfigService);
 
     const syncTagsRecord = Object.fromEntries(syncOptions.tags?.map((tag) => [tag.key, tag.value]) ?? []);
 
@@ -376,7 +430,13 @@ export const AwsSecretsManagerSyncFns = {
     const deletedSecretKeys: string[] = [];
 
     if (destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne) {
-      const awsSecretsRecord = await getSecretsRecord(client, environment?.slug || "", syncOptions.keySchema);
+      const awsSecretsRecord = await getSecretsRecord(
+        client,
+        environment?.slug || "",
+        syncOptions.keySchema,
+        mirroredFolders,
+        secretMap
+      );
 
       const awsValuesRecord = await getSecretValuesRecord(client, awsSecretsRecord);
 
@@ -464,7 +524,7 @@ export const AwsSecretsManagerSyncFns = {
 
       for await (const secretKey of Object.keys(awsSecretsRecord)) {
         // eslint-disable-next-line no-continue
-        if (!matchesSchema(secretKey, environment?.slug || "", syncOptions.keySchema)) continue;
+        if (!isSyncedSecretName(secretKey, environment?.slug || "", syncOptions.keySchema, mirroredFolders)) continue;
 
         if (!(secretKey in secretMap) || !secretMap[secretKey].value) {
           try {
@@ -480,6 +540,10 @@ export const AwsSecretsManagerSyncFns = {
       }
     } else {
       // Many-To-One Mapping: only fetch the single target secret instead of listing all secrets
+
+      // Every secret goes into this one AWS secret's JSON body under its own (unprefixed) key, so
+      // the body needs the raw-key map rather than the schema-applied one.
+      const unmodifiedSecretMap = payload.flatten({ disableKeySchema: true });
 
       const secretValue = JSON.stringify(
         Object.fromEntries(Object.entries(unmodifiedSecretMap).map(([key, secretData]) => [key, secretData.value]))
@@ -550,8 +614,11 @@ export const AwsSecretsManagerSyncFns = {
 
     return { createdSecretKeys, updatedSecretKeys, deletedSecretKeys };
   },
-  getSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials): Promise<TSecretMap> => {
-    const client = await getSecretsManagerClient(secretSync);
+  getSecrets: async (
+    secretSync: TAwsSecretsManagerSyncWithCredentials,
+    instanceConfigService: TInstanceConfigService
+  ): Promise<TSecretMap> => {
+    const client = await getSecretsManagerClient(secretSync, instanceConfigService);
 
     const { destinationConfig, environment, syncOptions } = secretSync;
 
@@ -593,14 +660,27 @@ export const AwsSecretsManagerSyncFns = {
       });
     }
   },
-  removeSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials, payload: TSecretSyncPayload) => {
-    const secretMap = payload.flatten();
+  removeSecrets: async (
+    secretSync: TAwsSecretsManagerSyncWithCredentials,
+    payload: TSecretSyncPayload,
+    instanceConfigService: TInstanceConfigService
+  ) => {
     const { destinationConfig, syncOptions, environment } = secretSync;
+    const preserveFolderStructure = preservesFolderStructure(secretSync);
 
-    const client = await getSecretsManagerClient(secretSync);
+    const secretMap = preserveFolderStructure ? getMirroredSecretMap(payload) : payload.flatten();
+    const mirroredFolders = preserveFolderStructure ? payload.mirroredFolders() : undefined;
+
+    const client = await getSecretsManagerClient(secretSync, instanceConfigService);
 
     if (destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne) {
-      const awsSecretsRecord = await getSecretsRecord(client, environment?.slug || "", syncOptions.keySchema);
+      const awsSecretsRecord = await getSecretsRecord(
+        client,
+        environment?.slug || "",
+        syncOptions.keySchema,
+        mirroredFolders,
+        secretMap
+      );
 
       for await (const secretKey of Object.keys(awsSecretsRecord)) {
         if (secretKey in secretMap) {

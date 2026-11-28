@@ -5,7 +5,9 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 
+import { getAzureManagedIdentityAccessToken } from "../shared/azure/azure-managed-identity-fns";
 import { AzureDnsConnectionMethod } from "./azure-dns-connection-enums";
 import { TAzureDnsConnection, TAzureDnsConnectionConfig, TAzureDnsZone } from "./azure-dns-connection-types";
 
@@ -57,25 +59,47 @@ export const getAzureDnsAccessToken = async (
   return tokenResponse.data.access_token;
 };
 
+export const getAzureDnsConnectionAccessToken = async (
+  appConnection: TAzureDnsConnection,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
+) => {
+  switch (appConnection.method) {
+    case AzureDnsConnectionMethod.ClientSecret: {
+      const { tenantId, clientId, clientSecret } = appConnection.credentials;
+      return getAzureDnsAccessToken(tenantId, clientId, clientSecret);
+    }
+    case AzureDnsConnectionMethod.ManagedIdentity: {
+      const { tenantId, clientId } = appConnection.credentials;
+      const { accessToken } = await getAzureManagedIdentityAccessToken(
+        { appConnection, tenantId, clientId, scope: "https://management.azure.com/.default" },
+        oidcIssuerService
+      );
+      return accessToken;
+    }
+    default:
+      throw new BadRequestError({ message: "Unsupported Azure DNS connection method" });
+  }
+};
+
 export const getAzureDnsConnectionListItem = () => {
   return {
     name: "Azure DNS" as const,
     app: AppConnection.AzureDNS as const,
-    methods: Object.values(AzureDnsConnectionMethod) as [AzureDnsConnectionMethod.ClientSecret]
+    methods: Object.values(AzureDnsConnectionMethod) as [
+      AzureDnsConnectionMethod.ClientSecret,
+      AzureDnsConnectionMethod.ManagedIdentity
+    ]
   };
 };
 
-export const listAzureDnsZones = async (appConnection: TAzureDnsConnection): Promise<TAzureDnsZone[]> => {
-  if (appConnection.method !== AzureDnsConnectionMethod.ClientSecret) {
-    throw new BadRequestError({ message: "Unsupported Azure DNS connection method" });
-  }
-
-  const {
-    credentials: { tenantId, clientId, clientSecret, subscriptionId }
-  } = appConnection;
+export const listAzureDnsZones = async (
+  appConnection: TAzureDnsConnection,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
+): Promise<TAzureDnsZone[]> => {
+  const { subscriptionId } = appConnection.credentials;
 
   try {
-    const accessToken = await getAzureDnsAccessToken(tenantId, clientId, clientSecret);
+    const accessToken = await getAzureDnsConnectionAccessToken(appConnection, oidcIssuerService);
 
     const allZones: TAzureDnsZone[] = [];
     const baseUrl = `https://management.azure.com/subscriptions/${subscriptionId}/providers/Microsoft.Network/dnszones?api-version=2018-05-01`;
@@ -130,15 +154,9 @@ export const listAzureDnsZones = async (appConnection: TAzureDnsConnection): Pro
   }
 };
 
-export const validateAzureDnsConnectionCredentials = async (config: TAzureDnsConnectionConfig) => {
-  if (config.method !== AzureDnsConnectionMethod.ClientSecret) {
-    throw new BadRequestError({ message: "Unsupported Azure DNS connection method" });
-  }
-
-  const { tenantId, clientId, clientSecret, subscriptionId } = config.credentials;
-
+const verifyAzureDnsSubscriptionAccess = async (subscriptionId: string, getAccessToken: () => Promise<string>) => {
   try {
-    const accessToken = await getAzureDnsAccessToken(tenantId, clientId, clientSecret);
+    const accessToken = await getAccessToken();
 
     const resp = await request.get(
       `https://management.azure.com/subscriptions/${subscriptionId}/providers/Microsoft.Network/dnszones?api-version=2018-05-01`,
@@ -157,10 +175,10 @@ export const validateAzureDnsConnectionCredentials = async (config: TAzureDnsCon
     }
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
+      const data = error.response?.data as { error?: { message?: string }; error_description?: string } | undefined;
       throw new BadRequestError({
         message: `Failed to validate credentials: ${
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          error.response?.data?.error?.message || error.message || "Unknown error"
+          data?.error?.message || data?.error_description || error.message || "Unknown error"
         }`
       });
     }
@@ -172,6 +190,47 @@ export const validateAzureDnsConnectionCredentials = async (config: TAzureDnsCon
       message: "Unable to validate connection: verify credentials"
     });
   }
+};
 
-  return config.credentials;
+export const validateAzureDnsConnectionCredentials = async (
+  config: TAzureDnsConnectionConfig,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
+) => {
+  const { orgId, projectId, connection } = config;
+
+  switch (config.method) {
+    case AzureDnsConnectionMethod.ClientSecret: {
+      const { tenantId, clientId, clientSecret, subscriptionId } = config.credentials;
+
+      await verifyAzureDnsSubscriptionAccess(subscriptionId, () =>
+        getAzureDnsAccessToken(tenantId, clientId, clientSecret)
+      );
+
+      return config.credentials;
+    }
+    case AzureDnsConnectionMethod.ManagedIdentity: {
+      const { tenantId, clientId, subscriptionId } = config.credentials;
+
+      // A new connection has no ID yet, so Azure cannot trust its subject. Verifying it after create runs the
+      // exchange once the customer has added the federated credential.
+      if (!connection) return config.credentials;
+
+      await verifyAzureDnsSubscriptionAccess(subscriptionId, async () => {
+        const { accessToken } = await getAzureManagedIdentityAccessToken(
+          {
+            appConnection: { ...connection, orgId, projectId },
+            tenantId,
+            clientId,
+            scope: "https://management.azure.com/.default"
+          },
+          oidcIssuerService
+        );
+        return accessToken;
+      });
+
+      return config.credentials;
+    }
+    default:
+      throw new BadRequestError({ message: "Unsupported Azure DNS connection method" });
+  }
 };

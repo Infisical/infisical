@@ -2,11 +2,11 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PKI_SYNC_FILTERS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { SyncMetadataSchema } from "@app/services/certificate-sync/certificate-sync-schemas";
 import { PkiSync, PkiSyncStatus } from "@app/services/pki-sync/pki-sync-enums";
@@ -179,13 +179,13 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
     handler: async (req) => {
       const {
         query: { certificateId, applicationId },
-        permission
+        actor
       } = req;
       const projectId = req.internalCertManagerProjectId;
 
       const pkiSyncs = await server.services.pkiSync.listPkiSyncsByProjectId(
         { projectId, certificateId, applicationId },
-        permission
+        actor
       );
 
       await server.services.auditLog.createAuditLog({
@@ -225,7 +225,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
     handler: async (req) => {
       const { pkiSyncId } = req.params;
 
-      const pkiSync = await server.services.pkiSync.findPkiSyncById({ id: pkiSyncId }, req.permission);
+      const pkiSync = await server.services.pkiSync.findPkiSyncById({ id: pkiSyncId }, req.actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -277,7 +277,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
 
       const { certificates, totalCount, pkiSyncInfo } = await server.services.pkiSync.listPkiSyncCertificates(
         { pkiSyncId, offset, limit },
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({
@@ -342,7 +342,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
           offset: req.body.offset,
           limit: req.body.limit
         },
-        req.permission
+        req.actor
       );
 
       return preview;
@@ -389,7 +389,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
           applicationId: req.body.applicationId,
           certificateOrderIds: req.body.certificateOrderIds
         },
-        req.permission
+        req.actor
       );
     }
   });
@@ -435,7 +435,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
 
       const { addedCertificates } = await server.services.pkiSync.addCertificatesToPkiSync(
         { pkiSyncId, certificateIds, auditLogInfo: req.auditLogInfo },
-        req.permission
+        req.actor
       );
 
       return { addedCertificates };
@@ -472,7 +472,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
 
       const { removedCount } = await server.services.pkiSync.removeCertificatesFromPkiSync(
         { pkiSyncId, certificateIds, auditLogInfo: req.auditLogInfo },
-        req.permission
+        req.actor
       );
 
       return { removedCount };

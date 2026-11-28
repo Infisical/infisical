@@ -1,8 +1,9 @@
-import { useSearch } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
+import { ChevronRightIcon } from "lucide-react";
 
 import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { LookingForOrgPageLink, PageLoader } from "@app/components/v3";
+import { Button, LookingForOrgPageLink, PageLoader } from "@app/components/v3";
 import { PageHeader } from "@app/components/v3/platform";
 import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionSecretScanningConfigActions } from "@app/context/ProjectPermissionContext/types";
@@ -39,6 +40,17 @@ export const SettingsPage = () => {
           title="Settings"
           description="Configure your Secret Scanning product's configurations."
         >
+          {hasMultipleProjects && (
+            <Button variant="ghost" size="sm" asChild className="text-muted">
+              <Link
+                to="/organizations/$orgId/projects/secret-scanning/product-settings"
+                params={{ orgId: currentOrg.id }}
+              >
+                All projects
+                <ChevronRightIcon aria-hidden />
+              </Link>
+            </Button>
+          )}
           <LookingForOrgPageLink page="settings" />
         </PageHeader>
         <div>

@@ -157,3 +157,31 @@ Grant both users the same privileges, since either one may be the active credent
 Create a separate rotation for each credential you need, each with its own pair of users. A rotation produces a single active credential, so a database serving three applications that need independent credentials needs three rotations and six users. Two rotations must not share a pair of users, as each would overwrite the other's passwords.
 
 If you want credentials issued per identity and revoked after a short lease, rather than one shared credential that changes on a schedule, use a [dynamic secret](/documentation/platform/dynamic-secrets/overview) instead.
+
+## Get alerted when a rotation fails
+
+If a scheduled rotation fails after all of its retries, the rotation's failure alert notifies your team by email, Slack, webhook, or PagerDuty.
+
+- If you create a rotation in the Infisical UI and can edit secret rotations in its environment and path, the alert is on by default, with an email to the project's admins
+- If a rotation existed before failure alerts were available, it has the same alert
+- If a manual rotation fails, Infisical shows the error right away and doesn't send an alert
+- Project admins get an in-app notification when a scheduled rotation fails, even if the alert is off
+
+To set up or change a rotation's alert, you need [permission](/documentation/platform/access-controls/role-based-access-controls) to edit secret rotations in the rotation's environment and path.
+
+<Steps>
+    <Step>
+        For a new rotation, go to your project's secrets overview and select **Add New** > **Add Secret Rotation**. For an existing rotation, select **Edit** on the rotation's row.
+    </Step>
+    <Step>
+        Go to the **Alerts** step and make sure **Alert on Rotation Failure** is on. If you're editing a rotation, select **Alerts** under **Sections** to go straight to it.
+    </Step>
+    <Step>
+        Select **Add channel** and set up at least one [notification channel](/documentation/platform/identities/machine-identities#notification-channels). The **Project Admins** recipient emails members who have the Admin role directly on the project. If someone is an admin only through a group, add the group as a recipient too.
+    </Step>
+    <Step>
+        For a new rotation, select **Create secret rotation** on the **Review** step. For an existing rotation, select **Save**.
+    </Step>
+</Steps>
+
+If you create rotations through the API, create each rotation's alert with the [Create alert](/api-reference/endpoints/alerts/create) endpoint, using `secret.rotation` as the resource type, the rotation's ID as the resource ID, and `secret.rotation.failed` as the event.

@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { identitiesKeys, projectKeys } from "@app/hooks/api";
-import { identityMembershipsBase } from "@app/hooks/api/certManagerAccess";
+import { identityMembershipsBase, isCertManagerProject } from "@app/hooks/api/certManagerAccess";
 import { pkiApplicationKeys } from "@app/hooks/api/pkiApplications/queries";
 import { projectIdentityQuery } from "@app/hooks/api/projectIdentity";
 
@@ -26,9 +26,8 @@ export const useCreateProjectIdentityMembership = () => {
         data: { identityMembership }
       } = await apiRequest.post<{ identityMembership: TProjectIdentityMembership }>(
         `${identityMembershipsBase(projectType, projectId)}/${identityId}`,
-        {
-          role
-        }
+        { role },
+        { params: isCertManagerProject(projectType) ? { projectId } : undefined }
       );
 
       return identityMembership;
@@ -94,7 +93,8 @@ export const useDeleteProjectIdentityMembership = () => {
       const {
         data: { identityMembership }
       } = await apiRequest.delete<{ identityMembership: TProjectIdentityMembership }>(
-        `${identityMembershipsBase(projectType, projectId)}/${identityId}`
+        `${identityMembershipsBase(projectType, projectId)}/${identityId}`,
+        { params: isCertManagerProject(projectType) ? { projectId } : undefined }
       );
       return identityMembership;
     },

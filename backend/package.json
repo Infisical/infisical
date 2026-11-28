@@ -10,8 +10,8 @@
   "scripts": {
     "assets:export": "./scripts/export-assets.sh",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "tsx watch --clear-screen=false ./src/main.ts  --config tsconfig.dev.json | pino-pretty --colorize --colorizeObjects --singleLine",
-    "dev:docker": "tsx watch --clear-screen=false --tsconfig=./tsconfig.dev.json --inspect=0.0.0.0:9229 ./src/main.ts | pino-pretty --colorize --colorizeObjects --singleLine",
+    "dev": "tsx watch --clear-screen=false ./src/main.ts | pino-pretty --colorize --colorizeObjects --singleLine",
+    "dev:docker": "tsx watch --clear-screen=false --inspect=0.0.0.0:9229 ./src/main.ts | pino-pretty --colorize --colorizeObjects --singleLine",
     "build": "tsdown",
     "build:frontend": "npm run build --prefix ../frontend",
     "start": "node --enable-source-maps dist/main.mjs",
@@ -22,7 +22,7 @@
     "test:e2e": "vitest run -c vitest.e2e.config.mts --bail=1",
     "test:e2e-watch": "vitest -c vitest.e2e.config.mts --bail=1",
     "test:e2e-coverage": "vitest run --coverage -c vitest.e2e.config.mts",
-    "test:bdd": "cd bdd && uv run behave",
+    "test:integration": "vitest run -c vitest.integration.config.mts",
     "bake:announcements": "tsx ./scripts/bake-announcements.ts",
     "generate:component": "tsx ./scripts/create-backend-file.ts",
     "generate:schema": "tsx ./scripts/generate-schema-types.ts && oxfmt 'src/db/schemas/**/*.ts'",
@@ -68,12 +68,7 @@
     "sha.js": "2.4.12",
     "jws": "^4.0.1",
     "qs": "$qs",
-    "glob": {
-      ".": "^10.5.0",
-      "minimatch": {
-        "brace-expansion": "^2.1.2"
-      }
-    },
+    "glob": "^14.0.5",
     "cross-spawn": "^7.0.6",
     "validator": "^13.15.22",
     "react-email": {
@@ -141,13 +136,13 @@
     "@types/sjcl": "^1.0.34",
     "@types/ssh2": "^1.15.5",
     "@types/uuid": "^9.0.7",
-    "nock": "^14.0.10",
     "oxfmt": "^0.74.0",
     "oxlint": "^1.89.0",
     "oxlint-tsgolint": "^7.0.2004",
     "pino-pretty": "^10.2.3",
     "prompt-sync": "^4.2.0",
     "react-email": "^5.0.6",
+    "testcontainers": "^12.2.1",
     "tsdown": "0.23.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
@@ -191,6 +186,7 @@
     "@google-cloud/kms": "^5.4.0",
     "@infisical/ldapjs": "3.0.11",
     "@infisical/pg-view-generator": "^1.1.0",
+    "@modelcontextprotocol/server": "^2.4.0",
     "@node-saml/passport-saml": "^5.1.0",
     "@octokit/auth-app": "^7.1.1",
     "@octokit/core": "^5.2.1",

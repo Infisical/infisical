@@ -17,10 +17,20 @@ import {
   DetailLabel,
   DetailValue
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization, useProject, useProjectPermission } from "@app/context";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
+import {
+  ALERT_EVENT_TYPE_LABELS,
+  ALERT_PROJECT_RECIPIENT_LABELS,
+  AlertChannelType,
+  AlertEventType,
+  AlertPrincipalType,
+  TAlertChannelRecipient,
+  TChannelForm
+} from "@app/hooks/api/alerts";
 import { SecretSync, useDuplicateDestinationCheck } from "@app/hooks/api/secretSyncs";
 
+import { canManageFailureAlert } from "../SecretSyncAlertsFields";
 import {
   AwsParameterStoreDestinationReviewFields,
   AwsParameterStoreSyncOptionsReviewFields
@@ -48,6 +58,8 @@ import {
   CloudflareWorkersSyncOptionsReviewFields,
   CloudflareWorkersSyncReviewFields
 } from "./CloudflareWorkersReviewFields";
+import { ConvexSyncReviewFields } from "./ConvexSyncReviewFields";
+import { CoolifySyncReviewFields } from "./CoolifySyncReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
 import { DevinSyncReviewFields } from "./DevinSyncReviewFields";
 import { DigitalOceanAppPlatformSyncReviewFields } from "./DigitalOceanAppPlatformSyncReviewFields";
@@ -60,6 +72,7 @@ import { HasuraCloudSyncReviewFields } from "./HasuraCloudSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
+import { JenkinsSyncReviewFields } from "./JenkinsSyncReviewFields";
 import { KeeperSyncReviewFields } from "./KeeperSyncReviewFields";
 import { LaravelForgeSyncReviewFields } from "./LaravelForgeSyncReviewFields";
 import { NetlifySyncReviewFields } from "./NetlifySyncReviewFields";
@@ -91,8 +104,94 @@ import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
 import { WindmillSyncReviewFields } from "./WindmillSyncReviewFields";
 import { ZabbixSyncReviewFields } from "./ZabbixSyncReviewFields";
 
+const pluralize = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
+
+const describeRecipientType = (principalType: AlertPrincipalType, count: number) => {
+  switch (principalType) {
+    case AlertPrincipalType.ProjectMembers:
+    case AlertPrincipalType.ProjectAdmins:
+      return ALERT_PROJECT_RECIPIENT_LABELS[principalType];
+    case AlertPrincipalType.User:
+      return pluralize(count, "user");
+    case AlertPrincipalType.Group:
+      return pluralize(count, "group");
+    case AlertPrincipalType.Email:
+      return pluralize(count, "email");
+    default:
+      return "";
+  }
+};
+
+const describeRecipients = (recipients: TAlertChannelRecipient[]) =>
+  Object.values(AlertPrincipalType)
+    .map((principalType) => ({
+      principalType,
+      count: recipients.filter((recipient) => recipient.principalType === principalType).length
+    }))
+    .filter(({ count }) => count > 0)
+    .map(({ principalType, count }) => describeRecipientType(principalType, count))
+    .join(", ");
+
+const describeChannel = (channel: TChannelForm) => {
+  switch (channel.channelType) {
+    case AlertChannelType.Email:
+      return describeRecipients(channel.recipients);
+    case AlertChannelType.Slack:
+      return "Slack incoming webhook";
+    case AlertChannelType.Webhook:
+      return channel.url;
+    case AlertChannelType.PagerDuty:
+      return "PagerDuty Events API v2";
+    default:
+      return "";
+  }
+};
+
+const FailureAlertReview = ({
+  isFailureAlertEnabled,
+  channels,
+  canManage
+}: {
+  isFailureAlertEnabled: boolean;
+  channels: TChannelForm[];
+  canManage: boolean;
+}) => {
+  // The form only creates the alert for someone who can edit the sync, whether or not they opened the
+  // Alerts step, so the review must not promise one to anyone else.
+  if (!canManage) {
+    return (
+      <DetailValue>
+        No alert. Adding one needs permission to edit secret syncs in this environment and path.
+      </DetailValue>
+    );
+  }
+
+  if (!isFailureAlertEnabled) {
+    return <DetailValue>No alert</DetailValue>;
+  }
+
+  return (
+    <>
+      <Detail>
+        <DetailLabel>Event</DetailLabel>
+        <DetailValue>{ALERT_EVENT_TYPE_LABELS[AlertEventType.SecretSyncFailed]}</DetailValue>
+      </Detail>
+      {channels.map((channel) => (
+        <Detail key={channel.id ?? channel.name}>
+          <DetailLabel>{channel.name}</DetailLabel>
+          <DetailValue>
+            {describeChannel(channel)}
+            {channel.enabled ? "" : " (disabled)"}
+          </DetailValue>
+        </Detail>
+      ))}
+    </>
+  );
+};
+
 export const SecretSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
+  const { permission } = useProjectPermission();
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
 
@@ -105,9 +204,12 @@ export const SecretSyncReviewFields = () => {
     connection,
     environment,
     secretPath,
-    syncOptions: { disableSecretDeletion, initialSyncBehavior, keySchema, includeAllSubFolders },
+    includeAllSubFolders,
+    syncOptions: { disableSecretDeletion, initialSyncBehavior, keySchema },
     destination,
-    isAutoSyncEnabled
+    isAutoSyncEnabled,
+    isFailureAlertEnabled,
+    channels
   } = watch();
 
   const destinationName = SECRET_SYNC_MAP[destination].name;
@@ -199,6 +301,9 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.CloudflareSecretsStore:
       DestinationFieldsComponent = <CloudflareSecretsStoreSyncReviewFields />;
       break;
+    case SecretSync.Convex:
+      DestinationFieldsComponent = <ConvexSyncReviewFields />;
+      break;
     case SecretSync.Zabbix:
       DestinationFieldsComponent = <ZabbixSyncReviewFields />;
       break;
@@ -284,6 +389,12 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.Spacelift:
       DestinationFieldsComponent = <SpaceliftSyncReviewFields />;
       AdditionalSyncOptionsFieldsComponent = <SpaceliftSyncOptionsReviewFields />;
+      break;
+    case SecretSync.Jenkins:
+      DestinationFieldsComponent = <JenkinsSyncReviewFields />;
+      break;
+    case SecretSync.Coolify:
+      DestinationFieldsComponent = <CoolifySyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);
@@ -410,6 +521,21 @@ export const SecretSyncReviewFields = () => {
               <DetailValue className="text-muted italic">None</DetailValue>
             )}
           </Detail>
+        </div>
+      </DetailGroup>
+
+      <DetailGroup>
+        <DetailGroupHeader className="border-b border-border pb-2">Alerts</DetailGroupHeader>
+        <div className="flex flex-wrap gap-x-8 gap-y-4">
+          <FailureAlertReview
+            isFailureAlertEnabled={isFailureAlertEnabled}
+            channels={channels}
+            canManage={canManageFailureAlert(permission, {
+              environment: environment?.slug,
+              secretPath,
+              connectionId: connection?.id
+            })}
+          />
         </div>
       </DetailGroup>
     </div>

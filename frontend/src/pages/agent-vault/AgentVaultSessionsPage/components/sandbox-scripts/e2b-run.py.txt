@@ -1,0 +1,127 @@
+# run_in_sandbox.py
+import base64
+import json
+import os
+import shlex
+
+import requests
+from e2b import Sandbox
+from infisical_sdk import InfisicalSDKClient
+
+INFISICAL_URL = "https://app.infisical.com"
+PROJECT_ID = "<project-id>"
+ACCESS_BUNDLE = "<access-bundle-name>"
+PROXY_ID = "<proxy-id>"
+PROXY_ADDRESS = "<proxy-dns-name>:1080"
+TEMPLATE = "base"
+SANDBOX_TIMEOUT = 15 * 60
+SANDBOX_ENV = {}
+# Claude Code's skills folder. For Codex or OpenCode, use /home/user/.agents/skills.
+SKILLS_DIR = "/home/user/.claude/skills"
+# The session's MCP servers, in the format of Claude Code's --mcp-config.
+MCP_CONFIG_PATH = "/home/user/agent-vault-mcp.json"
+
+CA_PATH = "/usr/local/share/ca-certificates/agent-vault-ca.crt"
+# Points the tools that don't read the system trust store at the proxy's CA.
+CA_ENV = {
+    name: CA_PATH
+    for name in ["SSL_CERT_FILE", "NODE_EXTRA_CA_CERTS", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE", "GIT_SSL_CAINFO", "DENO_CERT"]
+}
+
+
+def run_in_sandbox(command: str) -> str:
+    # The machine identity's credentials stay here and never enter the sandbox.
+    infisical = InfisicalSDKClient(host=INFISICAL_URL)
+    infisical.auth.universal_auth.login(
+        client_id=os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_ID"],
+        client_secret=os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET"],
+    )
+
+    # Fetched on every run, because the CA changes when you rotate the proxy's token.
+    # The SDK has no method for the CA, so this request calls the API with the SDK's access token.
+    ca_response = requests.get(
+        f"{INFISICAL_URL}/api/v1/agent-vault/proxies/{PROXY_ID}/ca",
+        headers={"Authorization": f"Bearer {infisical.get_token()}"},
+        timeout=30,
+    )
+    ca_response.raise_for_status()
+    ca = ca_response.json()["ca"]["certificate"]
+
+    # One session per run. The ttl outlasts the sandbox's timeout, so the agent
+    # can't lose access mid-run.
+    session = infisical.agent_vault.sessions.create(
+        project_id=PROJECT_ID, access_bundle=ACCESS_BUNDLE, ttl="20m"
+    )
+
+    sandbox = None
+    try:
+        sandbox = Sandbox.create(
+            template=TEMPLATE,
+            timeout=SANDBOX_TIMEOUT,
+            envs={
+                **CA_ENV,
+                # Where the agent lists its services, through the proxy.
+                "INFISICAL_AGENT_VAULT_URL": INFISICAL_URL,
+                **SANDBOX_ENV,
+            },
+            network={
+                # E2B sends hostnames to the proxy, instead of IP addresses, only for
+                # traffic that a domain entry in allow_out lets through.
+                "allow_out": ["*"],
+                "deny_out": ["0.0.0.0/0"],
+                "egress_proxy": {
+                    "address": PROXY_ADDRESS,
+                    # The proxy ignores the username and reads the session token from the password.
+                    "username": "x-agent-vault",
+                    "password": session.token,
+                    "tls": {"ca_cert": ca},
+                },
+            },
+        )
+        sandbox.files.write("/tmp/agent-vault-ca.pem", ca)
+        sandbox.commands.run(
+            f"install -m 644 /tmp/agent-vault-ca.pem {CA_PATH} && update-ca-certificates",
+            user="root",
+        )
+        # The session's skills, including the one that tells the agent how to work behind the proxy.
+        # The SDK has no method for them either, and the session token is the only credential this request takes.
+        skills = requests.get(
+            f"{INFISICAL_URL}/api/v1/agent-vault/session/skills",
+            headers={"Authorization": f"Bearer {session.token}"},
+            timeout=30,
+        )
+        skills.raise_for_status()
+        for skill in skills.json()["skills"]:
+            for file in skill["files"]:
+                path = f"{SKILLS_DIR}/{skill['name']}/{file['path']}"
+                sandbox.files.write(path, base64.b64decode(file["contentBase64"]))
+                if file["mode"] == "0755":
+                    sandbox.commands.run(f"chmod 755 {shlex.quote(path)}")
+        # The session's MCP servers that are ready, for an agent that loads them only when it starts.
+        services = requests.get(
+            f"{INFISICAL_URL}/api/v1/agent-vault/session/services",
+            headers={"Authorization": f"Bearer {session.token}"},
+            timeout=30,
+        )
+        services.raise_for_status()
+        mcp_servers = {}
+        for service in services.json()["services"]:
+            header = service["credential"].get("header")
+            # Claude Code fills in ${VAR} from the sandbox's environment, so it skips a URL or header with a $.
+            if service["type"] != "mcp" or service["status"] != "ready" or "$" in service["url"] + (header or ""):
+                continue
+            server = {"type": "sse" if service.get("transport") == "sse" else "http", "url": service["url"]}
+            if service["credential"]["addedByProxy"] and header:
+                # A placeholder, so the agent doesn't try to sign in. The proxy replaces it.
+                server["headers"] = {header: "Bearer agent-vault"}
+            mcp_servers[service["name"]] = server
+        sandbox.files.write(MCP_CONFIG_PATH, json.dumps({"mcpServers": mcp_servers}))
+        result = sandbox.commands.run(command, timeout=SANDBOX_TIMEOUT - 60)
+        return result.stdout
+    finally:
+        # Revoke first, so the session ends even if killing the sandbox fails.
+        try:
+            infisical.agent_vault.sessions.revoke(session_id=session.id)
+        finally:
+            if sandbox:
+                sandbox.kill()

@@ -3,6 +3,7 @@ import { PlusIcon } from "lucide-react";
 
 import { Popover, PopoverAnchor, PopoverContent } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
+import { useProject } from "@app/context";
 import {
   findVariableReferenceAtCaret,
   normalizeVariableKey,
@@ -12,6 +13,7 @@ import {
 import { useDebounce } from "@app/hooks";
 import {
   AgentVaultVariableScope,
+  AgentVaultVariableType,
   useAgentVaultVariableKeyStatus,
   useListAgentVaultVariables
 } from "@app/hooks/api/agentVault";
@@ -35,6 +37,7 @@ export const useVariableAutocomplete = ({
   /** The whole new value, and where in it the caret belongs. */
   onInsert: (value: string, caret: number) => void;
 }) => {
+  const { projectId } = useProject();
   const { requestVariable, localVariables, isLocal } = useServiceVariables();
   const [openReference, setOpenReference] = useState<TOpenReference | null>(null);
   const query = openReference ? normalizeVariableKey(openReference.query) : "";
@@ -44,8 +47,11 @@ export const useVariableAutocomplete = ({
   // Searched on the server, so the list never has to hold every variable. The last page stays up while the next
   // loads, filtered to the new text, which a longer query only narrows.
   const { data: searched, isPlaceholderData } = useListAgentVaultVariables(
+    projectId,
     {
       scope: AgentVaultVariableScope.Global,
+      // An OAuth variable is a credential of its own, and a text field can't use one.
+      type: AgentVaultVariableType.Text,
       search: debouncedQuery || undefined,
       limit: SUGGESTION_LIMIT
     },
@@ -53,9 +59,10 @@ export const useVariableAutocomplete = ({
   );
   // A search can show only so many, and the exact key may not be among them, so whether to offer to create it is
   // asked of that key alone.
-  const { existing } = useAgentVaultVariableKeyStatus(
+  const { existing, ofOtherType } = useAgentVaultVariableKeyStatus(
+    projectId,
     isOpen && !isLocal && VARIABLE_KEY_RE.test(debouncedQuery) ? [debouncedQuery] : [],
-    { enabled: isOpen && !isLocal }
+    { enabled: isOpen && !isLocal, type: AgentVaultVariableType.Text }
   );
   const data = useMemo(() => {
     if (!isLocal) return searched;
@@ -94,9 +101,11 @@ export const useVariableAutocomplete = ({
           .length
       }));
 
-    if (!key || keyExists) return matches;
+    if (!key || keyExists || ofOtherType.has(key)) return matches;
     return [...matches, { type: "create", key, isKeyValid: VARIABLE_KEY_RE.test(key) }];
-  }, [openReference, query, data, existing]);
+  }, [openReference, query, data, existing, ofOtherType]);
+  // The key is taken by an OAuth variable, which a text field can't use, so it can't be created either.
+  const oauthKey = openReference && ofOtherType.has(query) ? query : null;
 
   // The search returns one page, plus the exact key when it exists. When matches are still left out, the list says
   // how many it shows and how to narrow it.
@@ -210,6 +219,7 @@ export const useVariableAutocomplete = ({
     isLoading: isOpen && !data,
     truncation,
     suggestions,
+    oauthKey,
     activeIndex,
     setActiveIndex,
     listId,
@@ -245,6 +255,7 @@ export const VariableSuggestions = ({
     isLoading,
     truncation,
     suggestions,
+    oauthKey,
     activeIndex,
     setActiveIndex,
     listId,
@@ -254,6 +265,11 @@ export const VariableSuggestions = ({
   } = autocomplete;
   const variableSuggestions = suggestions.filter((suggestion) => suggestion.type === "variable");
   const createSuggestion = suggestions.find((suggestion) => suggestion.type === "create");
+  const oauthNote = oauthKey && (
+    <p className="px-2 py-1.5 text-xs text-muted">
+      <span className="font-mono">{oauthKey}</span> is an OAuth variable
+    </p>
+  );
 
   const renderOption = (suggestion: TSuggestion, index: number) => (
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events
@@ -339,6 +355,12 @@ export const VariableSuggestions = ({
                   </>
                 )}
               </div>
+              {oauthNote && (
+                <>
+                  <div className="-mx-1 my-1 h-px bg-border" />
+                  {oauthNote}
+                </>
+              )}
               {truncation && (
                 <>
                   <div className="-mx-1 my-1 h-px bg-border" />
@@ -350,16 +372,18 @@ export const VariableSuggestions = ({
               )}
             </>
           ) : (
-            <p className="px-2 py-1.5 text-xs text-muted">
-              {isLoading && "Loading variables..."}
-              {!isLoading && isPicker && (
-                <>
-                  No variables yet. Type <code className="font-mono">{"{{"}</code> in the field to
-                  create one.
-                </>
-              )}
-              {!isLoading && !isPicker && "No variables yet. Type a key to create one."}
-            </p>
+            oauthNote || (
+              <p className="px-2 py-1.5 text-xs text-muted">
+                {isLoading && "Loading variables..."}
+                {!isLoading && isPicker && (
+                  <>
+                    No variables yet. Type <code className="font-mono">{"{{"}</code> in the field to
+                    create one.
+                  </>
+                )}
+                {!isLoading && !isPicker && "No variables yet. Type a key to create one."}
+              </p>
+            )
           )}
           {/* Only when the button opened a list there is something to pick from: someone who typed {{ already knows. */}
           {isPicker && suggestions.length > 0 && (

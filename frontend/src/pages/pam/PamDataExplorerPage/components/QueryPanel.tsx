@@ -12,9 +12,11 @@ import { QueryResultsTable } from "./QueryResultsTable";
 import { QueryToolbar } from "./QueryToolbar";
 import { SqlEditor } from "./SqlEditor";
 
-function getRowLabel(rowCount: number, isTruncated: boolean): string {
-  if (isTruncated) return `Showing 1,000 of ${rowCount.toLocaleString()} rows`;
-  return `${rowCount} row${rowCount !== 1 ? "s" : ""}`;
+function getRowLabel(rowCount: number, shownRows: number, isTruncated: boolean): string {
+  if (isTruncated && shownRows === 0) return "Result too large";
+  // The banner above the grid already says the result was truncated
+  const count = isTruncated ? shownRows : rowCount;
+  return `${count} row${count !== 1 ? "s" : ""}`;
 }
 
 type QueryResult = {
@@ -181,7 +183,7 @@ export function QueryPanel({
             <div className="flex shrink-0 items-center justify-between border-t border-border px-3 py-1">
               <span className="text-xs text-muted">
                 {result.rowCount != null
-                  ? getRowLabel(result.rowCount, result.isTruncated)
+                  ? getRowLabel(result.rowCount, result.rows.length, result.isTruncated)
                   : result.command}
                 {" · "}
                 {result.executionTimeMs}ms

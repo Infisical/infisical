@@ -26,20 +26,52 @@ import { OrderByDirection } from "@app/lib/types";
 import { ProjectIdentityOrderBy, TListProjectIdentityDTO } from "@app/services/identity-project/identity-project-types";
 
 import { buildAuthMethods } from "../identity/identity-fns";
+import { TListActorProjectMembershipsFilter } from "../project-membership/project-membership-types";
 
 export type TIdentityProjectDALFactory = ReturnType<typeof identityProjectDALFactory>;
 
 export const identityProjectDALFactory = (db: TDbClient) => {
-  const findByIdentityId = async (identityId: string, orgId: string, tx?: Knex) => {
+  // Without `limit` this returns every project membership the identity has, so the response grows with
+  // the identity's memberships. Callers that can page should pass `limit`.
+  const findByIdentityId = async (
+    identityId: string,
+    orgId: string,
+    {
+      limit,
+      offset = 0,
+      search,
+      orderDirection = OrderByDirection.ASC,
+      excludeProjectType
+    }: TListActorProjectMembershipsFilter = {},
+    tx?: Knex
+  ) => {
     try {
-      const docs = await (tx || db.replicaNode())(TableName.Membership)
-        .where(`${TableName.Membership}.actorIdentityId`, identityId)
-        .where(`${TableName.Membership}.scope`, AccessScope.Project)
-        .where(`${TableName.Membership}.scopeOrgId`, orgId)
-        .whereNotNull(`${TableName.Membership}.actorIdentityId`)
-        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
+      const filteredMemberships = () => {
+        const qb = (tx || db.replicaNode())(TableName.Membership)
+          .where(`${TableName.Membership}.actorIdentityId`, identityId)
+          .where(`${TableName.Membership}.scope`, AccessScope.Project)
+          .where(`${TableName.Membership}.scopeOrgId`, orgId)
+          .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+          .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
+          .whereNull(`${TableName.Project}.deleteAfter`);
+        if (search) void qb.whereILike(`${TableName.Project}.name`, `%${sanitizeSqlLikeString(search)}%`);
+        if (excludeProjectType) void qb.whereNot(`${TableName.Project}.type`, excludeProjectType);
+        return qb;
+      };
+      const countableMemberships = () =>
+        filteredMemberships().whereExists((qb) => {
+          void qb
+            .select(db.raw("1"))
+            .from(TableName.MembershipRole)
+            .whereRaw("??.?? = ??.??", [TableName.MembershipRole, "membershipId", TableName.Membership, "id"]);
+        });
+      const projectNameOrder = `lower(??) ${orderDirection === OrderByDirection.DESC ? "desc" : "asc"}`;
+
+      const query = filteredMemberships()
         .join(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .orderByRaw(projectNameOrder, [`${TableName.Project}.name`])
+        .orderBy(`${TableName.Membership}.id`, "asc")
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(
           TableName.IdentityUniversalAuth,
@@ -144,8 +176,37 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           db.ref("id").as("spiffeId").withSchema(TableName.IdentitySpiffeAuth)
         );
 
+      let totalCount: number | undefined;
+      if (limit !== undefined || offset > 0) {
+        // The window count is taken before LIMIT/OFFSET, so it is the full total.
+        const page = countableMemberships()
+          .select<{ id: string; totalCount: string }[]>(
+            db.ref("id").withSchema(TableName.Membership),
+            db.raw(`count(*) over () as "totalCount"`)
+          )
+          .orderByRaw(projectNameOrder, [`${TableName.Project}.name`])
+          .orderBy(`${TableName.Membership}.id`, "asc")
+          .offset(offset);
+        if (limit !== undefined) void page.limit(limit);
+        const pageRows = await page;
+
+        if (pageRows.length) {
+          totalCount = Number(pageRows[0].totalCount);
+        } else if (offset > 0) {
+          const countRow = await countableMemberships().count<{ count: string }[]>({ count: "*" }).first();
+          totalCount = Number(countRow?.count ?? 0);
+        } else {
+          totalCount = 0;
+        }
+
+        void query.whereIn(
+          `${TableName.Membership}.id`,
+          pageRows.map((row) => row.id)
+        );
+      }
+
       const members = sqlNestRelationships({
-        data: docs,
+        data: await query,
         parentMapper: ({
           identityName,
           hasDeleteProtection,
@@ -226,7 +287,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           }
         ]
       });
-      return members;
+      return { identityMemberships: members, totalCount: totalCount ?? members.length };
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByIdentityId" });
     }

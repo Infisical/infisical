@@ -17,6 +17,7 @@ import {
   throwOnCloudflareRequestError,
   validateCloudflareResponse
 } from "./cloudflare-workers-errors";
+import { removePreviewSecrets, syncPreviewSecrets } from "./cloudflare-workers-preview-fns";
 import { TCloudflareWorkersSyncWithCredentials } from "./cloudflare-workers-types";
 import { applySecretsWithVersionFallback } from "./cloudflare-workers-version-fns";
 
@@ -504,6 +505,12 @@ export const CloudflareWorkersSyncFns = {
     payload: TSecretSyncPayload,
     { keyStore }: { keyStore: Pick<TKeyStoreFactory, "acquireLock"> }
   ): Promise<TSyncSecretsResult | undefined> => {
+    const { previewName } = secretSync.destinationConfig;
+    if (previewName) {
+      await syncPreviewSecrets(secretSync, previewName, payload.flatten());
+      return undefined;
+    }
+
     try {
       await $inPlace.syncSecrets(secretSync, payload);
       return undefined;
@@ -520,5 +527,10 @@ export const CloudflareWorkersSyncFns = {
 
   // No version fallback: it never deploys, so the secrets would stay on the live Worker while the removal, and with
   // it a sync deletion, reported success.
-  removeSecrets: $inPlace.removeSecrets
+  removeSecrets: async (secretSync: TCloudflareWorkersSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const { previewName } = secretSync.destinationConfig;
+    if (previewName) return removePreviewSecrets(secretSync, previewName, payload.flatten());
+
+    return $inPlace.removeSecrets(secretSync, payload);
+  }
 };

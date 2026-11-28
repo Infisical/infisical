@@ -19,26 +19,6 @@ import { OrderByDirection } from "@app/lib/types";
 import type { TFindSecretsByFolderIdsFilter } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { SecretSortField } from "@app/services/secret/secret-types";
 
-export const SecretServiceCacheKeys = {
-  get productKey() {
-    return `${ProjectType.SecretManager}`;
-  },
-  getSecretDalVersion: (projectId: string) => {
-    return `${SecretServiceCacheKeys.productKey}:${projectId}:${TableName.SecretV2}-dal-version`;
-  },
-  getSecretsOfServiceLayer: (arg: {
-    projectId: string;
-    version: number;
-    actorId: string;
-    permissionFingerprint: string;
-    permissionHash: string;
-    requestParamsHash: string;
-  }) => {
-    const { projectId, version, actorId, permissionFingerprint, permissionHash, requestParamsHash } = arg;
-    return `${SecretServiceCacheKeys.productKey}:${projectId}:${TableName.SecretV2}-dal:v${version}:get-secrets-service-layer-bin:${actorId}-${permissionFingerprint}-${permissionHash}-${requestParamsHash}`;
-  }
-};
-
 export type TSecretV2BridgeDALFactory = ReturnType<typeof secretV2BridgeDALFactory>;
 interface TSecretV2DalArg {
   db: TDbClient;
@@ -48,6 +28,7 @@ interface TSecretV2DalArg {
 export const SECRET_DAL_TTL = () => applyJitter(10 * 60, 2 * 60);
 export const SECRET_DAL_VERSION_TTL = "15m";
 export const MAX_SECRET_CACHE_BYTES = 25 * 1024 * 1024;
+export const LARGE_SECRET_CACHE_LOG_BYTES = 1024 * 1024;
 
 const SECRET_V2_COLUMNS = Object.keys(SecretsV2Schema.shape) as (keyof TSecretsV2)[];
 
@@ -62,7 +43,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const secretOrm = ormify(db, TableName.SecretV2);
 
   const invalidateSecretCacheByProjectId = async (projectId: string, tx?: Knex) => {
-    const secretDalVersionKey = SecretServiceCacheKeys.getSecretDalVersion(projectId);
+    const secretDalVersionKey = KeyStorePrefixes.SecretDalVersion(projectId);
     await keyStore.pgIncrementBy(secretDalVersionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
     await keyStore.deleteItem(KeyStorePrefixes.SecretEtag(projectId, utcDayStamp()));
 
@@ -77,7 +58,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     const stamp = utcDayStamp();
     await Promise.all(
       targetGrants.map(async ({ targetProjectId }) => {
-        const targetVersionKey = SecretServiceCacheKeys.getSecretDalVersion(targetProjectId);
+        const targetVersionKey = KeyStorePrefixes.SecretDalVersion(targetProjectId);
         await keyStore.pgIncrementBy(targetVersionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
         await keyStore.deleteItem(KeyStorePrefixes.SecretEtag(targetProjectId, stamp));
       })
@@ -717,6 +698,19 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const findFolderIdsWithSecrets = async (folderIds: string[], tx?: Knex) => {
+    try {
+      if (!folderIds.length) return [];
+      const docs = await (tx || db.replicaNode())(TableName.SecretV2)
+        .whereIn("folderId", folderIds)
+        .whereNull("userId")
+        .distinct("folderId");
+      return (docs as { folderId: string }[]).map((doc) => doc.folderId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find folder ids with secrets" });
+    }
+  };
+
   // This method currently uses too many joins which is not performant, in case we need to add more filters we should consider refactoring this method
   const findByFolderIds = async (dto: {
     folderIds: string[];
@@ -818,7 +812,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             void bd.whereNull(`${TableName.SecretRotationV2SecretMapping}.secretId`);
           }
         })
-        // Always order by key (name) to match the Go sidecar's ordering.
         // Secondary order by createdAt+id for deterministic tag/metadata order with LEFT JOINs.
         .orderBy("key", filters?.orderDirection ?? OrderByDirection.ASC)
         .orderBy(`${TableName.ResourceMetadata}.createdAt`, "asc", "first")
@@ -1886,6 +1879,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findOneWithTags,
     findByFolderId,
     findByFolderIds,
+    findFolderIdsWithSecrets,
     findMetadataByFolderIds,
     findBySecretKeys,
     findSharedKeyInFolders,

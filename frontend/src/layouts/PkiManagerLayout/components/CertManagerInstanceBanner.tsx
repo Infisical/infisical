@@ -23,9 +23,8 @@ export const CertManagerInstanceBanner = () => {
         <p>
           This is your organization&apos;s active project. Use this for all work going forward.{" "}
           <Link
-            to="/organizations/$orgId/settings"
+            to="/organizations/$orgId/projects/cert-manager/product-settings"
             params={{ orgId: currentOrg.id }}
-            search={{ selectedTab: "product-settings" }}
             className="underline underline-offset-2 hover:text-warning"
           >
             Manage projects

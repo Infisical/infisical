@@ -5,8 +5,7 @@ import { TableName, TAdditionalPrivileges } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter } from "@app/lib/knex";
-import { ApprovalRequestGrantStatus } from "@app/services/approval-policy/approval-policy-enums";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ApprovalPolicyType, ApprovalRequestGrantStatus } from "@app/services/approval-policy/approval-policy-enums";
 
 export type TAdditionalPrivilegeDALFactory = ReturnType<typeof additionalPrivilegeDALFactory>;
 
@@ -32,63 +31,30 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
       .where(buildFindFilter(filter, TableName.AdditionalPrivilege))
       .leftJoin(
-        TableName.AccessApprovalRequest,
-        `${TableName.AdditionalPrivilege}.id`,
-        `${TableName.AccessApprovalRequest}.privilegeId`
-      )
-      .leftJoin(
         TableName.ApprovalRequestGrants,
         `${TableName.AdditionalPrivilege}.grantId`,
         `${TableName.ApprovalRequestGrants}.id`
       )
-      .leftJoin(
-        TableName.ApprovalRequests,
-        `${TableName.ApprovalRequestGrants}.requestId`,
-        `${TableName.ApprovalRequests}.id`
-      )
+      .leftJoin(TableName.ApprovalRequests, (join) => {
+        join
+          .on(`${TableName.ApprovalRequestGrants}.requestId`, `${TableName.ApprovalRequests}.id`)
+          .andOnVal(`${TableName.ApprovalRequests}.type`, ApprovalPolicyType.SecretAccess);
+      })
       .select(selectAllTableCols(TableName.AdditionalPrivilege))
       .select(
-        db.ref("id").withSchema(TableName.AccessApprovalRequest).as("accessApprovalRequestId"),
-        db.ref("policyId").withSchema(TableName.AccessApprovalRequest).as("accessApprovalPolicyId"),
         db.ref("id").withSchema(TableName.ApprovalRequests).as("approvalRequestId"),
         db.ref("policyId").withSchema(TableName.ApprovalRequests).as("approvalPolicyId")
       );
 
-    const legacyPolicyIds = [
-      ...new Set(
-        docs
-          .filter((doc) => !doc.grantId && doc.accessApprovalPolicyId)
-          .map((doc) => String(doc.accessApprovalPolicyId))
-      )
-    ];
-    const globalPolicyIds = [
-      ...new Set(docs.filter((doc) => doc.grantId && doc.approvalPolicyId).map((doc) => String(doc.approvalPolicyId)))
+    const policyIds = [
+      ...new Set(docs.filter((doc) => doc.approvalPolicyId).map((doc) => String(doc.approvalPolicyId)))
     ];
 
-    let legacyApproversByPolicyId: Record<string, string[]> = {};
-    if (legacyPolicyIds.length > 0) {
-      const approverRows = await db
-        .replicaNode()(TableName.AccessApprovalPolicyApprover)
-        .whereIn(`${TableName.AccessApprovalPolicyApprover}.policyId`, legacyPolicyIds)
-        .leftJoin(
-          TableName.UserGroupMembership,
-          `${TableName.AccessApprovalPolicyApprover}.approverGroupId`,
-          `${TableName.UserGroupMembership}.groupId`
-        )
-        .select(
-          db.ref("policyId").withSchema(TableName.AccessApprovalPolicyApprover),
-          db.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover),
-          db.ref("userId").withSchema(TableName.UserGroupMembership).as("groupMemberUserId")
-        );
-
-      legacyApproversByPolicyId = groupApproverUserIdsByPolicyId(approverRows);
-    }
-
-    let globalApproversByPolicyId: Record<string, string[]> = {};
-    if (globalPolicyIds.length > 0) {
+    let approversByPolicyId: Record<string, string[]> = {};
+    if (policyIds.length > 0) {
       const approverRows = await db
         .replicaNode()(TableName.ApprovalPolicySteps)
-        .whereIn(`${TableName.ApprovalPolicySteps}.policyId`, globalPolicyIds)
+        .whereIn(`${TableName.ApprovalPolicySteps}.policyId`, policyIds)
         .join(
           TableName.ApprovalPolicyStepApprovers,
           `${TableName.ApprovalPolicySteps}.id`,
@@ -105,73 +71,45 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
           db.ref("userId").withSchema(TableName.UserGroupMembership).as("groupMemberUserId")
         );
 
-      globalApproversByPolicyId = groupApproverUserIdsByPolicyId(approverRows);
+      approversByPolicyId = groupApproverUserIdsByPolicyId(approverRows);
     }
 
-    return docs.map(({ approvalRequestId, approvalPolicyId, ...doc }) => {
-      if (doc.grantId) {
-        return {
-          ...doc,
-          isLinkedToAccessApproval: Boolean(approvalRequestId),
-          accessApprovalRequestId: (approvalRequestId ?? null) as string | null,
-          policyApproverUserIds: approvalPolicyId ? (globalApproversByPolicyId[String(approvalPolicyId)] ?? []) : []
-        };
-      }
-
-      const pid = doc.accessApprovalPolicyId ? String(doc.accessApprovalPolicyId) : null;
-      return {
-        ...doc,
-        isLinkedToAccessApproval: Boolean(doc.accessApprovalRequestId),
-        accessApprovalRequestId: (doc.accessApprovalRequestId ?? null) as string | null,
-        policyApproverUserIds: pid ? (legacyApproversByPolicyId[pid] ?? []) : []
-      };
-    });
+    return docs.map(({ approvalRequestId, approvalPolicyId, ...doc }) => ({
+      ...doc,
+      isLinkedToAccessApproval: Boolean(approvalRequestId),
+      accessApprovalRequestId: (approvalRequestId ?? null) as string | null,
+      policyApproverUserIds: approvalPolicyId ? (approversByPolicyId[String(approvalPolicyId)] ?? []) : []
+    }));
   };
 
   const isLinkedToAccessApproval = async (privilegeId: string): Promise<boolean> => {
-    const result = await db.replicaNode()(TableName.AccessApprovalRequest).where({ privilegeId }).first();
+    const result = await db
+      .replicaNode()(TableName.AdditionalPrivilege)
+      .join(
+        TableName.ApprovalRequestGrants,
+        `${TableName.AdditionalPrivilege}.grantId`,
+        `${TableName.ApprovalRequestGrants}.id`
+      )
+      .join(
+        TableName.ApprovalRequests,
+        `${TableName.ApprovalRequestGrants}.requestId`,
+        `${TableName.ApprovalRequests}.id`
+      )
+      .where(`${TableName.AdditionalPrivilege}.id`, privilegeId)
+      .where(`${TableName.ApprovalRequests}.type`, ApprovalPolicyType.SecretAccess)
+      .first(db.ref("id").withSchema(TableName.ApprovalRequests));
 
     return Boolean(result);
   };
 
-  // Without an actor, returns the folder grants of every user and identity in the project.
-  const findFolderScopedPrivileges = async (
-    {
-      projectId,
-      actorId,
-      actorType
-    }: { projectId: string; actorId?: string; actorType?: ActorType.USER | ActorType.IDENTITY },
-    tx?: Knex
-  ) => {
-    const docs = await (tx || db)(TableName.AdditionalPrivilege)
-      .where({ projectId })
-      .whereNotNull("folderId")
-      .where((qb) => {
-        if (actorId) {
-          void qb.where(actorType === ActorType.IDENTITY ? { actorIdentityId: actorId } : { actorUserId: actorId });
-        }
-      })
-      .select(
-        "id",
-        "name",
-        "folderId",
-        "role",
-        "isTemporary",
-        "temporaryAccessEndTime",
-        "actorUserId",
-        "actorIdentityId"
-      );
-
-    return docs as {
-      id: string;
-      name: string;
-      folderId: string;
-      role: string | null;
-      isTemporary: boolean;
-      temporaryAccessEndTime: Date | null;
-      actorUserId: string | null;
-      actorIdentityId: string | null;
-    }[];
+  const findOneForUpdate = async (filter: Partial<TAdditionalPrivileges>, tx: Knex) => {
+    try {
+      return (await tx(TableName.AdditionalPrivilege).where(filter).forUpdate().first()) as
+        | TAdditionalPrivileges
+        | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find additional privilege for update" });
+    }
   };
 
   const remapFolderIds = async (pairs: { oldFolderId: string; newFolderId: string }[], tx: Knex) => {
@@ -231,7 +169,7 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
     delete: deleteFn,
     findWithAccessApprovalStatus,
     isLinkedToAccessApproval,
-    findFolderScopedPrivileges,
+    findOneForUpdate,
     remapFolderIds
   };
 };

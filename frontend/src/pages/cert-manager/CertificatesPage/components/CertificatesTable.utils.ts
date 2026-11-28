@@ -1,14 +1,20 @@
 import { format } from "date-fns";
 import ms from "ms";
 
+import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies/types";
+import { TApprovalRequest } from "@app/hooks/api/approvalRequests/types";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { CaType } from "@app/hooks/api/ca/enums";
+import { getEnrollmentTypeName } from "@app/hooks/api/certificates/constants";
 import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
 import { TCertificateSource } from "@app/hooks/api/certificates/types";
 import {
   PkiApplicationResourceActions,
   PkiApplicationResourceSub
 } from "@app/hooks/api/pkiApplications/types";
+import { Project } from "@app/hooks/api/projects/types";
+
+import { getCertManagerLink } from "../../cert-manager-link";
 
 export const getCertSourceLabel = (source: TCertificateSource): string => {
   switch (source) {
@@ -27,6 +33,31 @@ export const DELETED_CERTIFICATE_NO_ACTIONS = "No actions are available for a de
 export const RENEWAL_UNAVAILABLE_NO_PROFILE =
   "Renewal is unavailable because the certificate profile this certificate was issued from no longer exists.";
 
+type TRenewNowCertificate = {
+  profileId?: string | null;
+  isRenewedByClient?: boolean;
+  enrollmentType?: string | null;
+};
+
+export const getRenewNowState = ({
+  certificate,
+  canRenew,
+  permissionBlockedReason
+}: {
+  certificate: TRenewNowCertificate;
+  canRenew: boolean;
+  permissionBlockedReason?: string;
+}): { isDisabled: boolean; reason?: string } => {
+  if (!certificate.profileId) return { isDisabled: true, reason: RENEWAL_UNAVAILABLE_NO_PROFILE };
+  if (certificate.isRenewedByClient && certificate.enrollmentType) {
+    return {
+      isDisabled: true,
+      reason: `${getEnrollmentTypeName(certificate.enrollmentType)} certificates can't be renewed here. The client that requested the certificate renews it.`
+    };
+  }
+  return { isDisabled: !canRenew, reason: permissionBlockedReason };
+};
+
 type TApplicationAbility = {
   can: (action: string, subjectType: string) => boolean;
 };
@@ -35,6 +66,7 @@ export type TApplicationCertificateAccess = {
   canRenew: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  canRevoke: boolean;
   canManagePkiSyncs: boolean;
   renewBlockedReason?: string;
   editBlockedReason?: string;
@@ -46,13 +78,16 @@ export type TApplicationCertificateAccess = {
 
 // The backend checks only the application role for a certificate that belongs to an application,
 // and gives a project admin who is not a member read access alone, so project permissions must not
-// unlock these actions.
+// unlock these actions. Without Delete, revoking only opens an approval request, which the backend
+// refuses unless a revocation policy covers the certificate's profile.
 export const getApplicationCertificateAccess = ({
   applicationName,
-  permission
+  permission,
+  isRevocationApprovalRequired = false
 }: {
   applicationName: string;
   permission?: TApplicationAbility;
+  isRevocationApprovalRequired?: boolean;
 }): TApplicationCertificateAccess => {
   const can = (
     action: PkiApplicationResourceActions,
@@ -61,13 +96,16 @@ export const getApplicationCertificateAccess = ({
   const canEdit = can(PkiApplicationResourceActions.Edit);
   const canDelete = can(PkiApplicationResourceActions.Delete);
   const canRenew = can(PkiApplicationResourceActions.Create) && canEdit;
+  const canRevoke =
+    canDelete ||
+    (isRevocationApprovalRequired && can(PkiApplicationResourceActions.RequestRevocation));
   const canManagePkiSyncs = can(
     PkiApplicationResourceActions.Edit,
     PkiApplicationResourceSub.PkiSyncs
   );
 
   // Until the ability loads the actions stay disabled without blaming a role.
-  if (!permission) return { canRenew, canEdit, canDelete, canManagePkiSyncs };
+  if (!permission) return { canRenew, canEdit, canDelete, canRevoke, canManagePkiSyncs };
 
   const operatorOrAdmin = `You need the Operator or Admin role on ${applicationName}`;
   const admin = `You need the Admin role on ${applicationName}`;
@@ -76,6 +114,7 @@ export const getApplicationCertificateAccess = ({
     canRenew,
     canEdit,
     canDelete,
+    canRevoke,
     canManagePkiSyncs,
     renewBlockedReason: canRenew ? undefined : `${operatorOrAdmin} to renew this certificate.`,
     editBlockedReason: canEdit
@@ -84,11 +123,54 @@ export const getApplicationCertificateAccess = ({
     editMetadataBlockedReason: canEdit
       ? undefined
       : `${operatorOrAdmin} to edit this certificate's metadata.`,
-    revokeBlockedReason: canDelete ? undefined : `${admin} to revoke this certificate.`,
+    revokeBlockedReason: canRevoke
+      ? undefined
+      : `${isRevocationApprovalRequired ? operatorOrAdmin : admin} to revoke this certificate.`,
     deleteBlockedReason: canDelete ? undefined : `${admin} to delete this certificate.`,
     managePkiSyncsBlockedReason: canManagePkiSyncs
       ? undefined
       : `${admin} to manage PKI syncs for this certificate.`
+  };
+};
+
+export const PENDING_REVOCATION_REASON =
+  "A revocation of this certificate is already waiting for approval.";
+
+export const REPLACEABLE_REVOCATION_REASON =
+  "Not enough of the approvers on this certificate's revocation request can still approve it. Once the revocation policy has approvers who can approve, revoking the certificate again replaces the request.";
+
+// Without `from: "root-requests"` the sidebar opens the legacy Approvals submenu, which doesn't list
+// revocation requests. The Approval Requests inbox links the same way.
+export const getPendingRevocationRequestLink = (
+  project: Pick<Project, "id" | "type" | "orgId">,
+  approvalRequestId: string
+) =>
+  getCertManagerLink(project, `approvals/${approvalRequestId}`, {
+    policyType: ApprovalPolicyType.CertRevocation,
+    from: "root-requests"
+  });
+
+// With no revocation policy covering the certificate, revoking skips approval, so a pending request
+// is no reason to block it. A revoked certificate's request can no longer revoke anything (a DigiCert
+// sync can revoke one while its request is pending), so it is not shown at all. A request its
+// approvers can no longer approve is replaced when the certificate is revoked again.
+export const getPendingRevocationState = ({
+  pendingRequest,
+  isRevoked,
+  isRevocationApprovalRequired
+}: {
+  pendingRequest?: Pick<TApprovalRequest, "approversCanNoLongerApprove">;
+  isRevoked: boolean;
+  isRevocationApprovalRequired: boolean;
+}) => {
+  const isPending = Boolean(pendingRequest) && !isRevoked;
+  const blocksRevoke = isPending && isRevocationApprovalRequired;
+  const isReplaceable = blocksRevoke && Boolean(pendingRequest?.approversCanNoLongerApprove);
+
+  return {
+    isPending,
+    revokeBlockedReason: blocksRevoke && !isReplaceable ? PENDING_REVOCATION_REASON : undefined,
+    revokeReplacesRequestReason: isReplaceable ? REPLACEABLE_REVOCATION_REASON : undefined
   };
 };
 
@@ -195,6 +277,13 @@ export const getCertificateDeletionWarning = (
 
   return `${removed}${getCertificateTrustWarning(certificate, canRevoke, isRevocableAfterDeletion)} This cannot be undone.`;
 };
+
+// Without the private key, Infisical renews on the existing key pair only from a CSR it holds for it, and
+// only when the backend says that CSR can be renewed from (API-enrolled, and a CA that issues from a CSR).
+export const canRenewOnExistingKeyPair = (certificate: {
+  hasPrivateKey?: boolean;
+  canRenewFromCsr?: boolean;
+}): boolean => certificate.hasPrivateKey !== false || Boolean(certificate.canRenewFromCsr);
 
 export const isExpiringWithinOneDay = (notAfter: string): boolean => {
   const expiryDate = new Date(notAfter);

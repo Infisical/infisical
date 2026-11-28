@@ -1,12 +1,13 @@
-import { createMongoAbility, MongoAbility } from "@casl/ability";
-
-import { TInsightsServiceFactoryDep } from "@app/ee/services/insights/insights-service";
-import { TFeatureSet } from "@app/ee/services/license/license-types";
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+} from "@app/domains/platform/organizations/ce/module";
+import { TInsightsServiceFactoryDep } from "@app/ee/services/insights/insights-service";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 
 // The insights service covers both the per-project dashboard and the org-wide aggregates, so its factory
 // takes every dependency both halves need. Specs that only exercise the org-wide methods supply these
@@ -21,10 +22,17 @@ const unreachable = (method: string) => (): never => {
   );
 };
 
-// Specs supply their own getOrgPermission; this fills the other half of the permissionService contract.
-const unreachableGetProjectPermission: Pick<TInsightsServiceFactoryDep["permissionService"], "getProjectPermission"> = {
-  getProjectPermission: unreachable("permissionService.getProjectPermission")
-};
+// Specs pass their own getOrgPermission, so the project-scoped one is never hit.
+export const unreachableSecretsDomain = {
+  getSecretsPermission: unreachable("secretsPermissionService.getSecretsPermission")
+} as unknown as TInsightsServiceFactoryDep["secretsPermissionService"];
+
+// Only carries what the insights permission checks read.
+export const insightsActor = (userId: string, orgId: string) =>
+  ({
+    principal: { type: ActorType.USER, id: userId, authMethod: AuthMethod.EMAIL },
+    org: { id: orgId, rootOrgId: orgId, parentOrgId: orgId }
+  }) as unknown as TActorContext;
 
 export const projectScopedInsightsDepStubs: Pick<
   TInsightsServiceFactoryDep,
@@ -38,7 +46,7 @@ export const projectScopedInsightsDepStubs: Pick<
   | "projectBotService"
   | "projectDAL"
   | "userDAL"
-  | "kmsService"
+  | "kmsDataKeyService"
 > = {
   auditLogDAL: {
     countByDateAndActor: unreachable("auditLogDAL.countByDateAndActor"),
@@ -79,9 +87,9 @@ export const projectScopedInsightsDepStubs: Pick<
   userDAL: {
     find: unreachable("userDAL.find")
   },
-  kmsService: {
-    createCipherPairWithDataKey: unreachable("kmsService.createCipherPairWithDataKey")
-  }
+  kmsDataKeyService: {
+    createCipherPairWithDataKey: unreachable("kmsDataKeyService.createCipherPairWithDataKey")
+  } as never
 };
 
 // getSecretsUsageInsights is the only method that reads these three counts, and it has its own spec.
@@ -107,11 +115,15 @@ export const usageInsightsDepStubs: Pick<
 // share one set of stubs for that gate and flip the two toggles to exercise the two rejection paths.
 export const buildOrgInsightsGateStubs = () => {
   let canReadInsights = true;
-  let planHasInsights = true;
+  const licenseService = new FakeLicenseService();
+  const setPlanHasInsights = (hasPlan: boolean) => {
+    licenseService.defaultPlan = { ...licenseService.defaultPlan, secretAccessInsights: hasPlan as false };
+  };
+  setPlanHasInsights(true);
 
-  const buildPermission = (canRead: boolean): MongoAbility<OrgPermissionSet> =>
-    createMongoAbility<OrgPermissionSet>(
-      canRead
+  const buildPermission = (canRead: boolean) =>
+    Permission.fromRules<OrgPermissionSet>({
+      rules: canRead
         ? [
             {
               action: OrgPermissionSecretsManagementInsightsActions.Read,
@@ -119,26 +131,18 @@ export const buildOrgInsightsGateStubs = () => {
             }
           ]
         : []
-    );
+    });
 
   return {
-    permissionService: {
-      ...unreachableGetProjectPermission,
-      getOrgPermission: async () => ({
-        permission: buildPermission(canReadInsights),
-        memberships: [],
-        hasRole: () => false
-      })
-    } as TInsightsServiceFactoryDep["permissionService"],
-    licenseService: {
-      getPlan: async () => ({ secretAccessInsights: planHasInsights }) as unknown as TFeatureSet
-    } as TInsightsServiceFactoryDep["licenseService"],
+    orgPermissionService: {
+      getOrgPermission: async () => buildPermission(canReadInsights)
+    } as unknown as TInsightsServiceFactoryDep["orgPermissionService"],
+    secretsPermissionService: unreachableSecretsDomain,
+    licenseService,
     setCanReadInsights: (canRead: boolean) => {
       canReadInsights = canRead;
     },
-    setPlanHasInsights: (hasPlan: boolean) => {
-      planHasInsights = hasPlan;
-    }
+    setPlanHasInsights
   };
 };
 

@@ -59,6 +59,7 @@ import { useSlashFocusSearch } from "@app/hooks/useSlashFocusSearch";
 
 import { LaunchSessionSheet } from "../components/LaunchSessionSheet";
 import { RequestAccessSheet } from "../components/RequestAccessSheet";
+import { MY_ACCOUNTS_ACTION } from "../constants";
 import { PamDocsUrls } from "../pam-docs-urls";
 import { AccountDetailSheet } from "./components/AccountDetailSheet";
 import { AccountsBreadcrumb } from "./components/AccountsBreadcrumb";
@@ -69,6 +70,7 @@ import { DeleteFolderModal } from "./components/DeleteFolderModal";
 import { FolderAccountRows } from "./components/FolderAccountRows";
 import { FolderDetailSheet } from "./components/FolderDetailSheet";
 import { JoinFolderAsAdminModal } from "./components/JoinFolderAsAdminModal";
+import { MyAccountsFolderRow } from "./components/MyAccountsFolderRow";
 import { ViewCredentialsModal } from "./components/ViewCredentialsModal";
 
 const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5"];
@@ -95,6 +97,9 @@ export const PamAccountsPage = () => {
   });
   // Product admins qualify even with zero folders: the create sheet lets them add one inline.
   const canManage = creatableFolders.length > 0 || Boolean(capabilities?.isProductAdmin);
+
+  const { data: myAccountFolders } = useListPamFolders({ filterByAction: MY_ACCOUNTS_ACTION });
+  const myAccountCount = myAccountFolders?.reduce((sum, folder) => sum + folder.accountCount, 0);
 
   const deleteAccount = useDeletePamAccount();
   const deleteFolder = useDeletePamFolder();
@@ -352,6 +357,7 @@ export const PamAccountsPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {!filterActive && <MyAccountsFolderRow accountCount={myAccountCount} />}
               {visibleFolders.map((folder) => (
                 <FolderAccountRows
                   key={folder.id}

@@ -39,6 +39,22 @@ Used to configure platform-specific security and operational settings.
   https://app.infisical.com).
 </ParamField>
 
+<ParamField query="MCP_SERVER_URL" type="string" default="SITE_URL followed by /api/mcp" optional>
+  The URL that MCP clients use to connect to the [Infisical MCP server](/documentation/platform/mcp-server). Set it if a proxy serves the MCP server at a URL other than your `SITE_URL` followed by `/api/mcp`, such as `https://mcp.example.com/mcp`. The proxy has to forward requests for that URL to `/api/mcp` on Infisical.
+
+  If you change the URL, connected MCP clients stop working until users add the server again with the new URL.
+</ParamField>
+
+<ParamField query="INSTANCE_SETUP_TOKEN" type="string" optional>
+  A token that the first super admin must enter to set up the instance. The token must be
+  6 to 32 characters long. If the token is shorter or longer, Infisical doesn't start.
+  To generate a token, run `openssl rand -hex 16`.
+  If you set the token, the super admin signup page asks for it, and the
+  [Bootstrap instance](/api-reference/endpoints/admin/bootstrap-instance) endpoint rejects
+  requests without it.
+  Infisical ignores the token once the instance is set up.
+</ParamField>
+
 <ParamField query="PORT" type="int" default="8080" optional>
   Specifies the internal port on which the application listens.
 </ParamField>
@@ -74,6 +90,29 @@ Example values:
   check automatically.
 </ParamField>
 
+<ParamField query="BREACHED_PASSWORD_CHECK_ENABLED" type="bool" optional>
+  When a user signs up, changes their password, resets a forgotten password, or
+  adds a password to an account that doesn't have one, Infisical can check the new
+  password against [a public list of passwords exposed in data breaches](https://haveibeenpwned.com/Passwords)
+  and reject the password if it's on the list. The check also covers the first
+  admin account when you create it in the Infisical web interface.
+
+  If you self-host Infisical, the check is off by default. On Infisical Cloud and
+  dedicated instances, it's on by default. Set this to `true` or `false` to
+  override the default.
+
+  For the check to work, Infisical needs outbound HTTPS access on port 443 to
+  `api.pwnedpasswords.com`:
+
+  - Allow the hostname in your firewall. The service runs behind Cloudflare, so its IP addresses change
+  - If your instance reaches the internet through a proxy, set `HTTPS_PROXY`. Infisical doesn't use `HTTP_PROXY` for this check
+  - Infisical doesn't need inbound access or an API key
+
+  Infisical sends only the first five characters of the password's SHA-1 hash, so
+  the password never leaves your instance. If Infisical can't reach
+  `api.pwnedpasswords.com` within three seconds, it accepts the password.
+</ParamField>
+
 <ParamField
   query="ALLOW_INTERNAL_IP_CONNECTIONS"
   type="bool"
@@ -88,7 +127,7 @@ Example values:
   which tunnels traffic through an agent inside your network and doesn't require
   opening any internal IP range on the Infisical instance. Use this flag (or the
   more targeted `DYNAMIC_SECRET_ALLOW_INTERNAL_IP` / `AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP` /
-  `S3_COMPATIBLE_STORAGE_ALLOW_INTERNAL_IP` flags) only for the features that egress directly,
+  `S3_COMPATIBLE_STORAGE_ALLOW_INTERNAL_IP` / `ALERT_WEBHOOK_ALLOW_INTERNAL_IP` flags) only for the features that egress directly,
   without a Gateway.
 
   <Warning>
@@ -114,6 +153,24 @@ Example values:
     Relaxes the SSRF protection for the Dynamic Secrets path, including disabling
     DNS-rebinding pin protection for that path. Prefer the [Gateway](/documentation/platform/gateways/overview)
     for private resources.
+  </Warning>
+</ParamField>
+
+<ParamField query="ALERT_WEBHOOK_ALLOW_HTTP" type="bool" default="false" optional>
+  Lets [webhook alert channels](/documentation/platform/pki/applications/alerting/webhook-alerts) use an `http://` URL. Use it when your instance can only send plain HTTP to a proxy, such as a sidecar that adds TLS before the request leaves your network. If the proxy runs on the same host or another private address, also set `ALERT_WEBHOOK_ALLOW_INTERNAL_IP`.
+
+  If you turn it off later, a channel that still has an `http://` URL fails each time its alert fires, until someone changes the URL to HTTPS.
+
+  <Warning>
+    Alert payloads, authentication credentials, and request signatures travel unencrypted to an `http://` URL. Only enable it if that hop stays inside your network.
+  </Warning>
+</ParamField>
+
+<ParamField query="ALERT_WEBHOOK_ALLOW_INTERNAL_IP" type="bool" default="false" optional>
+  Determines whether [webhook alert channels](/documentation/platform/pki/applications/alerting/webhook-alerts) are permitted to connect with internal/private IP addresses, such as a proxy on the same host.
+
+  <Warning>
+    Relaxes the SSRF protection for webhook alert channels and turns off their DNS-rebinding pin protection. Only enable it if you trust the users who can configure alerts.
   </Warning>
 </ParamField>
 
@@ -1161,6 +1218,6 @@ If the export type is set to `otlp`, you will have to configure a value for `OTE
 
 ## Environment variable overrides
 
-If you can't reach the environment variables of your deployment directly, override them from **Environment Variables** in the [Server Console](/documentation/platform/admin-panel/server-admin). A saved value takes up to five minutes to reach every container.
+If you can't reach the environment variables of your deployment directly, override them from **Environment Variables** in the [Server Console](/documentation/platform/admin-panel/server-admin). A saved value takes up to a minute to reach every container.
 
 ![Environment Variables Overrides Page](../../images/self-hosting/configuration/overrides/page.png)

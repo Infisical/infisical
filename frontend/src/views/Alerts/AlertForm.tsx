@@ -43,6 +43,7 @@ import {
 } from "@app/hooks/api/alerts";
 
 import { ChannelsField } from "./ChannelsField";
+import { ScanTriggerFilterField } from "./ScanTriggerFilterField";
 
 type Props = {
   resourceType: AlertResourceType;
@@ -56,14 +57,20 @@ type Props = {
 };
 
 const DEFAULT_ALERT_BEFORE_DAYS = 7;
-const DEFAULT_ALERT_NAMES: Record<AlertEventType, string> = {
+export const DEFAULT_ALERT_NAMES: Record<AlertEventType, string> = {
   [AlertEventType.IdentityAuthenticationExpiry]: "Credential expiration alert",
   [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert",
   [AlertEventType.PamAccessRequested]: "Access requested alert",
   [AlertEventType.PamAccessRequestApproved]: "Request approved alert",
   [AlertEventType.PamAccessRequestDenied]: "Request denied alert",
   [AlertEventType.PamAccessRequestBypassed]: "Break-glass alert",
-  [AlertEventType.AuditLogStreamDeliveryFailed]: "Stream delivery failure alert"
+  [AlertEventType.AuditLogStreamDeliveryFailed]: "Stream delivery failure alert",
+  [AlertEventType.SecretRotationFailed]: "Rotation failure alert",
+  [AlertEventType.SecretSyncFailed]: "Sync failure alert",
+  [AlertEventType.HoneyTokenTriggered]: "Honey token trigger alert",
+  [AlertEventType.SecretScanningSecretsDetected]: "Secrets detected",
+  [AlertEventType.SecretScanningScanFailed]: "Secret scanning failed",
+  [AlertEventType.GatewayOffline]: "Gateway offline alert"
 };
 const AGENT_VAULT_ALERT_NAME_PLACEHOLDERS: Partial<Record<AlertEventType, string>> = {
   [AlertEventType.IdentityAuthenticationExpiry]: "Credential expiration alert",
@@ -85,6 +92,7 @@ const buildFormDefaults = (
       eventType: defaultEventType,
       alertBeforeDays: DEFAULT_ALERT_BEFORE_DAYS,
       dailyReminder: false,
+      scanTriggers: [],
       enabled: true,
       channels: []
     };
@@ -98,6 +106,7 @@ const buildFormDefaults = (
     alertBeforeDays:
       parseAlertBeforeDays(alert.condition?.alertBefore) ?? DEFAULT_ALERT_BEFORE_DAYS,
     dailyReminder: alert.condition?.dailyReminder ?? false,
+    scanTriggers: alert.condition?.scanTriggers ?? [],
     enabled: alert.enabled,
     channels: alert.channels.map(toChannelForm)
   };
@@ -153,11 +162,21 @@ export const AlertForm = ({
     }
   };
 
+  const isSecretScanning = resourceType === AlertResourceType.SecretScanning;
+
+  const buildCondition = (data: TAlertForm) => {
+    if (data.eventType === AlertEventType.IdentityAuthenticationExpiry) {
+      return {
+        alertBefore: toAlertBefore(data.alertBeforeDays),
+        dailyReminder: data.dailyReminder
+      };
+    }
+    if (isSecretScanning && data.scanTriggers.length) return { scanTriggers: data.scanTriggers };
+    return null;
+  };
+
   const onSubmit = async (data: TAlertForm) => {
-    const condition =
-      data.eventType === AlertEventType.IdentityAuthenticationExpiry
-        ? { alertBefore: toAlertBefore(data.alertBeforeDays), dailyReminder: data.dailyReminder }
-        : null;
+    const condition = buildCondition(data);
     const channels = data.channels.map(toChannelInput);
     try {
       if (isEditing && alert) {
@@ -315,6 +334,8 @@ export const AlertForm = ({
               />
             </div>
           )}
+
+          {isSecretScanning && <ScanTriggerFilterField />}
 
           <ChannelsField
             projectId={projectId}

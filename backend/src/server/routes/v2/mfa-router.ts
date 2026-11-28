@@ -2,15 +2,19 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { TUsers } from "@app/db/schemas";
+import { AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { mfaRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
-import { AuthModeMfaJwtTokenPayload, AuthTokenType, MfaMethod } from "@app/services/auth/auth-type";
+import { resolveMfaChallenge } from "@app/services/auth/auth-fns";
+import { AuthModeMfaJwtTokenPayload } from "@app/services/auth/auth-type";
 
 const handleMfaVerification = async (
-  req: FastifyRequest & { mfa: { userId: string; orgId?: string; user: TUsers; requiredMfaMethod: MfaMethod } },
+  req: FastifyRequest & {
+    mfa: { userId: string; orgId?: string; user: TUsers; allowedMfaMethods: MfaMethod[] };
+  },
   res: FastifyReply,
   server: FastifyZodProvider,
   mfaToken: string,
@@ -31,7 +35,7 @@ const handleMfaVerification = async (
     orgId: req.mfa.orgId,
     mfaToken,
     mfaMethod,
-    requiredMfaMethod: req.mfa.requiredMfaMethod,
+    allowedMfaMethods: req.mfa.allowedMfaMethods,
     isRecoveryCode
   });
 
@@ -74,11 +78,12 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
 
     const user = await server.store.user.findById(decodedToken.userId);
     if (!user) throw new UnauthorizedError({ message: "Unauthorized access" });
+
     req.mfa = {
       userId: user.id,
       user,
       orgId: decodedToken.organizationId,
-      requiredMfaMethod: decodedToken.requiredMfaMethod
+      allowedMfaMethods: decodedToken.allowedMfaMethods
     };
   });
 
@@ -97,7 +102,7 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      await server.services.login.resendMfaToken(req.mfa.userId, req.mfa.requiredMfaMethod);
+      await server.services.login.resendMfaToken(req.mfa.userId, req.mfa.allowedMfaMethods);
       return { message: "Successfully send new mfa code" };
     }
   });
@@ -192,9 +197,9 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      // Recovery codes are account-level; pass the method the challenge required
-      // so users on any MFA method (email, TOTP or WebAuthn) can fall back to them.
-      return handleMfaVerification(req, res, server, req.body.recoveryCode, req.mfa.requiredMfaMethod, true);
+      // A recovery code stands in for any factor. The session records an allowed method so switching orgs
+      // doesn't treat it as a changed method and ask for MFA again.
+      return handleMfaVerification(req, res, server, req.body.recoveryCode, req.mfa.allowedMfaMethods[0], true);
     }
   });
 
@@ -229,6 +234,43 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
 
         throw error;
       }
+    }
+  });
+
+  // What the login MFA step offers: the method to show first, the other set-up methods the org allows ("More
+  // options"), and, when nothing usable is set up, the allowed methods the user can enroll.
+  server.route({
+    method: "GET",
+    url: "/mfa/methods",
+    config: {
+      rateLimit: mfaRateLimit
+    },
+    schema: {
+      operationId: "getMfaMethods",
+      response: {
+        200: z.object({
+          challengeMethod: z.nativeEnum(MfaMethod),
+          usableMethods: z.nativeEnum(MfaMethod).array(),
+          enrollableMethods: z.nativeEnum(MfaMethod).array()
+        })
+      }
+    },
+    handler: async (req) => {
+      const enrolledMethods = await server.services.user.getEnrolledMfaMethods(req.mfa.user);
+      const { usableMethods, challengeMethod } = resolveMfaChallenge({
+        allowedMethods: req.mfa.allowedMfaMethods,
+        enrolledMethods,
+        preferredMethod: req.mfa.user.selectedMfaMethod
+      });
+      const enrollableMethods = usableMethods.length
+        ? []
+        : req.mfa.allowedMfaMethods.filter((method) => method !== MfaMethod.EMAIL);
+
+      return {
+        challengeMethod: challengeMethod ?? enrollableMethods[0] ?? MfaMethod.EMAIL,
+        usableMethods,
+        enrollableMethods
+      };
     }
   });
 };

@@ -120,7 +120,7 @@ A Product Admin creates each Application and attaches only that environment's pr
 
 Two things change across the rows. The attached profile decides what the team can produce. The membership decides who can produce it, so in production the wider team is read-only and issuance is limited to the on-call rotation and the deployment pipeline's identity. Users, groups, and machine identities can all be members; prefer groups so access follows your directory instead of a hand-maintained list, and give each pipeline its own identity per environment.
 
-Issuance begins once an [enrollment method](/documentation/platform/pki/applications/enrollment-methods/overview) is configured on the attached profile, which the team can do itself: API for custom integrations, ACME for certbot and cert-manager, EST and SCEP for devices and MDM. Each method's endpoint is unique to one Application and profile pair, which keeps issuance on each side of the boundary separate. On production, consider [approvals](/documentation/platform/pki/applications/approvals) to require review before a certificate is issued.
+Issuance begins once an [enrollment method](/documentation/platform/pki/applications/enrollment-methods/overview) is configured on the attached profile, which the team can do itself: API for custom integrations, ACME for certbot and cert-manager, EST and SCEP for devices and MDM, and Microsoft Autoenrollment for domain-joined Windows computers. Each method's endpoint is unique to one Application and profile pair, which keeps issuance on each side of the boundary separate. On production, consider [approvals](/documentation/platform/pki/applications/approvals) to require review before a certificate is issued.
 
 Adding a service later reuses everything above. Create its Applications, attach the profiles that already exist, and the team configures its own enrollment.
 
@@ -173,7 +173,7 @@ Each sub-organization runs its own Certificate Authorities, policies, profiles, 
 
 - **CA, policy, and profile administration is organization-wide.** Product Admins administer all of them, and that scope covers every CA and every environment. Where one environment's operators must be kept away from another environment's CA, use a sub-organization.
 - **Audit logs are read by Product Admins and cover the whole product.** Reading them takes the Product Admin role, and an admin who opens them sees all of it, every CA and every Application. The export carries CA and Application in event metadata, so a reviewer can narrow an exported set.
-- **Approvals cover issuance.** Approval policies gate certificate issuance and code signing. CA lifecycle actions such as create, renew, and revoke fall outside approvals today.
+- **Approvals cover issuance and revocation.** Approval policies gate certificate issuance, certificate revocation, and code signing. CA lifecycle actions such as creating, renewing, or revoking a CA fall outside approvals today.
 
 ## Next steps
 

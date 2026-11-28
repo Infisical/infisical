@@ -1,3 +1,8 @@
+import { z } from "zod";
+
+import { AuthMode } from "@app/lib/auth/actor-types";
+import { readLimit } from "@app/server/config/rateLimiter";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import {
   CreateAnthropicConnectionSchema,
   SanitizedAnthropicConnectionSchema,
@@ -14,5 +19,39 @@ export const registerAnthropicConnectionRouter = async (server: FastifyZodProvid
     sanitizedResponseSchema: SanitizedAnthropicConnectionSchema,
     createSchema: CreateAnthropicConnectionSchema,
     updateSchema: UpdateAnthropicConnectionSchema
+  });
+
+  // The below endpoints are not exposed and for Infisical App use
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/models`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listAnthropicConnectionModels",
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          models: z
+            .object({
+              id: z.string(),
+              displayName: z.string(),
+              family: z.string().nullable(),
+              createdAt: z.string().nullable()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const models = await server.services.appConnection.anthropic.listModels(req.params.connectionId, req.actor);
+
+      return { models };
+    }
   });
 };

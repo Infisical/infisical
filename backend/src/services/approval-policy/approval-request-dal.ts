@@ -121,13 +121,17 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
   const findByProjectId = async (
     policyType: ApprovalPolicyType,
     projectId: string,
-    options?: { scopeType?: string | null; scopeId?: string | null }
+    options?: { scopeType?: string | null; scopeId?: string | null; status?: ApprovalRequestStatus }
   ) => {
     try {
       const dbInstance = db.replicaNode();
       const baseQuery = dbInstance(TableName.ApprovalRequests)
         .where({ type: policyType, projectId })
         .orderBy("createdAt", "desc");
+
+      if (options?.status) {
+        void baseQuery.where({ status: options.status });
+      }
 
       if (options?.scopeType === null) {
         void baseQuery.whereNull("scopeType");

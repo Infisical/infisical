@@ -1,16 +1,16 @@
 /* eslint-disable no-bitwise */
-import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
-import { ActionProjectType } from "@app/db/schemas";
-import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
-import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectType } from "@app/db/schemas";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   ProjectPermissionPkiTemplateActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
+import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
@@ -40,9 +40,6 @@ import {
   CertKeyUsage,
   CertStatus
 } from "../certificate/certificate-types";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { TProjectDALFactory } from "../project/project-dal";
-import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { TPkiTemplatesDALFactory } from "./pki-templates-dal";
 import {
   TCreatePkiTemplateDTO,
@@ -56,7 +53,7 @@ import {
 
 type TPkiTemplatesServiceFactoryDep = {
   pkiTemplatesDAL: TPkiTemplatesDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectPermissionService: TProjectPermissionService;
   certificateAuthorityDAL: Pick<
     TCertificateAuthorityDALFactory,
     | "findByIdWithAssociatedCa"
@@ -68,7 +65,8 @@ type TPkiTemplatesServiceFactoryDep = {
     | "findOne"
   >;
   internalCaFns: ReturnType<typeof InternalCertificateAuthorityFns>;
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "decryptWithKmsKey" | "encryptWithKmsKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthorityCrossSignedCertDAL: Pick<
     TCertificateAuthorityCrossSignedCertDALFactory,
@@ -82,14 +80,13 @@ type TPkiTemplatesServiceFactoryDep = {
   >;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create" | "findOne">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById" | "find">;
 };
 
 export type TPkiTemplatesServiceFactory = ReturnType<typeof pkiTemplatesServiceFactory>;
 
 export const pkiTemplatesServiceFactory = ({
   pkiTemplatesDAL,
-  permissionService,
+  projectPermissionService,
   internalCaFns,
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
@@ -98,14 +95,11 @@ export const pkiTemplatesServiceFactory = ({
   certificateAuthorityCrlDAL,
   certificateDAL,
   certificateBodyDAL,
-  kmsService,
-  projectDAL
+  kmsDataKeyService,
+  kmsKeyService
 }: TPkiTemplatesServiceFactoryDep) => {
   const createTemplate = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     caName,
     commonName,
     extendedKeyUsages,
@@ -122,19 +116,17 @@ export const pkiTemplatesServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Create,
-      subject(ProjectPermissionSub.CertificateTemplates, { name })
-    );
+    permission.assert({
+      action: ProjectPermissionPkiTemplateActions.Create,
+      subject: ProjectPermissionSub.CertificateTemplates,
+      fields: { name }
+    });
 
     const existingTemplate = await pkiTemplatesDAL.findOne({ name, projectId: ca.projectId });
     if (existingTemplate) {
@@ -156,9 +148,6 @@ export const pkiTemplatesServiceFactory = ({
   const updateTemplate = async ({
     templateName,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     caName,
     commonName,
     extendedKeyUsages,
@@ -175,19 +164,17 @@ export const pkiTemplatesServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: certTemplate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Edit,
-      subject(ProjectPermissionSub.CertificateTemplates, { name: templateName })
-    );
+    permission.assert({
+      action: ProjectPermissionPkiTemplateActions.Edit,
+      subject: ProjectPermissionSub.CertificateTemplates,
+      fields: { name: templateName }
+    });
 
     let caId;
     if (caName) {
@@ -201,10 +188,11 @@ export const pkiTemplatesServiceFactory = ({
     }
 
     if (name) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionPkiTemplateActions.Edit,
-        subject(ProjectPermissionSub.CertificateTemplates, { name })
-      );
+      permission.assert({
+        action: ProjectPermissionPkiTemplateActions.Edit,
+        subject: ProjectPermissionSub.CertificateTemplates,
+        fields: { name }
+      });
 
       const existingTemplate = await pkiTemplatesDAL.findOne({ name, projectId });
       if (existingTemplate && existingTemplate.id !== certTemplate.id) {
@@ -224,14 +212,7 @@ export const pkiTemplatesServiceFactory = ({
     return updatedTemplate;
   };
 
-  const deleteTemplate = async ({
-    templateName,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    projectId
-  }: TDeletePkiTemplateDTO) => {
+  const deleteTemplate = async ({ templateName, actor, projectId }: TDeletePkiTemplateDTO) => {
     const certTemplate = await pkiTemplatesDAL.findOne({ name: templateName, projectId });
     if (!certTemplate) {
       throw new NotFoundError({
@@ -239,32 +220,23 @@ export const pkiTemplatesServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: certTemplate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Delete,
-      subject(ProjectPermissionSub.CertificateTemplates, { name: templateName })
-    );
+    permission.assert({
+      action: ProjectPermissionPkiTemplateActions.Delete,
+      subject: ProjectPermissionSub.CertificateTemplates,
+      fields: { name: templateName }
+    });
 
     const deletedTemplate = await pkiTemplatesDAL.deleteById(certTemplate.id);
     return deletedTemplate;
   };
 
-  const getTemplateByName = async ({
-    templateName,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    projectId
-  }: TGetPkiTemplateDTO) => {
+  const getTemplateByName = async ({ templateName, actor, projectId }: TGetPkiTemplateDTO) => {
     const certTemplate = await pkiTemplatesDAL.findOne({ name: templateName, projectId });
     if (!certTemplate) {
       throw new NotFoundError({
@@ -272,48 +244,36 @@ export const pkiTemplatesServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: certTemplate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Read,
-      subject(ProjectPermissionSub.CertificateTemplates, { name: templateName })
-    );
+    permission.assert({
+      action: ProjectPermissionPkiTemplateActions.Read,
+      subject: ProjectPermissionSub.CertificateTemplates,
+      fields: { name: templateName }
+    });
 
     return certTemplate;
   };
 
-  const listTemplate = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    projectId,
-    limit,
-    offset
-  }: TListPkiTemplateDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+  const listTemplate = async ({ actor, projectId, limit, offset }: TListPkiTemplateDTO) => {
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     const certTemplate = await pkiTemplatesDAL.find({ projectId }, { limit, offset, count: true });
     return {
       certificateTemplates: certTemplate.filter((el) =>
-        permission.can(
-          ProjectPermissionPkiTemplateActions.Read,
-          subject(ProjectPermissionSub.CertificateTemplates, { name: el.name })
-        )
+        permission.can({
+          action: ProjectPermissionPkiTemplateActions.Read,
+          subject: ProjectPermissionSub.CertificateTemplates,
+          fields: { name: el.name }
+        })
       ),
       totalCount: Number(certTemplate?.[0]?.count ?? 0)
     };
@@ -327,10 +287,7 @@ export const pkiTemplatesServiceFactory = ({
     ttl,
     notBefore,
     notAfter,
-    actorId,
-    actorAuthMethod,
     actor,
-    actorOrgId,
     keyUsages,
     extendedKeyUsages
   }: TIssueCertPkiTemplateDTO) => {
@@ -341,19 +298,17 @@ export const pkiTemplatesServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: certTemplate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.IssueCert,
-      subject(ProjectPermissionSub.CertificateTemplates, { name: templateName })
-    );
+    permission.assert({
+      action: ProjectPermissionPkiTemplateActions.IssueCert,
+      subject: ProjectPermissionSub.CertificateTemplates,
+      fields: { name: templateName }
+    });
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certTemplate.caId);
     if (ca.internalCa?.id) {
@@ -371,16 +326,7 @@ export const pkiTemplatesServiceFactory = ({
     throw new BadRequestError({ message: "CA does not support immediate issuance of certificates" });
   };
 
-  const signCertificate = async ({
-    templateName,
-    csr,
-    projectId,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId,
-    ttl
-  }: TSignCertPkiTemplateDTO) => {
+  const signCertificate = async ({ templateName, csr, projectId, actor, ttl }: TSignCertPkiTemplateDTO) => {
     const certTemplate = await pkiTemplatesDAL.findOne({ name: templateName, projectId });
     if (!certTemplate) {
       throw new NotFoundError({
@@ -388,19 +334,17 @@ export const pkiTemplatesServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: certTemplate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.IssueCert,
-      subject(ProjectPermissionSub.CertificateTemplates, { name: templateName })
-    );
+    permission.assert({
+      action: ProjectPermissionPkiTemplateActions.IssueCert,
+      subject: ProjectPermissionSub.CertificateTemplates,
+      fields: { name: templateName }
+    });
 
     const appCfg = getConfig();
 
@@ -413,12 +357,8 @@ export const pkiTemplatesServiceFactory = ({
 
     const caCert = await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId);
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -469,8 +409,8 @@ export const pkiTemplatesServiceFactory = ({
       caId: ca.id,
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
@@ -582,7 +522,7 @@ export const pkiTemplatesServiceFactory = ({
       extensions
     });
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
     const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
@@ -595,8 +535,8 @@ export const pkiTemplatesServiceFactory = ({
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
       certificateAuthorityCrossSignedCertDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({

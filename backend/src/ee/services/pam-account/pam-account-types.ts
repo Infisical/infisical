@@ -1,3 +1,5 @@
+import { PamResourcePermissionActions } from "@app/domains/pam/pam/ce/module";
+
 import { TPamAccountSettingsOverrides } from "../pam-account-template/pam-account-template-schemas";
 import { PamAccountType } from "../pam/pam-enums";
 
@@ -58,6 +60,7 @@ export type TListPamAccountsDTO = {
   templateId?: string;
   accountType?: string;
   search?: string;
+  filterByAction?: PamResourcePermissionActions;
 };
 
 export type TListAccessibleAccountsDTO = {

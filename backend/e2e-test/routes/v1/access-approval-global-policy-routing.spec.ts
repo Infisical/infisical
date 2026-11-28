@@ -8,10 +8,8 @@ import { EnforcementLevel } from "@app/lib/types";
 
 const getDb = () => (globalThis as unknown as { testDb: Knex }).testDb;
 
-const SECRET_ACCESS_TYPE = "secret-access";
-
-// Both systems share the seeded project and environment, so every policy this
-// file creates is removed after each test to keep later specs unaffected.
+// Every policy this file creates lives in the seeded project and environment, so it is
+// removed after each test to keep later specs unaffected.
 const legacyPolicyIds: string[] = [];
 const globalPolicyIds: string[] = [];
 
@@ -25,8 +23,7 @@ const getSeedEnv = async () => {
   return env;
 };
 
-// The create route always writes to the global tables now, so a legacy policy
-// has to be seeded straight into the legacy tables.
+// Policies the migration left behind only exist in the legacy tables, so they are seeded there directly.
 const createLegacyPolicy = async (dto: { name: string; secretPath: string; id?: string }) => {
   const db = getDb();
   const env = await getSeedEnv();
@@ -115,16 +112,6 @@ const countPolicies = () =>
     headers: authHeaders()
   });
 
-const expectNoLegacyRow = async (policyId: string) => {
-  const legacyRow = await getDb()(TableName.AccessApprovalPolicy).where({ id: policyId }).first();
-  expect(legacyRow).toBeUndefined();
-};
-
-const expectNoGlobalRow = async (policyId: string) => {
-  const globalRow = await getDb()(TableName.ApprovalPolicies).where({ id: policyId }).first();
-  expect(globalRow).toBeUndefined();
-};
-
 describe("Access approval policy routing", () => {
   afterEach(async () => {
     const db = getDb();
@@ -142,59 +129,25 @@ describe("Access approval policy routing", () => {
     }
   });
 
-  test("Updating a policy onto a path a policy on the other system covers is rejected", async () => {
-    const db = getDb();
+  test("Updating a policy onto a path another policy covers is rejected", async () => {
     const policy = await createGlobalPolicy({
       name: "policy-routing-conflict",
       secretPath: "/policy-routing-conflict"
     });
-    const legacyPolicy = await createLegacyPolicy({
-      name: "policy-routing-conflict-legacy",
-      secretPath: "/policy-routing-conflict-legacy"
-    });
     await createGlobalPolicy({
-      name: "policy-routing-conflict-global",
-      secretPath: "/policy-routing-conflict-global"
+      name: "policy-routing-conflict-other",
+      secretPath: "/policy-routing-conflict-other"
     });
 
-    const legacyConflict = await patchPolicy(policy.id, { secretPath: "/policy-routing-conflict-legacy" });
-    expect(legacyConflict.statusCode).toBe(400);
-    expect(legacyConflict.json().message).toContain(`already exists in environment '${seedData1.environment.slug}'`);
+    const conflict = await patchPolicy(policy.id, { secretPath: "/policy-routing-conflict-other" });
+    expect(conflict.statusCode).toBe(400);
+    expect(conflict.json().message).toContain(`already exists in environment '${seedData1.environment.slug}'`);
 
-    const legacyOntoGlobal = await patchPolicy(legacyPolicy.id, { secretPath: "/policy-routing-conflict-global" });
-    expect(legacyOntoGlobal.statusCode).toBe(400);
-    expect(legacyOntoGlobal.json().message).toContain(`already exists in environment '${seedData1.environment.slug}'`);
-
-    const unchangedLegacy = await db(TableName.AccessApprovalPolicy).where({ id: legacyPolicy.id }).first();
-    expect(unchangedLegacy?.secretPath).toBe("/policy-routing-conflict-legacy");
+    const scopeRows = await getDb()(TableName.ApprovalPolicySecretEnvironment).where({ policyId: policy.id });
+    expect(scopeRows.map((row) => row.secretPath)).toEqual(["/policy-routing-conflict"]);
   });
 
-  test("A migrated policy's legacy row does not block the scope it moved away from", async () => {
-    const migrated = await createGlobalPolicy({
-      name: "policy-routing-migrated",
-      secretPath: "/policy-routing-migrated"
-    });
-    await createLegacyPolicy({
-      id: migrated.id,
-      name: "policy-routing-migrated",
-      secretPath: "/policy-routing-migrated"
-    });
-
-    const moved = await patchPolicy(migrated.id, { secretPath: "/policy-routing-migrated-moved" });
-    expect(moved.statusCode).toBe(200);
-
-    const replacement = await createGlobalPolicy({
-      name: "policy-routing-migrated-replacement",
-      secretPath: "/policy-routing-migrated"
-    });
-    expect(replacement.secretPath).toBe("/policy-routing-migrated");
-  });
-
-  test("Listing and counting policies include both systems", async () => {
-    const legacyPolicy = await createLegacyPolicy({
-      name: "policy-routing-list-legacy",
-      secretPath: "/policy-routing-list-legacy"
-    });
+  test("Listing and counting policies agree", async () => {
     const globalPolicy = await createGlobalPolicy({
       name: "policy-routing-list-global",
       secretPath: "/policy-routing-list-global"
@@ -203,10 +156,6 @@ describe("Access approval policy routing", () => {
     const listRes = await listPolicies();
     expect(listRes.statusCode).toBe(200);
     const { approvals }: { approvals: { id: string; approvers: { name?: string }[] }[] } = listRes.json();
-    const listedIds = approvals.map((policy) => policy.id);
-    expect(listedIds).toContain(legacyPolicy.id);
-    expect(listedIds).toContain(globalPolicy.id);
-
     const listedGlobal = approvals.find((policy) => policy.id === globalPolicy.id);
     expect(listedGlobal?.approvers[0]?.name).toBe(seedData1.username);
 
@@ -215,57 +164,26 @@ describe("Access approval policy routing", () => {
     expect(countRes.json().count).toBe(approvals.length);
   });
 
-  test("A legacy policy keeps being served from the legacy tables", async () => {
-    const db = getDb();
-    const policy = await createLegacyPolicy({ name: "policy-routing-legacy", secretPath: "/policy-routing-legacy" });
-
-    const getRes = await getPolicy(policy.id);
-    expect(getRes.statusCode).toBe(200);
-    expect(getRes.json().approval.id).toBe(policy.id);
-
-    const patchRes = await patchPolicy(policy.id, { name: "policy-routing-legacy-renamed" });
-    expect(patchRes.statusCode).toBe(200);
-    const legacyRow = await db(TableName.AccessApprovalPolicy).where({ id: policy.id }).first();
-    expect(legacyRow?.name).toBe("policy-routing-legacy-renamed");
-    await expectNoGlobalRow(policy.id);
-
-    const deleteRes = await deletePolicy(policy.id);
-    expect(deleteRes.statusCode).toBe(200);
-    const softDeletedRow = await db(TableName.AccessApprovalPolicy).where({ id: policy.id }).first();
-    expect(softDeletedRow?.deletedAt).not.toBeNull();
-    await expectNoGlobalRow(policy.id);
-  });
-
-  test("Updating a policy never moves it between systems", async () => {
-    const db = getDb();
-    const env = await getSeedEnv();
+  test("A policy that only exists in the legacy tables is not served", async () => {
     const legacyPolicy = await createLegacyPolicy({
-      name: "policy-routing-stay-legacy",
-      secretPath: "/policy-routing-stay-legacy"
-    });
-    const globalPolicy = await createGlobalPolicy({
-      name: "policy-routing-stay-global",
-      secretPath: "/policy-routing-stay-global"
+      name: "policy-routing-legacy",
+      secretPath: "/policy-routing-legacy"
     });
 
-    const legacyRes = await patchPolicy(legacyPolicy.id, { name: "policy-routing-stay-legacy-renamed" });
-    expect(legacyRes.statusCode).toBe(200);
-    const legacyRow = await db(TableName.AccessApprovalPolicy).where({ id: legacyPolicy.id }).first();
-    expect(legacyRow?.name).toBe("policy-routing-stay-legacy-renamed");
-    await expectNoGlobalRow(legacyPolicy.id);
-    const strayGlobalEnvRows = await db(TableName.ApprovalPolicySecretEnvironment).where({
-      envId: env.id,
-      secretPath: "/policy-routing-stay-legacy"
-    });
-    expect(strayGlobalEnvRows).toHaveLength(0);
+    expect((await getPolicy(legacyPolicy.id)).statusCode).toBe(404);
+    expect((await patchPolicy(legacyPolicy.id, { name: "policy-routing-legacy-renamed" })).statusCode).toBe(404);
+    expect((await deletePolicy(legacyPolicy.id)).statusCode).toBe(404);
 
-    const globalRes = await patchPolicy(globalPolicy.id, { name: "policy-routing-stay-global-renamed" });
-    expect(globalRes.statusCode).toBe(200);
-    expect(globalRes.json().approval.id).toBe(globalPolicy.id);
-    const globalRow = await db(TableName.ApprovalPolicies).where({ id: globalPolicy.id }).first();
-    expect(globalRow?.type).toBe(SECRET_ACCESS_TYPE);
-    expect(globalRow?.name).toBe("policy-routing-stay-global-renamed");
-    await expectNoLegacyRow(globalPolicy.id);
+    const listRes = await listPolicies();
+    expect(listRes.statusCode).toBe(200);
+    const { approvals: listed }: { approvals: { id: string }[] } = listRes.json();
+    expect(listed.map((policy) => policy.id)).not.toContain(legacyPolicy.id);
+
+    const replacement = await createGlobalPolicy({
+      name: "policy-routing-legacy-replacement",
+      secretPath: "/policy-routing-legacy"
+    });
+    expect(replacement.secretPath).toBe("/policy-routing-legacy");
   });
 });
 
@@ -308,18 +226,9 @@ describe("Access approval policy required approvals per step", () => {
   });
 
   afterEach(async () => {
-    const db = getDb();
-    const legacyIds = legacyPolicyIds.splice(0);
     const globalIds = globalPolicyIds.splice(0);
-
-    if (legacyIds.length) {
-      await db(TableName.AccessApprovalPolicyApprover).whereIn("policyId", legacyIds).del();
-      await db(TableName.AccessApprovalPolicyBypasser).whereIn("policyId", legacyIds).del();
-      await db(TableName.AccessApprovalPolicyEnvironment).whereIn("policyId", legacyIds).del();
-      await db(TableName.AccessApprovalPolicy).whereIn("id", legacyIds).del();
-    }
     if (globalIds.length) {
-      await db(TableName.ApprovalPolicies).whereIn("id", globalIds).del();
+      await getDb()(TableName.ApprovalPolicies).whereIn("id", globalIds).del();
     }
   });
 
@@ -339,13 +248,13 @@ describe("Access approval policy required approvals per step", () => {
       .map(({ id, sequence, approvalsRequired }) => ({ id, sequence, approvalsRequired }))
       .sort((a, b) => a.sequence - b.sequence || a.id.localeCompare(b.id));
 
-  test("A legacy policy also returns a user once per step", async () => {
-    const legacyPolicy = await createLegacyPolicy({
-      name: "policy-routing-legacy-user-in-two-steps",
-      secretPath: "/legacy-user-in-two-steps"
+  test("A user listed in two steps is returned once per step", async () => {
+    const policy = await createGlobalPolicy({
+      name: "policy-routing-user-in-two-steps",
+      secretPath: "/user-in-two-steps"
     });
 
-    const res = await patchPolicy(legacyPolicy.id, {
+    const res = await patchPolicy(policy.id, {
       approvers: [
         { type: ApproverType.User, id: seedData1.id, sequence: 1 },
         { type: ApproverType.User, id: otherApproverId, sequence: 1 },
@@ -359,7 +268,7 @@ describe("Access approval policy required approvals per step", () => {
     });
     expect(res.statusCode).toBe(200);
 
-    const getRes = await getPolicy(legacyPolicy.id);
+    const getRes = await getPolicy(policy.id);
     expect(getRes.statusCode).toBe(200);
     expect(approverViews(getRes.json().approval.approvers)).toEqual(
       approverViews([
@@ -370,34 +279,22 @@ describe("Access approval policy required approvals per step", () => {
     );
   });
 
-  test("The same update stores the same effective requirement on legacy and global", async () => {
-    const db = getDb();
-    const legacyPolicy = await createLegacyPolicy({
-      name: "policy-routing-required-legacy",
-      secretPath: "/required-parity-legacy"
+  test("A later step without an approvalsRequired entry needs one approval", async () => {
+    const policy = await createGlobalPolicy({
+      name: "policy-routing-required",
+      secretPath: "/required-later-step"
     });
-    const globalPolicy = await createGlobalPolicy({
-      name: "policy-routing-required-global",
-      secretPath: "/required-parity-global"
-    });
-    const body = {
+
+    const res = await patchPolicy(policy.id, {
       approvers: [
         { type: ApproverType.User, id: seedData1.id, sequence: 1 },
         { type: ApproverType.User, id: otherApproverId, sequence: 2 }
       ],
       approvals: 2,
       approvalsRequired: [{ stepNumber: 1, numberOfApprovals: 1 }]
-    };
+    });
+    expect(res.statusCode).toBe(200);
 
-    expect((await patchPolicy(legacyPolicy.id, body)).statusCode).toBe(200);
-    expect((await patchPolicy(globalPolicy.id, body)).statusCode).toBe(200);
-
-    const legacyApprovers = await db(TableName.AccessApprovalPolicyApprover)
-      .where({ policyId: legacyPolicy.id })
-      .orderBy("sequence", "asc");
-    const legacyEffective = legacyApprovers.map((approver) => approver.approvalsRequired || 1);
-
-    expect(legacyEffective).toEqual([1, 1]);
-    expect(await getStepRequirements(globalPolicy.id)).toEqual(legacyEffective);
+    expect(await getStepRequirements(policy.id)).toEqual([1, 1]);
   });
 });

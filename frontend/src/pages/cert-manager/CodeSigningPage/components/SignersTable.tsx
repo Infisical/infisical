@@ -42,6 +42,7 @@ import {
 import { getInstancePinningLink } from "@app/helpers/project";
 import {
   getSignerStatusBadgeVariant,
+  hasFailedRenewal,
   SIGNER_TABLE_PAGE_SIZE,
   SignerStatus,
   signerStatusLabels,
@@ -49,6 +50,7 @@ import {
 } from "@app/hooks/api/signers";
 import { useDebounce } from "@app/hooks/useDebounce";
 
+import { SignerRequestFailedBadge } from "../../components/SignerBadges";
 import { PkiDocsUrls } from "../../pki-docs-urls";
 
 type Props = {
@@ -182,9 +184,14 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                           </TooltipContent>
                         </Tooltip>
                       ) : (
-                        <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
-                          {signerStatusLabels[signer.status] ?? signer.status}
-                        </Badge>
+                        <span className="inline-flex items-center gap-1.5">
+                          <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
+                            {signerStatusLabels[signer.status]}
+                          </Badge>
+                          {hasFailedRenewal(signer) && (
+                            <SignerRequestFailedBadge reason={signer.certificateFailureReason} />
+                          )}
+                        </span>
                       )}
                     </TableCell>
                     <TableCell>{signer.certificateCommonName ?? "-"}</TableCell>

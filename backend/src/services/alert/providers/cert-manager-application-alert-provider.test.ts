@@ -1,6 +1,7 @@
-import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
+import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { AlertChannelType } from "../alert-channel-types";
@@ -85,23 +86,26 @@ const buildProvider = (opts?: {
       return opts?.certificates ?? [];
     }
   };
-  const ability = () =>
-    createMongoAbility((opts?.abilityRules ?? [{ action: "read", subject: "pki-alerts" }]) as never);
-  const permissionService = {
-    getResourcePermission: vi.fn(async () => ({ permission: ability() }))
+  const applicationPermissionService = {
+    getApplicationPermission: vi.fn(async () =>
+      Permission.fromRules({ rules: (opts?.abilityRules ?? [{ action: "read", subject: "pki-alerts" }]) as never })
+    )
   };
-  const licenseService = {
-    getPlan: async () => ({ pkiEnterpriseAlerting: opts?.pkiEnterpriseAlerting ?? false })
-  };
+  const licenseService = new FakeLicenseService().setPlan("org-1", {
+    pkiEnterpriseAlerting: opts?.pkiEnterpriseAlerting ?? false
+  });
   const provider = certManagerApplicationAlertProviderFactory({
     certManagerCertificateAlertDAL: dal,
-    permissionService,
+    applicationPermissionService,
     licenseService
   } as unknown as TCertManagerApplicationAlertProviderDep);
-  return { provider, permissionService };
+  return { provider, applicationPermissionService };
 };
 
-const actor = { actor: "user", actorId: "u1", actorAuthMethod: null, actorOrgId: "org-1" } as never;
+const actor = {
+  principal: { type: "user", id: "u1", authMethod: null },
+  org: { id: "org-1" }
+} as never;
 
 const expiryConditionSchema = (provider: ReturnType<typeof buildProvider>["provider"]) =>
   provider.events.find((event) => event.key === EXPIRY_EVENT)!.conditionSchema;
@@ -211,6 +215,26 @@ describe("cert manager application alert provider", () => {
     });
   });
 
+  test("buildPayload links each certificate to its own page and keeps the application as the overview link", async () => {
+    const { provider } = buildProvider();
+    const payload = provider.buildPayload(
+      alertContext(),
+      [sampleCertificate(), sampleCertificate({ id: "cert-2" })],
+      "https://app.infisical.com/view"
+    );
+    expect(payload.alert.viewUrl).toBe("https://app.infisical.com/view");
+    expect(payload.items.map((item) => item.url)).toEqual([
+      "https://app.infisical.com/organizations/org-1/cert-manager/certificates/cert-1",
+      "https://app.infisical.com/organizations/org-1/cert-manager/certificates/cert-2"
+    ]);
+  });
+
+  test("buildPayload keeps the application as the overview link even for one certificate", async () => {
+    const { provider } = buildProvider();
+    const payload = provider.buildPayload(alertContext(), [sampleCertificate()], "https://app.infisical.com/view");
+    expect(payload.alert.viewUrl).toBe("https://app.infisical.com/view");
+  });
+
   test("buildPayload names a certificate without a common name by its first SAN, then its serial", async () => {
     const { provider } = buildProvider();
     const issuance = alertContext({ eventType: ISSUANCE_EVENT, condition: null });
@@ -253,7 +277,7 @@ describe("cert manager application alert provider", () => {
   });
 
   test("assertPermission checks the application's resource permission when the alert is bound to one", async () => {
-    const { provider, permissionService } = buildProvider();
+    const { provider, applicationPermissionService } = buildProvider();
     await expect(
       provider.assertPermission({
         action: AlertPermissionAction.Read,
@@ -272,7 +296,7 @@ describe("cert manager application alert provider", () => {
         actor
       })
     ).rejects.toThrow();
-    expect(permissionService.getResourcePermission).toHaveBeenCalled();
+    expect(applicationPermissionService.getApplicationPermission).toHaveBeenCalled();
   });
 
   test("assertPermission requires a project", async () => {
@@ -319,7 +343,7 @@ describe("cert manager application alert provider", () => {
   });
 
   test("rejects a malformed application ID with a bad request before any lookup", async () => {
-    const { provider, permissionService } = buildProvider();
+    const { provider, applicationPermissionService } = buildProvider();
     const expected = "Invalid application ID 'not-a-uuid': must be a UUID";
     await expect(
       provider.assertPermission({
@@ -334,7 +358,7 @@ describe("cert manager application alert provider", () => {
       provider.assertResourceInScope({ orgId: "org-1", projectId: "proj-1", resourceId: "not-a-uuid" })
     ).rejects.toThrow(expected);
     await expect(provider.resolveProjectId?.({ orgId: "org-1", resourceId: "not-a-uuid" })).rejects.toThrow(expected);
-    expect(permissionService.getResourcePermission).not.toHaveBeenCalled();
+    expect(applicationPermissionService.getApplicationPermission).not.toHaveBeenCalled();
   });
 
   test("assertChannelTypesAllowed lets email through and gates other channels on the plan", async () => {

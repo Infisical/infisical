@@ -55,6 +55,16 @@ export type TSecretSyncRecursiveConflict = {
   paths: string[];
 };
 
+export type TSecretSyncRecursiveFolder = {
+  path: string;
+  secretCount: number;
+};
+
+type TSecretSyncRecursiveConflictsResponse = {
+  conflicts: TSecretSyncRecursiveConflict[];
+  folders: TSecretSyncRecursiveFolder[];
+};
+
 export const useSecretSyncOptions = (
   options?: Omit<
     UseQueryOptions<
@@ -192,9 +202,9 @@ export const useCheckRecursiveConflicts = (
   keySchema?: string,
   options?: Omit<
     UseQueryOptions<
-      { conflicts: TSecretSyncRecursiveConflict[] },
+      TSecretSyncRecursiveConflictsResponse,
       unknown,
-      { conflicts: TSecretSyncRecursiveConflict[] },
+      TSecretSyncRecursiveConflictsResponse,
       ReturnType<typeof secretSyncKeys.recursiveConflicts>
     >,
     "queryKey" | "queryFn"
@@ -209,7 +219,7 @@ export const useCheckRecursiveConflicts = (
       keySchema
     ),
     queryFn: async () => {
-      const { data } = await apiRequest.post<{ conflicts: TSecretSyncRecursiveConflict[] }>(
+      const { data } = await apiRequest.post<TSecretSyncRecursiveConflictsResponse>(
         `/api/v1/secret-syncs/${destination}/recursive-conflicts`,
         { projectId, environment, secretPath, keySchema }
       );

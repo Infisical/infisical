@@ -1,8 +1,7 @@
-import { overrideLicenseFeatures } from "e2e-test/testUtils/license";
-import qs from "qs";
-
 import { TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+
+import { overrideLicenseFeatures } from "e2e-test/testUtils/license";
 
 type TImportedBy = {
   environment: { name: string; slug: string };
@@ -14,14 +13,15 @@ const headers = () => ({ authorization: `Bearer ${jwtAuthToken}` });
 
 const getImportedBy = async (environment: string) => {
   const res = await testServer.inject({
-    method: "GET",
-    url: `/api/v1/dashboard/secrets-overview?${qs.stringify({
+    method: "POST",
+    url: "/api/v1/dashboard/secrets-overview",
+    headers: headers(),
+    body: {
       projectId: seedData1.projectV3.id,
-      environments: environment,
+      environments: [environment],
       secretPath: "/",
       includeSecrets: true
-    })}`,
-    headers: headers()
+    }
   });
   expect(res.statusCode, res.payload).toBe(200);
   const { importedByEnvs } = res.json() as { importedByEnvs: { environment: string; importedBy: TImportedBy[] }[] };

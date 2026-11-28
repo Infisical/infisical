@@ -5,6 +5,7 @@ import { DiscriminativePick } from "@app/lib/types";
 import { AppConnection } from "../app-connection-enums";
 import {
   AzureEntraIdConnectionClientSecretOutputCredentialsSchema,
+  AzureEntraIdConnectionManagedIdentityOutputCredentialsSchema,
   AzureEntraIdConnectionSchema,
   CreateAzureEntraIdConnectionSchema,
   ValidateAzureEntraIdConnectionCredentialsSchema
@@ -23,6 +24,8 @@ export type TAzureEntraIdConnectionConfig = DiscriminativePick<
   "method" | "app" | "credentials"
 > & {
   orgId: string;
+  projectId?: string | null;
+  connection?: { id: string; name: string };
 };
 
 export type ExchangeCodeAzureResponse = {
@@ -35,4 +38,8 @@ export type ExchangeCodeAzureResponse = {
 
 export type TAzureEntraIdConnectionClientSecretCredentials = z.infer<
   typeof AzureEntraIdConnectionClientSecretOutputCredentialsSchema
+>;
+
+export type TAzureEntraIdConnectionManagedIdentityCredentials = z.infer<
+  typeof AzureEntraIdConnectionManagedIdentityOutputCredentialsSchema
 >;

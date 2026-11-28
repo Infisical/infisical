@@ -1,12 +1,12 @@
 /* eslint-disable no-await-in-loop */
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
-import { Client as OctopusDeployClient, ProjectRepository as OctopusDeployRepository } from "@octopusdeploy/api-client";
 
 import { TIntegrationAuths } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { NotFoundError } from "@app/lib/errors";
+import { safeRequest } from "@app/lib/validator";
 
 import { IntegrationAuthMetadataSchema, TIntegrationAuthMetadata } from "./integration-auth-schema";
 import { Integrations, IntegrationUrls } from "./integration-list";
@@ -547,7 +547,7 @@ const getAppsCircleCI = async ({ accessToken }: { accessToken: string }) => {
 const getAppsDatabricks = async ({ url, accessToken }: { url?: string | null; accessToken: string }) => {
   const databricksApiUrl = `${url}/api`;
 
-  const res = await request.get<{ scopes: { name: string; backend_type: string }[] }>(
+  const res = await safeRequest.get<{ scopes: { name: string; backend_type: string }[] }>(
     `${databricksApiUrl}/2.0/secrets/scopes/list`,
     {
       headers: {
@@ -641,7 +641,7 @@ const getAppsGitlab = async ({
         per_page: String(perPage)
       });
 
-      const { data } = await request.get<{ name: string; id: string }[]>(
+      const { data } = await safeRequest.get<{ name: string; id: string }[]>(
         `${gitLabApiUrl}/v4/groups/${teamId}/projects`,
         {
           params,
@@ -669,7 +669,7 @@ const getAppsGitlab = async ({
     // case: fetch projects for individual in GitLab
 
     const { id } = (
-      await request.get<{ id: string }>(`${gitLabApiUrl}/v4/user`, {
+      await safeRequest.get<{ id: string }>(`${gitLabApiUrl}/v4/user`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Accept-Encoding": "application/json"
@@ -683,13 +683,16 @@ const getAppsGitlab = async ({
         per_page: String(perPage)
       });
 
-      const { data } = await request.get<{ name: string; id: string }[]>(`${gitLabApiUrl}/v4/users/${id}/projects`, {
-        params,
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Accept-Encoding": "application/json"
+      const { data } = await safeRequest.get<{ name: string; id: string }[]>(
+        `${gitLabApiUrl}/v4/users/${id}/projects`,
+        {
+          params,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json"
+          }
         }
-      });
+      );
 
       data.forEach((a) => {
         apps.push({
@@ -714,7 +717,7 @@ const getAppsGitlab = async ({
  */
 const getAppsTeamCity = async ({ accessToken, url }: { url: string; accessToken: string }) => {
   const res = (
-    await request.get<{ project: { name: string; id: string }[] }>(`${url}/app/rest/projects`, {
+    await safeRequest.get<{ project: { name: string; id: string }[] }>(`${url}/app/rest/projects`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json"
@@ -925,7 +928,7 @@ const getAppsCodefresh = async ({ accessToken }: { accessToken: string }) => {
  */
 const getAppsWindmill = async ({ accessToken, url }: { accessToken: string; url?: string | null }) => {
   const apiUrl = url ? `${url}/api` : IntegrationUrls.WINDMILL_API_URL;
-  const { data } = await request.get<{ id: string; name: string }[]>(`${apiUrl}/workspaces/list`, {
+  const { data } = await safeRequest.get<{ id: string; name: string }[]>(`${apiUrl}/workspaces/list`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Accept-Encoding": "application/json"
@@ -938,7 +941,7 @@ const getAppsWindmill = async ({ accessToken, url }: { accessToken: string; url?
       const userPath = "u/user/variable";
       const folderPath = "f/folder/variable";
 
-      const { data: writeUser } = await request.post<object>(
+      const { data: writeUser } = await safeRequest.post<object>(
         `${apiUrl}/w/${app.id}/variables/create`,
         {
           path: userPath,
@@ -954,7 +957,7 @@ const getAppsWindmill = async ({ accessToken, url }: { accessToken: string; url?
         }
       );
 
-      const { data: writeFolder } = await request.post<object>(
+      const { data: writeFolder } = await safeRequest.post<object>(
         `${apiUrl}/w/${app.id}/variables/create`,
         {
           path: folderPath,
@@ -972,14 +975,14 @@ const getAppsWindmill = async ({ accessToken, url }: { accessToken: string; url?
 
       // is write access is allowed then delete the created secrets from workspace
       if (writeUser && writeFolder) {
-        await request.delete(`${apiUrl}/w/${app.id}/variables/delete/${userPath}`, {
+        await safeRequest.delete(`${apiUrl}/w/${app.id}/variables/delete/${userPath}`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
             "Accept-Encoding": "application/json"
           }
         });
 
-        await request.delete(`${apiUrl}/w/${app.id}/variables/delete/${folderPath}`, {
+        await safeRequest.delete(`${apiUrl}/w/${app.id}/variables/delete/${folderPath}`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
             "Accept-Encoding": "application/json"
@@ -1138,6 +1141,16 @@ const getAppsAzureDevOps = async ({ accessToken, orgName }: { accessToken: strin
   return apps;
 };
 
+// The Octopus SDK cut the instance URL at its last /api/ segment and dropped a trailing slash before adding its
+// own paths. Calling the API directly has to do the same, or a URL entered as https://host/api would request
+// https://host/api/api/spaces.
+export const getOctopusDeployBaseUrl = (instanceURL: string) => {
+  const withSlash = instanceURL.endsWith("/") ? instanceURL : `${instanceURL}/`;
+  const apiSegment = withSlash.lastIndexOf("/api/");
+  const base = apiSegment >= 1 ? withSlash.slice(0, apiSegment) : withSlash;
+  return base.endsWith("/") ? base.slice(0, -1) : base;
+};
+
 const getAppsOctopusDeploy = async ({
   apiKey,
   instanceURL,
@@ -1147,17 +1160,22 @@ const getAppsOctopusDeploy = async ({
   instanceURL: string;
   spaceName?: string;
 }) => {
-  const client = await OctopusDeployClient.create({
-    instanceURL,
-    apiKey,
-    userAgentApp: "Infisical Integration"
-  });
+  // The Octopus SDK makes its requests with its own axios instance, which follows redirects and resolves the
+  // host again on every call, so the API is called through safeRequest instead
+  const headers = { "X-Octopus-ApiKey": apiKey, Accept: "application/json" };
+  const baseUrl = getOctopusDeployBaseUrl(instanceURL);
 
-  const repository = new OctopusDeployRepository(client, spaceName);
-
-  const projects = await repository.list({
-    take: 1000
+  const { data: spaces } = await safeRequest.get<{ Items: { Id: string; Name: string }[] }>(`${baseUrl}/api/spaces`, {
+    params: { partialName: spaceName, skip: 0, take: 2147483647 },
+    headers
   });
+  const space = spaces.Items.find((item) => item.Name === spaceName);
+  if (!space) throw new NotFoundError({ message: `Octopus Deploy space '${spaceName}' not found` });
+
+  const { data: projects } = await safeRequest.get<{ Items: { Id: string; Name: string }[] }>(
+    `${baseUrl}/api/${space.Id}/projects`,
+    { params: { take: 1000 }, headers }
+  );
 
   return projects.Items.map((project) => ({
     name: project.Name,

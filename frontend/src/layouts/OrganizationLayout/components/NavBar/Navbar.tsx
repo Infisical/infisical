@@ -1,6 +1,4 @@
-import { useEffect, useState } from "react";
-import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
@@ -20,7 +18,6 @@ import {
   Plus,
   Settings,
   Sun,
-  TriangleAlertIcon,
   User,
   UserPlus,
   Users
@@ -48,7 +45,6 @@ import {
   DialogBody,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DropdownMenu,
@@ -74,18 +70,17 @@ import {
   OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
+  useOrgPermission,
   useServerConfig,
   useSubscription,
   useUser
 } from "@app/context";
 import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import { getOrgScopedProductFromPath } from "@app/helpers/project";
-import { useToggle } from "@app/hooks";
+import { useActiveProduct, useToggle } from "@app/hooks";
 import { subOrganizationsQuery, useGetOrganizations, useLogoutUser } from "@app/hooks/api";
 import { authKeys, fetchAuthToken, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { Organization } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
@@ -151,11 +146,11 @@ export const Navbar = () => {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
+  const { permission } = useOrgPermission();
   const { config: serverConfig } = useServerConfig();
 
   const [showAdminsModal, setShowAdminsModal] = useState(false);
   const [showSubOrgForm, setShowSubOrgForm] = useState(false);
-  const [showCardDeclinedModal, setShowCardDeclinedModal] = useState(false);
 
   const subOrgQuery = subOrganizationsQuery.list({ isAccessible: true });
   const { data: subOrganizations = [] } = useQuery({
@@ -164,10 +159,11 @@ export const Navbar = () => {
     select: (data) => data.organizations
   });
 
-  const isCardDeclined = Boolean(subscription?.cardDeclined);
-  const isCardDeclinedMoreThan30Days = Boolean(
-    isCardDeclined && subscription?.cardDeclinedDays && subscription?.cardDeclinedDays >= 30
-  );
+  const canCreateSubOrg =
+    !isSubOrganization &&
+    permission.can(OrgPermissionSubOrgActions.Create, OrgPermissionSubjects.SubOrganization);
+  const showSubOrgs =
+    Boolean(subscription.subOrganization) && (subOrganizations.length > 0 || canCreateSubOrg);
 
   const { data: orgs } = useGetOrganizations();
   const navigate = useNavigate();
@@ -178,9 +174,7 @@ export const Navbar = () => {
   const [isOrgSelectOpen, setIsOrgSelectOpen] = useState(false);
 
   const location = useLocation();
-  const isBillingPage = location.pathname === `/organizations/${currentOrg.id}/billing`;
-
-  const isModalIntrusive = Boolean(!isBillingPage && isCardDeclinedMoreThan30Days);
+  const activeProduct = useActiveProduct();
 
   const rootOrg = isSubOrganization
     ? orgs?.find((org) => org.id === currentOrg.rootOrgId) || currentOrg
@@ -188,29 +182,14 @@ export const Navbar = () => {
 
   const otherOrgs = orgs?.filter((org) => org.id !== rootOrg.id) ?? [];
 
-  useEffect(() => {
-    if (isModalIntrusive) {
-      setShowCardDeclinedModal(true);
-      sessionStorage.setItem("paymentFailed", "true");
-      return;
-    }
-
-    if (isCardDeclined && !sessionStorage.getItem("paymentFailed")) {
-      sessionStorage.setItem("paymentFailed", "true");
-      setShowCardDeclinedModal(true);
-    }
-  }, [subscription, isBillingPage, isModalIntrusive]);
-
   const handleOrgSelection = async ({
     organizationId,
     navigateTo,
-    isSubOrganization: targetIsSubOrganization = false,
-    onSuccess
+    isSubOrganization: targetIsSubOrganization = false
   }: {
     organizationId?: string;
     navigateTo?: string;
     isSubOrganization?: boolean;
-    onSuccess?: () => void | Promise<void>;
   }) => {
     if (!organizationId) return;
 
@@ -228,8 +207,7 @@ export const Navbar = () => {
         await handleOrgSelection({
           organizationId,
           navigateTo,
-          isSubOrganization: targetIsSubOrganization,
-          onSuccess
+          isSubOrganization: targetIsSubOrganization
         });
       });
       return;
@@ -249,33 +227,6 @@ export const Navbar = () => {
       switchFrom: location,
       isSubOrganization: targetIsSubOrganization
     });
-
-    if (onSuccess) {
-      await onSuccess();
-    }
-  };
-
-  const handleNavigateToRootOrgBilling = async () => {
-    const navigateToBilling = () => {
-      navigate({
-        to: "/organizations/$orgId/billing",
-        params: { orgId: rootOrg.id }
-      });
-    };
-
-    const onSuccess = () => {
-      setShowCardDeclinedModal(false);
-    };
-
-    if (isSubOrganization) {
-      await handleOrgSelection({
-        organizationId: rootOrg.id,
-        navigateTo: "/organizations/$orgId/billing",
-        onSuccess
-      });
-    } else {
-      await navigateToBilling();
-    }
   };
 
   const handleNavigateToAdminConsole = async () => {
@@ -328,13 +279,7 @@ export const Navbar = () => {
 
   const isServerAdminPanel = location.pathname.startsWith("/admin");
 
-  const orgScopedProduct = getOrgScopedProductFromPath(location.pathname);
-  const isPamScope = orgScopedProduct === ProjectType.PAM;
-  const isAgentVaultScope = orgScopedProduct === ProjectType.AgentVault;
-  const isProjectScope =
-    Boolean(orgScopedProduct) ||
-    (location.pathname.startsWith(`/organizations/${currentOrg.id}/projects`) &&
-      location.pathname !== `/organizations/${currentOrg.id}/projects`);
+  const isProjectScope = Boolean(activeProduct);
 
   const handleOrgNav = async (org: Organization) => {
     if (currentOrg?.id === org.id) return;
@@ -369,13 +314,7 @@ export const Navbar = () => {
       className={twMerge(
         "z-10 flex min-h-12 items-center border-b border-border-soft bg-gradient-to-br to-transparent in-data-[theme=light]:bg-none",
         isServerAdminPanel && "from-admin/5",
-        !isServerAdminPanel && isPamScope && "from-product-pam/5",
-        !isServerAdminPanel && isAgentVaultScope && "from-product-av/5",
-        !isServerAdminPanel &&
-          isProjectScope &&
-          !isPamScope &&
-          !isAgentVaultScope &&
-          "from-project/5",
+        !isServerAdminPanel && isProjectScope && "from-project/5",
         !isServerAdminPanel && !isProjectScope && isSubOrganization && "from-sub-org/5",
         !isServerAdminPanel && !isProjectScope && !isSubOrganization && "from-org/5"
       )}
@@ -448,22 +387,6 @@ export const Navbar = () => {
                       </Badge>
                     )}
                   </Link>
-                  {subscription.cardDeclined && !isProjectScope && !isSubOrganization && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex items-center">
-                          <TriangleAlertIcon className="size-3.5 animate-pulse cursor-help text-warning" />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        Your payment could not be processed
-                        {subscription.cardDeclinedReason
-                          ? `: ${subscription.cardDeclinedReason}`
-                          : ""}
-                        . Please update your payment method to continue enjoying premium features.
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
                 </div>
                 <NavbarSwitcherTrigger aria-label="switch-org" />
                 <NavbarSwitcherContent className="w-96">
@@ -496,7 +419,7 @@ export const Navbar = () => {
                         </CommandItem>
                       </CommandGroup>
                       {/* Sub-Organizations */}
-                      {subscription.subOrganization && (
+                      {showSubOrgs && (
                         <>
                           <CommandGroup
                             className="mb-3 ml-4.5 border-l border-border pt-0 pl-3 [&_[cmdk-group-heading]]:pt-0"
@@ -557,25 +480,18 @@ export const Navbar = () => {
                                 <span className="truncate">{subOrg.name}</span>
                               </CommandItem>
                             ))}
-                            <OrgPermissionCan
-                              I={OrgPermissionSubOrgActions.Create}
-                              a={OrgPermissionSubjects.SubOrganization}
-                            >
-                              {(isAllowed) =>
-                                isAllowed && !isSubOrganization ? (
-                                  <CommandItem
-                                    className="text-muted"
-                                    onSelect={() => {
-                                      setIsOrgSelectOpen(false);
-                                      setShowSubOrgForm(true);
-                                    }}
-                                  >
-                                    <Plus />
-                                    <span>New Sub-Organization</span>
-                                  </CommandItem>
-                                ) : null
-                              }
-                            </OrgPermissionCan>
+                            {canCreateSubOrg && (
+                              <CommandItem
+                                className="text-muted"
+                                onSelect={() => {
+                                  setIsOrgSelectOpen(false);
+                                  setShowSubOrgForm(true);
+                                }}
+                              >
+                                <Plus />
+                                <span>New Sub-Organization</span>
+                              </CommandItem>
+                            )}
                           </CommandGroup>
                           {otherOrgs.length > 0 && <CommandSeparator />}
                         </>
@@ -841,36 +757,6 @@ export const Navbar = () => {
         </DropdownMenu>
       </ButtonGroup>
 
-      <Dialog
-        open={showCardDeclinedModal}
-        onOpenChange={(isOpen) => {
-          if (!isModalIntrusive) setShowCardDeclinedModal(isOpen);
-        }}
-      >
-        <DialogContent showCloseButton={!isModalIntrusive}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faExclamationTriangle} className="text-lg text-warning" />
-              Your payment could not be processed.
-            </DialogTitle>
-            <DialogDescription>
-              We were unable to process your last payment
-              {subscription.cardDeclinedReason ? `: ${subscription.cardDeclinedReason}` : ""}.
-              Please update your payment information to continue using premium features.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            {!isModalIntrusive && (
-              <Button variant="outline" onClick={() => setShowCardDeclinedModal(false)}>
-                Dismiss
-              </Button>
-            )}
-            <Button variant="org" onClick={handleNavigateToRootOrgBilling}>
-              Update Payment Method
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       <NewSubOrganizationModal
         isOpen={showSubOrgForm}
         onOpenChange={setShowSubOrgForm}

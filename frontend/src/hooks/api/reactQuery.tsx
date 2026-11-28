@@ -43,7 +43,10 @@ function ValidationErrorModal({
   requestBody?: Record<string, unknown> | null;
   toastIdRef: { current: string | number | undefined };
 }) {
-  if (serverResponse.error !== ApiErrorTypes.ValidationError) {
+  if (
+    serverResponse.error !== ApiErrorTypes.ValidationError ||
+    !Array.isArray(serverResponse.message)
+  ) {
     return null;
   }
 
@@ -133,6 +136,11 @@ function PermissionConditionsList({
   );
 }
 
+const reportedErrors = new WeakSet<object>();
+
+export const wasErrorReported = (error: unknown) =>
+  typeof error === "object" && error !== null && reportedErrors.has(error);
+
 export const onRequestError = (
   error: unknown,
   _variables?: unknown,
@@ -153,10 +161,16 @@ export const onRequestError = (
       return;
     }
 
+    if (
+      serverResponse?.error === ApiErrorTypes.ValidationError &&
+      mutation?.meta?.skipValidationToast
+    ) {
+      return;
+    }
+    reportedErrors.add(error);
+
     if (serverResponse?.error === ApiErrorTypes.ValidationError) {
-      if (mutation?.meta?.skipValidationToast) {
-        return;
-      }
+      const validationMessage: unknown = serverResponse.message;
       let requestBody: Record<string, unknown> | undefined;
       try {
         const configData = error.config?.data;
@@ -172,7 +186,10 @@ export const onRequestError = (
       toastIdRef.current = createNotification({
         title: "Validation Error",
         type: "error",
-        text: "Please check the input and try again.",
+        text:
+          typeof validationMessage === "string"
+            ? validationMessage
+            : "Please check the input and try again.",
         callToAction: (
           <ValidationErrorModal
             serverResponse={serverResponse}
@@ -323,8 +340,14 @@ export const onRequestError = (
     const errorMessage =
       serverResponse?.message || "An unexpected error occurred. Please try again.";
 
+    const status = error.response?.status;
+    let title = "Request failed";
+    if (status === 400) title = "Bad Request";
+    else if (status === 429) title = "Too many requests";
+    else if (status && status >= 500) title = "Server error";
+
     createNotification({
-      title: "Bad Request",
+      title,
       type: "error",
       text: `${errorMessage}${errorMessage.endsWith(".") ? "" : "."}`,
       copyActions: serverResponse?.reqId

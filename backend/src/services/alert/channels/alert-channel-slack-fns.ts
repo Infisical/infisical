@@ -32,9 +32,9 @@ export const buildSlackPayload = (payload: TAlertPayload): TSlackPayload => {
 
   const itemBlocks: TSlackBlock[] = [];
   displayItems.forEach((item, index) => {
-    const fields: Array<{ type: "mrkdwn"; text: string }> = [
-      { type: "mrkdwn", text: `*Name:*\n${item.title ? escapeSlackText(item.title) : "N/A"}` }
-    ];
+    const name = item.title ? escapeSlackText(item.title) : "N/A";
+    const linkedName = item.url ? `<${item.url}|${name}>` : name;
+    const fields: Array<{ type: "mrkdwn"; text: string }> = [{ type: "mrkdwn", text: `*Name:*\n${linkedName}` }];
     if (item.identifier)
       fields.push({ type: "mrkdwn", text: `*Identifier:*\n\`${escapeSlackText(item.identifier)}\`` });
     (item.fields ?? []).forEach((field) => {

@@ -1,8 +1,9 @@
 import { AccessScope } from "@app/db/schemas";
+import { TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { BadRequestError } from "@app/lib/errors";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { auditRevokedProjectAccess } from "@app/services/org/org-access-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import {
@@ -12,7 +13,6 @@ import {
 } from "@app/services/org/org-membership-events";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
-import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { assertWillRetainOrgAdmin } from "../membership-user/membership-user-fns";
 import { TProjectAccessRevokeServiceFactory, TRevokedProjectAccess } from "../membership/project-access-revoke-service";
@@ -24,7 +24,7 @@ type TDeleteOrgMemberships = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "deleteByUserIdsInGroupsOwnedByOrgs">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "delete" | "countActiveAdmins">;
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
-  licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
+  usageMeteringService: TUsageMeteringService;
   userId?: string;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -39,7 +39,7 @@ export const deleteOrgMembershipsFn = async ({
   orgId,
   orgDAL,
   userAliasDAL,
-  licenseService,
+  usageMeteringService,
   userId,
   membershipUserDAL,
   userGroupMembershipDAL,
@@ -78,7 +78,6 @@ export const deleteOrgMembershipsFn = async ({
     }
 
     if (!membershipUserIds.length) {
-      await licenseService.updateSubscriptionOrgMemberCount(orgId);
       return orgMemberships;
     }
 
@@ -123,10 +122,11 @@ export const deleteOrgMembershipsFn = async ({
       tx
     );
 
-    await licenseService.updateSubscriptionOrgMemberCount(orgId);
     return orgMemberships;
   });
 
+  // After the commit: seat sync calls the License Server.
+  await usageMeteringService.syncSeats(orgId);
   sendPamCancellations();
   await auditRevokedProjectAccess({ auditLogService, revoked, reason: OrgAccessRemovalCause.RemovedFromOrg });
 

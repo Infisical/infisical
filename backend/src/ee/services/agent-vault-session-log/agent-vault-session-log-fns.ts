@@ -4,6 +4,7 @@ import { ProjectType } from "@app/db/schemas";
 import { defineStorageNamespace } from "@app/services/object-storage/object-storage-namespace-fns";
 
 import { AGENT_VAULT_SESSION_LOG_CHUNK_ID_PATTERN } from "./agent-vault-session-log-constants";
+import type { TCreateChunkUploadUrlDTO } from "./agent-vault-session-log-types";
 
 export const AgentVaultSessionLogsNamespace = defineStorageNamespace({
   id: "agent-vault.session-logs",
@@ -35,4 +36,14 @@ export const parseSessionLogObjectKey = (folder: string, key: string) => {
   const lastRecordAtMs = chunkIdTimeMs(chunkId);
   if (rev !== toRev(lastRecordAtMs)) return null;
   return { chunkId, proxyId, lastRecordAt: new Date(lastRecordAtMs) };
+};
+
+// The counts are the proxy's own, so they reach telemetry only when they add up to the records it says it sent.
+export const getChunkDecisionProperties = ({
+  recordCount,
+  decisionCounts
+}: Pick<TCreateChunkUploadUrlDTO["chunk"], "recordCount" | "decisionCounts">) => {
+  if (!decisionCounts || recordCount === undefined) return {};
+  const { brokered, passthrough, blocked, error } = decisionCounts;
+  return brokered + passthrough + blocked + error === recordCount ? { brokered, passthrough, blocked, error } : {};
 };

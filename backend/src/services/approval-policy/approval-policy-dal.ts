@@ -1,8 +1,9 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { ApprovalPoliciesSchema, TableName } from "@app/db/schemas";
+import { ApprovalPoliciesSchema, TableName, TApprovalPolicies } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { canonicalizeSecretPathPattern } from "@app/lib/fn";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 import { ApprovalPolicyType, ApproverType } from "./approval-policy-enums";
@@ -124,10 +125,11 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
   const findByProjectId = async (
     policyType: ApprovalPolicyType,
     projectId: string,
-    options?: { scopeType?: string | null; scopeId?: string | null }
+    options?: { scopeType?: string | null; scopeId?: string | null },
+    tx?: Knex
   ) => {
     try {
-      const dbInstance = db.replicaNode();
+      const dbInstance = tx || db.replicaNode();
       const baseQuery = dbInstance(TableName.ApprovalPolicies)
         .where({ type: policyType, projectId })
         .orderBy("id", "asc");
@@ -224,17 +226,9 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findSecretAccessPolicyByEnvIdAndSecretPath = async ({
-    projectId,
-    envId,
-    secretPath
-  }: {
-    projectId: string;
-    envId: string;
-    secretPath: string;
-  }) => {
+  const findSecretAccessPoliciesByEnvId = async ({ projectId, envId }: { projectId: string; envId: string }) => {
     try {
-      const policy = await db
+      return (await db
         .replicaNode()(TableName.ApprovalPolicies)
         .join(
           TableName.ApprovalPolicySecretEnvironment,
@@ -244,20 +238,12 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
         .where(`${TableName.ApprovalPolicies}.type`, ApprovalPolicyType.SecretAccess)
         .where(`${TableName.ApprovalPolicies}.projectId`, projectId)
         .where(`${TableName.ApprovalPolicySecretEnvironment}.envId`, envId)
-        .where(`${TableName.ApprovalPolicySecretEnvironment}.secretPath`, secretPath)
         .select(selectAllTableCols(TableName.ApprovalPolicies))
-        .first();
-
-      if (!policy) return null;
-
-      const [steps, bypassers] = await Promise.all([
-        findStepsByPolicyId(policy.id),
-        findBypassersByPolicyId(policy.id)
-      ]);
-
-      return { ...policy, steps, bypassers };
+        .select(db.ref("secretPath").withSchema(TableName.ApprovalPolicySecretEnvironment))) as (TApprovalPolicies & {
+        secretPath: string;
+      })[];
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find secret access approval policy by environment and secret path" });
+      throw new DatabaseError({ error, name: "Find secret access approval policies by environment" });
     }
   };
 
@@ -611,13 +597,14 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
 
   return {
     ...orm,
+    primaryNode: () => db.primaryNode(),
     findByIdForUpdate,
     findByIdForShare,
     findStepsByPolicyId,
     findBypassersByPolicyId,
     findBypassersByPolicyIds,
     findByProjectId,
-    findSecretAccessPolicyByEnvIdAndSecretPath,
+    findSecretAccessPoliciesByEnvId,
     findPoliciesWhereSubjectIsApprover,
     isProjectApprover,
     findRequestableScopes,
@@ -702,17 +689,19 @@ export const approvalPolicySecretEnvironmentDALFactory = (db: TDbClient) => {
         })
         .where(`${TableName.ApprovalPolicies}.type`, ApprovalPolicyType.SecretChange)
         .whereIn(`${TableName.ApprovalPolicySecretEnvironment}.envId`, envIds)
-        .where(`${TableName.ApprovalPolicySecretEnvironment}.secretPath`, secretPath)
         .where((qb) => {
           if (excludePolicyId) void qb.whereNot(`${TableName.ApprovalPolicies}.id`, excludePolicyId);
         })
         .select(selectAllTableCols(TableName.ApprovalPolicies))
+        .select(db.ref("secretPath").withSchema(TableName.ApprovalPolicySecretEnvironment).as("policySecretPath"))
         .select(db.ref("name").withSchema(TableName.Environment).as("envName"))
         .select(db.ref("slug").withSchema(TableName.Environment).as("envSlug"))
         .select(db.ref("id").withSchema(TableName.Environment).as("environmentId"));
 
+      // Compared in code because a policy stored as "prod" governs the same folder as "/prod".
+      const canonicalSecretPath = canonicalizeSecretPathPattern(secretPath);
       const formattedDocs = sqlNestRelationships({
-        data: docs,
+        data: docs.filter((doc) => canonicalizeSecretPathPattern(doc.policySecretPath) === canonicalSecretPath),
         key: "id",
         parentMapper: (data) => ApprovalPoliciesSchema.parse(data),
         childrenMapper: [

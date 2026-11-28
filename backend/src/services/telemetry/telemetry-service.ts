@@ -1,11 +1,12 @@
 import { requestContext } from "@fastify/request-context";
 import { PostHog } from "posthog-node";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { InstanceType, PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { InstanceType } from "@app/ee/services/license/license-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -20,9 +21,7 @@ import {
   recordProductAnalyticsDroppedMetric,
   recordProductAnalyticsPublishedMetric
 } from "@app/lib/telemetry/metrics";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { HubSpotSignupMethod, PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "./telemetry-types";
 
@@ -82,11 +81,12 @@ type SingleEventData = {
 
 export type TTelemetryServiceFactory = ReturnType<typeof telemetryServiceFactory>;
 export type TTelemetryServiceFactoryDep = {
+  instanceConfigService: TInstanceConfigService;
   keyStore: Pick<
     TKeyStoreFactory,
     "incrementBy" | "setItemWithExpiryNX" | "setExpiry" | "streamAdd" | "streamCollect" | "streamTrim" | "streamLength"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getInstanceType" | "getPlan" | "getOrgSeatUsage">;
+  licenseService: TLicenseService;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };
@@ -138,6 +138,7 @@ const getDeploymentType = (
 };
 
 export const telemetryServiceFactory = ({
+  instanceConfigService,
   keyStore,
   licenseService,
   orgDAL,
@@ -149,7 +150,8 @@ export const telemetryServiceFactory = ({
   const getInstanceId = (): Promise<string | undefined> => {
     if (appCfg.INFISICAL_CLOUD) return Promise.resolve(undefined);
     if (!instanceIdPromise) {
-      instanceIdPromise = getServerCfg()
+      instanceIdPromise = instanceConfigService
+        .getSettings()
         .then(({ instanceId }) => instanceId)
         .catch(() => {
           instanceIdPromise = undefined;
@@ -207,7 +209,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     lastName?: string,
     hubspotUtk?: string
   ) => {
-    const instanceType = licenseService.getInstanceType();
+    const { instanceType } = licenseService.getInstanceEntitlements();
     if (
       appCfg.isProductionMode &&
       instanceType === InstanceType.Cloud &&
@@ -264,7 +266,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       properties.name = orgName;
     }
 
-    const instanceType = licenseService.getInstanceType();
+    const { instanceType } = licenseService.getInstanceEntitlements();
     properties.is_cloud = instanceType === InstanceType.Cloud;
     properties.instance_type = instanceType;
     properties.deployment_type = getDeploymentType(instanceType, appCfg);
@@ -285,13 +287,10 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
 
     try {
-      const [plan, seatUsage] = await Promise.all([
-        licenseService.getPlan(orgId),
-        licenseService.getOrgSeatUsage(orgId)
-      ]);
+      const [plan, seatUsage] = await Promise.all([licenseService.getPlan(orgId), licenseService.getSeatUsage(orgId)]);
       properties.plan = plan.slug ?? "free";
       properties.seat_count = seatUsage.membersUsed;
-      properties.has_secret_scanning = Boolean(plan.secretScanning);
+      properties.has_secret_scanning = plan.has(PlanFeature.SecretScanning);
     } catch (error) {
       logger.error(error, "Failed to fetch org plan for PostHog group properties");
     }

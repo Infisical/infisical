@@ -104,6 +104,8 @@ tables:
     columns:
       - id
       - accessBundleId
+      - projectId
+      - sessionId
       - hostPattern
       - credentialType
       - allowedMethods
@@ -159,6 +161,15 @@ tables:
       - createdAt
       - updatedAt
 
+  - name: agent_vault_session_stats
+    source: public.agent_vault_session_stats
+    columns:
+      - sessionId
+      - requests
+      - brokered
+      - createdAt
+      - updatedAt
+
   - name: agent_vault_variables
     source: public.agent_vault_variables
     columns:
@@ -186,6 +197,25 @@ tables:
       - gatewayId
       - projectId
 
+  - name: approval_policies
+    source: public.approval_policies
+    columns:
+      - id
+      - projectId
+      - organizationId
+      - type
+      - name
+      - isActive
+      - maxRequestTtl
+      - conditions
+      - constraints
+      - createdAt
+      - updatedAt
+      - bypassForMachineIdentities
+      - enforcementLevel
+      - scopeType
+      - scopeId
+
   - name: approval_requests
     source: public.approval_requests
     columns:
@@ -203,6 +233,7 @@ tables:
       - expiresAt
       - createdAt
       - updatedAt
+      - autoApprovedAt
 
   - name: certificate_authorities
     source: public.certificate_authorities
@@ -327,6 +358,67 @@ tables:
       - status
       - statusDetails
       - kmsKeyId
+
+  - name: folder_checkpoint_resources
+    source: public.folder_checkpoint_resources
+    columns:
+      - id
+      - folderCheckpointId
+      - secretVersionId
+      - folderVersionId
+      - createdAt
+      - updatedAt
+
+  - name: folder_checkpoints
+    source: public.folder_checkpoints
+    columns:
+      - id
+      - folderCommitId
+      - createdAt
+      - updatedAt
+
+  - name: folder_commit_changes
+    source: public.folder_commit_changes
+    columns:
+      - id
+      - folderCommitId
+      - changeType
+      - isUpdate
+      - secretVersionId
+      - folderVersionId
+      - createdAt
+      - updatedAt
+
+  - name: folder_commits
+    source: public.folder_commits
+    columns:
+      - id
+      - commitId
+      - actorMetadata
+      - actorType
+      - message
+      - folderId
+      - envId
+      - createdAt
+      - updatedAt
+
+  - name: folder_tree_checkpoint_resources
+    source: public.folder_tree_checkpoint_resources
+    columns:
+      - id
+      - folderTreeCheckpointId
+      - folderId
+      - folderCommitId
+      - createdAt
+      - updatedAt
+
+  - name: folder_tree_checkpoints
+    source: public.folder_tree_checkpoints
+    columns:
+      - id
+      - folderCommitId
+      - createdAt
+      - updatedAt
 
   - name: gateways_v2
     source: public.gateways_v2
@@ -593,6 +685,23 @@ tables:
       - lockoutDurationSeconds
       - lockoutCounterResetSeconds
 
+  - name: integration_auths
+    source: public.integration_auths
+    columns:
+      - id
+      - integration
+      - teamId
+      - url
+      - namespace
+      - accountId
+      - accessExpiresAt
+      - metadata
+      - algorithm
+      - keyEncoding
+      - projectId
+      - createdAt
+      - updatedAt
+
   - name: integrations
     source: public.integrations
     columns:
@@ -793,7 +902,7 @@ tables:
       - kmsDefaultKeyId
       - defaultMembershipRole
       - enforceMfa
-      - selectedMfaMethod
+      - allowedMfaMethods
       - allowSecretSharingOutsideOrganization
       - shouldUseNewPrivilegeSystem
       - privilegeUpgradeInitiatedByUsername
@@ -813,6 +922,8 @@ tables:
       - rootOrgId
       - blockDuplicateSecretSyncDestinations
       - requireGatewayPools
+      - aiConnectionId
+      - aiModel
 
   - name: pam_accounts
     source: public.pam_accounts
@@ -930,6 +1041,7 @@ tables:
       - projectId
       - createdAt
       - updatedAt
+      - deleteAfter
 
   - name: project_gateways
     source: public.project_gateways
@@ -1003,6 +1115,7 @@ tables:
       - showSnapshotsLegacy
       - defaultProduct
       - secretDetectionIgnoreValues
+      - deleteAfter
 
   - name: relays
     source: public.relays
@@ -1028,6 +1141,26 @@ tables:
       - createdAt
       - updatedAt
       - fromDate
+
+  - name: resource_metadata
+    source: public.resource_metadata
+    columns:
+      - id
+      - key
+      - orgId
+      - userId
+      - identityId
+      - secretId
+      - dynamicSecretId
+      - certificateId
+      - certificateRequestId
+      - certificateRequestCreatedAt
+      - pamResourceId
+      - pamAccountId
+      - pamDomainId
+      - agentVaultSessionId
+      - createdAt
+      - updatedAt
 
   - name: roles
     source: public.roles
@@ -1085,6 +1218,18 @@ tables:
       - statusChangedByUserId
       - bypassReason
 
+  - name: secret_folder_versions
+    source: public.secret_folder_versions
+    columns:
+      - id
+      - name
+      - version
+      - createdAt
+      - updatedAt
+      - envId
+      - folderId
+      - description
+
   - name: secret_folders
     source: public.secret_folders
     columns:
@@ -1115,6 +1260,16 @@ tables:
       - replicationStatus
       - lastReplicated
       - isReserved
+
+  - name: secret_references_v2
+    source: public.secret_references_v2
+    columns:
+      - id
+      - environment
+      - secretPath
+      - secretKey
+      - secretId
+      - targetProjectSlug
 
   - name: secret_rotations
     source: public.secret_rotations
@@ -1174,6 +1329,18 @@ tables:
       - isScanNewCommitsEnabled
       - isDiscoveryEnabled
 
+  - name: secret_scanning_finding_locations
+    source: public.secret_scanning_finding_locations
+    columns:
+      - id
+      - findingId
+      - resourceId
+      - scanId
+      - fingerprint
+      - rule
+      - details
+      - createdAt
+
   - name: secret_scanning_findings
     source: public.secret_scanning_findings
     columns:
@@ -1190,6 +1357,7 @@ tables:
       - fingerprint
       - details
       - scanId
+      - lastDetectedAt
       - createdAt
       - updatedAt
 
@@ -1282,6 +1450,44 @@ tables:
       - projectId
       - createdByActorType
 
+  - name: secret_validation_rules
+    source: public.secret_validation_rules
+    columns:
+      - id
+      - name
+      - description
+      - projectId
+      - envId
+      - secretPath
+      - type
+      - isActive
+      - createdAt
+      - updatedAt
+
+  - name: secret_versions_v2
+    source: public.secret_versions_v2
+    columns:
+      - id
+      - version
+      - type
+      - key
+      - reminderNote
+      - reminderRepeatDays
+      - skipMultilineEncoding
+      - metadata
+      - secretId
+      - folderId
+      - userId
+      - createdAt
+      - updatedAt
+      - userActorId
+      - identityActorId
+      - actorType
+      - parentVersionId
+      - isRedacted
+      - redactedAt
+      - redactedByUserId
+
   - name: secrets
     source: public.secrets
     columns:
@@ -1329,6 +1535,15 @@ tables:
       - createdBy
       - projectId
       - expiryNotificationSent
+
+  - name: totp_configs
+    source: public.totp_configs
+    columns:
+      - id
+      - userId
+      - isVerified
+      - createdAt
+      - updatedAt
 
   - name: user_group_membership
     source: public.user_group_membership

@@ -2,8 +2,8 @@
 Bare <Step> elements, so a page can place them inside its own <Steps> and keep the numbering.
 Props:
 - externalId: "required" adds the External ID instructions, split by the page's
-  Organization-level and Project-level views. "organization" adds a single instruction to use the
-  Organization ID, for a page whose connection always sends it (Agent Vault) and that has no views.
+  Organization-level and Project-level views. "agent-vault-project" adds a single instruction to use
+  the Agent Vault project's ID, for a page whose connection always sends it and that has no views.
   "skip" leaves them out.
 */}
 
@@ -31,7 +31,7 @@ Props:
 
                 - **Secrets Management:** the project's ID, shown under **Project ID** in the project's settings
                 - **Certificate Management:** your Organization ID, shown under **Organization ID** in your organization's **Settings**
-                - **Agent Vault:** your Organization ID
+                - **Agent Vault:** the project's ID, shown under **Project ID** in the project's **Administration** &gt; **Settings**
 
                 <Note>
                     If you created a project-level connection before May 26, 2026 on Infisical Cloud (or before v0.160.7 if you self-host Infisical), Infisical sends your Organization ID for it. To use the Project ID instead, recreate the connection and update the role's trust policy.
@@ -42,9 +42,11 @@ Props:
         </MDX>
     )}
 
-    {externalId === "organization" && (
+    {externalId === "agent-vault-project" && (
         <MDX>
-            Enable **Require external ID** and enter your Organization ID. You can copy it from your Infisical URL: it's the ID after `/organizations/`.
+            Enable **Require external ID** and enter the ID of your Agent Vault project. It's shown under **Project ID** in the project's **Administration** &gt; **Settings**.
+
+            Infisical sends this ID every time it assumes the role, so the role only works for connections in this project.
         </MDX>
     )}
 </Step>

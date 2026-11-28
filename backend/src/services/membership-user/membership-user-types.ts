@@ -1,11 +1,18 @@
+import { Knex } from "knex";
+
 import { AccessScopeData, TemporaryPermissionMode } from "@app/db/schemas";
-import { OrgServiceActor } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 
 export interface TMembershipUserScopeFactory {
   onCreateMembershipUserGuard: (
     arg: TCreateMembershipUserDTO,
-    newMembers: { id: string; email?: string | null }[]
+    newMembers: { id: string; email?: string | null }[],
+    newUserEmails: string[]
   ) => Promise<void>;
+  onCreateMembershipReserve?: (
+    arg: TCreateMembershipUserDTO,
+    newMemberCount: number
+  ) => Promise<TMembershipReservation | undefined>;
   onCreateMembershipComplete: (
     arg: TCreateMembershipUserDTO,
     newMembers: { id: string; email?: string | null }[]
@@ -24,8 +31,13 @@ export interface TMembershipUserScopeFactory {
   isCustomRole: (role: string) => boolean;
 }
 
+export type TMembershipReservation = {
+  release: (count?: number) => Promise<void>;
+  checkInTransaction: (tx: Knex) => Promise<void>;
+};
+
 export type TCreateMembershipUserDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   data: {
     usernames: string[];
@@ -43,7 +55,7 @@ export type TCreateMembershipUserDTO = {
 };
 
 export type TUpdateMembershipUserDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     userId: string;
@@ -62,7 +74,7 @@ export type TUpdateMembershipUserDTO = {
 };
 
 export type TListMembershipUserDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   data: {
     limit?: number;
@@ -73,7 +85,7 @@ export type TListMembershipUserDTO = {
 };
 
 export type TDeleteMembershipUserDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     userId: string;
@@ -81,7 +93,7 @@ export type TDeleteMembershipUserDTO = {
 };
 
 export type TGetMembershipUserByUserIdDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     userId: string;
@@ -89,6 +101,6 @@ export type TGetMembershipUserByUserIdDTO = {
 };
 
 export type TListAvailableUsersDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
 };

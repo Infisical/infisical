@@ -14,13 +14,14 @@ All PAM services live under `backend/src/ee/services/pam-*/`:
 
 | Directory                          | Purpose                                                                                                                |
 | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `pam/`                             | Shared enums, permission helpers (`pam-permission.ts`), validators, policy registry (`pam-policies.ts`), and this file |
+| `pam/`                             | Shared enums, permission adapters (`pam-permission.ts`), validators, policy registry (`pam-policies.ts`), and this file |
 | `pam-folder/`                      | Folder CRUD + folder-level permission checks                                                                           |
 | `pam-account/`                     | Account CRUD, credential encryption, gateway attachment, SSH CA, account-type config                                   |
 | `pam-account-template/`            | Account templates (type + policies + settings)                                                                         |
 | `pam-account-rotation/`            | Scheduled + on-demand SQL credential rotation                                                                          |
 | `pam-session/` + `pam-web-access/` | Session lifecycle and WebSocket session handlers (Postgres/SSH/RDP)                                                    |
 | `pam-session-recording/`           | Recording chunk storage/retrieval + storage providers                                                                  |
+| `pam-session-activity/`            | Turns each newly stored recording chunk into events for log streams that opted into session activity                   |
 | `pam-membership/`                  | Product + resource membership management                                                                               |
 | `pam-project/`                     | PAM project bootstrap + resolver                                                                                       |
 | `pam-access-request/`              | PAM's face on the shared approvals system: folder config, notifications, read models, approval resource               |
@@ -33,9 +34,14 @@ new deps with `Pick<>`).
 
 Two tiers: **product membership** (`PamProductRole`: Admin/Member) + **resource membership** scoped to a
 folder or account (`PamResourceRole`: Admin/Operator/Connector/Auditor; Operator is Connector plus
-`ViewCredentials`, with no approval rights so credential approval can't be self-served). Shared helpers live in
-`pam/pam-permission.ts` (`verifyProductMembership`, `checkAccountAccess`, `getResourceIdsWithActions`, …) —
-use them instead of re-implementing. Every list/mutation endpoint checks an **action**, not just
+`ViewCredentials`, with no approval rights so credential approval can't be self-served). Every resource check and
+read lives on `pamPermissionService` in the PAM domain (`getPamPermission`, `assertAccountAccess`,
+`canAccessAccount`, `getResourceIdsWithActions`, `getLaunchAccessRemainingMs`, `getAccountPermissionRules`, and
+`within(tx)` for a re-check that must see the caller's uncommitted membership change); never read PAM memberships
+or evaluate PAM roles outside it. `pam/pam-permission.ts` keeps only positional adapters over it and
+`verifyProductMembership`. PAM services take the request's actor context
+(`actor: req.actor`); never rebuild one from flat actor fields, which drops a delegated token's scope
+narrowing. Every list/mutation endpoint checks an **action**, not just
 membership. There is **no org-admin fallback**: permission needs project-scoped membership. Instead, a user
 (never a machine identity) holding the org Admin role (the role itself, checked with `hasRole`, not a
 permission) can list every folder
@@ -49,9 +55,9 @@ Gotchas:
 - **Product membership is plain project membership, so PAM roles inherit the generic project role rules.**
   `PamProductRole.Admin`/`Member` are stored as the `admin`/`member` project membership roles, which means a
   product member would otherwise pick up the generic project Member ability — including identity CRUD.
-  In a PAM project those slugs resolve to their own rule sets — `pamProjectAdminPermissions` /
-  `pamProjectMemberPermissions` in `permission/default-roles.ts`, dispatched by project type in
-  `buildProjectPermissionRules` — rather than the generic project Admin/Member abilities. A product
+  In a PAM project those slugs resolve to their own rule sets (`PamProjectRoles` in
+  `domains/pam/pam/ce/models/pam-project-roles.ts`, which `domains.ts` hands to Projects) rather than the
+  generic project Admin/Member abilities. A product
   member gets read-only visibility of members, groups and identities and nothing else, because
   everything they are entitled to comes from their folder/account memberships. Managing identities,
   users and groups is a product admin responsibility; without the split, a product member inherited
@@ -96,7 +102,9 @@ Each type's full config (connection/credential schemas, icon, label, sanitized-c
 in one `ACCOUNT_TYPE_CONFIGS` entry in `pam-account/pam-account-schemas.ts`. Forms are **schema-driven**:
 the frontend renders create/edit forms from `GET /pam/accounts/types` metadata, so there are **no per-type
 frontend components**. Adding a type is mostly a config entry + an icon; the gateway extension points are
-`extractGatewayTarget` and `buildSessionGatewayConnectionDetails` in the same file.
+`extractGatewayTarget` and `buildSessionGatewayConnectionDetails` in the same file. CockroachDB reuses the
+Postgres implementation throughout and reaches the gateway as `postgres` (`resolveGatewayAccountType`, mirrored
+by the CLI's capability check), so it needs no gateway upgrade.
 
 **Auth methods** are a discriminated union on `credentials`. `forceWhen` (a UI hint, applied server-side
 by `applyForcedFields` on create/update and mirrored by the form) pins fields an auth method leaves no
@@ -129,11 +137,14 @@ Gateway-routed types run through one RPC — `testConnectionWithGateway` → the
 Windows RDP, SSH cert auth, MsSQL NTLM/Kerberos, and K8s gateway-auth). A null test result (gateway offline / missing
 the connection-test protocol) skips rather than blocks.
 
-Cloud types use one of two brokering models instead of a plain gateway TCP proxy: **gateway-less** (`AwsIam`,
-`requiresGateway: false`) mints short-lived STS credentials in `access()` and returns them in session
-metadata; **gateway-injection** (`GcpServiceAccount`, `AzureCli`) proxies the cloud REST API through the
-gateway and injects a backend-minted short-lived token so no credential reaches the client. See
-`access()` / `getSessionCredentials` and the CLI `packages/pam/handlers/<provider>`.
+Cloud types use one of two brokering models instead of a plain gateway TCP proxy: **gateway-less** mints
+short-lived credentials in `access()` and returns them in session metadata; **gateway-injection**
+(`GcpServiceAccount`, `AzureCli`) proxies the cloud REST API through the gateway and injects a backend-minted
+short-lived token so no credential reaches the client. `AwsIam` (`requiresGateway: false`) is both: the console,
+and any account without a gateway, is gateway-less and capped at one hour, because Infisical Cloud's `AssumeRole`
+is role chaining. CLI sessions on an account with a gateway go through it instead, and the gateway re-signs each
+request (SigV4) with STS credentials it re-fetches from `getSessionCredentials` before they expire, so the session
+can outlive them. See `access()` / `getSessionCredentials` and the CLI `packages/pam/handlers/<provider>`.
 
 **Snowflake is gateway-injection with no wire protocol**: the gateway answers the part of Snowflake's REST
 API that drivers speak and runs each statement through its own client (CLI `packages/pam/handlers/snowflake/`),
@@ -185,6 +196,15 @@ registry-driven in `pam/pam-policies.ts` and stored in the template's `policies`
 policies apply before the session starts; gateway-enforced ones flow to the gateway via `policyRules`.
 **Settings** (recording, password constraints, log masking) are a separate concept — they live in the
 template's `settings` column, not `policies`. Both are edited on the template detail sheet's "General" tab.
+
+**Max Access Duration caps the approved access window, not a session**: it resolves only with Require Approval
+on (`resolveAccessControls`), `assertCanCreateRequest` rejects longer requests, and `postApprovalTxRoutine`
+clamps every grant, break glass included, to the template's current max.
+
+**Output masking fails closed**: an older gateway would silently ignore the rule, so
+`assertGatewayEnforcesOutputMasking` refuses the session unless the gateway advertises `outputMasking`. A new
+gateway capability must also be added to the heartbeat body schema in `ee/routes/v2/gateway-router.ts`, which
+strips unknown keys, so a capability missing there is never stored and every check on it fails.
 
 **External recording storage** is the `aws-s3` backend whether the connection is AWS or S3-Compatible Storage
 (`resolveS3RecordingAccess`). Don't add a backend per provider: the value is in each chunk's AAD and in the
@@ -242,7 +262,7 @@ are reused from `app-connection/shared/sql`, and rotation is brokered through th
 
 `pam-session/` + `pam-web-access/`. Sessions reference accounts via nullable `accountId` (history survives
 account deletion). Duration is capped at the template max, the approval grant's expiry and the end of a
-temporary folder or account membership (`getLaunchAccessRemainingMs`), since nothing ends a session when a
+temporary folder or account membership (`pamPermissionService.getLaunchAccessRemainingMs`), since nothing ends a session when a
 membership lapses on its own; expiration is enforced by a delayed BullMQ job scheduled at session creation.
 
 **Nothing re-checks the actor mid-session**, so every path that takes access away has to close sessions
@@ -258,6 +278,13 @@ resource-scoped predicate is false once the FK is nulled, so `PamProductRole.Adm
 read/terminate paths (the DAL's `includeOrphaned`, `getSessionById`/`terminateSession`, recording
 playback), as it does for scope-less audit-log rows. `getSessionCredentials` still refuses — no account
 means no credentials to mint.
+
+**Recordings are also read server-side.** `pam-session-activity/` decrypts each newly stored chunk and
+maps its events in `buildPamSessionActivityEvents` for log streams with `filters.pamSessionActivity`, so
+a change to the recording event format (database entries, terminal events, HTTP events) needs the
+same change there as in the session viewer. Only a PAM product admin can create or change a stream
+that receives session activity (`assertCanStreamPamSessionActivity`), since org-level stream access
+would otherwise hand session content to people PAM never let view it.
 
 ## Conventions
 

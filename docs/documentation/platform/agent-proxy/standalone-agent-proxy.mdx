@@ -81,7 +81,7 @@ Every option resolves from the same sources, in order: **the flag → an environ
   The proxy address is the one setting that can't come from `.infisical.yaml`. That file is usually committed to your repository, so a wrong or malicious value would silently route every agent's traffic through the wrong host. Pass it with `--proxy` or `INFISICAL_AGENT_PROXY_ADDRESS` instead.
 </Note>
 
-See the [CLI reference](/cli/reference#secrets-manager-agent-proxy) for every flag on both subcommands.
+To see every flag, run `infisical secrets-manager agent-proxy start --help` or `infisical secrets-manager agent-proxy connect --help`.
 
 ## Deployment
 
@@ -237,8 +237,5 @@ Records go to **stderr**, so whatever supervises the proxy collects them, and `-
 <CardGroup cols={2}>
   <Card title="Proxied Services" icon="arrow-right-left" href="/documentation/platform/agent-proxy/proxied-services">
     Host patterns, header rewrites, and secret substitution in depth.
-  </Card>
-  <Card title="agent-proxy CLI reference" icon="terminal" href="/cli/reference#secrets-manager-agent-proxy">
-    Every flag for `start` and `connect`, with examples.
   </Card>
 </CardGroup>

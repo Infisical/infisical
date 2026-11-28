@@ -37,6 +37,10 @@ const SUPPORTED_AUTH_METHODS = Object.values(AgentVaultOauthClientAuthMethod) as
 export const MAX_CLIENT_ID_LENGTH = 2048;
 export const MAX_CLIENT_SECRET_LENGTH = 4096;
 
+export const OAUTH_CLIENT_SECRET_NEEDS_ID_MESSAGE = "A client secret needs the client ID it belongs to.";
+export const OAUTH_CLIENT_ID_OR_DYNAMIC_MESSAGE =
+  "Send either the client ID of your own OAuth app or registration 'dynamic', not both.";
+
 const parseRegistration = (body: string, requestedMethod: AgentVaultOauthClientAuthMethod): TOauthClient | null => {
   let parsed: Record<string, unknown>;
   try {
@@ -92,7 +96,8 @@ export const registerOauthClient = async ({
   registrationEndpoint,
   redirectUri,
   grantTypesSupported,
-  tokenEndpointAuthMethodsSupported
+  tokenEndpointAuthMethodsSupported,
+  clientName = AGENT_VAULT_OAUTH_CLIENT_NAME
 }: {
   http: TOauthHttpClient;
   serverUrl: string;
@@ -100,13 +105,15 @@ export const registerOauthClient = async ({
   redirectUri: string;
   grantTypesSupported: string[] | null;
   tokenEndpointAuthMethodsSupported: string[] | null;
+  // What the provider's consent screen shows the user signing in.
+  clientName?: string;
 }): Promise<{ client: TOauthClient; compatibility: AgentVaultOauthCompatibility[] }> => {
   const refreshSupported = !grantTypesSupported || grantTypesSupported.includes(OauthGrantType.RefreshToken);
   const publicClientSupported =
     !tokenEndpointAuthMethodsSupported ||
     tokenEndpointAuthMethodsSupported.includes(AgentVaultOauthClientAuthMethod.None);
   const minimal = {
-    client_name: AGENT_VAULT_OAUTH_CLIENT_NAME,
+    client_name: clientName,
     redirect_uris: [redirectUri],
     token_endpoint_auth_method: publicClientSupported
       ? AgentVaultOauthClientAuthMethod.None

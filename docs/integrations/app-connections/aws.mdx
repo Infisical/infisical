@@ -87,7 +87,7 @@ Next, add the required policies to the IAM role or user from [Step 1](#step-1-cr
         </UseCase>
 
         <UseCase use="agent-vault-session-logs" hideWhenEmpty>
-            - `<session-logs-bucket>` and `<key-prefix>`: the bucket and key prefix you'll enter in the **Session Logs** dialog in Agent Vault (if you won't set a key prefix, delete `<key-prefix>/` in both places)
+            - `<session-logs-bucket>` and `<key-prefix>`: the bucket and key prefix you'll enter in the **Session Logs** dialog in your Agent Vault project (if you won't set a key prefix, delete `<key-prefix>/` in both places)
         </UseCase>
 
         <UseCase use="private-ca" hideWhenEmpty>
@@ -289,7 +289,7 @@ Now that your AWS app connection is configured, you can use it to set up the fol
         </Card>
     </UseCase>
     <UseCase use="honey-tokens">
-        <Card title="AWS honey tokens" icon="bell-ring" href="/documentation/platform/honey-tokens/aws/setup">
+        <Card title="AWS honey tokens" icon="bell-ring" href="/documentation/platform/honey-tokens/own-aws-account">
             Detect leaked AWS credentials with decoy access keys.
         </Card>
     </UseCase>

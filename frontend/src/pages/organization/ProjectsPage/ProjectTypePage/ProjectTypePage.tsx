@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 import { type ComponentProps, type ReactNode, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
@@ -16,7 +17,6 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { ProjectLimitUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -70,8 +70,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
-  useOrgPermission,
-  useSubscription
+  useOrgPermission
 } from "@app/context";
 import {
   OrgPermissionAdminConsoleAction,
@@ -100,7 +99,11 @@ import {
   useOrgAdminAccessProject,
   useSearchProjects
 } from "@app/hooks/api";
-import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
+import {
+  certManagerInstanceKeys,
+  TCertManagerInstanceState,
+  useCertManagerInstanceState
+} from "@app/hooks/api/certManagerInstance";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   Project,
@@ -123,6 +126,22 @@ import { ProjectSearchInput } from "./ProjectSearchInput";
 // Single-project products: their one project always exists by the time this list renders, so creating
 // another is refused.
 const PROJECT_TYPES_BLOCKED_CREATION: ProjectType[] = [ProjectType.SecretScanning];
+
+// Agent Vault keeps its own product colour on its project list; the other products here use the project colour.
+const getProductAccent = (projectType: ProjectType) =>
+  projectType === ProjectType.AgentVault
+    ? ({
+        variant: "av",
+        tileHover: "group-hover:border-product-av/20 group-hover:from-product-av/5",
+        iconHover: "group-hover:text-product-av",
+        cardHover: "hover:bg-gradient-to-br hover:from-product-av/[0.04] hover:to-transparent"
+      } as const)
+    : ({
+        variant: "project",
+        tileHover: "group-hover:border-project/20 group-hover:from-project/5",
+        iconHover: "group-hover:text-project",
+        cardHover: PROJECT_TILE_STYLE.cardHoverClassName
+      } as const);
 
 enum ProjectsViewMode {
   GRID = "grid",
@@ -246,6 +265,7 @@ export const ProjectTypePage = () => {
   });
   const projectType = urlSlugToProjectType(typeSlug) ?? (typeSlug as ProjectType);
 
+  const queryClient = useQueryClient();
   const { data: certManagerInstance } = useCertManagerInstanceState();
   const [isCertManagerSetupOpen, setIsCertManagerSetupOpen] = useState(false);
 
@@ -295,17 +315,6 @@ export const ProjectTypePage = () => {
     }
   }, [projectType, orgId, navigate]);
 
-  // An org-scoped product has one implicit project, so listing it here would offer a project view we
-  // hide everywhere else, plus a create button the backend refuses.
-  useEffect(() => {
-    if (projectType === ProjectType.AgentVault) {
-      navigate({
-        to: "/organizations/$orgId/agent-vault",
-        params: { orgId }
-      });
-    }
-  }, [projectType, orgId, navigate]);
-
   if (projectType === ProjectType.CertificateManager) {
     return (
       <>
@@ -314,7 +323,10 @@ export const ProjectTypePage = () => {
           isOpen={isCertManagerSetupOpen}
           onOpenChange={(open) => {
             setIsCertManagerSetupOpen(open);
-            if (!open) {
+            const latestInstance = queryClient.getQueryData<TCertManagerInstanceState>(
+              certManagerInstanceKeys.state(orgId)
+            );
+            if (!open && !latestInstance?.activeProjectId) {
               navigate({
                 to: "/organizations/$orgId/projects",
                 params: { orgId }
@@ -326,11 +338,7 @@ export const ProjectTypePage = () => {
     );
   }
 
-  if (
-    projectType === ProjectType.PAM ||
-    projectType === ProjectType.AgentVault ||
-    projectType === ProjectType.SecretScanning
-  ) {
+  if (projectType === ProjectType.PAM || projectType === ProjectType.SecretScanning) {
     return null;
   }
 
@@ -344,16 +352,11 @@ const ProjectTypeContent = ({
   projectType: ProjectType;
   orgId: string;
 }) => {
-  const { subscription } = useSubscription();
   const { permission } = useOrgPermission();
   const canRequestAccess = permission.can(
     OrgPermissionProjectActions.RequestAccess,
     OrgPermissionSubjects.Project
   );
-  const isAddingProjectsAllowed = subscription?.workspaceLimit
-    ? subscription.workspacesUsed < subscription.workspaceLimit
-    : true;
-
   const [projectListView, setProjectListView] = useState<ProjectListView>(() => {
     const storedView = localStorage.getItem("projectListView");
     if (
@@ -373,7 +376,6 @@ const ProjectTypeContent = ({
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addNewWs",
-    "upgradePlan",
     "requestAccessConfirmation"
   ] as const);
 
@@ -400,8 +402,6 @@ const ProjectTypeContent = ({
           projectListView={projectListView}
           onProjectListViewChange={handleSetProjectListView}
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
-          onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
-          isAddingProjectsAllowed={isAddingProjectsAllowed}
           hideProjectListToggle={!canRequestAccess}
         />
       ) : (
@@ -410,8 +410,6 @@ const ProjectTypeContent = ({
           projectListView={projectListView}
           onProjectListViewChange={handleSetProjectListView}
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
-          onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
-          isAddingProjectsAllowed={isAddingProjectsAllowed}
           hideProjectListToggle={!canRequestAccess}
         />
       )}
@@ -419,12 +417,6 @@ const ProjectTypeContent = ({
         isOpen={popUp.addNewWs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
         projectType={projectType}
-      />
-      <UpgradeGate
-        paywallKey="organization.project-type"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        intent={ProjectLimitUpgradeIntent}
       />
     </div>
   );
@@ -435,8 +427,6 @@ type SubViewProps = {
   projectListView: ProjectListView;
   onProjectListViewChange: (value: ProjectListView) => void;
   onAddNewProject: () => void;
-  onUpgradePlan: () => void;
-  isAddingProjectsAllowed: boolean;
   hideProjectListToggle: boolean;
 };
 
@@ -445,9 +435,7 @@ const MyProjectsForType = ({
   projectListView,
   onProjectListViewChange,
   hideProjectListToggle,
-  onAddNewProject,
-  onUpgradePlan,
-  isAddingProjectsAllowed
+  onAddNewProject
 }: SubViewProps) => {
   const { currentOrg } = useOrganization();
   const [searchFilter, setSearchFilter] = useState("");
@@ -570,18 +558,22 @@ const MyProjectsForType = ({
 
   const renderProjectGridItem = (workspace: Project & { isFavorite: boolean }) => {
     const WorkspaceIcon = getProjectLucideIcon(workspace.type);
-    const tileStyle = PROJECT_TILE_STYLE;
+    const accent = getProductAccent(projectType);
     const environmentCount = workspace.environments?.length ?? 0;
     return (
       <Card
         key={workspace.id}
         linked
-        className={`h-full transition-all duration-200 ease-out ${tileStyle.cardHoverClassName}`}
+        className={`h-full transition-all duration-200 ease-out ${accent.cardHover}`}
       >
         <CardHeader>
           <div className="flex min-w-0 items-start gap-3">
-            <div className="shrink-0 rounded-sm border border-border bg-muted/10 p-2 transition-colors duration-200 ease-out group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
-              <WorkspaceIcon className="size-5.5 shrink-0 text-accent transition-colors duration-200 ease-out group-hover:text-project" />
+            <div
+              className={`shrink-0 rounded-sm border border-border bg-muted/10 p-2 transition-colors duration-200 ease-out group-hover:bg-gradient-to-br group-hover:to-transparent ${accent.tileHover}`}
+            >
+              <WorkspaceIcon
+                className={`size-5.5 shrink-0 text-accent transition-colors duration-200 ease-out ${accent.iconHover}`}
+              />
             </div>
             <div className="min-w-0 flex-1">
               <CardTitle className="text-base text-foreground">
@@ -608,16 +600,18 @@ const MyProjectsForType = ({
             {workspace.description || <span className="text-muted italic">No description</span>}
           </p>
           <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
-            <span className="flex items-center gap-1.5 text-muted">
-              <LayersIcon className="h-3.5 w-3.5 shrink-0" />
-              <span>
-                <span className="text-xs font-medium text-foreground">{environmentCount}</span>{" "}
-                <span className="text-xs">
-                  {environmentCount === 1 ? "Environment" : "Environments"}
+            {projectType !== ProjectType.AgentVault && (
+              <span className="flex items-center gap-1.5 text-muted">
+                <LayersIcon className="h-3.5 w-3.5 shrink-0" />
+                <span>
+                  <span className="text-xs font-medium text-foreground">{environmentCount}</span>{" "}
+                  <span className="text-xs">
+                    {environmentCount === 1 ? "Environment" : "Environments"}
+                  </span>
                 </span>
               </span>
-            </span>
-            <span className="text-muted">
+            )}
+            <span className="ml-auto text-muted">
               <span className="text-xs">Created </span>
               <span className="text-xs font-medium text-foreground">
                 {format(new Date(workspace.createdAt), "MMM d, yyyy")}
@@ -717,8 +711,12 @@ const MyProjectsForType = ({
               return (
                 <TableRow key={workspace.id} linked>
                   <TableCell className="w-0">
-                    <div className="inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
-                      <WorkspaceIcon className="h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 group-hover:text-project" />
+                    <div
+                      className={`inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:bg-gradient-to-br group-hover:to-transparent ${getProductAccent(projectType).tileHover}`}
+                    >
+                      <WorkspaceIcon
+                        className={`h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 ${getProductAccent(projectType).iconHover}`}
+                      />
                     </div>
                   </TableCell>
                   <TableCell isTruncatable>
@@ -769,8 +767,6 @@ const MyProjectsForType = ({
         projectType={projectType}
         ProductIcon={ProductIcon}
         onAddNewProject={onAddNewProject}
-        onUpgradePlan={onUpgradePlan}
-        isAddingProjectsAllowed={isAddingProjectsAllowed}
       />
     );
   }
@@ -790,8 +786,6 @@ const MyProjectsForType = ({
         onProjectListViewChange={onProjectListViewChange}
         hideProjectListToggle={hideProjectListToggle}
         onAddNewProject={onAddNewProject}
-        onUpgradePlan={onUpgradePlan}
-        isAddingProjectsAllowed={isAddingProjectsAllowed}
       />
       {contentBody}
       {/* In list view the projects table already holds the group, unless there is no table to join. */}
@@ -823,9 +817,7 @@ const AllProjectsForType = ({
   projectListView,
   onProjectListViewChange,
   hideProjectListToggle,
-  onAddNewProject,
-  onUpgradePlan,
-  isAddingProjectsAllowed
+  onAddNewProject
 }: SubViewProps) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
@@ -976,8 +968,12 @@ const AllProjectsForType = ({
             return (
               <TableRow key={workspace.id} linked={workspace.isMember} className="group">
                 <TableCell className="w-0">
-                  <div className="inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
-                    <WorkspaceIcon className="h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 group-hover:text-project" />
+                  <div
+                    className={`inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:bg-gradient-to-br group-hover:to-transparent ${getProductAccent(projectType).tileHover}`}
+                  >
+                    <WorkspaceIcon
+                      className={`h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 ${getProductAccent(projectType).iconHover}`}
+                    />
                   </div>
                 </TableCell>
                 <TableCell isTruncatable>
@@ -1147,8 +1143,6 @@ const AllProjectsForType = ({
         projectType={projectType}
         ProductIcon={ProductIcon}
         onAddNewProject={onAddNewProject}
-        onUpgradePlan={onUpgradePlan}
-        isAddingProjectsAllowed={isAddingProjectsAllowed}
       />
     );
   }
@@ -1165,8 +1159,6 @@ const AllProjectsForType = ({
         onProjectListViewChange={onProjectListViewChange}
         hideProjectListToggle={hideProjectListToggle}
         onAddNewProject={onAddNewProject}
-        onUpgradePlan={onUpgradePlan}
-        isAddingProjectsAllowed={isAddingProjectsAllowed}
         isGridDisabled
       />
       {contentBody}
@@ -1242,8 +1234,6 @@ const Toolbar = ({
   onProjectListViewChange,
   hideProjectListToggle,
   onAddNewProject,
-  onUpgradePlan,
-  isAddingProjectsAllowed,
   isGridDisabled
 }: {
   projectType: ProjectType;
@@ -1255,8 +1245,6 @@ const Toolbar = ({
   onProjectListViewChange: (value: ProjectListView) => void;
   hideProjectListToggle: boolean;
   onAddNewProject: () => void;
-  onUpgradePlan: () => void;
-  isAddingProjectsAllowed: boolean;
   isGridDisabled?: boolean;
 }) => {
   const { currentOrg } = useOrganization();
@@ -1300,7 +1288,11 @@ const Toolbar = ({
             </Tooltip>
           ) : (
             <IconButton
-              variant={projectsViewMode === ProjectsViewMode.GRID ? "project" : "outline"}
+              variant={
+                projectsViewMode === ProjectsViewMode.GRID
+                  ? getProductAccent(projectType).variant
+                  : "outline"
+              }
               size="sm"
               aria-label="Grid view"
               className={projectsViewMode === ProjectsViewMode.GRID ? "z-10" : ""}
@@ -1310,7 +1302,11 @@ const Toolbar = ({
             </IconButton>
           )}
           <IconButton
-            variant={projectsViewMode === ProjectsViewMode.LIST ? "project" : "outline"}
+            variant={
+              projectsViewMode === ProjectsViewMode.LIST
+                ? getProductAccent(projectType).variant
+                : "outline"
+            }
             size="sm"
             aria-label="List view"
             onClick={() => onViewModeChange(ProjectsViewMode.LIST)}
@@ -1326,14 +1322,8 @@ const Toolbar = ({
                   <Button
                     isDisabled={!isAllowed && !isOldProjectV1Allowed}
                     size="sm"
-                    variant="project"
-                    onClick={() => {
-                      if (isAddingProjectsAllowed) {
-                        onAddNewProject();
-                      } else {
-                        onUpgradePlan();
-                      }
-                    }}
+                    variant={getProductAccent(projectType).variant}
+                    onClick={onAddNewProject}
                   >
                     <PlusIcon />
                     New Project
@@ -1351,15 +1341,11 @@ const Toolbar = ({
 const EmptyState = ({
   projectType,
   ProductIcon,
-  onAddNewProject,
-  onUpgradePlan,
-  isAddingProjectsAllowed
+  onAddNewProject
 }: {
   projectType: ProjectType;
   ProductIcon: ReturnType<typeof getProjectLucideIcon>;
   onAddNewProject: () => void;
-  onUpgradePlan: () => void;
-  isAddingProjectsAllowed: boolean;
 }) => {
   const typeTitle = getProjectTitle(projectType);
   return (
@@ -1375,15 +1361,9 @@ const EmptyState = ({
         <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
           {(isAllowed) => (
             <Button
-              variant="project"
+              variant={getProductAccent(projectType).variant}
               isDisabled={!isAllowed}
-              onClick={() => {
-                if (isAddingProjectsAllowed) {
-                  onAddNewProject();
-                } else {
-                  onUpgradePlan();
-                }
-              }}
+              onClick={onAddNewProject}
             >
               <PlusIcon />
               Create Project

@@ -1,9 +1,11 @@
 import * as x509 from "@peculiar/x509";
 
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import {
@@ -17,30 +19,32 @@ import { recordCertificateIssuanceFailure } from "@app/services/certificate-comm
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
+import {
+  getCommonNameCopySubjectAltNames,
+  getSubjectAltNameTypes,
+  resolveEffectiveTtl
+} from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { isCertChainValid } from "@app/services/certificate/certificate-fns";
+import { getSerialNumberSpellings, isCertChainValid } from "@app/services/certificate/certificate-fns";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { TEstEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { convertRawCertsToPkcs7 } from "../../ee/services/certificate-est/certificate-est-fns";
-import { TLicenseServiceFactory } from "../../ee/services/license/license-service";
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
 
 type TCertificateEstV3ServiceFactoryDep = {
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
-  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  certificateDAL: Pick<TCertificateDALFactory, "find" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findOne">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
+  licenseService: TLicenseService;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   estEnrollmentConfigDAL: Pick<TEstEnrollmentConfigDALFactory, "findById">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
@@ -57,7 +61,8 @@ export const certificateEstV3ServiceFactory = ({
   certificateAuthorityDAL,
   certificateDAL,
   projectDAL,
-  kmsService,
+  kmsDataKeyService,
+  kmsKeyService,
   licenseService,
   certificateProfileDAL,
   estEnrollmentConfigDAL,
@@ -148,13 +153,9 @@ export const certificateEstV3ServiceFactory = ({
       return;
     }
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -230,7 +231,7 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.pkiEst) {
+    if (!plan.has(PlanFeature.PkiEst)) {
       throw new BadRequestError({
         message:
           "Failed to perform EST operation - simpleEnroll due to plan restriction. Upgrade to the Enterprise plan."
@@ -251,10 +252,7 @@ export const certificateEstV3ServiceFactory = ({
     });
 
     const result = await certificateV3Service.signCertificateFromProfile({
-      actor: ActorType.EST_ACCOUNT,
-      actorId: profileId,
-      actorAuthMethod: null,
-      actorOrgId: project.orgId,
+      enrollment: { type: ActorType.EST_ACCOUNT, id: profileId, orgId: project.orgId },
       profileId,
       csr,
       validity: { ttl },
@@ -324,7 +322,7 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.pkiEst) {
+    if (!plan.has(PlanFeature.PkiEst)) {
       throw new BadRequestError({
         message:
           "Failed to perform EST operation - simpleReenroll due to plan restriction. Upgrade to the Enterprise plan."
@@ -342,14 +340,16 @@ export const certificateEstV3ServiceFactory = ({
       caId: profile.caId,
       certificateAuthorityCertDAL,
       certificateAuthorityDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     const verifiedChains = await Promise.all(
       caCertChains.map((chain) => {
         const caCert = new x509.X509Certificate(chain.certificate);
-        const caChain = extractX509CertFromChain(chain.certificateChain)?.map((c) => new x509.X509Certificate(c)) || [];
+        const caChain = chain.certificateChain
+          ? extractX509CertFromChain(chain.certificateChain).map((c) => new x509.X509Certificate(c))
+          : [];
 
         return isCertChainValid([cert, caCert, ...caChain]);
       })
@@ -362,11 +362,15 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     // Transaction forces primary (not replica) so a just-revoked cert cannot slip through replica lag.
-    const storedCert = await certificateDAL.transaction(async (tx) =>
-      certificateDAL.findOne({ serialNumber: cert.serialNumber, caId: profile.caId }, tx)
+    const storedRecords = await certificateDAL.transaction((tx) =>
+      certificateDAL.find(
+        { $in: { serialNumber: getSerialNumberSpellings(cert.serialNumber) }, caId: profile.caId },
+        { tx, sort: [["deletedAt", "desc", "first"]] }
+      )
     );
+    const [storedCert] = storedRecords;
 
-    if (storedCert?.status === CertStatus.REVOKED) {
+    if (storedRecords.some((record) => record.status === CertStatus.REVOKED)) {
       throw new UnauthorizedError({ message: "Client certificate has been revoked" });
     }
 
@@ -395,21 +399,24 @@ export const certificateEstV3ServiceFactory = ({
       throw await $rejectReenrollCsr("Subject mismatch");
     }
 
-    let csrSanSet: Set<string> = new Set();
-    const csrSanExtension = csrObj.extensions.find((ext) => ext.type === "2.5.29.17");
-    if (csrSanExtension) {
-      const sanNames = new x509.GeneralNames(csrSanExtension.value);
-      csrSanSet = new Set([...sanNames.items.map((name) => `${name.type}-${name.value}`)]);
-    }
-
-    let certSanSet: Set<string> = new Set();
+    const toSanSet = (sanExtension?: x509.Extension | null): Set<string> =>
+      new Set(
+        sanExtension ? new x509.GeneralNames(sanExtension.value).items.map((name) => `${name.type}-${name.value}`) : []
+      );
+    const csrSanSet = toSanSet(csrObj.extensions.find((ext) => ext.type === "2.5.29.17"));
     const certSanExtension = cert.extensions.find((ext) => ext.type === "2.5.29.17");
-    if (certSanExtension) {
-      const sanNames = new x509.GeneralNames(certSanExtension.value);
-      certSanSet = new Set([...sanNames.items.map((name) => `${name.type}-${name.value}`)]);
-    }
+    const certSanSet = toSanSet(certSanExtension);
+    const commonNameCopySanExtension = getCommonNameCopySubjectAltNames({
+      issuedSubjectAltNames: certSanExtension,
+      enrollmentType: EnrollmentType.EST,
+      csr
+    });
+    const commonNameCopySanSet = commonNameCopySanExtension ? toSanSet(commonNameCopySanExtension) : null;
 
-    if (csrSanSet.size !== certSanSet.size || ![...csrSanSet].every((element) => certSanSet.has(element))) {
+    const matchesCertSans = (sanSet: Set<string>) =>
+      sanSet.size === certSanSet.size && [...sanSet].every((element) => certSanSet.has(element));
+    const isCsrSanMatch = matchesCertSans(csrSanSet);
+    if (!isCsrSanMatch && !(commonNameCopySanSet && matchesCertSans(commonNameCopySanSet))) {
       throw await $rejectReenrollCsr("Subject alternative names mismatch");
     }
 
@@ -427,10 +434,7 @@ export const certificateEstV3ServiceFactory = ({
     });
 
     const result = await certificateV3Service.signCertificateFromProfile({
-      actor: ActorType.EST_ACCOUNT,
-      actorId: profileId,
-      actorAuthMethod: null,
-      actorOrgId: project.orgId,
+      enrollment: { type: ActorType.EST_ACCOUNT, id: profileId, orgId: project.orgId },
       profileId,
       csr,
       validity: { ttl },
@@ -438,6 +442,7 @@ export const certificateEstV3ServiceFactory = ({
       applicationId,
       issuanceOperation: CertificateIssuanceOperation.RENEW,
       originalCertificateId: storedCert?.id,
+      renewalCommonNameSanTypes: isCsrSanMatch ? [] : getSubjectAltNameTypes(certSanExtension),
       auditLogInfo: auditLogInfo && {
         ...auditLogInfo,
         actor: { type: ActorType.EST_ACCOUNT, metadata: { profileId } }
@@ -490,7 +495,7 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.pkiEst) {
+    if (!plan.has(PlanFeature.PkiEst)) {
       throw new BadRequestError({
         message: "Failed to perform EST operation - caCerts due to plan restriction. Upgrade to the Enterprise plan."
       });
@@ -509,8 +514,8 @@ export const certificateEstV3ServiceFactory = ({
       caCertId: ca.internalCa.activeCaCertId as string,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     let certificates: x509.X509Certificate[] = [];

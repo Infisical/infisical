@@ -5,7 +5,8 @@ import jwt, { decode } from "jsonwebtoken";
 
 import { OrgMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { AuthMethod, AuthTokenType, MfaMethod, SsoMfaTrust } from "@app/services/auth/auth-type";
+import { AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
+import { SsoMfaTrust } from "@app/services/auth/auth-type";
 
 import { TTestSmtpService } from "../../mocks/smtp";
 import { loginUser, selectOrg } from "../../testUtils/auth";
@@ -138,10 +139,10 @@ describe("Auth MFA V3", () => {
     const setSsoMfaTrust = (ssoMfaTrust: SsoMfaTrust) =>
       db()(TableName.Organization).where({ id: rootOrgId }).update({ ssoMfaTrust });
 
-    const updateOrg = (body: Record<string, unknown>) =>
+    const updateSsoSettings = (body: Record<string, unknown>) =>
       testServer.inject({
         method: "PATCH",
-        url: `/api/v1/organization/${rootOrgId}`,
+        url: "/api/v1/organization/sso-settings",
         headers: { authorization: `Bearer ${jwtAuthToken}` },
         body
       });
@@ -295,16 +296,20 @@ describe("Auth MFA V3", () => {
         await db()(TableName.MembershipRole).where({ membershipId }).delete();
         await db()(TableName.MembershipRole).insert({ membershipId, role: "custom", customRoleId: role.id });
         const token = await createUserAccessToken({ userId, orgId: rootOrgId });
-        const patch = (body: Record<string, unknown>) =>
+        const patch = (url: string, body: Record<string, unknown>) =>
           testServer.inject({
             method: "PATCH",
-            url: `/api/v1/organization/${rootOrgId}`,
+            url,
             headers: { authorization: `Bearer ${token}` },
             body
           });
 
-        expect((await patch({ name: seedData1.organization.name })).statusCode).toBe(200);
-        expect((await patch({ ssoMfaTrust: SsoMfaTrust.None })).statusCode).toBe(403);
+        expect(
+          (await patch(`/api/v1/organization/${rootOrgId}`, { name: seedData1.organization.name })).statusCode
+        ).toBe(200);
+        expect((await patch("/api/v1/organization/sso-settings", { ssoMfaTrust: SsoMfaTrust.None })).statusCode).toBe(
+          403
+        );
       } finally {
         await deleteUsers([userId]);
         await db()(TableName.Role).where({ id: role.id }).del();
@@ -312,10 +317,10 @@ describe("Auth MFA V3", () => {
     });
 
     test("the setting can be turned on before any SSO configuration exists, like the bypass toggle", async () => {
-      const res = await updateOrg({ ssoMfaTrust: SsoMfaTrust.Signal });
+      const res = await updateSsoSettings({ ssoMfaTrust: SsoMfaTrust.Signal });
 
       expect(res.statusCode).toBe(200);
-      expect(res.json().organization.ssoMfaTrust).toBe(SsoMfaTrust.Signal);
+      expect(res.json().ssoSettings.ssoMfaTrust).toBe(SsoMfaTrust.Signal);
     });
 
     test("the signal also covers personal MFA when the org enforces it", async () => {
@@ -345,7 +350,7 @@ describe("Auth MFA V3", () => {
     });
 
     test("an unknown mode is rejected", async () => {
-      const res = await updateOrg({ ssoMfaTrust: "delegate" });
+      const res = await updateSsoSettings({ ssoMfaTrust: "delegate" });
 
       expect(res.statusCode).toBe(422);
     });
@@ -354,10 +359,10 @@ describe("Auth MFA V3", () => {
       await setSsoMfaTrust(SsoMfaTrust.Signal);
       restoreLicense();
       try {
-        const res = await updateOrg({ ssoMfaTrust: SsoMfaTrust.None });
+        const res = await updateSsoSettings({ ssoMfaTrust: SsoMfaTrust.None });
 
         expect(res.statusCode).toBe(200);
-        expect(res.json().organization.ssoMfaTrust).toBe(SsoMfaTrust.None);
+        expect(res.json().ssoSettings.ssoMfaTrust).toBe(SsoMfaTrust.None);
       } finally {
         restoreLicense = overrideLicenseFeatures({ enforceMfa: true });
       }
@@ -460,6 +465,166 @@ describe("Auth MFA V3", () => {
 
       expect(payload.isMfaEnabled).toBe(true);
       expect(payload.mfaMethod).toBe(MfaMethod.EMAIL);
+    });
+  });
+  describe("allowed MFA methods", () => {
+    const rootOrgId = seedData1.organization.id;
+    const redirectUri = "https://app.example.com/callback";
+    let client: { id: string; clientId: string };
+
+    const setAllowedMfaMethods = (allowedMfaMethods: MfaMethod[] | null) =>
+      db()(TableName.Organization)
+        .where({ id: rootOrgId })
+        .update({ allowedMfaMethods } as never);
+
+    const getMfaMethods = (mfaToken: string) =>
+      testServer.inject({
+        method: "GET",
+        url: "/api/v2/auth/mfa/methods",
+        headers: { authorization: `Bearer ${mfaToken}` }
+      });
+
+    const startMfa = async () => {
+      const { accessToken } = await loginUser(seedData1.email, seedData1.password);
+      const { payload } = await selectOrg(accessToken, rootOrgId);
+      expect(payload.isMfaEnabled).toBe(true);
+      return payload as { token: string; mfaMethod: MfaMethod };
+    };
+
+    // An access token as verifyMfaToken would issue it, so consent can be checked against the proven method.
+    const signMfaVerifiedSession = async (mfaMethod: MfaMethod) => {
+      const [session] = await db()(TableName.AuthTokenSession)
+        .insert({
+          userId: seedData1.id,
+          ip: "127.0.0.1",
+          userAgent: "e2e-mfa-allowlist",
+          accessVersion: 1,
+          refreshVersion: 1,
+          lastUsed: new Date()
+        } as never)
+        .returning("*");
+
+      return jwt.sign(
+        {
+          authTokenType: AuthTokenType.ACCESS_TOKEN,
+          authMethod: AuthMethod.EMAIL,
+          userId: seedData1.id,
+          tokenVersionId: session.id,
+          accessVersion: 1,
+          organizationId: rootOrgId,
+          isMfaVerified: true,
+          mfaMethod
+        },
+        process.env.AUTH_SECRET as string,
+        { expiresIn: "1h" }
+      );
+    };
+
+    const consent = (token: string) =>
+      testServer.inject({
+        method: "POST",
+        url: "/api/v1/oauth/authorize/consent",
+        headers: { authorization: `Bearer ${token}` },
+        body: { client_id: client.clientId, redirect_uri: redirectUri }
+      });
+
+    beforeAll(async () => {
+      const res = await testServer.inject({
+        method: "POST",
+        url: "/api/v1/oauth/clients",
+        headers: { authorization: `Bearer ${jwtAuthToken}` },
+        body: { name: `mfa-allowlist-${crypto.randomUUID()}`, redirectUris: [redirectUri] }
+      });
+      expect(res.statusCode).toBe(200);
+      client = res.json().client;
+    });
+
+    afterAll(async () => {
+      await setAllowedMfaMethods(null);
+      await testServer.inject({
+        method: "DELETE",
+        url: `/api/v1/oauth/clients/${client.id}`,
+        headers: { authorization: `Bearer ${jwtAuthToken}` }
+      });
+    });
+
+    // The test stack has no SMTP, so email never counts as set up here and only setup is reachable.
+    test("offers setup of the allowed methods other than email when none is set up", async () => {
+      await setAllowedMfaMethods([MfaMethod.TOTP, MfaMethod.EMAIL]);
+
+      const mfa = await startMfa();
+      expect(mfa.mfaMethod).toBe(MfaMethod.TOTP);
+
+      const res = await getMfaMethods(mfa.token);
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({
+        challengeMethod: MfaMethod.TOTP,
+        usableMethods: [],
+        enrollableMethods: [MfaMethod.TOTP]
+      });
+    });
+
+    test("refuses a method the organization does not allow, naming the allowed ones", async () => {
+      await setAllowedMfaMethods([MfaMethod.TOTP, MfaMethod.EMAIL]);
+      const mfa = await startMfa();
+
+      const res = await testServer.inject({
+        method: "POST",
+        url: "/api/v2/auth/mfa/verify",
+        headers: { authorization: `Bearer ${mfa.token}` },
+        body: { mfaToken: "000000", mfaMethod: MfaMethod.WEBAUTHN }
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().message).toMatch(/Use one of: totp, email/);
+    });
+
+    test("sends a user with nothing allowed set up to enrollment, without emailing a code", async () => {
+      await setAllowedMfaMethods([MfaMethod.WEBAUTHN, MfaMethod.TOTP]);
+
+      const mfa = await startMfa();
+      expect(mfa.mfaMethod).toBe(MfaMethod.WEBAUTHN);
+      expect(smtp().getLastEmail()).toBeUndefined();
+
+      const res = await getMfaMethods(mfa.token);
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({
+        challengeMethod: MfaMethod.WEBAUTHN,
+        usableMethods: [],
+        enrollableMethods: [MfaMethod.WEBAUTHN, MfaMethod.TOTP]
+      });
+    });
+
+    test("will not resend an email code when email is not allowed", async () => {
+      await setAllowedMfaMethods([MfaMethod.WEBAUTHN, MfaMethod.TOTP]);
+      const mfa = await startMfa();
+
+      const res = await testServer.inject({
+        method: "POST",
+        url: "/api/v2/auth/mfa/send",
+        headers: { authorization: `Bearer ${mfa.token}` },
+        body: { email: seedData1.email }
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(smtp().getLastEmail()).toBeUndefined();
+    });
+
+    test("an application can be authorized by a session that proved any allowed method", async () => {
+      await setAllowedMfaMethods([MfaMethod.TOTP, MfaMethod.EMAIL]);
+
+      const res = await consent(await signMfaVerifiedSession(MfaMethod.EMAIL));
+
+      expect(res.statusCode).toBe(200);
+    });
+
+    test("a session that proved a method the org no longer allows cannot authorize an application", async () => {
+      await setAllowedMfaMethods([MfaMethod.TOTP]);
+
+      const res = await consent(await signMfaVerifiedSession(MfaMethod.EMAIL));
+
+      expect(res.statusCode).toBe(401);
+      expect(res.json().message).toMatch(/Multi-factor authentication is required/);
     });
   });
 });

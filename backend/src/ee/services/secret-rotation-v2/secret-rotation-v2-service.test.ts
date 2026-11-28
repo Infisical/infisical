@@ -1,8 +1,11 @@
-import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { TableName } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FolderGrants } from "@app/domains/secrets-manager/secrets/ce/module";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { recordSecretRotationOutcomeMetric, recordSecretRotationStatusChangeMetric } from "@app/lib/telemetry/metrics";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { fnSecretBulkUpdate } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
 import { SecretRotation, SecretRotationStatus } from "./secret-rotation-v2-enums";
@@ -17,7 +20,7 @@ const runCallback = async (_inactive: unknown, callback: TRotationCallback) => c
 
 vi.mock("@app/lib/config/env", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/config/env")>()),
-  getConfig: () => ({ isSmtpConfigured: false })
+  getConfig: () => ({})
 }));
 
 vi.mock("@app/lib/logger", () => ({
@@ -35,8 +38,19 @@ vi.mock("@app/services/app-connection/app-connection-fns", async (importOriginal
   decryptAppConnection: vi.fn(async () => ({}))
 }));
 
-vi.mock("@app/services/secret-v2-bridge/secret-blind-index-fns", () => ({
-  createSecretBlindIndexer: vi.fn(async () => ({ generateBlindIndexes: vi.fn(async () => []) }))
+vi.mock("@app/services/secret-v2-bridge/secret-write-cipher-fns", () => ({
+  prepareSecretWriteCiphers: vi.fn(
+    async ({
+      kmsDataKeyService,
+      projectId
+    }: {
+      kmsDataKeyService: { createCipherPairWithDataKey: (ctx: unknown) => Promise<unknown> };
+      projectId: string;
+    }) => ({
+      secretManager: await kmsDataKeyService.createCipherPairWithDataKey({ type: "secret-manager", projectId }),
+      blindIndexer: { generateBlindIndexes: vi.fn(async () => []) }
+    })
+  )
 }));
 
 vi.mock("@app/services/secret-v2-bridge/secret-v2-bridge-fns", async (importOriginal) => ({
@@ -89,12 +103,8 @@ const rotation = (rotationStatus: SecretRotationStatus, type = SecretRotation.St
 const TX = { name: "rotation-transaction" };
 
 const actor = {
-  type: ActorType.USER,
-  id: "user-1",
-  orgId: "org-1",
-  authMethod: AuthMethod.EMAIL,
-  rootOrgId: "org-1",
-  parentOrgId: "org-1"
+  principal: { type: ActorType.USER, id: "user-1", authMethod: AuthMethod.EMAIL },
+  org: { id: "org-1", rootOrgId: "org-1", parentOrgId: "org-1" }
 };
 
 // storedStatus is the rotation row in the database; the object passed to rotateGeneratedCredentials is what the
@@ -118,15 +128,16 @@ const createService = ({
         return { release };
       })
     },
-    kmsService: {
+    kmsDataKeyService: {
       createCipherPairWithDataKey: vi.fn(async () => ({
         encryptor: () => ({ cipherTextBlob: Buffer.from("encrypted") })
       }))
     },
-    licenseService: { getPlan: vi.fn(async () => ({ secretRotation: true })) },
-    permissionService: {
-      getProjectPermission: vi.fn(async () => ({
-        permission: createMongoAbility([{ action: "manage", subject: "all" }])
+    licenseService: new FakeLicenseService().setPlan("org-1", { secretRotation: true }),
+    secretsPermissionService: {
+      getSecretsPermission: vi.fn(async () => ({
+        permission: Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }),
+        folderGrants: FolderGrants.none()
       }))
     },
     secretValidationRuleService: { findConstraintsForGeneratedSecret: vi.fn(async () => ({ ruleNames: [] })) },
@@ -142,7 +153,21 @@ const createService = ({
       updateById: vi.fn(async (_id: string, data: Partial<typeof stored>) => ({
         ...rotation(stored.rotationStatus, type),
         ...Object.assign(stored, data)
-      }))
+      })),
+      deleteById: vi.fn(async () => rotation(stored.rotationStatus, type))
+    },
+    eventEmitter: {
+      emit: vi.fn<(events: { type: string; data: Record<string, unknown> }[], tx?: unknown) => Promise<void>>(
+        async () => undefined
+      )
+    },
+    alertService: {
+      deleteAlertsForDeletedResources: vi.fn<
+        (input: { resourceType: string; resourceIds: string[] }, tx?: unknown) => Promise<number>
+      >(async () => 0),
+      findOrphanedResourceIds: vi.fn<
+        (input: { resourceType: string; resourceTable: string; limit: number }) => Promise<string[]>
+      >(async () => [])
     },
     auditLogService: { createAuditLog: vi.fn(async () => undefined) },
     secretV2BridgeDAL: { invalidateSecretCacheByProjectId: vi.fn(async () => undefined) },
@@ -366,5 +391,103 @@ describe("reconcile", () => {
     );
 
     expect(statusChangeCalls()).toEqual([]);
+  });
+});
+
+describe("failure alert event", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    rotateCredentials.mockRejectedValueOnce(new Error("provider down"));
+  });
+
+  test("is emitted in the transaction that marks a scheduled rotation failed on its final attempt", async () => {
+    const { service, deps } = createService({ storedStatus: SecretRotationStatus.Success });
+
+    await expect(
+      service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Success), {
+        isFinalAttempt: true,
+        shouldSendNotification: true
+      })
+    ).rejects.toThrow();
+
+    expect(deps.eventEmitter.emit).toHaveBeenCalledTimes(1);
+    const [[events, tx]] = deps.eventEmitter.emit.mock.calls;
+    expect(tx).toBe(TX);
+    expect(events.map((event) => event.type)).toEqual(["secret.rotation.failed"]);
+    expect(events[0].data).toMatchObject({
+      orgId: "org-1",
+      projectId: "project-1",
+      resourceType: "secret.rotation",
+      resourceId: "rotation-1",
+      targetIds: ["rotation-1"]
+    });
+  });
+
+  test.each([
+    ["an attempt that will be retried", { isFinalAttempt: false, shouldSendNotification: true }],
+    ["a manual rotation", { isManualRotation: true }]
+  ])("is not emitted for %s", async (_, options) => {
+    const { service, deps } = createService({ storedStatus: SecretRotationStatus.Success });
+
+    await expect(service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Success), options)).rejects.toThrow();
+
+    expect(deps.eventEmitter.emit).not.toHaveBeenCalled();
+  });
+});
+
+describe("rotation alert cleanup", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("deleting a rotation reaps its alerts in the delete transaction", async () => {
+    const { service, deps } = createService({ storedStatus: SecretRotationStatus.Success });
+
+    await service.deleteSecretRotation(
+      {
+        type: SecretRotation.StripeApiKey,
+        rotationId: "rotation-1",
+        deleteSecrets: false,
+        revokeGeneratedCredentials: false
+      },
+      actor as never
+    );
+
+    expect(deps.alertService.deleteAlertsForDeletedResources).toHaveBeenCalledWith(
+      { resourceType: "secret.rotation", resourceIds: ["rotation-1"] },
+      TX
+    );
+    expect(deps.secretRotationV2DAL.deleteById).toHaveBeenCalledWith("rotation-1", TX);
+  });
+
+  test("the orphan sweep reaps batch by batch until a batch comes back short", async () => {
+    const { service, deps } = createService({ storedStatus: SecretRotationStatus.Success });
+    let fullBatch: string[] = [];
+    deps.alertService.findOrphanedResourceIds
+      .mockImplementationOnce(async ({ limit }) => {
+        fullBatch = Array.from({ length: limit }, (_, index) => `deleted-${index}`);
+        return fullBatch;
+      })
+      .mockResolvedValueOnce(["deleted-last"]);
+
+    await service.reapOrphanedRotationAlerts();
+
+    expect(deps.alertService.findOrphanedResourceIds).toHaveBeenCalledTimes(2);
+    expect(deps.alertService.findOrphanedResourceIds.mock.calls[0][0]).toMatchObject({
+      resourceType: "secret.rotation",
+      resourceTable: TableName.SecretRotationV2
+    });
+    expect(deps.alertService.deleteAlertsForDeletedResources.mock.calls).toEqual([
+      [{ resourceType: "secret.rotation", resourceIds: fullBatch }],
+      [{ resourceType: "secret.rotation", resourceIds: ["deleted-last"] }]
+    ]);
+  });
+
+  test("the orphan sweep deletes nothing when no rotation alert is orphaned", async () => {
+    const { service, deps } = createService({ storedStatus: SecretRotationStatus.Success });
+
+    await service.reapOrphanedRotationAlerts();
+
+    expect(deps.alertService.deleteAlertsForDeletedResources).not.toHaveBeenCalled();
   });
 });

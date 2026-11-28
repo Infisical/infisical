@@ -1,6 +1,7 @@
 import z from "zod";
 
 import { PamAccountsSchema } from "@app/db/schemas";
+import { PamResourcePermissionActions } from "@app/domains/pam/pam/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ROTATION_STATUS } from "@app/ee/services/pam-account-rotation/pam-account-rotation-service";
 import {
@@ -16,8 +17,10 @@ import {
 } from "@app/ee/services/pam-account/pam-account-schemas";
 import { SESSION_HANDLERS } from "@app/ee/services/pam-web-access/pam-session-handlers";
 import { PamAccountType, PamAccountWarning, PamHeartbeatStatus } from "@app/ee/services/pam/pam-enums";
+import { MaxAccessDurationSecondsResponseSchema } from "@app/ee/services/pam/pam-policies";
 import { PasswordRequirementsSchema } from "@app/ee/services/secret-rotation-v2/shared/general/password-requirements-schema";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { auditSafeText, slugSchema } from "@app/server/lib/schemas";
@@ -26,7 +29,6 @@ import { withRoutePrefix } from "@app/server/lib/with-route-prefix";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ApprovalAccessStatus } from "@app/services/approval-policy/approval-policy-types";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 type TSupportedConfigs = typeof ACCOUNT_TYPE_CONFIGS;
@@ -72,6 +74,7 @@ const PamAccountListItemSchema = SanitizedAccountListItemSchema.extend({
     .describe("Whether the account's template has scheduled credential health checks turned on."),
   requiresApproval: z.boolean().describe("Whether this account requires approval before launching a session"),
   requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
+  maxAccessDurationSeconds: MaxAccessDurationSecondsResponseSchema,
   accessStatus: z.nativeEnum(ApprovalAccessStatus).describe("Current approval status for the caller"),
   grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted"),
   pendingRequestId: z.string().nullable().describe("The caller's pending access request for this account, if any"),
@@ -182,15 +185,12 @@ const registerPerTypeEndpoints = (
         accountType,
         ...req.body,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_CREATE,
@@ -209,10 +209,10 @@ const registerPerTypeEndpoints = (
         .sendPostHogEvents({
           event: PostHogEventTypes.PamAccountCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             accountType,
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch(() => {});
@@ -263,15 +263,12 @@ const registerPerTypeEndpoints = (
         accountType,
         ...req.body,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_UPDATE,
@@ -294,10 +291,10 @@ const registerPerTypeEndpoints = (
         .sendPostHogEvents({
           event: PostHogEventTypes.PamAccountUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             accountType,
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch(() => {});
@@ -324,15 +321,12 @@ const registerPerTypeEndpoints = (
       const account = await server.services.pamAccount.deleteAccount({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_DELETE,
@@ -348,10 +342,10 @@ const registerPerTypeEndpoints = (
         .sendPostHogEvents({
           event: PostHogEventTypes.PamAccountDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             accountType,
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch(() => {});
@@ -399,7 +393,11 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         folderId: z.string().uuid().optional().describe("Filter accounts by folder ID"),
         templateId: z.string().uuid().optional().describe("Filter accounts by template ID"),
         accountType: z.nativeEnum(PamAccountType).optional().describe("Filter accounts by platform type"),
-        search: z.string().trim().optional().describe("Filter accounts by name")
+        search: z.string().trim().optional().describe("Filter accounts by name"),
+        filterByAction: z
+          .nativeEnum(PamResourcePermissionActions)
+          .optional()
+          .describe("Filter accounts to only those where the caller has this specific permission action")
       }),
       response: {
         200: z.object({ accounts: z.array(PamAccountListItemSchema) })
@@ -414,10 +412,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         templateId: req.query.templateId,
         accountType: req.query.accountType,
         search: req.query.search,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        filterByAction: req.query.filterByAction,
+        actor: req.actor
       });
       return { accounts };
     }
@@ -457,6 +453,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
                 .boolean()
                 .describe("Whether this account requires approval before launching a session"),
               requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
+              maxAccessDurationSeconds: MaxAccessDurationSecondsResponseSchema,
               requireMfa: z
                 .boolean()
                 .describe(
@@ -483,10 +480,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { accounts, totalCount } = await server.services.pamAccount.listAccessible({
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.actor,
         offset: req.query.offset,
         limit: req.query.limit,
         search: req.query.search,
@@ -529,10 +523,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       const data = await server.services.pamAccount.getAccountPermissions({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
       return { data };
     }
@@ -567,10 +558,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       const rotation = await server.services.pamAccountRotation.getRotation({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
       return { rotation };
     }
@@ -608,10 +596,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       const dependencies = await server.services.pamDiscovery.listAccountDependencies({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
       return { dependencies };
     }
@@ -641,15 +626,12 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         accountId: req.params.accountId,
         rotationAccountId: req.body.rotationAccountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT,
@@ -666,10 +648,10 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.PamAccountRotationConfigured,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             accountType: result.accountType,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             hasRotationAccount: Boolean(result.rotationAccountId),
             scheduledRotationEnabled: result.scheduledRotationEnabled
           }
@@ -708,12 +690,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const heartbeat = await server.services.pamAccountHeartbeat.getHeartbeat(
         { accountId: req.params.accountId, projectId: req.internalPamProjectId },
-        {
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        }
+        req.actor
       );
       return { heartbeat };
     }
@@ -739,17 +716,12 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const result = await server.services.pamAccountHeartbeat.checkAccount(
         { accountId: req.params.accountId, projectId: req.internalPamProjectId },
-        {
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        }
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_HEARTBEAT,
@@ -784,15 +756,12 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       const result = await server.services.pamAccountRotation.rotateNow({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS,
@@ -818,10 +787,10 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.PamAccountRotated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             accountType: result.accountType,
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch(() => {});
@@ -856,10 +825,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       return server.services.pamAccountRotation.listRotationCandidates({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
     }
   });
@@ -884,10 +850,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       const account = await server.services.pamAccount.getById({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
       return { account } as unknown as { account: z.infer<typeof SanitizedAccountDetailSchema> };
     }
@@ -925,15 +888,12 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         reason: req.body.reason,
         mfaSessionId: req.body.mfaSessionId,
         tokenVersionId: isUserSessionAuth(req.auth) ? req.auth.tokenVersionId : undefined,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_CREDENTIALS_VIEW,
@@ -973,16 +933,13 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       const result = await server.services.pamAccount.getOrCreateSshCa({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       if (result.created) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalPamProjectId,
           event: {
             type: EventType.PAM_ACCOUNT_SSH_CA_CREATE,
@@ -1016,16 +973,13 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       const result = await server.services.pamAccount.getOrCreateSshCa({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       if (result.created) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalPamProjectId,
           event: {
             type: EventType.PAM_ACCOUNT_SSH_CA_CREATE,
@@ -1059,10 +1013,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       const result = await server.services.pamAccount.getOrCreateSshCa({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
       // Trim trailing newline; otherwise the script's echo/grep treat it as a blank line and skip later keys.
       const caPublicKey = result.publicKey.trim();
@@ -1070,7 +1021,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       if (result.created) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalPamProjectId,
           event: {
             type: EventType.PAM_ACCOUNT_SSH_CA_CREATE,

@@ -1,4 +1,13 @@
-import { forwardRef, ReactNode, TextareaHTMLAttributes, useEffect, useMemo, useState } from "react";
+import {
+  forwardRef,
+  MouseEvent,
+  ReactNode,
+  TextareaHTMLAttributes,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import { TriangleAlertIcon } from "lucide-react";
 
 import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
@@ -52,7 +61,10 @@ const syntaxHighlight = (
   isCmdOrCtrlPressed?: boolean,
   onClickSegment?: (segment: string, allSegments: string[]) => void,
   placeholder?: string,
-  isMaskedPerCharacter?: boolean
+  isMaskedPerCharacter?: boolean,
+  hoveredReferenceIndex?: number,
+  renderReferenceTooltip?: (reference: string) => ReactNode,
+  onReferenceTooltipClose?: () => void
 ) => {
   if (isLoadingValue) return HIDDEN_SECRET_VALUE;
   if (isErrorLoadingValue)
@@ -73,8 +85,12 @@ const syntaxHighlight = (
       const parts = innerContent.split(".");
       const isCrossProjectRef = parts[0]?.startsWith("@");
 
-      return (
-        <span className="ph-no-capture relative z-10 text-secret" key={`secret-value-${i + 1}`}>
+      const referenceNode = (
+        <span
+          className="ph-no-capture relative z-10 text-secret"
+          key={`secret-value-${i + 1}`}
+          data-reference-index={i}
+        >
           &#36;&#123;
           {parts.map((segment, segmentIndex) => {
             const segmentKey = `${part}-segment-${segmentIndex}`;
@@ -126,6 +142,21 @@ const syntaxHighlight = (
           &#125;
         </span>
       );
+
+      if (!renderReferenceTooltip) return referenceNode;
+
+      return (
+        <Tooltip
+          key={`secret-value-tooltip-${i + 1}`}
+          open={hoveredReferenceIndex === i}
+          onOpenChange={(open) => {
+            if (!open) onReferenceTooltipClose?.();
+          }}
+        >
+          <TooltipTrigger asChild>{referenceNode}</TooltipTrigger>
+          <TooltipContent className="max-w-96">{renderReferenceTooltip(part)}</TooltipContent>
+        </Tooltip>
+      );
     }
     if (skipNext) {
       skipNext = false;
@@ -162,6 +193,7 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   isErrorLoadingValue?: boolean;
   isError?: boolean;
   onClickSegment?: (segment: string, allSegments: string[]) => void;
+  renderReferenceTooltip?: (reference: string) => ReactNode;
 };
 
 const commonClassName =
@@ -188,6 +220,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       isErrorLoadingValue,
       isError,
       onClickSegment,
+      renderReferenceTooltip,
       placeholder,
       ...props
     },
@@ -195,6 +228,8 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
   ) => {
     const [isSecretFocused, setIsSecretFocused] = useToggle();
     const [hoveredPart, setHoveredPart] = useState<string | undefined>();
+    const [hoveredReferenceIndex, setHoveredReferenceIndex] = useState<number | undefined>();
+    const highlightRef = useRef<HTMLDivElement>(null);
     const [isCmdOrCtrlPressed, setIsCmdOrCtrlPressed] = useState(false);
 
     useEffect(() => {
@@ -230,6 +265,30 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
     const shouldShowMask =
       !isErrorLoadingValue && (isLoadingValue || (Boolean(value) && !shouldRevealValue));
 
+    useEffect(() => {
+      setHoveredReferenceIndex(undefined);
+    }, [value, shouldRevealValue]);
+
+    // The highlighted layer sits under the textarea with pointer events off so clicks still place
+    // the caret, so the hovered reference is found by hit-testing its rects instead of mouseenter.
+    const handleReferenceHover = (evt: MouseEvent<HTMLTextAreaElement>) => {
+      if (!renderReferenceTooltip || !shouldRevealValue) return;
+      const referenceNodes =
+        highlightRef.current?.querySelectorAll<HTMLElement>("[data-reference-index]") ?? [];
+      const hoveredNode = Array.from(referenceNodes).find((node) =>
+        Array.from(node.getClientRects()).some(
+          (rect) =>
+            evt.clientX >= rect.left &&
+            evt.clientX <= rect.right &&
+            evt.clientY >= rect.top &&
+            evt.clientY <= rect.bottom
+        )
+      );
+      setHoveredReferenceIndex(
+        hoveredNode ? Number(hoveredNode.dataset.referenceIndex) : undefined
+      );
+    };
+
     const invisibleChars = useMemo(
       () =>
         value && !isLoadingValue && !isErrorLoadingValue ? getInvisibleCharacterSummary(value) : [],
@@ -258,6 +317,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
           )}
         >
           <div
+            ref={highlightRef}
             aria-hidden
             className={cn(
               "pointer-events-none whitespace-break-spaces",
@@ -280,7 +340,10 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
               isCmdOrCtrlPressed,
               onClickSegment,
               placeholder,
-              maskEachCharacter
+              maskEachCharacter,
+              hoveredReferenceIndex,
+              renderReferenceTooltip,
+              () => setHoveredReferenceIndex(undefined)
             )}
           </div>
           <textarea
@@ -315,8 +378,10 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
               onBlur?.(evt);
               setIsSecretFocused.off();
             }}
+            onMouseMove={handleReferenceHover}
             onMouseLeave={() => {
               setHoveredPart(undefined);
+              setHoveredReferenceIndex(undefined);
             }}
             value={value && !shouldBindRealValue ? HIDDEN_SECRET_VALUE : (value ?? "")}
             {...props}

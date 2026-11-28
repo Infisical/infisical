@@ -1,0 +1,180 @@
+---
+title: "Infisical MCP server"
+sidebarTitle: "MCP server"
+description: "Let AI agents in Claude, Codex, VS Code, and other MCP clients read and manage your secrets as you."
+---
+
+The Infisical MCP server lets an AI agent list, read, and change secrets in Infisical while acting as you. Because it's a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server, MCP clients such as Claude, Claude Code, VS Code, and Codex can connect to it.
+
+When you connect a client, you sign in to Infisical and choose an [access level](#access-levels) for the agent. Whichever level you choose, the agent can never do more than your own [role](/documentation/platform/access-controls/role-based-access-controls) allows.
+
+<Note>
+  This server gives agents access to your secrets. To let an agent search the Infisical documentation instead, connect the [documentation MCP server](/documentation/getting-started/set-up-with-ai#mcp-server).
+</Note>
+
+## Prerequisites
+
+- An Infisical user account with access to the projects you want the agent to work in
+- An [MCP client](https://modelcontextprotocol.io/clients) that can connect to remote MCP servers, such as Claude, Claude Code, VS Code, or Codex
+
+## Server URL
+
+Connect your client to the URL of your Infisical instance:
+
+| Instance | MCP server URL |
+| --- | --- |
+| Infisical Cloud (US) | `https://app.infisical.com/api/mcp` |
+| Infisical Cloud (EU) | `https://eu.infisical.com/api/mcp` |
+| Self-hosted | Your instance's URL followed by `/api/mcp`, such as `https://infisical.example.com/api/mcp`. If your instance sets [`MCP_SERVER_URL`](/self-hosting/configuration/envars), use that URL instead. |
+
+### Self-hosted instances
+
+If you self-host Infisical, check that:
+
+- [`SITE_URL`](/self-hosting/configuration/envars) is set to the URL your MCP clients use to reach the instance
+- Your MCP client can reach the instance (Claude on the web connects from Anthropic's servers, so the instance has to be reachable from the internet)
+- If a proxy serves the MCP server at its own URL, such as `https://mcp.example.com/mcp`, `MCP_SERVER_URL` is set to that URL and the proxy forwards requests for it to `/api/mcp` on Infisical
+
+## Connect a client
+
+The examples use the Infisical Cloud (US) URL. If you use another instance, replace that URL with your [server URL](#server-url).
+
+<Tabs>
+  <Tab title="Claude">
+    <Steps>
+      <Step>
+        In Claude, go to **Settings** > **Connectors** and select **Add custom connector**.
+      </Step>
+      <Step>
+        Enter `Infisical` as the **Name** and `https://app.infisical.com/api/mcp` as the **URL**, then select **Add**.
+      </Step>
+      <Step>
+        Select **Connect** next to the Infisical connector. Claude opens Infisical in your browser.
+      </Step>
+      <Step>
+        Sign in to Infisical, choose an [access level](#access-levels), and select **Authorize**.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Claude Code">
+    <Steps>
+      <Step>
+        Add the server:
+
+        ```bash
+        claude mcp add --transport http infisical https://app.infisical.com/api/mcp
+        ```
+      </Step>
+      <Step>
+        In Claude Code, run `/mcp`, select **infisical**, then select **Authenticate**. Claude Code opens Infisical in your browser.
+      </Step>
+      <Step>
+        Sign in to Infisical, choose an [access level](#access-levels), and select **Authorize**.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="VS Code">
+    <Steps>
+      <Step>
+        Open the Command Palette, run **MCP: Open User Configuration**, and add the server to `mcp.json`:
+
+        ```json
+        {
+          "servers": {
+            "infisical": {
+              "type": "http",
+              "url": "https://app.infisical.com/api/mcp"
+            }
+          }
+        }
+        ```
+      </Step>
+      <Step>
+        Select **Start** above the `infisical` entry. When VS Code asks to sign in to Infisical, select **Allow**.
+      </Step>
+      <Step>
+        Sign in to Infisical, choose an [access level](#access-levels), and select **Authorize**.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Codex">
+    <Steps>
+      <Step>
+        Add the server and sign in:
+
+        ```bash
+        codex mcp add infisical --url https://app.infisical.com/api/mcp
+        codex mcp login infisical
+        ```
+      </Step>
+      <Step>
+        In the browser window that opens, sign in to Infisical, choose an [access level](#access-levels), and select **Authorize**.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+The connection only works in the organization you're signed in to when you select **Authorize**. To connect a client to another organization, switch to that organization in Infisical first.
+
+## Access levels
+
+On the **Authorize Application** page, choose one of these access levels:
+
+| Access level | What the agent can do | Tools |
+| --- | --- | --- |
+| **Describe Only** | See projects, environments, folders, and secret names, without secret values | `list-projects`, `list-folders`, `list-secrets`, `get-secret` |
+| **Read Only** | Everything in Describe Only, plus read secret values | The same tools, with secret values |
+| **Full Access** | Everything in Read Only, plus create, change, and delete secrets, create folders, and create projects | Also `create-project`, `create-folder`, `create-secret`, `update-secret`, `delete-secret` |
+
+The access level only limits what your role already allows. For example, if your role can't read secrets in the production environment, an agent with Full Access can't read them either.
+
+<Warning>
+  With Read Only or Full Access, every secret value the agent reads goes to the MCP client and to the AI model the client uses.
+</Warning>
+
+To change a client's access level, [disconnect the client](#disconnect-a-client) and connect it again.
+
+## Disconnect a client
+
+Removing the server from your MCP client doesn't sign the client out of Infisical. To end a client's access:
+
+<Steps>
+  <Step>
+    In Infisical, go to **Personal Settings** > **General**.
+  </Step>
+  <Step>
+    In the **Sessions** table, find the client's session and select **Sign out**. The session shows the IP address of the browser you used to authorize the client, with an unknown operating system and browser.
+  </Step>
+</Steps>
+
+## Audit logs
+
+Infisical records the secrets an agent reads and the changes it makes in the [audit logs](/documentation/platform/audit-logs), under your user and with `remote-mcp` as the source. To review an agent's activity, filter the audit logs by that source.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Why didn't a change the agent made take effect?">
+    If a [change policy](/documentation/platform/pr-workflows) covers the folder, the change creates an approval request instead. The change applies once the request is approved and merged.
+  </Accordion>
+  <Accordion title="Can a machine identity connect to the MCP server?">
+    No. Only users can connect, by signing in when the client asks. To give an application or pipeline access to secrets, use a [machine identity](/documentation/platform/identities/machine-identities) with the CLI, an SDK, or the API.
+  </Accordion>
+  <Accordion title="Why can't my MCP client sign in?">
+    Infisical identifies a client during sign-in through its [OAuth client ID metadata document](https://datatracker.ietf.org/doc/draft-ietf-oauth-client-id-metadata-document/). If your client only supports dynamic client registration, it can't connect.
+  </Accordion>
+  <Accordion title="Do tool calls count against rate limits?">
+    On Infisical Cloud, tool calls count against your plan's Secret [rate limit](/api-reference/overview/rate-limits#limits-on-infisical-cloud), per user instead of per IP address.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Audit logs" icon="scroll-text" href="/documentation/platform/audit-logs">
+    Review what agents did in your organization.
+  </Card>
+  <Card title="Role-based access controls" icon="shield" href="/documentation/platform/access-controls/role-based-access-controls">
+    Limit what each user, and the agents acting for them, can access.
+  </Card>
+</CardGroup>

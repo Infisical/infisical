@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ApiDocsTags } from "@app/lib/api-docs";
+import { ApiDocsTags, CertificateAuthorities } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { getCaKeySourceAuditMetadata } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
@@ -23,7 +23,8 @@ export const registerCertificateAuthorityEndpoints = <
   caType,
   createSchema,
   updateSchema,
-  responseSchema
+  responseSchema,
+  updateResponseSchema = responseSchema
 }: {
   caType: CaType;
   server: FastifyZodProvider;
@@ -38,6 +39,7 @@ export const registerCertificateAuthorityEndpoints = <
     configuration?: I["configuration"];
   }>;
   responseSchema: z.ZodTypeAny;
+  updateResponseSchema?: z.ZodTypeAny;
 }) => {
   const caTypeNameForOpId = caType
     .split("-")
@@ -66,7 +68,7 @@ export const registerCertificateAuthorityEndpoints = <
 
       const certificateAuthorities = (await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
         { projectId, type: caType },
-        req.permission
+        req.actor
       )) as T[];
 
       await server.services.auditLog.createAuditLog({
@@ -95,7 +97,7 @@ export const registerCertificateAuthorityEndpoints = <
       operationId: `get${caTypeNameForOpId}CertificateAuthorityV1`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
-        id: z.string()
+        id: z.string().uuid().describe(CertificateAuthorities.ID)
       }),
       response: {
         200: responseSchema
@@ -107,7 +109,7 @@ export const registerCertificateAuthorityEndpoints = <
 
       const certificateAuthority = (await server.services.certificateAuthority.findCertificateAuthorityById(
         { id, type: caType },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -136,6 +138,7 @@ export const registerCertificateAuthorityEndpoints = <
       hide: false,
       operationId: `create${caTypeNameForOpId}CertificateAuthorityV1`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: CertificateAuthorities.CREATE_DESCRIPTION(caType),
       body: createSchema,
       response: {
         200: responseSchema
@@ -143,11 +146,15 @@ export const registerCertificateAuthorityEndpoints = <
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const body = req.body as { projectId?: string; configuration?: { isOcspEnabled?: boolean } };
+      const body = req.body as {
+        projectId?: string;
+        configuration?: { isOcspEnabled?: boolean; crlValidityDays?: number };
+      };
       const createdOcspSetting = body.configuration?.isOcspEnabled;
+      const createdCrlValidityDays = body.configuration?.crlValidityDays;
       const certificateAuthority = (await server.services.certificateAuthority.createCertificateAuthority(
         { ...req.body, projectId: body.projectId ?? req.internalCertManagerProjectId, type: caType },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -159,7 +166,8 @@ export const registerCertificateAuthorityEndpoints = <
             name: certificateAuthority.name,
             caId: certificateAuthority.id,
             ...getCaKeySourceAuditMetadata(certificateAuthority.configuration),
-            ...(typeof createdOcspSetting === "boolean" && { isOcspEnabled: createdOcspSetting })
+            ...(typeof createdOcspSetting === "boolean" && { isOcspEnabled: createdOcspSetting }),
+            ...(typeof createdCrlValidityDays === "number" && { crlValidityDays: createdCrlValidityDays })
           }
         }
       });
@@ -167,10 +175,10 @@ export const registerCertificateAuthorityEndpoints = <
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CaCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           caType,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: certificateAuthority.projectId
         }
       });
@@ -189,19 +197,23 @@ export const registerCertificateAuthorityEndpoints = <
       hide: false,
       operationId: `update${caTypeNameForOpId}CertificateAuthorityV1`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: CertificateAuthorities.UPDATE_DESCRIPTION(caType),
       params: z.object({
-        id: z.string()
+        id: z.string().uuid().describe(CertificateAuthorities.ID)
       }),
       body: updateSchema,
       response: {
-        200: responseSchema
+        200: updateResponseSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { id } = req.params;
-      const updatedOcspSetting = (req.body as { configuration?: { isOcspEnabled?: boolean } }).configuration
-        ?.isOcspEnabled;
+      const updatedConfiguration = (
+        req.body as { configuration?: { isOcspEnabled?: boolean; crlValidityDays?: number } }
+      ).configuration;
+      const updatedOcspSetting = updatedConfiguration?.isOcspEnabled;
+      const updatedCrlValidityDays = updatedConfiguration?.crlValidityDays;
 
       const certificateAuthority = (await server.services.certificateAuthority.updateCertificateAuthority(
         {
@@ -209,7 +221,7 @@ export const registerCertificateAuthorityEndpoints = <
           type: caType,
           id
         },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -221,7 +233,8 @@ export const registerCertificateAuthorityEndpoints = <
             name: certificateAuthority.name,
             caId: certificateAuthority.id,
             status: certificateAuthority.status,
-            ...(typeof updatedOcspSetting === "boolean" && { isOcspEnabled: updatedOcspSetting })
+            ...(typeof updatedOcspSetting === "boolean" && { isOcspEnabled: updatedOcspSetting }),
+            ...(typeof updatedCrlValidityDays === "number" && { crlValidityDays: updatedCrlValidityDays })
           }
         }
       });
@@ -229,10 +242,10 @@ export const registerCertificateAuthorityEndpoints = <
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CaUpdated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           caType,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: certificateAuthority.projectId,
           status: certificateAuthority.status
         }
@@ -253,7 +266,7 @@ export const registerCertificateAuthorityEndpoints = <
       operationId: `delete${caTypeNameForOpId}CertificateAuthorityV1`,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
-        id: z.string()
+        id: z.string().uuid().describe(CertificateAuthorities.ID)
       }),
       response: {
         200: responseSchema
@@ -265,7 +278,7 @@ export const registerCertificateAuthorityEndpoints = <
 
       const certificateAuthority = (await server.services.certificateAuthority.deleteCertificateAuthority(
         { id, type: caType },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -284,10 +297,10 @@ export const registerCertificateAuthorityEndpoints = <
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CaDeleted,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           caType,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: certificateAuthority.projectId
         }
       });

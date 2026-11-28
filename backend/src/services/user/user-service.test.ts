@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
+import { ActorType, AuthMethod, MfaMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 
-import { MfaMethod } from "../auth/auth-type";
 import { userServiceFactory } from "./user-service";
 
 let isSmtpConfigured = true;
@@ -145,9 +146,20 @@ describe("requestEmailChangeOTP managed-email gate", () => {
   });
 });
 
+describe("email change to a disposable domain", () => {
+  test("requestEmailChangeOTP refuses it before sending a code", async () => {
+    const { service, tokenService } = buildService({});
+
+    await expect(service.requestEmailChangeOTP({ userId: USER_ID, newEmail: "alice@mailinator.com" })).rejects.toThrow(
+      "Email address 'alice@mailinator.com' is from a disposable email provider. Use a different email address."
+    );
+    expect(tokenService.createTokenForUser).not.toHaveBeenCalled();
+  });
+});
+
 type TMfaOverrides = {
   userRow?: { email?: string | null; isMfaEnabled?: boolean; selectedMfaMethod?: MfaMethod | null };
-  orgs?: { id: string; rootOrgId?: string | null; enforceMfa?: boolean; selectedMfaMethod?: MfaMethod | null }[];
+  orgs?: { id: string; rootOrgId?: string | null; enforceMfa?: boolean; allowedMfaMethods?: MfaMethod[] | null }[];
   memberOrgIds?: string[];
   hasTotp?: boolean;
   passkeyCount?: number;
@@ -274,7 +286,7 @@ describe("getStepUpMfaMethod", () => {
   test("challenges the org-enforced method and accepts nothing else", async () => {
     const service = buildMfaService({
       userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
-      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN }]
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.WEBAUTHN] }]
     });
 
     await expect(service.getStepUpMfaMethod(USER_ID, ENFORCED_ORG_ID)).resolves.toEqual({
@@ -288,7 +300,7 @@ describe("getStepUpMfaMethod", () => {
       userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
       orgs: [
         { id: "sub-org", rootOrgId: ENFORCED_ORG_ID },
-        { id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN }
+        { id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.WEBAUTHN] }
       ]
     });
 
@@ -316,7 +328,7 @@ describe("getStepUpMfaMethod", () => {
     const service = buildMfaService({
       userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
       memberOrgIds: [ENFORCED_ORG_ID],
-      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.TOTP }],
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.TOTP] }],
       hasTotp: true,
       passkeyCount: 1
     });
@@ -333,7 +345,7 @@ describe("getStepUpMfaMethod", () => {
       memberOrgIds: ["loose-org", ENFORCED_ORG_ID],
       orgs: [
         { id: "loose-org", enforceMfa: false },
-        { id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.TOTP }
+        { id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.TOTP] }
       ],
       hasTotp: true
     });
@@ -357,94 +369,183 @@ describe("getStepUpMfaMethod", () => {
       accepted: [MfaMethod.TOTP]
     });
   });
-});
 
-describe("getFactorEnrollmentStepUpMfaMethods", () => {
-  const passkeyEnforcingOrg = { id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN };
-
-  test("lets an account with no factor enroll its first one unchallenged", async () => {
-    const service = buildMfaService({ memberOrgIds: [ENFORCED_ORG_ID], orgs: [passkeyEnforcingOrg] });
-
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toBeNull();
-  });
-
-  test("adding a passkey while one exists requires a passkey, not a preferred email", async () => {
-    const service = buildMfaService({
-      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
-      memberOrgIds: [ENFORCED_ORG_ID],
-      orgs: [passkeyEnforcingOrg],
-      passkeyCount: 1
-    });
-
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toEqual({
-      challenge: MfaMethod.WEBAUTHN,
-      accepted: [MfaMethod.WEBAUTHN]
-    });
-  });
-
-  test("an authenticator app another org uses can't add a passkey while one exists", async () => {
+  test("accepts any method the org allows and the user has set up, challenging the preferred one", async () => {
     const service = buildMfaService({
       userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
-      memberOrgIds: [ENFORCED_ORG_ID, "totp-org"],
-      orgs: [passkeyEnforcingOrg, { id: "totp-org", enforceMfa: true, selectedMfaMethod: MfaMethod.TOTP }],
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.TOTP, MfaMethod.WEBAUTHN] }],
       hasTotp: true,
       passkeyCount: 1
     });
 
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toEqual({
-      challenge: MfaMethod.WEBAUTHN,
-      accepted: [MfaMethod.WEBAUTHN]
+    await expect(service.getStepUpMfaMethod(USER_ID, ENFORCED_ORG_ID)).resolves.toEqual({
+      challenge: MfaMethod.TOTP,
+      accepted: [MfaMethod.WEBAUTHN, MfaMethod.TOTP]
     });
   });
 
-  test("the first passkey can be proven with any factor, preferring the user's choice", async () => {
+  test("challenges the strongest allowed method when the preferred one is not allowed", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.WEBAUTHN },
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.EMAIL, MfaMethod.TOTP] }],
+      hasTotp: true,
+      passkeyCount: 1
+    });
+
+    await expect(service.getStepUpMfaMethod(USER_ID, ENFORCED_ORG_ID)).resolves.toEqual({
+      challenge: MfaMethod.TOTP,
+      accepted: [MfaMethod.TOTP, MfaMethod.EMAIL]
+    });
+  });
+
+  test("substitutes another allowed factor, not a stronger one the org does not allow, for the one being removed", async () => {
     const service = buildMfaService({
       userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
       memberOrgIds: [ENFORCED_ORG_ID],
-      orgs: [passkeyEnforcingOrg],
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.TOTP, MfaMethod.EMAIL] }],
+      hasTotp: true,
+      passkeyCount: 1
+    });
+
+    await expect(service.getStepUpMfaMethod(USER_ID, ENFORCED_ORG_ID, MfaMethod.TOTP)).resolves.toEqual({
+      challenge: MfaMethod.EMAIL,
+      accepted: [MfaMethod.TOTP, MfaMethod.EMAIL]
+    });
+  });
+
+  test("never lets a weaker org's method prove removal of a factor a stricter org accepts", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
+      memberOrgIds: ["email-org", ENFORCED_ORG_ID],
+      orgs: [
+        { id: "email-org", enforceMfa: true, allowedMfaMethods: [MfaMethod.EMAIL] },
+        { id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.WEBAUTHN, MfaMethod.TOTP] }
+      ],
+      hasTotp: true,
+      passkeyCount: 1
+    });
+
+    await expect(service.getStepUpMfaMethod(USER_ID, "email-org", MfaMethod.WEBAUTHN)).resolves.toEqual({
+      challenge: MfaMethod.TOTP,
+      accepted: [MfaMethod.WEBAUTHN, MfaMethod.TOTP]
+    });
+  });
+
+  test("challenges the factor being removed when no other allowed one is set up", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
+      memberOrgIds: [ENFORCED_ORG_ID],
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.TOTP, MfaMethod.WEBAUTHN] }],
       hasTotp: true
     });
 
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toEqual({
+    await expect(service.getStepUpMfaMethod(USER_ID, ENFORCED_ORG_ID, MfaMethod.TOTP)).resolves.toEqual({
       challenge: MfaMethod.TOTP,
       accepted: [MfaMethod.TOTP]
     });
   });
+});
 
-  test("the first authenticator app can be proven with any factor", async () => {
+describe("getEnrolledMfaMethods", () => {
+  test("lists the set-up methods strongest first", async () => {
+    const service = buildMfaService({ hasTotp: true, passkeyCount: 2 });
+
+    await expect(service.getEnrolledMfaMethods({ id: USER_ID, email: "user@example.com" })).resolves.toEqual([
+      MfaMethod.WEBAUTHN,
+      MfaMethod.TOTP,
+      MfaMethod.EMAIL
+    ]);
+  });
+
+  test("leaves out email without SMTP or without an address", async () => {
+    const withoutSmtp = buildMfaService({ hasTotp: true, smtp: false });
+    await expect(withoutSmtp.getEnrolledMfaMethods({ id: USER_ID, email: "user@example.com" })).resolves.toEqual([
+      MfaMethod.TOTP
+    ]);
+
+    const withoutAddress = buildMfaService({ hasTotp: true });
+    await expect(withoutAddress.getEnrolledMfaMethods({ id: USER_ID, email: null })).resolves.toEqual([MfaMethod.TOTP]);
+  });
+});
+
+describe("getFactorEnrollmentStepUpMfaMethods", () => {
+  const passkeyEnforcingOrg = { id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.WEBAUTHN] };
+
+  test("a first factor needs an email code, even when no login asks for email", async () => {
+    const service = buildMfaService({ memberOrgIds: [ENFORCED_ORG_ID], orgs: [passkeyEnforcingOrg] });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
+      challenge: MfaMethod.EMAIL,
+      accepted: [MfaMethod.EMAIL]
+    });
+  });
+
+  test("lets an account with no address enroll its first factor unchallenged", async () => {
     const service = buildMfaService({
-      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.WEBAUTHN },
+      userRow: { email: null },
+      memberOrgIds: [ENFORCED_ORG_ID],
+      orgs: [passkeyEnforcingOrg]
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toBeNull();
+  });
+
+  test("proves with a passkey when the user has one, not a preferred email", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
+      memberOrgIds: [ENFORCED_ORG_ID],
+      orgs: [passkeyEnforcingOrg],
       passkeyCount: 1
     });
 
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.TOTP)).resolves.toEqual({
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
       challenge: MfaMethod.WEBAUTHN,
       accepted: [MfaMethod.WEBAUTHN]
     });
   });
 
-  test("email MFA the user turned on proves the first passkey an org newly requires", async () => {
+  test("proves with a passkey over an authenticator app the user prefers", async () => {
     const service = buildMfaService({
-      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
-      memberOrgIds: [ENFORCED_ORG_ID],
-      orgs: [passkeyEnforcingOrg]
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
+      memberOrgIds: [ENFORCED_ORG_ID, "totp-org"],
+      orgs: [passkeyEnforcingOrg, { id: "totp-org", enforceMfa: true, allowedMfaMethods: [MfaMethod.TOTP] }],
+      hasTotp: true,
+      passkeyCount: 1
     });
 
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toEqual({
-      challenge: MfaMethod.EMAIL,
-      accepted: [MfaMethod.EMAIL]
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
+      challenge: MfaMethod.WEBAUTHN,
+      accepted: [MfaMethod.WEBAUTHN]
     });
   });
 
-  test("counts email when an org's login requires it", async () => {
+  test("an email-only org can't prove a new factor for a passkey user", async () => {
     const service = buildMfaService({
-      memberOrgIds: [ENFORCED_ORG_ID],
-      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.EMAIL }]
+      memberOrgIds: ["strict-org", "email-org"],
+      orgs: [
+        { id: "strict-org", enforceMfa: true, allowedMfaMethods: [MfaMethod.WEBAUTHN, MfaMethod.TOTP] },
+        { id: "email-org", enforceMfa: true, allowedMfaMethods: [MfaMethod.EMAIL] }
+      ],
+      passkeyCount: 1
     });
 
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toEqual({
-      challenge: MfaMethod.EMAIL,
-      accepted: [MfaMethod.EMAIL]
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
+      challenge: MfaMethod.WEBAUTHN,
+      accepted: [MfaMethod.WEBAUTHN]
+    });
+  });
+
+  test("proves with an authenticator app when the user has no passkey", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
+      memberOrgIds: [ENFORCED_ORG_ID],
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, allowedMfaMethods: [MfaMethod.TOTP, MfaMethod.EMAIL] }],
+      hasTotp: true
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
+      challenge: MfaMethod.TOTP,
+      accepted: [MfaMethod.TOTP]
     });
   });
 
@@ -454,6 +555,263 @@ describe("getFactorEnrollmentStepUpMfaMethods", () => {
       smtp: false
     });
 
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toBeNull();
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toBeNull();
+  });
+});
+
+const deleteActor = {
+  principal: { type: ActorType.USER, id: USER_ID, authMethod: AuthMethod.EMAIL },
+  org: { id: "org-1" }
+} as unknown as TActorContext;
+
+type TLastAdminOrg = { id: string; name: string; rootOrgId: string | null };
+
+const buildDeleteUserService = (
+  lastMemberOrgs: { id: string; name: string }[],
+  lastAdminOrgs: TLastAdminOrg[] = []
+) => {
+  isSmtpConfigured = true;
+  const calls: string[] = [];
+  const tx = { raw: vi.fn() };
+
+  const orgDeletionService = {
+    deleteOrganization: vi.fn(async (orgId: string) => {
+      calls.push(`deleteOrganization:${orgId}`);
+      return { id: orgId };
+    })
+  };
+  const userDAL = {
+    findById: vi.fn().mockResolvedValue({ ...user, superAdmin: false }),
+    find: vi.fn().mockResolvedValue([]),
+    transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb(tx)),
+    deleteById: vi.fn(async () => {
+      calls.push("deleteUser");
+      return user;
+    })
+  };
+  const orgDAL = {
+    findOrgsWhereUserIsLastMember: vi.fn().mockResolvedValue(lastMemberOrgs),
+    lockOrgTreeAccessForDeletion: vi.fn()
+  };
+  const membershipUserDAL = {
+    find: vi.fn().mockResolvedValue([]),
+    findOrgsWhereUserIsLastAdmin: vi.fn().mockResolvedValue(lastAdminOrgs)
+  };
+
+  const orgPermissionService = { getOrgPermission: vi.fn().mockResolvedValue({}) };
+  const actorContextService = {
+    forPrincipal: vi.fn(async ({ principal, orgId }: { principal: unknown; orgId: string }) => ({
+      principal,
+      org: { id: orgId }
+    }))
+  };
+  const ssoSessionService = { findSsoSessionRefusal: vi.fn().mockResolvedValue(null) };
+
+  const service = userServiceFactory({
+    userDAL,
+    orgDAL,
+    orgDeletionService,
+    orgPermissionService,
+    actorContextService,
+    ssoSessionService,
+    membershipUserDAL,
+    pamSessionDAL: { findLiveByOrgAndUserIds: vi.fn().mockResolvedValue([]) },
+    alertChannelRecipientDAL: { deleteByPrincipals: vi.fn() },
+    usageMeteringService: { emit: vi.fn() },
+    smtpService: { sendMail: vi.fn().mockResolvedValue(undefined) }
+  } as unknown as Parameters<typeof userServiceFactory>[0]);
+
+  return {
+    service,
+    calls,
+    orgDAL,
+    orgDeletionService,
+    orgPermissionService,
+    ssoSessionService,
+    userDAL,
+    membershipUserDAL,
+    tx
+  };
+};
+
+describe("deleteUser last member organizations", () => {
+  test("refuses without confirmed organizations and names them", async () => {
+    const { service, orgDeletionService, userDAL } = buildDeleteUserService([{ id: "org-1", name: "Acme" }]);
+
+    await expect(service.deleteUser(USER_ID, { actor: deleteActor })).rejects.toThrow(
+      /last member of the organization 'Acme'/
+    );
+    expect(orgDeletionService.deleteOrganization).not.toHaveBeenCalled();
+    expect(userDAL.deleteById).not.toHaveBeenCalled();
+  });
+
+  test("deletes the confirmed organizations before the user", async () => {
+    const { service, calls, orgDAL } = buildDeleteUserService([
+      { id: "org-1", name: "Acme" },
+      { id: "org-2", name: "Beta" }
+    ]);
+
+    await service.deleteUser(USER_ID, {
+      actor: deleteActor,
+      lastMemberOrganizationIds: ["org-2", "org-1"]
+    });
+
+    expect(orgDAL.findOrgsWhereUserIsLastMember).toHaveBeenCalledWith(USER_ID);
+    expect(calls).toEqual(["deleteOrganization:org-1", "deleteOrganization:org-2", "deleteUser"]);
+  });
+
+  test.each([
+    ["an organization the caller never saw", ["org-1"]],
+    ["an organization that is no longer theirs alone", ["org-1", "org-2", "org-3"]],
+    ["a different organization", ["org-1", "org-3"]]
+  ])("refuses and deletes nothing when the server list has %s", async (_, confirmed) => {
+    const { service, orgDeletionService, userDAL } = buildDeleteUserService([
+      { id: "org-1", name: "Acme" },
+      { id: "org-2", name: "Beta" }
+    ]);
+
+    await expect(
+      service.deleteUser(USER_ID, { actor: deleteActor, lastMemberOrganizationIds: confirmed })
+    ).rejects.toThrow(/have changed.*'Acme', 'Beta'.*nothing was deleted/);
+    expect(orgDeletionService.deleteOrganization).not.toHaveBeenCalled();
+    expect(userDAL.deleteById).not.toHaveBeenCalled();
+  });
+
+  test("refuses confirmed organizations once the caller is no longer the last member of any", async () => {
+    const { service, orgDeletionService, userDAL } = buildDeleteUserService([]);
+
+    await expect(
+      service.deleteUser(USER_ID, { actor: deleteActor, lastMemberOrganizationIds: ["org-1"] })
+    ).rejects.toThrow(/no longer the last member/);
+    expect(orgDeletionService.deleteOrganization).not.toHaveBeenCalled();
+    expect(userDAL.deleteById).not.toHaveBeenCalled();
+  });
+
+  test("refuses the only server admin before touching any organization", async () => {
+    const { service, orgDeletionService, userDAL } = buildDeleteUserService([{ id: "org-1", name: "Acme" }]);
+    userDAL.findById.mockResolvedValue({ ...user, superAdmin: true });
+    userDAL.find.mockResolvedValue([{ id: USER_ID }]);
+
+    await expect(
+      service.deleteUser(USER_ID, { actor: deleteActor, lastMemberOrganizationIds: ["org-1"] })
+    ).rejects.toThrow(/only server admin/);
+    expect(orgDeletionService.deleteOrganization).not.toHaveBeenCalled();
+    expect(userDAL.deleteById).not.toHaveBeenCalled();
+  });
+
+  test("refuses and deletes nothing when the session does not satisfy an organization's SSO", async () => {
+    const { service, orgDeletionService, orgPermissionService, ssoSessionService, userDAL } = buildDeleteUserService([
+      { id: "org-1", name: "Acme" },
+      { id: "org-2", name: "Beta" }
+    ]);
+    ssoSessionService.findSsoSessionRefusal.mockImplementation(async ({ org }: { org: { id: string } }) =>
+      org.id === "org-2" ? { message: "Login with SAML SSO to access this resource." } : null
+    );
+
+    await expect(
+      service.deleteUser(USER_ID, { actor: deleteActor, lastMemberOrganizationIds: ["org-1", "org-2"] })
+    ).rejects.toThrow(/cannot delete the organization 'Beta'.*SAML SSO.*nothing was deleted/);
+    expect(orgPermissionService.getOrgPermission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor: expect.objectContaining({
+          principal: deleteActor.principal,
+          org: { id: "org-2" }
+        }) as unknown
+      })
+    );
+    expect(orgDeletionService.deleteOrganization).not.toHaveBeenCalled();
+    expect(userDAL.deleteById).not.toHaveBeenCalled();
+  });
+
+  test("keeps an organization someone joined after the list was read, and the account with it", async () => {
+    const { service, orgDAL, orgDeletionService, userDAL, tx } = buildDeleteUserService([
+      { id: "org-1", name: "Acme" }
+    ]);
+    orgDeletionService.deleteOrganization.mockImplementation(
+      async (orgId: string, _inDeleteTx?: unknown, assertDeletable?: (trx?: unknown) => Promise<void>) => {
+        await assertDeletable?.();
+        await assertDeletable?.(tx);
+        return { id: orgId };
+      }
+    );
+    orgDAL.findOrgsWhereUserIsLastMember
+      .mockResolvedValueOnce([{ id: "org-1", name: "Acme" }])
+      .mockResolvedValueOnce([{ id: "org-1", name: "Acme" }])
+      .mockResolvedValueOnce([]);
+
+    await expect(
+      service.deleteUser(USER_ID, { actor: deleteActor, lastMemberOrganizationIds: ["org-1"] })
+    ).rejects.toThrow(/Another member joined the organization 'Acme'/);
+    expect(orgDAL.lockOrgTreeAccessForDeletion).toHaveBeenCalledWith("org-1", tx);
+    expect(orgDAL.findOrgsWhereUserIsLastMember).toHaveBeenLastCalledWith(USER_ID, tx);
+    expect(userDAL.deleteById).not.toHaveBeenCalled();
+  });
+
+  test("keeps the account when an organization fails to delete", async () => {
+    const { service, orgDeletionService, userDAL } = buildDeleteUserService([{ id: "org-1", name: "Acme" }]);
+    orgDeletionService.deleteOrganization.mockRejectedValueOnce(new Error("boom"));
+
+    await expect(
+      service.deleteUser(USER_ID, { actor: deleteActor, lastMemberOrganizationIds: ["org-1"] })
+    ).rejects.toThrow("boom");
+    expect(userDAL.deleteById).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteUser last admin organizations", () => {
+  test("refuses and deletes nothing while the user is the only admin of an org with other members", async () => {
+    const { service, orgDeletionService, userDAL } = buildDeleteUserService(
+      [{ id: "org-1", name: "Acme" }],
+      [{ id: "org-2", name: "Beta", rootOrgId: null }]
+    );
+
+    await expect(
+      service.deleteUser(USER_ID, { actor: deleteActor, lastMemberOrganizationIds: ["org-1"] })
+    ).rejects.toThrow(/only admin of the organization 'Beta'/);
+    expect(orgDeletionService.deleteOrganization).not.toHaveBeenCalled();
+    expect(userDAL.deleteById).not.toHaveBeenCalled();
+  });
+
+  test("ignores orgs and sub-orgs deleted with the account", async () => {
+    const { service, calls } = buildDeleteUserService(
+      [{ id: "org-1", name: "Acme" }],
+      [
+        { id: "org-1", name: "Acme", rootOrgId: null },
+        { id: "sub-1", name: "Acme Team", rootOrgId: "org-1" }
+      ]
+    );
+
+    const eligibility = await service.getMyDeletionEligibility(USER_ID);
+    expect(eligibility).toEqual({
+      canDelete: true,
+      isOnlyServerAdmin: false,
+      lastMemberOrganizations: [{ id: "org-1", name: "Acme" }],
+      lastAdminOrganizations: []
+    });
+    expect(calls).toEqual([]);
+  });
+
+  test("reports sub-orgs the user is the only admin of", async () => {
+    const { service } = buildDeleteUserService([], [{ id: "sub-1", name: "Acme Team", rootOrgId: "org-1" }]);
+
+    await expect(service.getMyDeletionEligibility(USER_ID)).resolves.toMatchObject({
+      canDelete: false,
+      lastAdminOrganizations: [{ id: "sub-1", name: "Acme Team" }]
+    });
+  });
+
+  test("rechecks under the org locks and keeps the account if another admin was removed meanwhile", async () => {
+    const { service, membershipUserDAL, userDAL, tx } = buildDeleteUserService([]);
+    membershipUserDAL.find.mockResolvedValue([{ scopeOrgId: "org-b" }, { scopeOrgId: "org-a" }]);
+    membershipUserDAL.findOrgsWhereUserIsLastAdmin
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: "org-a", name: "Acme", rootOrgId: null }]);
+
+    await expect(service.deleteUser(USER_ID, { actor: deleteActor })).rejects.toThrow(
+      /now the only admin of the organization 'Acme'/
+    );
+    expect(tx.raw).toHaveBeenCalledTimes(2);
+    expect(membershipUserDAL.findOrgsWhereUserIsLastAdmin).toHaveBeenLastCalledWith(USER_ID, tx);
+    expect(userDAL.deleteById).not.toHaveBeenCalled();
   });
 });

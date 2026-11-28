@@ -1,9 +1,11 @@
+import * as x509 from "@peculiar/x509";
 import { z } from "zod";
 
 import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
 } from "@app/helpers/agentVaultControlChars";
+import { agentVaultServiceDescriptionSchema } from "@app/helpers/agentVaultDescription";
 import { addHostIssues, hostError } from "@app/helpers/agentVaultHostPattern";
 import { addPathPrefixIssues, pathPrefixError } from "@app/helpers/agentVaultPathPrefix";
 import { variableReferenceError } from "@app/helpers/agentVaultVariables";
@@ -15,19 +17,33 @@ import {
   AgentVaultServiceType,
   AgentVaultSubstitutionSurface,
   AgentVaultVariableReferenceField,
-  TAgentVaultMemberProvidedField
+  isNativeServiceType,
+  TAgentVaultMemberProvidedField,
+  TAgentVaultNativeServiceType
 } from "@app/hooks/api/agentVault";
 import {
-  TAgentVaultOauthCredentialSummary,
-  TAgentVaultService
+  TAgentVaultService,
+  TAgentVaultServiceHook,
+  TAgentVaultSessionInlineService,
+  TAgentVaultSharedOauthCredentialSummary
 } from "@app/hooks/api/agentVault/types";
 import { slugSchema } from "@app/lib/schemas";
+
+import {
+  addHookNarrowingIssues,
+  blankHookNarrowing,
+  hookNarrowingDraftOf,
+  THookNarrowingDraft
+} from "../hooks/hookSchema";
 
 /**
  * Seeded into a secret field on edit so the box can show that something is stored without the server
  * returning it. Never sent: the sheet maps it back to an omitted key.
  */
 export const UNCHANGED_SECRET = "__INFISICAL_UNCHANGED__";
+
+/** The type of a save error on `oauthAuthorizationId` that the OAuth card answers by showing its own-app fields. */
+export const OAUTH_OWN_APP_REQUIRED_ERROR = "own-app-required";
 
 /** The API stores :443 explicitly, so it is stripped wherever a host pattern is shown and put back on save. */
 export const displayHostPattern = (hostPattern: string) =>
@@ -53,33 +69,230 @@ export const storedMemberFields = (
   service?: TAgentVaultService | null
 ): TAgentVaultMemberProvidedField[] =>
   service &&
-  (service.credential.type === AgentVaultCredentialType.Bearer ||
-    service.credential.type === AgentVaultCredentialType.Basic)
-    ? service.credential.memberProvidedFields
+  service.credential.type !== AgentVaultCredentialType.Passthrough &&
+  service.credential.type !== AgentVaultCredentialType.SshKey
+    ? (service.credential.memberProvidedFields ?? [])
     : [];
+
+export const isMemberProvidedOAuthService = (service?: TAgentVaultService | null) =>
+  service?.credential.type === AgentVaultCredentialType.OAuth &&
+  storedMemberFields(service).length > 0;
+
+export const isNativeService = (
+  service?: TAgentVaultService | null
+): service is Extract<TAgentVaultService, { type: TAgentVaultNativeServiceType }> =>
+  isNativeServiceType(service?.type);
+
+/** A database or SSH service is reached by name, so only an HTTP or MCP service has a host pattern. */
+export const hostPatternOf = (service: TAgentVaultService | TAgentVaultSessionInlineService) =>
+  service.type === AgentVaultServiceType.Http || service.type === AgentVaultServiceType.Mcp
+    ? service.hostPattern
+    : null;
+
+export const serverUrlOf = (service?: TAgentVaultService | null) =>
+  service?.type === AgentVaultServiceType.Mcp ? service.serverUrl : null;
+
+const OAUTH_CALLBACK_PATH = "/agent-vault/oauth/callback";
+
+export const defaultOAuthRedirectUri = () => `${window.location.origin}${OAUTH_CALLBACK_PATH}`;
+
+export const hostOf = (serverUrl: string) => {
+  try {
+    return new URL(serverUrl.trim()).host;
+  } catch {
+    return "the server";
+  }
+};
 
 export const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
   [AgentVaultCredentialType.Bearer]: "Bearer",
   [AgentVaultCredentialType.Basic]: "Basic Auth",
   [AgentVaultCredentialType.Passthrough]: "Pass-through",
-  [AgentVaultCredentialType.OAuth]: "OAuth"
+  [AgentVaultCredentialType.OAuth]: "OAuth",
+  [AgentVaultCredentialType.SshKey]: "SSH Key"
+};
+
+// A database or SSH login has no HTTP header, so "Basic Auth" would misdescribe it.
+const DATABASE_CREDENTIAL_LABELS: Partial<Record<AgentVaultCredentialType, string>> = {
+  [AgentVaultCredentialType.Basic]: "Username and Password"
+};
+
+// Beside SSH Key, "Password" is the choice being made; the username is entered either way.
+const SSH_CREDENTIAL_LABELS: Partial<Record<AgentVaultCredentialType, string>> = {
+  [AgentVaultCredentialType.Basic]: "Password",
+  [AgentVaultCredentialType.SshKey]: "SSH Key"
+};
+
+export const nativeCredentialLabels = (serviceType: TAgentVaultNativeServiceType) =>
+  serviceType === AgentVaultServiceType.Ssh ? SSH_CREDENTIAL_LABELS : DATABASE_CREDENTIAL_LABELS;
+
+export const credentialLabel = (
+  serviceType: AgentVaultServiceType,
+  credentialType: AgentVaultCredentialType
+) =>
+  (isNativeServiceType(serviceType) && nativeCredentialLabels(serviceType)[credentialType]) ||
+  CREDENTIAL_LABELS[credentialType];
+
+export const NATIVE_CREDENTIAL_TYPES: Record<
+  TAgentVaultNativeServiceType,
+  AgentVaultCredentialType[]
+> = {
+  [AgentVaultServiceType.Postgres]: [AgentVaultCredentialType.Basic],
+  [AgentVaultServiceType.Mysql]: [AgentVaultCredentialType.Basic],
+  [AgentVaultServiceType.Ssh]: [AgentVaultCredentialType.Basic, AgentVaultCredentialType.SshKey]
 };
 
 export const HTTP_CREDENTIAL_TYPES = [
   AgentVaultCredentialType.Bearer,
   AgentVaultCredentialType.Basic,
+  AgentVaultCredentialType.OAuth,
   AgentVaultCredentialType.Passthrough
 ];
 
 export const OAUTH_STATUS_LABELS: Record<AgentVaultOauthStatus, string> = {
   [AgentVaultOauthStatus.Connected]: "Authorized",
   [AgentVaultOauthStatus.NeedsReauthorization]: "Needs Reauthorization",
-  [AgentVaultOauthStatus.NeedsAdditionalScopes]: "Missing Scopes"
+  [AgentVaultOauthStatus.NeedsAdditionalScopes]: "Missing Scopes",
+  [AgentVaultOauthStatus.NotConnected]: "Not Connected"
 };
 
 export const SERVICE_TYPE_LABELS: Record<AgentVaultServiceType, string> = {
   [AgentVaultServiceType.Http]: "HTTP API",
-  [AgentVaultServiceType.Mcp]: "MCP Server"
+  [AgentVaultServiceType.Mcp]: "MCP Server",
+  [AgentVaultServiceType.Postgres]: "PostgreSQL",
+  [AgentVaultServiceType.Mysql]: "MySQL",
+  [AgentVaultServiceType.Ssh]: "SSH"
+};
+
+export type TServiceKind = "http" | "mcp" | "native";
+
+export const serviceKindOf = (serviceType: AgentVaultServiceType): TServiceKind => {
+  if (serviceType === AgentVaultServiceType.Mcp) return "mcp";
+  if (isNativeServiceType(serviceType)) return "native";
+  return "http";
+};
+
+export const hasDatabase = (serviceType: AgentVaultServiceType) =>
+  serviceType === AgentVaultServiceType.Postgres || serviceType === AgentVaultServiceType.Mysql;
+
+// The agent reaches a database or SSH service at `<name>.svc.agent-vault`, and a DNS label stops at 63 bytes.
+export const MAX_NATIVE_SERVICE_NAME_LENGTH = 63;
+
+// Mirrors agent-vault-native-config-schemas.ts on the backend, so a value the API would refuse is marked on its
+// field instead of coming back as a toast on Review.
+const MAX_NATIVE_HOST_LENGTH = 253;
+const MAX_NATIVE_DATABASE_LENGTH = 64;
+const MAX_NATIVE_CA_LENGTH = 16384;
+const MAX_SSH_KEY_LENGTH = 8192;
+const MAX_SSH_USERNAME_LENGTH = 256;
+
+const NATIVE_HOSTNAME_RE =
+  /^[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?(?:\.[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?)*$/i;
+const IPV6_SCHEMA = z.string().ip({ version: "v6" });
+// A PEM spans lines, so only those control characters are allowed.
+// eslint-disable-next-line no-control-regex
+const PEM_CONTROL_CHARS_RE = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
+const PEM_BLOCK_RE = /-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g;
+
+const SSH_KEY_VARIABLE_MESSAGE =
+  "An SSH key credential can't use variables yet, so this can't contain double braces. Enter the value itself.";
+// A key spans lines, so only tabs and line breaks are allowed among the control characters.
+// eslint-disable-next-line no-control-regex
+const SSH_KEY_TEXT_RE = /^[^\x00-\x08\x0b\x0c\x0e-\x1f\x7f]*$/;
+
+export const nativeHostError = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return "Enter the server's host name or IP address.";
+  if (trimmed.length > MAX_NATIVE_HOST_LENGTH) {
+    return `The host can be at most ${MAX_NATIVE_HOST_LENGTH} characters.`;
+  }
+  const unbracketed =
+    trimmed.startsWith("[") && trimmed.endsWith("]") ? trimmed.slice(1, -1) : trimmed;
+  const host = unbracketed.replace(/\.$/, "").toLowerCase();
+  if (/\s/.test(host) || !AGENT_VAULT_NO_CONTROL_CHARS_RE.test(host)) {
+    return "The host can't contain spaces or control characters.";
+  }
+  if (host.includes("{{")) {
+    return "Variables aren't supported in the host yet. Enter the host itself.";
+  }
+  if (IPV6_SCHEMA.safeParse(host).success) return null;
+  if (host.includes("://")) return "Enter only the host, without a scheme such as postgres://.";
+  if (host.includes("/")) return "Enter only the host, without a path.";
+  if (host.includes("*")) return "Enter one specific host. Wildcards aren't supported here.";
+  if (host.includes(":")) return "Enter the port in the Port field, not as part of the host.";
+  if (!NATIVE_HOSTNAME_RE.test(host)) return `"${host}" isn't a valid host name or IP address.`;
+  return null;
+};
+
+export const nativePortError = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return "Enter the port.";
+  const port = Number(trimmed);
+  if (!/^\d+$/.test(trimmed) || port < 1 || port > 65535) {
+    return "The port must be a whole number between 1 and 65535.";
+  }
+  return null;
+};
+
+export const nativeDatabaseError = (value: string): string | null => {
+  const database = value.trim();
+  if (!database) return "Enter the database to connect to.";
+  if (database.length > MAX_NATIVE_DATABASE_LENGTH) {
+    return `The database name can be at most ${MAX_NATIVE_DATABASE_LENGTH} characters.`;
+  }
+  if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(database)) {
+    return "The database name can't contain control characters.";
+  }
+  if (database.includes("{{")) {
+    return "Variables aren't supported in the database name yet. Enter the name itself.";
+  }
+  return null;
+};
+
+export const certificateAuthorityError = (value: string): string | null => {
+  const pem = value.replace(/\r\n?/g, "\n").trim();
+  if (!pem) return null;
+  if (pem.length > MAX_NATIVE_CA_LENGTH) {
+    return `The certificate authority can be at most ${MAX_NATIVE_CA_LENGTH} characters.`;
+  }
+  const invalid =
+    "The certificate authority isn't a valid PEM certificate. Paste the CA certificate, starting with -----BEGIN CERTIFICATE-----.";
+  if (PEM_CONTROL_CHARS_RE.test(pem)) return invalid;
+  const blocks = pem.match(PEM_BLOCK_RE);
+  if (!blocks?.length) return invalid;
+  if ((pem.match(/-----BEGIN /g) ?? []).length !== blocks.length) {
+    return "Paste only the CA certificate. This text also contains a private key or other data that isn't a certificate.";
+  }
+  try {
+    blocks.forEach((block) => new x509.X509Certificate(block));
+  } catch {
+    return invalid;
+  }
+  return null;
+};
+
+const hasSshKeyVariable = (value: string) => value.includes("{{") || value.includes("}}");
+
+const sshKeyTextError = (value: string): string | null => {
+  if (hasSshKeyVariable(value)) return SSH_KEY_VARIABLE_MESSAGE;
+  if (value.trim().length > MAX_SSH_KEY_LENGTH) {
+    return `This can be at most ${MAX_SSH_KEY_LENGTH} characters.`;
+  }
+  if (!SSH_KEY_TEXT_RE.test(value)) {
+    return "This can't contain control characters other than line breaks. Paste the key file's contents as they are.";
+  }
+  return null;
+};
+
+// A username is one line, unlike the key and certificate.
+const sshUsernameError = (value: string): string | null => {
+  if (hasSshKeyVariable(value)) return SSH_KEY_VARIABLE_MESSAGE;
+  const username = value.trim();
+  if (username.length > MAX_SSH_USERNAME_LENGTH) {
+    return `This can be at most ${MAX_SSH_USERNAME_LENGTH} characters.`;
+  }
+  if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(username)) return AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE;
+  return null;
 };
 
 export const TRANSPORT_LABELS: Record<AgentVaultMcpTransport, string> = {
@@ -211,12 +424,29 @@ export enum ServiceStep {
   Details = "details",
   Credential = "credential",
   Tools = "tools",
+  Hook = "hook",
   Review = "review"
 }
 
+/** The service's hook, with what it checks of the service. An empty `hookId` means no hook. */
+export type TServiceHookDraft = THookNarrowingDraft & { hookId: string; hookName: string };
+
+export const serviceHookDraftOf = (hook?: TAgentVaultServiceHook | null): TServiceHookDraft =>
+  hook
+    ? { hookId: hook.id, hookName: hook.name, ...hookNarrowingDraftOf(hook) }
+    : { hookId: "", hookName: "", ...blankHookNarrowing() };
+
 export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
   [ServiceStep.Template]: [],
-  [ServiceStep.Details]: ["name", "hosts", "hostDraft", "methods", "pathPrefixes", "pathDraft"],
+  [ServiceStep.Details]: [
+    "name",
+    "description",
+    "hosts",
+    "hostDraft",
+    "methods",
+    "pathPrefixes",
+    "pathDraft"
+  ],
   [ServiceStep.Credential]: [
     "credentialType",
     "headerName",
@@ -224,27 +454,57 @@ export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "username",
     "secret",
     "memberProvidedFields",
+    "oauthVariableKey",
     "customHeaders",
     "substitutions"
   ],
   [ServiceStep.Tools]: [],
+  [ServiceStep.Hook]: ["hook"],
+  [ServiceStep.Review]: []
+};
+
+export const NATIVE_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
+  [ServiceStep.Template]: [],
+  [ServiceStep.Details]: [
+    "name",
+    "description",
+    "host",
+    "port",
+    "database",
+    "tlsEnabled",
+    "tlsVerify",
+    "tlsCa"
+  ],
+  [ServiceStep.Credential]: [
+    "credentialType",
+    "username",
+    "secret",
+    "memberProvidedFields",
+    "sshPrivateKey",
+    "sshCertificate"
+  ],
+  [ServiceStep.Tools]: [],
+  [ServiceStep.Hook]: ["hook"],
   [ServiceStep.Review]: []
 };
 
 export const MCP_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
   [ServiceStep.Template]: [],
-  [ServiceStep.Details]: ["name", "serverUrl", "transport"],
+  [ServiceStep.Details]: ["name", "description", "serverUrl", "transport"],
   [ServiceStep.Credential]: [
     "credentialType",
     "headerName",
     "headerPrefix",
     "secret",
+    "memberProvidedFields",
     "oauthAuthorizationId",
     "oauthClientId",
     "oauthClientSecret",
+    "oauthVariableKey",
     "customHeaders"
   ],
   [ServiceStep.Tools]: ["toolScope", "allowedTools"],
+  [ServiceStep.Hook]: ["hook"],
   [ServiceStep.Review]: []
 };
 
@@ -253,61 +513,142 @@ type TOAuthFormState = {
   serverUrl: string;
   oauthAuthorizationId: string;
   oauthAuthorizedUrl: string;
+  memberProvidedFields: TAgentVaultMemberProvidedField[];
 };
 
+/** For an MCP service, credential-value stands for the whole credential: the bearer token or the OAuth sign-in. */
+/**
+ * Who provides the credential after the credential type switches: the stored setting of the new type, or off. An OAuth
+ * variable's sign-in is shared, so a switch back to OAuth while one is chosen stays off, and saving then asks before it
+ * removes the members' connections.
+ */
+export const memberFieldsAfterTypeSwitch = (
+  type: AgentVaultCredentialType,
+  service: TAgentVaultService | null | undefined,
+  oauthUsesVariable: boolean
+): TAgentVaultMemberProvidedField[] => {
+  if (type !== service?.credential.type) return [];
+  if (type === AgentVaultCredentialType.OAuth && oauthUsesVariable) return [];
+  return storedMemberFields(service);
+};
+
+export const isCredentialMemberProvided = (form: {
+  memberProvidedFields: TAgentVaultMemberProvidedField[];
+}) => form.memberProvidedFields.includes(AgentVaultVariableReferenceField.CredentialValue);
+
+/** A service whose OAuth credential is an OAuth variable's sign-in rather than one of its own. */
+export const isOAuthVariableService = (service?: TAgentVaultService | null) =>
+  service?.credential.type === AgentVaultCredentialType.OAuth &&
+  service.credential.source === "variable";
+
+/** The key of the OAuth variable a service uses, when the caller can see it. */
+export const storedOAuthVariableKey = (service?: TAgentVaultService | null) =>
+  isOAuthVariableService(service) && service?.credential.type === AgentVaultCredentialType.OAuth
+    ? (service.credential.variable?.key ?? "")
+    : "";
+
+/**
+ * Whether the form's OAuth credential is an OAuth variable. An HTTP API has no sign-in of its own, so its OAuth
+ * credential always is one; an MCP server's is one when the admin chose it over connecting here.
+ */
+export const isOAuthVariableCredential = (form: {
+  serviceType: AgentVaultServiceType;
+  credentialType: AgentVaultCredentialType;
+  oauthUsesVariable: boolean;
+}) =>
+  form.credentialType === AgentVaultCredentialType.OAuth &&
+  (form.serviceType === AgentVaultServiceType.Http ||
+    (form.serviceType === AgentVaultServiceType.Mcp && form.oauthUsesVariable));
+
 // Reusing an authorization after the server URL changes could attach its tokens to another host.
-export const newOAuthAuthorizationId = (form: TOAuthFormState) =>
+export const newOAuthAuthorizationId = (
+  form: Pick<TOAuthFormState, "serverUrl" | "oauthAuthorizationId" | "oauthAuthorizedUrl">
+) =>
   form.oauthAuthorizationId && form.oauthAuthorizedUrl === form.serverUrl.trim()
     ? form.oauthAuthorizationId
     : undefined;
 
+// The admin's own sign-in. A service that leaves the sign-in to each member stores none.
 export const storedOAuthCredential = (
   service: TAgentVaultService | null | undefined,
   serverUrl: string
-): TAgentVaultOauthCredentialSummary | null =>
+): TAgentVaultSharedOauthCredentialSummary | null =>
   service?.type === AgentVaultServiceType.Mcp &&
   service.credential.type === AgentVaultCredentialType.OAuth &&
+  service.credential.status !== undefined &&
+  !isMemberProvidedOAuthService(service) &&
+  !isOAuthVariableService(service) &&
   service.serverUrl === serverUrl.trim()
-    ? service.credential
+    ? (service.credential as TAgentVaultSharedOauthCredentialSummary)
     : null;
 
 export const isOAuthAuthorizationMissing = (
   form: TOAuthFormState & {
     serviceType: AgentVaultServiceType;
     credentialType: AgentVaultCredentialType;
+    oauthUsesVariable: boolean;
   },
   service?: TAgentVaultService | null
 ) => {
   if (
     form.serviceType !== AgentVaultServiceType.Mcp ||
-    form.credentialType !== AgentVaultCredentialType.OAuth
+    form.credentialType !== AgentVaultCredentialType.OAuth ||
+    form.oauthUsesVariable ||
+    isCredentialMemberProvided(form)
   ) {
     return false;
   }
   return !newOAuthAuthorizationId(form) && !storedOAuthCredential(service, form.serverUrl);
 };
 
-export const oauthStatusLabel = (form: TOAuthFormState, service?: TAgentVaultService | null) => {
+export const oauthStatusLabel = (
+  form: TOAuthFormState & {
+    serviceType: AgentVaultServiceType;
+    credentialType: AgentVaultCredentialType;
+    oauthUsesVariable: boolean;
+    oauthVariableKey: string;
+  },
+  service?: TAgentVaultService | null
+) => {
+  if (isOAuthVariableCredential(form)) {
+    const key = form.oauthVariableKey || storedOAuthVariableKey(service);
+    return key ? `Uses the ${key} variable` : "Uses an OAuth variable";
+  }
+  if (isCredentialMemberProvided(form)) return "Each member connects their own account";
   const stored = storedOAuthCredential(service, form.serverUrl);
   if (newOAuthAuthorizationId(form)) return stored ? "Reauthorized" : "Authorized";
   return stored ? OAUTH_STATUS_LABELS[stored.status] : "Not authorized";
 };
 
 /**
- * Missing keys are read when the form validates rather than when the schema is built, since they arrive as each
- * lookup answers. A key still being checked passes here; the API refuses it on save if it doesn't exist.
+ * Missing keys, and keys of OAuth variables, are read when the form validates rather than when the schema is built,
+ * since they arrive as each lookup answers. A key still being checked passes here; the API refuses it on save if it
+ * doesn't exist.
  */
 export const buildServiceSchema = (
   service?: TAgentVaultService | null,
-  getMissingKeys?: () => ReadonlySet<string>
+  getMissingKeys?: () => ReadonlySet<string>,
+  getOAuthKeys?: () => ReadonlySet<string>
 ) =>
   z
     .object({
       serviceType: z.nativeEnum(AgentVaultServiceType),
       name: slugSchema({ max: 64, field: "Name" }),
+      description: agentVaultServiceDescriptionSchema,
       serverUrl: z.string(),
       transport: z.nativeEnum(AgentVaultMcpTransport),
       hosts: z.array(z.string()),
+      // A database or SSH service's server. The port stays text so a half-typed value can be shown and refused.
+      host: z.string(),
+      port: z.string(),
+      database: z.string(),
+      tlsEnabled: z.boolean(),
+      tlsVerify: z.boolean(),
+      tlsCa: z.string(),
+      sshPrivateKey: z.string(),
+      sshCertificate: z.string(),
+      // Set only by Remove Certificate: an emptied box keeps the stored certificate, as every other stored value does.
+      sshCertificateRemoved: z.boolean(),
       // In the form rather than component state so the resolver sees it: trigger() wipes anything set with
       // setError, so a refusal held outside the form would let the step advance.
       hostDraft: z.string(),
@@ -333,6 +674,11 @@ export const buildServiceSchema = (
       oauthClientSecret: z.string().optional(),
       // The admin chose automatic setup over the service's own OAuth app. Kept in the form so it survives Back.
       oauthAutomaticSetup: z.boolean().optional(),
+      // An MCP server's OAuth credential comes from an OAuth variable rather than a sign-in here. Kept while the
+      // admin switches, so going back restores the pick.
+      oauthUsesVariable: z.boolean(),
+      // The key of the OAuth variable. Empty on edit when the caller can't read variables.
+      oauthVariableKey: z.string(),
       // Each member sets these for themselves, so the form holds no value for them.
       memberProvidedFields: z.array(
         z.enum([
@@ -363,10 +709,50 @@ export const buildServiceSchema = (
             surfaces: z.array(z.nativeEnum(AgentVaultSubstitutionSurface))
           })
         )
-        .max(MAX_SUBSTITUTIONS, `You can add at most ${MAX_SUBSTITUTIONS} substitutions.`)
+        .max(MAX_SUBSTITUTIONS, `You can add at most ${MAX_SUBSTITUTIONS} substitutions.`),
+      hook: z.custom<TServiceHookDraft>()
     })
     .superRefine((data, ctx) => {
+      if (data.hook.hookId) addHookNarrowingIssues(data.hook, data.serviceType, ctx);
       const isMcp = data.serviceType === AgentVaultServiceType.Mcp;
+      const isHttp = data.serviceType === AgentVaultServiceType.Http;
+      const issue = (path: string, message: string) =>
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+
+      if (isNativeServiceType(data.serviceType)) {
+        if (data.name.length > MAX_NATIVE_SERVICE_NAME_LENGTH) {
+          issue(
+            "name",
+            `A database or SSH service's name can be at most ${MAX_NATIVE_SERVICE_NAME_LENGTH} characters.`
+          );
+        }
+        const hostIssue = nativeHostError(data.host);
+        if (hostIssue) issue("host", hostIssue);
+        const portIssue = nativePortError(data.port);
+        if (portIssue) issue("port", portIssue);
+        if (hasDatabase(data.serviceType)) {
+          const databaseIssue = nativeDatabaseError(data.database);
+          if (databaseIssue) issue("database", databaseIssue);
+          // The CA field is hidden unless the proxy verifies the certificate, and nothing sends it then.
+          const caIssue =
+            data.tlsEnabled && data.tlsVerify ? certificateAuthorityError(data.tlsCa) : null;
+          if (caIssue) issue("tlsCa", caIssue);
+        }
+        if (!NATIVE_CREDENTIAL_TYPES[data.serviceType].includes(data.credentialType)) {
+          issue(
+            "credentialType",
+            data.serviceType === AgentVaultServiceType.Ssh
+              ? "An SSH service takes a password or an SSH key."
+              : "A database service takes a username and password."
+          );
+        }
+      }
+      if (isOAuthVariableCredential(data) && !data.oauthVariableKey) {
+        // A variable the caller can't see is kept as it is.
+        const isHiddenVariableKept =
+          isOAuthVariableService(service) && !storedOAuthVariableKey(service);
+        if (!isHiddenVariableKept) issue("oauthVariableKey", "Choose an OAuth variable.");
+      }
       if (isMcp) {
         const urlError = serverUrlError(data.serverUrl);
         if (urlError) {
@@ -382,8 +768,16 @@ export const buildServiceSchema = (
             message: "An MCP server takes OAuth or a bearer token."
           });
         }
-        if (data.credentialType === AgentVaultCredentialType.OAuth) {
-          if (data.oauthAuthorizationRejection && !data.oauthAuthorizationId) {
+        if (data.credentialType === AgentVaultCredentialType.OAuth && !data.oauthUsesVariable) {
+          if (isCredentialMemberProvided(data)) {
+            if (data.oauthClientSecret && !data.oauthClientId?.trim()) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["oauthClientId"],
+                message: "Enter the client ID this secret belongs to."
+              });
+            }
+          } else if (data.oauthAuthorizationRejection && !data.oauthAuthorizationId) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               path: ["oauthAuthorizationId"],
@@ -441,15 +835,15 @@ export const buildServiceSchema = (
         });
       }
 
-      if (!isMcp) addHostIssues(data.hosts, ctx, ["hosts"]);
-      const hostDraft = isMcp ? "" : data.hostDraft.trim();
+      if (isHttp) addHostIssues(data.hosts, ctx, ["hosts"]);
+      const hostDraft = isHttp ? data.hostDraft.trim() : "";
       if (hostDraft) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["hosts"],
           message: hostError(hostDraft, data.hosts) ?? `Add "${hostDraft}" or clear it.`
         });
-      } else if (!isMcp && data.hosts.length === 0) {
+      } else if (isHttp && data.hosts.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["hosts"],
@@ -457,7 +851,7 @@ export const buildServiceSchema = (
         });
       }
 
-      const pathDraft = isMcp ? "" : data.pathDraft.trim();
+      const pathDraft = isHttp ? data.pathDraft.trim() : "";
       if (pathDraft) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -474,7 +868,7 @@ export const buildServiceSchema = (
         });
       }
 
-      if (!isMcp && data.methods.length === 0) {
+      if (isHttp && data.methods.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["methods"],
@@ -482,7 +876,7 @@ export const buildServiceSchema = (
         });
       }
 
-      if (!isMcp) addPathPrefixIssues(data.pathPrefixes, ctx, ["pathPrefixes"]);
+      if (isHttp) addPathPrefixIssues(data.pathPrefixes, ctx, ["pathPrefixes"]);
 
       const hasHeaderShape = data.credentialType === AgentVaultCredentialType.Bearer;
 
@@ -614,9 +1008,10 @@ export const buildServiceSchema = (
       });
 
       const missingKeys = getMissingKeys?.();
+      const oauthKeys = getOAuthKeys?.();
       const addReferenceIssue = (value: string | undefined, path: (string | number)[]) => {
         if (!value || value === UNCHANGED_SECRET) return;
-        const message = variableReferenceError(value, missingKeys);
+        const message = variableReferenceError(value, missingKeys, { oauthKeys });
         if (message) ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
       };
 
@@ -632,6 +1027,7 @@ export const buildServiceSchema = (
       if (
         data.credentialType !== AgentVaultCredentialType.Passthrough &&
         data.credentialType !== AgentVaultCredentialType.OAuth &&
+        data.credentialType !== AgentVaultCredentialType.SshKey &&
         !isSecretMemberProvided
       ) {
         addReferenceIssue(data.secret, ["secret"]);
@@ -656,6 +1052,33 @@ export const buildServiceSchema = (
       const isUnchanged = data.secret === UNCHANGED_SECRET;
 
       const typeChanged = Boolean(service) && service?.credential.type !== data.credentialType;
+      // Nothing is stored to keep on create or after a type change, so every part has to be entered.
+      const needsNewValue = !service || typeChanged;
+
+      if (data.credentialType === AgentVaultCredentialType.SshKey) {
+        const username = data.username ?? "";
+        if (username !== UNCHANGED_SECRET) {
+          if (!username.trim()) {
+            if (needsNewValue) issue("username", "Enter the user to log in as.");
+          } else {
+            const usernameIssue = sshUsernameError(username);
+            if (usernameIssue) issue("username", usernameIssue);
+          }
+        }
+        if (data.sshPrivateKey !== UNCHANGED_SECRET) {
+          if (!data.sshPrivateKey.trim()) {
+            if (needsNewValue) issue("sshPrivateKey", "Paste the private key.");
+          } else {
+            const keyIssue = sshKeyTextError(data.sshPrivateKey);
+            if (keyIssue) issue("sshPrivateKey", keyIssue);
+          }
+        }
+        if (data.sshCertificate !== UNCHANGED_SECRET && !data.sshCertificateRemoved) {
+          const certificateIssue = sshKeyTextError(data.sshCertificate);
+          if (certificateIssue) issue("sshCertificate", certificateIssue);
+        }
+        return;
+      }
       // A field each member used to set has nothing stored for the admin to keep.
       const wasMemberProvided = (field: TAgentVaultMemberProvidedField) =>
         !typeChanged && storedMemberFields(service).includes(field);
@@ -669,6 +1092,17 @@ export const buildServiceSchema = (
           !data.secret
         ) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["secret"], message: "Required" });
+        }
+        return;
+      }
+
+      // Every database and SSH login names its user, so a password alone isn't enough.
+      if (isNativeServiceType(data.serviceType)) {
+        if (isUsernameMemberProvided) return;
+        const hasUsername =
+          data.username === UNCHANGED_SECRET ? !typeChanged : Boolean(data.username);
+        if (!hasUsername) {
+          issue("username", "Enter the username to log in as, or leave it to each member.");
         }
         return;
       }

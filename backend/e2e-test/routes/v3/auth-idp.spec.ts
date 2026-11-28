@@ -5,7 +5,10 @@ import { Knex } from "knex";
 
 import { AccessScope, OrgMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { ActorType, AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
+import { OIDCConfigurationType, OIDCJWTSignatureAlgorithm } from "@app/ee/services/oidc/oidc-config-types";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
+import { ProviderAuthResult } from "@app/services/auth/auth-type";
+import { matchIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { cleanupEmailDomains, seedVerifiedEmailDomain } from "../../testUtils/email-domains";
@@ -127,10 +130,17 @@ describe("Auth IdP Service-Level Tests", () => {
 
   describe("SSO config updates", () => {
     const actor = {
-      actor: ActorType.USER,
-      actorId: seedData1.id,
-      actorOrgId: TEST_ORG_ID,
-      actorAuthMethod: AuthMethod.OKTA_SAML
+      actor: {
+        principal: {
+          type: ActorType.USER,
+          id: seedData1.id,
+          username: seedData1.username,
+          email: seedData1.email,
+          authMethod: AuthMethod.OKTA_SAML,
+          isSuperAdmin: false
+        },
+        org: { id: TEST_ORG_ID, rootOrgId: TEST_ORG_ID, parentOrgId: TEST_ORG_ID, shouldUseNewPrivilegeSystem: true }
+      }
     };
 
     const enforceSsoAndScim = () =>
@@ -176,6 +186,40 @@ describe("Auth IdP Service-Level Tests", () => {
       expect(await orgFlags()).toEqual({ authEnforced: false, scimEnabled: false });
     });
 
+    test("a saved SAML MFA attribute value decides the login verdict, and adding or removing it keeps SSO enforcement and SCIM", async () => {
+      await getServices().saml.createSamlCfg({
+        ...actor,
+        orgId: TEST_ORG_ID,
+        authProvider: AuthMethod.OKTA_SAML,
+        isActive: true,
+        entryPoint: "https://idp.example.com/sso/saml",
+        issuer: "https://idp.example.com",
+        idpCert: "cert",
+        mfaAttributeValues: ["swk"]
+      });
+      await enforceSsoAndScim();
+
+      const isPasskeyLoginTrusted = async () => {
+        const config = await getServices().saml.getSaml({ ...actor, type: "org", orgId: TEST_ORG_ID });
+        return matchIdpMfaSignal({
+          kind: "saml",
+          authnContextClassRefs: ["urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport"],
+          attributes: { amr: ["pwd", "swk"] },
+          config
+        }).verified;
+      };
+
+      expect(await isPasskeyLoginTrusted()).toBe(true);
+
+      await getServices().saml.updateSamlCfg({ ...actor, orgId: TEST_ORG_ID, mfaAttributeValues: null });
+      expect(await isPasskeyLoginTrusted()).toBe(false);
+      expect(await orgFlags()).toEqual({ authEnforced: true, scimEnabled: true });
+
+      await getServices().saml.updateSamlCfg({ ...actor, orgId: TEST_ORG_ID, mfaAttributeValues: ["swk"] });
+      expect(await isPasskeyLoginTrusted()).toBe(true);
+      expect(await orgFlags()).toEqual({ authEnforced: true, scimEnabled: true });
+    });
+
     test("editing only the OIDC MFA signal keeps SSO enforcement and SCIM", async () => {
       await getDb()(TableName.OidcConfig).insert({
         orgId: TEST_ORG_ID,
@@ -199,9 +243,46 @@ describe("Auth IdP Service-Level Tests", () => {
       expect(cfg).toMatchObject({ isActive: true, mfaClaimName: "acr", mfaAmrValues: ["phr"] });
       expect(cfg?.lastUsed).not.toBeNull();
 
-      await getServices().oidc.updateOidcCfg({ ...actor, organizationId: TEST_ORG_ID, allowedEmailDomains: "" });
+      await getServices().oidc.updateOidcCfg({
+        ...actor,
+        organizationId: TEST_ORG_ID,
+        allowedEmailDomains: "example.com"
+      });
 
       expect(await orgFlags()).toEqual({ authEnforced: false, scimEnabled: false });
+      const updatedCfg = await getDb()(TableName.OidcConfig).where({ orgId: TEST_ORG_ID }).first();
+      expect(updatedCfg?.lastUsed).toBeNull();
+    });
+
+    test("resending unchanged OIDC connection fields keeps SSO enforcement, SCIM and lastUsed", async () => {
+      await getDb()(TableName.OidcConfig).insert({
+        orgId: TEST_ORG_ID,
+        configurationType: "custom",
+        issuer: "https://idp.example.com",
+        allowedEmailDomains: "example.com,example.org",
+        jwtSignatureAlgorithm: "RS256",
+        isActive: true,
+        lastUsed: new Date(),
+        encryptedOidcClientId: Buffer.from("client-id"),
+        encryptedOidcClientSecret: Buffer.from("client-secret")
+      });
+      await enforceSsoAndScim();
+
+      const result = await getServices().oidc.updateOidcCfg({
+        ...actor,
+        organizationId: TEST_ORG_ID,
+        configurationType: OIDCConfigurationType.CUSTOM,
+        issuer: "https://idp.example.com",
+        allowedEmailDomains: "example.org, example.com",
+        jwtSignatureAlgorithm: OIDCJWTSignatureAlgorithm.RS256,
+        mfaClaimName: "acr"
+      });
+
+      expect(result.ssoEnforcementDisabled).toBe(false);
+      expect(await orgFlags()).toEqual({ authEnforced: true, scimEnabled: true });
+      const cfg = await getDb()(TableName.OidcConfig).where({ orgId: TEST_ORG_ID }).first();
+      expect(cfg).toMatchObject({ mfaClaimName: "acr" });
+      expect(cfg?.lastUsed).not.toBeNull();
     });
   });
 

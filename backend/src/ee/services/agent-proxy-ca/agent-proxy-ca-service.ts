@@ -1,10 +1,12 @@
 import * as x509 from "@peculiar/x509";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
-import { OrgServiceActor } from "@app/lib/types";
 import {
   createSerialNumber,
   getNotAfterWithClockSkew,
@@ -12,20 +14,16 @@ import {
   keyAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import { TLicenseServiceFactory } from "../license/license-service";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TOrgAgentProxyConfigDALFactory } from "./org-agent-proxy-config-dal";
 
 export type TAgentProxyCaServiceFactory = ReturnType<typeof agentProxyCaServiceFactory>;
 
 type TAgentProxyCaServiceFactoryDep = {
   orgAgentProxyConfigDAL: TOrgAgentProxyConfigDALFactory;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  kmsDataKeyService: TKmsDataKeyService;
+  licenseService: TLicenseService;
+  orgPermissionService: TOrgPermissionService;
 };
 
 const ROOT_CA_ALGORITHM = CertKeyAlgorithm.ECDSA_P256;
@@ -34,35 +32,29 @@ const ROOT_CA_VALIDITY_YEARS = 10;
 
 export const agentProxyCaServiceFactory = ({
   orgAgentProxyConfigDAL,
-  kmsService,
+  kmsDataKeyService,
   licenseService,
-  permissionService
+  orgPermissionService
 }: TAgentProxyCaServiceFactoryDep) => {
   const $checkLicense = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.secretsBrokering) {
+    if (!plan.has(PlanFeature.SecretsBrokering)) {
       throw new BadRequestError({
         message: "Failed to use secrets brokering due to plan restriction. Upgrade your plan to use the agent proxy."
       });
     }
   };
 
-  const $assertOrgMembership = async (actor: OrgServiceActor) => {
-    await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      scope: OrganizationActionScope.Any
-    });
+  const $assertOrgMembership = async (actor: TActorContext) => {
+    await orgPermissionService.getOrgPermission({ actor });
   };
 
   const $getOrgRootCa = async (orgId: string) => {
-    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId
-    });
+    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } =
+      await kmsDataKeyService.createCipherPairWithDataKey({
+        type: KmsDataKey.Organization,
+        orgId
+      });
 
     const config = await orgAgentProxyConfigDAL.transaction(async (tx) => {
       const existing = await orgAgentProxyConfigDAL.findOne({ orgId }, tx);
@@ -123,11 +115,11 @@ export const agentProxyCaServiceFactory = ({
     return { config, rootCaCert, rootCaPrivateKeyBuffer };
   };
 
-  const getRootCa = async (actor: OrgServiceActor) => {
-    await $checkLicense(actor.orgId);
+  const getRootCa = async (actor: TActorContext) => {
+    await $checkLicense(actor.org.id);
     await $assertOrgMembership(actor);
 
-    const { config, rootCaCert } = await $getOrgRootCa(actor.orgId);
+    const { config, rootCaCert } = await $getOrgRootCa(actor.org.id);
     return {
       certificate: rootCaCert.toString("pem"),
       // column is a plain string in the generated schema but only ever stores ROOT_CA_ALGORITHM
@@ -138,11 +130,11 @@ export const agentProxyCaServiceFactory = ({
     };
   };
 
-  const signIntermediate = async (actor: OrgServiceActor, publicKeyPem: string) => {
-    await $checkLicense(actor.orgId);
+  const signIntermediate = async (actor: TActorContext, publicKeyPem: string) => {
+    await $checkLicense(actor.org.id);
     await $assertOrgMembership(actor);
 
-    const { rootCaCert, rootCaPrivateKeyBuffer } = await $getOrgRootCa(actor.orgId);
+    const { rootCaCert, rootCaPrivateKeyBuffer } = await $getOrgRootCa(actor.org.id);
 
     if (new Date() >= rootCaCert.notAfter) {
       throw new BadRequestError({
@@ -188,7 +180,7 @@ export const agentProxyCaServiceFactory = ({
 
     const intermediateCert = await x509.X509CertificateGenerator.create({
       serialNumber,
-      subject: `O=${actor.orgId},CN=Infisical Agent Proxy Intermediate CA`,
+      subject: `O=${actor.org.id},CN=Infisical Agent Proxy Intermediate CA`,
       issuer: rootCaCert.subject,
       notBefore: getNotBeforeWithClockSkew(issuedAt),
       notAfter: expiration,

@@ -1,18 +1,33 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionCmekActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TKmsPermissionService } from "@app/domains/kms/kms/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { DomainError } from "@app/domains/lib/errors";
+import {
+  KmsCiphertextUndecryptableError,
+  KmsKeyOrderBy,
+  KmsKeyUsage,
+  ReadFrom,
+  TKmsKeyDetails,
+  TKmsKeyService
+} from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import {
+  ProjectPermissionCmekActions,
+  ProjectPermissionSub,
+  ProjectPermission
+} from "@app/domains/platform/projects/ce/module";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import {
   AsymmetricKeyAlgorithm,
   getSigningAlgorithmsForKeyAlgorithm,
   isPqcKeyAlgorithm,
-  signingService
+  publicKeyToJwk,
+  signingService,
+  TPublicJwk
 } from "@app/lib/crypto/sign";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
-import { OrgServiceActor } from "@app/lib/types";
+import { logger } from "@app/lib/logger";
+import { canPublishCmekPublicKey, getCmekJwkKid } from "@app/services/cmek/cmek-fns";
 import {
   TCmekBulkGetPrivateKeysDTO,
   TCmekBulkImportKeysDTO,
@@ -30,40 +45,85 @@ import {
   TListCmeksByProjectIdDTO,
   TUpdabteCmekByIdDTO
 } from "@app/services/cmek/cmek-types";
-import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-
-import { KmsKeyUsage } from "../kms/kms-types";
 
 type TCmekServiceFactoryDep = {
-  kmsService: TKmsServiceFactory;
-  kmsDAL: TKmsKeyDALFactory;
-  permissionService: TPermissionServiceFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  kmsKeyService: TKmsKeyService;
+  kmsPermissionService: TKmsPermissionService;
+  licenseService: TLicenseService;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
 };
 
 export type TCmekServiceFactory = ReturnType<typeof cmekServiceFactory>;
 
+// A CMEK is a non-reserved project key with internal material.
+const toCmek = ({ isExternal, ...key }: TKmsKeyDetails) => ({
+  ...key,
+  encryptionAlgorithm: key.encryptionAlgorithm as string,
+  version: key.version as number
+});
+
+const isCmek = (key: TKmsKeyDetails | undefined): key is TKmsKeyDetails =>
+  Boolean(key && !key.isReserved && !key.isExternal);
+
 export const cmekServiceFactory = ({
-  kmsService,
-  kmsDAL,
-  permissionService,
-  licenseService
+  kmsKeyService,
+  kmsPermissionService,
+  licenseService,
+  keyStore
 }: TCmekServiceFactoryDep) => {
-  const createCmek = async ({ projectId, ...dto }: TCreateCmekDTO, actor: OrgServiceActor) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.KMS
+  const $findCmekById = async (keyId: string) => {
+    const key = await kmsKeyService.findKeyById(keyId);
+    return isCmek(key) ? toCmek(key) : undefined;
+  };
+
+  const $findCmekByName = async (name: string, projectId: string) => {
+    const [key] = await kmsKeyService.findKeys({ name, projectId, isReserved: false });
+    return isCmek(key) ? toCmek(key) : undefined;
+  };
+
+  const $assertCanPublishPublicKey = (key: { name: string; keyUsage: string; encryptionAlgorithm: string }) => {
+    if (!canPublishCmekPublicKey(key)) {
+      throw new BadRequestError({
+        message: `Key '${key.name}' can't publish its public key. Only sign-verify keys using RSA, ECC or ED25519 can be published.`
+      });
+    }
+  };
+
+  // The cache expires within a minute anyway, so a failed clear must not fail a change that already committed
+  const $clearCachedPublicJwks = (keyId: string) =>
+    keyStore.deleteItem(KeyStorePrefixes.CmekPublicJwks(keyId)).catch((err) => {
+      logger.warn(err, `Failed to clear the cached public JWKS for KMS key [keyId=${keyId}]`);
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Create, ProjectPermissionSub.Cmek);
+
+  // A public key is not secret, and verifying outside Infisical needs it, so anyone who may sign or verify with the
+  // key can read it and its signing algorithms without being able to list or look up the project's keys.
+  const $throwUnlessCanReadPublicKeyInfo = (permission: ProjectPermission) => {
+    const canReadPublicKeyInfo = [
+      ProjectPermissionCmekActions.Read,
+      ProjectPermissionCmekActions.Sign,
+      ProjectPermissionCmekActions.Verify
+    ].some((action) => permission.can({ action, subject: ProjectPermissionSub.Cmek }));
+
+    if (!canReadPublicKeyInfo) {
+      permission.assert({ action: ProjectPermissionCmekActions.Read, subject: ProjectPermissionSub.Cmek });
+    }
+  };
+
+  const createCmek = async ({ projectId, ...dto }: TCreateCmekDTO, actor: TActorContext) => {
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionCmekActions.Create, subject: ProjectPermissionSub.Cmek });
+
+    if (dto.isPublicKeyPublished) {
+      permission.assert({
+        action: ProjectPermissionCmekActions.PublishPublicKey,
+        subject: ProjectPermissionSub.Cmek
+      });
+      $assertCanPublishPublicKey({ ...dto, encryptionAlgorithm: dto.encryptionAlgorithm as string });
+    }
 
     if (isPqcKeyAlgorithm(dto.encryptionAlgorithm as string)) {
       const plan = await licenseService.getPlan(dto.orgId);
-      if (!plan.kmsPqc) {
+      if (!plan.has(PlanFeature.KmsPqc)) {
         throw new BadRequestError({
           message:
             "Your license does not include PQC algorithms. Please upgrade to the Enterprise plan to use a PQC algorithm."
@@ -72,7 +132,7 @@ export const cmekServiceFactory = ({
     }
 
     try {
-      const cmek = await kmsService.generateKmsKey({
+      const cmek = await kmsKeyService.generateKmsKey({
         ...dto,
         projectId,
         isReserved: false
@@ -94,26 +154,30 @@ export const cmekServiceFactory = ({
     }
   };
 
-  const updateCmekById = async ({ keyId, ...data }: TUpdabteCmekByIdDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+  const updateCmekById = async ({ keyId, ...data }: TUpdabteCmekByIdDTO, actor: TActorContext) => {
+    const key = await $findCmekById(keyId);
 
-    if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
+    if (!key || key.orgId !== actor.org.id) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
 
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: key.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId: key.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Edit, ProjectPermissionSub.Cmek);
+    permission.assert({ action: ProjectPermissionCmekActions.Edit, subject: ProjectPermissionSub.Cmek });
+
+    if (data.isPublicKeyPublished !== undefined) {
+      permission.assert({
+        action: ProjectPermissionCmekActions.PublishPublicKey,
+        subject: ProjectPermissionSub.Cmek
+      });
+
+      if (data.isPublicKeyPublished) $assertCanPublishPublicKey(key);
+    }
 
     try {
-      const cmek = await kmsDAL.updateById(keyId, data);
+      const cmek = await kmsKeyService.updateKeyAttributes(keyId, data);
+
+      await $clearCachedPublicJwks(keyId);
 
       return {
         ...cmek,
@@ -131,27 +195,20 @@ export const cmekServiceFactory = ({
     }
   };
 
-  const rotateCmekById = async (keyId: string, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+  const rotateCmekById = async (keyId: string, actor: TActorContext) => {
+    const key = await $findCmekById(keyId);
 
-    if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
+    if (!key || key.orgId !== actor.org.id) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
 
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
 
     if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: key.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId: key.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Rotate, ProjectPermissionSub.Cmek);
+    permission.assert({ action: ProjectPermissionCmekActions.Rotate, subject: ProjectPermissionSub.Cmek });
 
-    const { version } = await kmsService.rotateKmsKey(keyId);
+    const { version } = await kmsKeyService.rotateKmsKey(keyId);
 
     return {
       ...key,
@@ -159,25 +216,18 @@ export const cmekServiceFactory = ({
     };
   };
 
-  const deleteCmekById = async (keyId: string, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+  const deleteCmekById = async (keyId: string, actor: TActorContext) => {
+    const key = await $findCmekById(keyId);
 
-    if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
+    if (!key || key.orgId !== actor.org.id) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
 
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: key.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId: key.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Delete, ProjectPermissionSub.Cmek);
+    permission.assert({ action: ProjectPermissionCmekActions.Delete, subject: ProjectPermissionSub.Cmek });
 
-    const [deletedKey] = await kmsDAL.delete({ id: keyId, hasDeleteProtection: false });
+    const deletedKey = await kmsKeyService.deleteKey(keyId);
 
     if (!deletedKey) {
       throw new BadRequestError({
@@ -185,90 +235,98 @@ export const cmekServiceFactory = ({
       });
     }
 
+    await $clearCachedPublicJwks(keyId);
+
     return key;
   };
 
-  const listCmeksByProjectId = async ({ projectId, ...filters }: TListCmeksByProjectIdDTO, actor: OrgServiceActor) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+  // Cached so anonymous fetches don't each decrypt the key. Changes made through this service clear it
+  const getPublicJwks = async (keyId: string): Promise<{ keys: TPublicJwk[] }> => {
+    const cacheKey = KeyStorePrefixes.CmekPublicJwks(keyId);
+    const cached = await keyStore.getItem(cacheKey);
+    if (cached) return JSON.parse(cached) as { keys: TPublicJwk[] };
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
+    // Unpublished, disabled and missing keys all read as missing, so outsiders can't tell them apart
+    const published = await kmsKeyService.findPublishedKeyById(keyId);
+    const key = isCmek(published) ? toCmek(published) : undefined;
+    if (!key || key.isDisabled || !canPublishCmekPublicKey(key)) {
+      throw new NotFoundError({ message: `KMS key with ID '${keyId}' not found` });
+    }
 
-    const { keys: cmeks, totalCount } = await kmsDAL.listCmeksByProjectId({ projectId, ...filters });
+    // Read on the primary, or a lagging replica could serve and re-cache a key that was just unpublished or disabled
+    const publicKey = await kmsKeyService.getPublicKey({ kmsId: keyId }, { readFrom: ReadFrom.Primary });
+    const jwks = {
+      keys: [
+        publicKeyToJwk({
+          publicKey,
+          keyAlgorithm: key.encryptionAlgorithm as AsymmetricKeyAlgorithm,
+          kid: getCmekJwkKid(key.id, key.version)
+        })
+      ]
+    };
 
-    return { cmeks, totalCount };
+    await keyStore.setItemWithExpiry(cacheKey, KeyStoreTtls.CmekPublicJwksInSeconds, JSON.stringify(jwks));
+
+    return jwks;
   };
 
-  const findCmekById = async (keyId: string, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+  const listCmeksByProjectId = async ({ projectId, ...filters }: TListCmeksByProjectIdDTO, actor: TActorContext) => {
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId });
 
-    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+    permission.assert({ action: ProjectPermissionCmekActions.Read, subject: ProjectPermissionSub.Cmek });
+
+    const { keys, totalCount } = await kmsKeyService.listProjectKeys({
+      projectId,
+      ...filters,
+      orderBy: filters.orderBy as unknown as KmsKeyOrderBy | undefined
+    });
+
+    return { cmeks: keys.map(toCmek), totalCount };
+  };
+
+  const findCmekById = async (keyId: string, actor: TActorContext) => {
+    const key = await $findCmekById(keyId);
+
+    if (!key || key.orgId !== actor.org.id) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
 
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: key.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId: key.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
+    permission.assert({ action: ProjectPermissionCmekActions.Read, subject: ProjectPermissionSub.Cmek });
 
     return key;
   };
 
-  const findCmekByName = async (keyName: string, projectId: string, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekByName(keyName, projectId);
+  const findCmekByName = async (keyName: string, projectId: string, actor: TActorContext) => {
+    const key = await $findCmekByName(keyName, projectId);
 
-    if (!key)
+    if (!key || key.orgId !== actor.org.id)
       throw new NotFoundError({ message: `Key with name "${keyName}" not found for project with ID "${projectId}"` });
 
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: key.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId: key.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
+    permission.assert({ action: ProjectPermissionCmekActions.Read, subject: ProjectPermissionSub.Cmek });
 
     return key;
   };
 
-  const cmekEncrypt = async ({ keyId, plaintext }: TCmekEncryptDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findById(keyId);
+  const cmekEncrypt = async ({ keyId, plaintext }: TCmekEncryptDTO, actor: TActorContext) => {
+    const key = await kmsKeyService.findKeyById(keyId);
 
-    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+    if (!key || key.orgId !== actor.org.id) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
 
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
 
     if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: key.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId: key.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Encrypt, ProjectPermissionSub.Cmek);
+    permission.assert({ action: ProjectPermissionCmekActions.Encrypt, subject: ProjectPermissionSub.Cmek });
 
-    const encrypt = await kmsService.encryptWithKmsKey({ kmsId: keyId });
+    const encrypt = await kmsKeyService.encryptWithKmsKey({ kmsId: keyId });
 
     const { cipherTextBlob } = await encrypt({ plainText: Buffer.from(plaintext, "base64") });
 
@@ -278,23 +336,16 @@ export const cmekServiceFactory = ({
     };
   };
 
-  const listSigningAlgorithms = async ({ keyId }: TCmekListSigningAlgorithmsDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+  const listSigningAlgorithms = async ({ keyId }: TCmekListSigningAlgorithmsDTO, actor: TActorContext) => {
+    const key = await $findCmekById(keyId);
 
-    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+    if (!key || key.orgId !== actor.org.id) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
     if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: key.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId: key.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
+    $throwUnlessCanReadPublicKeyInfo(permission);
 
     if (key.keyUsage !== KmsKeyUsage.SIGN_VERIFY) {
       throw new BadRequestError({ message: `Key with ID '${keyId}' is not intended for signing` });
@@ -308,52 +359,35 @@ export const cmekServiceFactory = ({
     return { signingAlgorithms, projectId: key.projectId };
   };
 
-  const getPublicKey = async ({ keyId }: TCmekGetPublicKeyDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+  const getPublicKey = async ({ keyId }: TCmekGetPublicKeyDTO, actor: TActorContext) => {
+    const key = await $findCmekById(keyId);
 
-    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+    if (!key || key.orgId !== actor.org.id) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
     if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: key.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId: key.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
+    $throwUnlessCanReadPublicKeyInfo(permission);
 
-    const publicKey = await kmsService.getPublicKey({ kmsId: keyId });
+    const publicKey = await kmsKeyService.getPublicKey({ kmsId: keyId });
     return { publicKey: publicKey.toString("base64"), projectId: key.projectId, keyName: key.name };
   };
 
-  const getPrivateKey = async ({ keyId }: TCmekGetPrivateKeyDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+  const getPrivateKey = async ({ keyId }: TCmekGetPrivateKeyDTO, actor: TActorContext) => {
+    const key = await $findCmekById(keyId);
 
-    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+    if (!key || key.orgId !== actor.org.id) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
     if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: key.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId: key.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCmekActions.ExportPrivateKey,
-      ProjectPermissionSub.Cmek
-    );
+    permission.assert({ action: ProjectPermissionCmekActions.ExportPrivateKey, subject: ProjectPermissionSub.Cmek });
 
     if (!key.isExportable) throw new BadRequestError({ message: "You are not allowed to export this key" });
 
-    const keyMaterial = await kmsService.getKeyMaterial({ kmsId: keyId });
+    const keyMaterial = await kmsKeyService.getKeyMaterial({ kmsId: keyId });
 
     return {
       privateKey: keyMaterial.toString("base64"),
@@ -362,11 +396,14 @@ export const cmekServiceFactory = ({
     };
   };
 
-  const bulkGetPrivateKeys = async ({ keyIds }: TCmekBulkGetPrivateKeysDTO, actor: OrgServiceActor) => {
+  const bulkGetPrivateKeys = async ({ keyIds }: TCmekBulkGetPrivateKeysDTO, actor: TActorContext) => {
     if (keyIds.length === 0) throw new BadRequestError({ message: "At least one key ID is required" });
 
     const uniqueKeyIds = [...new Set(keyIds)];
-    const keys = await kmsDAL.findCmeksByIds(uniqueKeyIds);
+    const keys = (await kmsKeyService.findKeys({ ids: uniqueKeyIds, isReserved: false }))
+      .filter(isCmek)
+      .map(toCmek)
+      .filter((key) => key.orgId === actor.org.id);
 
     if (keys.length === 0) throw new NotFoundError({ message: "No keys found for the provided IDs" });
 
@@ -388,25 +425,15 @@ export const cmekServiceFactory = ({
 
     const projectId = keys[0].projectId!;
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCmekActions.ExportPrivateKey,
-      ProjectPermissionSub.Cmek
-    );
+    permission.assert({ action: ProjectPermissionCmekActions.ExportPrivateKey, subject: ProjectPermissionSub.Cmek });
 
     for (const key of keys) {
       if (!key.isExportable) throw new BadRequestError({ message: "You are not allowed to export this key" });
     }
 
-    const bulkMaterials = await kmsService.getBulkKeyMaterial({ kmsIds: keys.map((k) => k.id) });
+    const bulkMaterials = await kmsKeyService.getBulkKeyMaterial({ kmsIds: keys.map((k) => k.id) });
 
     const materialByKmsId = new Map(bulkMaterials.map((m) => [m.kmsId, m]));
     const asymmetricAlgorithms = new Set<string>(Object.values(AsymmetricKeyAlgorithm));
@@ -441,37 +468,20 @@ export const cmekServiceFactory = ({
     return { keys: result, projectId };
   };
 
-  const cmekSign = async ({ keyId, data, signingAlgorithm, isDigest }: TCmekSignDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+  const cmekSign = async ({ keyId, data, signingAlgorithm, isDigest }: TCmekSignDTO, actor: TActorContext) => {
+    const key = await $findCmekById(keyId);
 
-    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+    if (!key || key.orgId !== actor.org.id) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
 
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
 
     if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: key.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId: key.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Sign, ProjectPermissionSub.Cmek);
+    permission.assert({ action: ProjectPermissionCmekActions.Sign, subject: ProjectPermissionSub.Cmek });
 
-    if (isPqcKeyAlgorithm(key.encryptionAlgorithm)) {
-      const plan = await licenseService.getPlan(key.orgId);
-      if (!plan.kmsPqc) {
-        throw new BadRequestError({
-          message:
-            "Your license does not include PQC algorithms. Please upgrade to the Enterprise plan to use a PQC algorithm."
-        });
-      }
-    }
-
-    const sign = await kmsService.signWithKmsKey({ kmsId: keyId });
+    const sign = await kmsKeyService.signWithKmsKey({ kmsId: keyId });
 
     const { signature, algorithm } = await sign({ data: Buffer.from(data, "base64"), signingAlgorithm, isDigest });
 
@@ -485,38 +495,21 @@ export const cmekServiceFactory = ({
 
   const cmekVerify = async (
     { keyId, data, signature, signingAlgorithm, isDigest }: TCmekVerifyDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const key = await kmsDAL.findCmekById(keyId);
+    const key = await $findCmekById(keyId);
 
-    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+    if (!key || key.orgId !== actor.org.id) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
 
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
 
     if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: key.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId: key.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Verify, ProjectPermissionSub.Cmek);
+    permission.assert({ action: ProjectPermissionCmekActions.Verify, subject: ProjectPermissionSub.Cmek });
 
-    if (isPqcKeyAlgorithm(key.encryptionAlgorithm)) {
-      const plan = await licenseService.getPlan(key.orgId);
-      if (!plan.kmsPqc) {
-        throw new BadRequestError({
-          message:
-            "Your license does not include PQC algorithms. Please upgrade to the Enterprise plan to use a PQC algorithm."
-        });
-      }
-    }
-
-    const verify = await kmsService.verifyWithKmsKey({ kmsId: keyId, signingAlgorithm });
+    const verify = await kmsKeyService.verifyWithKmsKey({ kmsId: keyId, signingAlgorithm });
 
     const { signatureValid, algorithm } = await verify({
       isDigest,
@@ -532,31 +525,24 @@ export const cmekServiceFactory = ({
     };
   };
 
-  const cmekGenerateMac = async ({ keyId, data }: TCmekGenerateMacDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+  const cmekGenerateMac = async ({ keyId, data }: TCmekGenerateMacDTO, actor: TActorContext) => {
+    const key = await $findCmekById(keyId);
 
-    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+    if (!key || key.orgId !== actor.org.id) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
 
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
 
     if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: key.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId: key.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.GenerateMac, ProjectPermissionSub.Cmek);
+    permission.assert({ action: ProjectPermissionCmekActions.GenerateMac, subject: ProjectPermissionSub.Cmek });
 
     if (key.keyUsage !== KmsKeyUsage.GENERATE_VERIFY_MAC) {
       throw new BadRequestError({ message: `Key with ID '${keyId}' is not intended for MAC generation` });
     }
 
-    const generate = await kmsService.generateMac({ kmsId: keyId });
+    const generate = await kmsKeyService.generateMac({ kmsId: keyId });
 
     const { mac, algorithm } = generate({ data: Buffer.from(data, "base64") });
 
@@ -568,31 +554,24 @@ export const cmekServiceFactory = ({
     };
   };
 
-  const cmekVerifyMac = async ({ keyId, data, mac }: TCmekVerifyMacDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findCmekById(keyId);
+  const cmekVerifyMac = async ({ keyId, data, mac }: TCmekVerifyMacDTO, actor: TActorContext) => {
+    const key = await $findCmekById(keyId);
 
-    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+    if (!key || key.orgId !== actor.org.id) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
 
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
 
     if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: key.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId: key.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.VerifyMac, ProjectPermissionSub.Cmek);
+    permission.assert({ action: ProjectPermissionCmekActions.VerifyMac, subject: ProjectPermissionSub.Cmek });
 
     if (key.keyUsage !== KmsKeyUsage.GENERATE_VERIFY_MAC) {
       throw new BadRequestError({ message: `Key with ID '${keyId}' is not intended for MAC verification` });
     }
 
-    const verify = await kmsService.verifyMac({ kmsId: keyId });
+    const verify = await kmsKeyService.verifyMac({ kmsId: keyId });
 
     const { macValid, algorithm } = verify({
       data: Buffer.from(data, "base64"),
@@ -607,29 +586,32 @@ export const cmekServiceFactory = ({
     };
   };
 
-  const cmekDecrypt = async ({ keyId, ciphertext }: TCmekDecryptDTO, actor: OrgServiceActor) => {
-    const key = await kmsDAL.findById(keyId);
+  const cmekDecrypt = async ({ keyId, ciphertext }: TCmekDecryptDTO, actor: TActorContext) => {
+    const key = await kmsKeyService.findKeyById(keyId);
 
-    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+    if (!key || key.orgId !== actor.org.id) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
 
     if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
 
     if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: key.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId: key.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Decrypt, ProjectPermissionSub.Cmek);
+    permission.assert({ action: ProjectPermissionCmekActions.Decrypt, subject: ProjectPermissionSub.Cmek });
 
-    const decrypt = await kmsService.decryptWithKmsKey({ kmsId: keyId });
+    const decrypt = await kmsKeyService.decryptWithKmsKey({ kmsId: keyId });
 
-    const plaintextBlob = await decrypt({ cipherTextBlob: Buffer.from(ciphertext, "base64") });
+    let plaintextBlob: Buffer;
+    try {
+      plaintextBlob = await decrypt({ cipherTextBlob: Buffer.from(ciphertext, "base64") });
+    } catch (err) {
+      if (!(err instanceof KmsCiphertextUndecryptableError)) throw err;
+      // The ciphertext is caller input, so a blob no key version authenticates is a bad request, not a server fault.
+      throw new BadRequestError({
+        message:
+          "The ciphertext could not be decrypted with this key. Check that it was encrypted with this key and has not been modified."
+      });
+    }
 
     return {
       plaintext: plaintextBlob.toString("base64"),
@@ -639,24 +621,17 @@ export const cmekServiceFactory = ({
 
   const bulkImportKeys = async (
     { projectId, keys }: TCmekBulkImportKeysDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ): Promise<TCmekBulkImportKeysResult> => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Create, ProjectPermissionSub.Cmek);
+    permission.assert({ action: ProjectPermissionCmekActions.Create, subject: ProjectPermissionSub.Cmek });
 
     const hasPqcKeys = keys.some((entry) => isPqcKeyAlgorithm(entry.algorithm as string));
     let pqcLicensed = true;
     if (hasPqcKeys) {
-      const plan = await licenseService.getPlan(actor.orgId);
-      pqcLicensed = !!plan.kmsPqc;
+      const plan = await licenseService.getPlan(actor.org.id);
+      pqcLicensed = plan.has(PlanFeature.KmsPqc);
     }
 
     const results = await Promise.allSettled(
@@ -667,7 +642,7 @@ export const cmekServiceFactory = ({
               "Your license does not include PQC algorithms. Please upgrade to the Enterprise plan to use a PQC algorithm."
           });
         }
-        const imported = await kmsService.importKeyMaterial({
+        const imported = await kmsKeyService.importKeyMaterial({
           key: Buffer.from(entry.keyMaterial, "base64"),
           algorithm: entry.algorithm,
           name: entry.name,
@@ -675,7 +650,7 @@ export const cmekServiceFactory = ({
           isExportable: entry.isExportable,
           hasDeleteProtection: entry.hasDeleteProtection,
           projectId,
-          orgId: actor.orgId,
+          orgId: actor.org.id,
           keyUsage: entry.keyUsage
         });
         return { id: imported.id, name: imported.name };
@@ -698,7 +673,7 @@ export const cmekServiceFactory = ({
           (reason.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation
         ) {
           message = `A key with the name "${entry.name}" already exists in this project`;
-        } else if (reason instanceof BadRequestError) {
+        } else if (reason instanceof BadRequestError || reason instanceof DomainError) {
           message = reason.message;
         }
         errors.push({ name: entry.name, message });
@@ -724,6 +699,7 @@ export const cmekServiceFactory = ({
     cmekVerifyMac,
     listSigningAlgorithms,
     getPublicKey,
+    getPublicJwks,
     getPrivateKey,
     bulkGetPrivateKeys,
     bulkImportKeys

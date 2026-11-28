@@ -1,13 +1,6 @@
 import { PackRule, unpackRules } from "@casl/ability/extra";
 import { z } from "zod";
 
-import { PermissionConditionOperators } from "@app/lib/casl";
-import { BadRequestError } from "@app/lib/errors";
-import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
-import { slugSchema } from "@app/server/lib/schemas";
-
-import { CASL_ACTION_SCHEMA_NATIVE_ENUM } from "../permission/permission-schemas";
-import { PermissionConditionSchema } from "../permission/permission-types";
 import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
@@ -15,7 +8,13 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
-} from "../permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { PermissionConditionOperators } from "@app/lib/casl";
+import { CASL_ACTION_SCHEMA_NATIVE_ENUM, PermissionConditionSchema } from "@app/lib/casl/permission-schemas";
+import { BadRequestError } from "@app/lib/errors";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
+import { slugSchema } from "@app/server/lib/schemas";
+
 import { TVerifyPermission } from "./access-approval-request-types";
 
 const ACCESS_REQUEST_SECRET_PATH_MAX_LENGTH = 512;
@@ -147,6 +146,21 @@ const parseAccessApprovalRequestPermissions = (permissions: TUnpackedAccessAppro
     return result.data;
   });
 
+// Read path only. Creation already verified the stored rules and
+// that they all share one environment and path, so the first packed rule's conditions are the request's.
+export const readRequestedScope = (permissions: unknown): { envSlug: string; secretPath: string } | null => {
+  if (!Array.isArray(permissions)) return null;
+  const [firstRule] = permissions as unknown[];
+  if (!Array.isArray(firstRule)) return null;
+
+  const conditions = firstRule[2] as { environment?: unknown; secretPath?: { $glob?: unknown } } | undefined;
+  const envSlug = conditions?.environment;
+  const secretPath = conditions?.secretPath?.$glob;
+  if (typeof envSlug !== "string" || typeof secretPath !== "string") return null;
+
+  return { envSlug, secretPath };
+};
+
 export const verifyRequestedPermissions = ({ permissions }: TVerifyPermission) => {
   try {
     validateHandlebarTemplate("Access Request Permissions", JSON.stringify(permissions ?? []), {
@@ -211,3 +225,13 @@ export const verifyRequestedPermissions = ({ permissions }: TVerifyPermission) =
     requestedPermissions
   };
 };
+
+// The folder lookup skips empty segments, so "/a//b" or "/a/b/" reads "/a/b" but can match a broader policy than
+// "/a/b" does.
+export const isRequestableSecretPath = (secretPath: string) =>
+  secretPath === "/" ||
+  (secretPath.startsWith("/") &&
+    secretPath
+      .slice(1)
+      .split("/")
+      .every((segment) => segment.length > 0 && segment === segment.trim() && segment !== "." && segment !== ".."));

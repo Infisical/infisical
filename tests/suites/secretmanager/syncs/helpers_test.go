@@ -126,7 +126,7 @@ func createSync(tt *testing.T, p *fixture.Project, conn *fixture.AppConnection,
 		body.SyncOptions.DisableSecretDeletion = &cfg.disableSecretDeletion
 	}
 	if cfg.includeSubFolders {
-		body.SyncOptions.IncludeAllSubFolders = &cfg.includeSubFolders
+		body.IncludeAllSubFolders = &cfg.includeSubFolders
 	}
 
 	res, err := client.CreateGitHubSecretSyncWithResponse(tt.Context(), body)

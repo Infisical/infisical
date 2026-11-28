@@ -1,4 +1,3 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import {
@@ -9,16 +8,37 @@ import {
   TLdapConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
+import { TPamPermissionService } from "@app/domains/pam/pam/ce/module";
+import { LoginMethod, TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import {
+  PlanFeature,
+  PlanLimit,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
+import {
+  clearPersonalValuesInProjects,
+  TClearPersonalValuesInProjectsDeps
+} from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
+import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { getEnforcedIdentityLimit, throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
+import { AuthMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
+import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
@@ -37,13 +57,7 @@ import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-chan
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
-import { AuthMethod } from "@app/services/auth/auth-type";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
@@ -51,8 +65,6 @@ import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
-import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -61,10 +73,11 @@ import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
-import { isIdpAuthoritativeForDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
-import { TLicenseServiceFactory } from "../license/license-service";
-import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import {
+  assertOrgHasVerifiedEmailDomain,
+  isIdpAuthoritativeForDomain,
+  verifyEmailDomainOwnership
+} from "../email-domain/email-domain-fns";
 import { TLdapConfigDALFactory } from "./ldap-config-dal";
 import {
   TCreateLdapCfgDTO,
@@ -76,10 +89,11 @@ import {
   TTestLdapConnectionDTO,
   TUpdateLdapCfgDTO
 } from "./ldap-config-types";
-import { buildLdapTlsOptions, searchGroups, testLDAPConfig } from "./ldap-fns";
+import { buildLdapTlsOptions, pinLdapTarget, searchGroups, testLDAPConfig } from "./ldap-fns";
 import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 
 type TLdapConfigServiceFactoryDep = {
+  instanceConfigService: TInstanceConfigService;
   ldapConfigDAL: Pick<TLdapConfigDALFactory, "create" | "update" | "findOne" | "transaction">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   ldapGroupMapDAL: Pick<TLdapGroupMapDALFactory, "find" | "create" | "delete" | "findLdapGroupMapsByLdapConfigId">;
@@ -95,8 +109,8 @@ type TLdapConfigServiceFactoryDep = {
   >;
   groupDAL: Pick<TGroupDALFactory, "find" | "findOne" | "findGroupOrgIds">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
+  pamPermissionService: Pick<TPamPermissionService, "within">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;
@@ -118,31 +132,34 @@ type TLdapConfigServiceFactoryDep = {
     | "findUserEncKeyByUserId"
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  orgPermissionService: TOrgPermissionService;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
+  agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
 };
 
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
 
 export const ldapConfigServiceFactory = ({
+  instanceConfigService,
   ldapConfigDAL,
   auditLogService,
   ldapGroupMapDAL,
   orgDAL,
   groupDAL,
   membershipGroupDAL,
-  membershipDAL,
+  pamPermissionService,
   membershipRoleDAL,
   projectKeyDAL,
   alertChannelRecipientDAL,
@@ -153,25 +170,24 @@ export const ldapConfigServiceFactory = ({
   userDAL,
   userAliasDAL,
   additionalPrivilegeDAL,
-  permissionService,
+  orgPermissionService,
   licenseService,
+  usageMeteringService,
   tokenService,
   smtpService,
-  kmsService,
+  kmsDataKeyService,
   loginService,
   emailDomainDAL,
   telemetryService,
-  usageMeteringService,
   pamAccountDAL,
   pamSessionDAL,
-  gatewayV2Service
+  gatewayV2Service,
+  identityGroupMembershipDAL,
+  agentVaultPersonalValueDAL
 }: TLdapConfigServiceFactoryDep) => {
   const createLdapCfg = async ({
     actor,
-    actorId,
     orgId,
-    actorOrgId,
-    actorAuthMethod,
     isActive,
     url,
     bindDN,
@@ -185,18 +201,15 @@ export const ldapConfigServiceFactory = ({
     clientCertificate,
     clientKeyCertificate
   }: TCreateLdapCfgDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+    const permission = await orgPermissionService.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
+    permission.assert({ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.Ldap });
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.ldap)
+    if (!plan.has(PlanFeature.Ldap))
       throw new BadRequestError({
         message:
           "Failed to create LDAP configuration due to plan restriction. Upgrade plan to create LDAP configuration."
@@ -207,6 +220,8 @@ export const ldapConfigServiceFactory = ({
     if (!org) {
       throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
     }
+
+    await assertOrgHasVerifiedEmailDomain({ orgId, emailDomainDAL });
 
     if (org.googleSsoAuthEnforced && isActive) {
       throw new BadRequestError({
@@ -223,7 +238,7 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -276,7 +291,7 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await dataKeysOn(kmsDataKeyService, tx).createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: ldapConfig.orgId
     });
@@ -326,11 +341,8 @@ export const ldapConfigServiceFactory = ({
 
   const updateLdapCfg = async ({
     actor,
-    actorId,
     orgId,
-    actorOrgId,
     isActive,
-    actorAuthMethod,
     url,
     bindDN,
     bindPass,
@@ -343,18 +355,15 @@ export const ldapConfigServiceFactory = ({
     clientCertificate,
     clientKeyCertificate
   }: TUpdateLdapCfgDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+    const permission = await orgPermissionService.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Ldap);
+    permission.assert({ action: OrgPermissionActions.Edit, subject: OrgPermissionSubjects.Ldap });
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.ldap)
+    if (!plan.has(PlanFeature.Ldap))
       throw new BadRequestError({
         message:
           "Failed to update LDAP configuration due to plan restriction. Upgrade plan to update LDAP configuration."
@@ -387,7 +396,7 @@ export const ldapConfigServiceFactory = ({
       uniqueUserAttribute
     };
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -445,22 +454,13 @@ export const ldapConfigServiceFactory = ({
     return config;
   };
 
-  const getLdapCfgWithPermissionCheck = async ({
-    actor,
-    actorId,
-    orgId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetLdapCfgDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+  const getLdapCfgWithPermissionCheck = async ({ actor, orgId }: TGetLdapCfgDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Ldap);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Ldap });
     const ldap = await getLdapCfg({ orgId });
     const { clientKeyCertificate, ...rest } = ldap;
     return {
@@ -478,10 +478,10 @@ export const ldapConfigServiceFactory = ({
       isActive: true
     });
 
-    const tlsOptions = buildLdapTlsOptions(ldapConfig);
+    const { url, tlsOptions } = await pinLdapTarget(ldapConfig.url, buildLdapTlsOptions(ldapConfig));
     const opts = {
       server: {
-        url: ldapConfig.url,
+        url,
         bindDN: ldapConfig.bindDN,
         bindCredentials: ldapConfig.bindPass,
         uniqueUserAttribute: ldapConfig.uniqueUserAttribute,
@@ -508,9 +508,9 @@ export const ldapConfigServiceFactory = ({
     userAgent,
     callbackPort
   }: TLdapLoginDTO) => {
-    const serverCfg = await getServerCfg();
+    const loginPolicy = await instanceConfigService.getLoginPolicy();
 
-    if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.LDAP)) {
+    if (!loginPolicy.allows(LoginMethod.LDAP)) {
       throw new ForbiddenRequestError({
         message: "Login with LDAP is disabled by administrator."
       });
@@ -533,7 +533,7 @@ export const ldapConfigServiceFactory = ({
     // instance-level trustLdapEmails flag is a server admin's own decision to skip verification and
     // is kept apart from it.
     const isIdpAuthoritative = isIdpAuthoritativeForDomain({ isAuthEnforced: organization.authEnforced, ownedDomain });
-    const skipEmailVerification = isIdpAuthoritative || Boolean(serverCfg.trustLdapEmails);
+    const skipEmailVerification = isIdpAuthoritative || loginPolicy.trustsLdapEmails();
 
     // A stale, still-unverified alias may point at another user's account. Don't mutate that
     // account's org membership / group state until the IdP proves control of it (the
@@ -588,7 +588,8 @@ export const ldapConfigServiceFactory = ({
         });
     } else {
       let isNewUser = false;
-      const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(orgId));
+      const plan = await licenseService.getPlan(orgId);
+      const seatUsage = plan.isLimited(PlanLimit.Identities) ? await licenseService.getSeatUsage(orgId) : null;
       userAlias = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
@@ -636,13 +637,7 @@ export const ldapConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          await throwOnPlanSeatLimitReached({
-            licenseService,
-            orgId,
-            identityLimit,
-            tx,
-            aliasType: UserAliasType.LDAP
-          });
+          seatUsage?.assertAvailable(plan, UserAliasType.LDAP);
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
           const membership = await orgDAL.createMembership(
@@ -683,7 +678,7 @@ export const ldapConfigServiceFactory = ({
         });
       }
     }
-    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
+    await usageMeteringService.syncSeats(organization.id);
 
     const pamCancellations: (() => void)[] = [];
     let user = await userDAL.transaction(async (tx) => {
@@ -751,14 +746,17 @@ export const ldapConfigServiceFactory = ({
           { tx }
         );
 
+        const removedGroupProjectIds = new Set<string>();
         for await (const group of groupsCurrentlyPartOf) {
           if (!toBePartOfGroupIdsSet.has(group.id)) {
             // remove user from group that they should no longer be part of
-            const { sendPamCancellations } = await removeUsersFromGroupByUserIds({
+            const { sendPamCancellations, projectIds } = await removeUsersFromGroupByUserIds({
               group,
               userIds: [newUser.id],
               userDAL,
               userGroupMembershipDAL,
+              identityGroupMembershipDAL,
+              agentVaultPersonalValueDAL,
               membershipGroupDAL,
               groupDAL,
               projectKeyDAL,
@@ -766,16 +764,24 @@ export const ldapConfigServiceFactory = ({
               usageMeteringService,
               alertChannelRecipientDAL,
               eventEmitter,
-              membershipDAL,
-              membershipRoleDAL,
+              pamPermissionService,
               pamAccountDAL,
               pamSessionDAL,
               gatewayV2Service,
+              deferPersonalValueClear: true,
               tx
             });
             pamCancellations.push(sendPamCancellations);
+            projectIds.forEach((projectId) => removedGroupProjectIds.add(projectId));
           }
         }
+
+        // After every group's rows are locked, so the row locks come before the cleanup lock like every other removal.
+        await clearPersonalValuesInProjects(
+          { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+          { projectIds: [...removedGroupProjectIds], userIds: [newUser.id] },
+          tx
+        );
       }
 
       return newUser;
@@ -887,23 +893,13 @@ export const ldapConfigServiceFactory = ({
     }
   };
 
-  const getLdapGroupMaps = async ({
-    ldapConfigId,
-    actor,
-    actorId,
-    orgId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetLdapGroupMapsDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+  const getLdapGroupMaps = async ({ ldapConfigId, actor, orgId }: TGetLdapGroupMapsDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Ldap);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Ldap });
 
     const ldapConfig = await ldapConfigDAL.findOne({
       id: ldapConfigId,
@@ -921,28 +917,16 @@ export const ldapConfigServiceFactory = ({
     return groupMaps;
   };
 
-  const createLdapGroupMap = async ({
-    ldapConfigId,
-    ldapGroupCN,
-    groupSlug,
-    actor,
-    actorId,
-    orgId,
-    actorAuthMethod,
-    actorOrgId
-  }: TCreateLdapGroupMapDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+  const createLdapGroupMap = async ({ ldapConfigId, ldapGroupCN, groupSlug, actor, orgId }: TCreateLdapGroupMapDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
+    permission.assert({ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.Ldap });
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.ldap)
+    if (!plan.has(PlanFeature.Ldap))
       throw new BadRequestError({
         message: "Failed to create LDAP group map due to plan restriction. Upgrade plan to create LDAP group map."
       });
@@ -995,27 +979,16 @@ export const ldapConfigServiceFactory = ({
     return groupMap;
   };
 
-  const deleteLdapGroupMap = async ({
-    ldapConfigId,
-    ldapGroupMapId,
-    actor,
-    actorId,
-    orgId,
-    actorAuthMethod,
-    actorOrgId
-  }: TDeleteLdapGroupMapDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+  const deleteLdapGroupMap = async ({ ldapConfigId, ldapGroupMapId, actor, orgId }: TDeleteLdapGroupMapDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Ldap);
+    permission.assert({ action: OrgPermissionActions.Delete, subject: OrgPermissionSubjects.Ldap });
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.ldap)
+    if (!plan.has(PlanFeature.Ldap))
       throw new BadRequestError({
         message: "Failed to delete LDAP group map due to plan restriction. Upgrade plan to delete LDAP group map."
       });
@@ -1041,10 +1014,7 @@ export const ldapConfigServiceFactory = ({
 
   const testLDAPConnection = async ({
     actor,
-    actorId,
     orgId,
-    actorAuthMethod,
-    actorOrgId,
     bindDN,
     bindPass,
     caCert,
@@ -1052,18 +1022,15 @@ export const ldapConfigServiceFactory = ({
     clientKeyCertificate,
     url
   }: TTestLdapConnectionDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+    const permission = await orgPermissionService.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
+    permission.assert({ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.Ldap });
 
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.ldap)
+    if (!plan.has(PlanFeature.Ldap))
       throw new BadRequestError({
         message: "Failed to test LDAP connection due to plan restriction. Upgrade plan to test the LDAP connection."
       });

@@ -12,16 +12,21 @@ import {
   AgentVaultCredentialType,
   AgentVaultServiceType,
   AgentVaultVariableReferenceField,
+  isNativeServiceType,
   TAgentVaultMemberProvidedField
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 
+import { buildHookNarrowing, describeHookNarrowing } from "../hooks/hookSchema";
 import { ExpandableValueList } from "./ExpandableValueList";
 import {
-  CREDENTIAL_LABELS,
+  credentialLabel,
+  hasDatabase,
   isAllMethods,
+  isOAuthVariableCredential,
   McpToolScope,
   oauthStatusLabel,
+  storedOAuthVariableKey,
   SURFACE_LABELS,
   TRANSPORT_LABELS,
   TServiceForm,
@@ -38,12 +43,12 @@ const credentialPreview = (form: {
 }): string | null => {
   if (form.credentialType === AgentVaultCredentialType.Passthrough) return null;
   if (form.credentialType === AgentVaultCredentialType.Basic) return `Authorization: Basic ${MASK}`;
-  if (form.credentialType === AgentVaultCredentialType.OAuth)
-    return `Authorization: Bearer ${MASK}`;
-  const prefix = form.headerPrefix ? `${form.headerPrefix} ` : "";
   const value = form.memberProvidedFields.includes(AgentVaultVariableReferenceField.CredentialValue)
     ? "<member value>"
     : MASK;
+  if (form.credentialType === AgentVaultCredentialType.OAuth)
+    return `Authorization: Bearer ${value}`;
+  const prefix = form.headerPrefix ? `${form.headerPrefix} ` : "";
   return `${form.headerName || "Authorization"}: ${prefix}${value}`;
 };
 
@@ -60,6 +65,8 @@ const alignColumns = (rows: string[][]) => {
 };
 
 type Props = {
+  /** Off for a caller who can't read hooks, who never sees the Hook step either. */
+  showHooks?: boolean;
   isUpdate: boolean;
   service?: TAgentVaultService | null;
   storedType?: AgentVaultCredentialType;
@@ -67,17 +74,46 @@ type Props = {
   storedMemberFields?: TAgentVaultMemberProvidedField[];
 };
 
-export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields = [] }: Props) => {
+export const ReviewFields = ({
+  showHooks = false,
+  isUpdate,
+  service,
+  storedType,
+  storedMemberFields = []
+}: Props) => {
   const { watch } = useFormContext<TServiceForm>();
   const form = watch();
 
   const isMcp = form.serviceType === AgentVaultServiceType.Mcp;
+  const isNative = isNativeServiceType(form.serviceType);
   const isBasic = form.credentialType === AgentVaultCredentialType.Basic;
+  const isSshKey = form.credentialType === AgentVaultCredentialType.SshKey;
   const isOAuth = form.credentialType === AgentVaultCredentialType.OAuth;
   const isAllTools = form.toolScope === McpToolScope.All;
   const secretLabel = isBasic ? "Password" : "Token";
-  const sends = credentialPreview(form);
+  // A database or SSH login sends no HTTP header.
+  const sends = isNative ? null : credentialPreview(form);
 
+  const tlsSummary = () => {
+    if (!form.tlsEnabled) return "Off";
+    if (!form.tlsVerify) return "On, doesn't verify the certificate";
+    return form.tlsCa.trim()
+      ? "On, verifies the certificate with a custom CA"
+      : "On, verifies the certificate";
+  };
+
+  // An emptied box keeps what is stored; only Remove Certificate takes a stored value away.
+  const keyOutcome = (value: string, hasStored: boolean, isRemoved = false) => {
+    if (hasStored && isRemoved) return "Removed";
+    if (hasStored && (value === UNCHANGED_SECRET || !value.trim())) return "Unchanged";
+    if (value.trim()) return hasStored ? "Replaced" : "Set";
+    return "None";
+  };
+  const hasStoredKey = isUpdate && storedType === AgentVaultCredentialType.SshKey;
+  const hasStoredCertificate =
+    hasStoredKey &&
+    service?.credential.type === AgentVaultCredentialType.SshKey &&
+    service.credential.hasCertificate;
   const headerRows = form.customHeaders
     .filter((header) => header.name)
     .map((header) => [`${header.name}:`, header.prefix ? `${header.prefix} ${MASK}` : MASK]);
@@ -112,7 +148,35 @@ export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields
     <div className="mb-4 flex flex-col gap-y-8">
       <DetailGroup>
         <DetailGroupHeader className="border-b border-border pb-2">Details</DetailGroupHeader>
-        {isMcp ? (
+        {isNative && (
+          <div className="flex flex-wrap gap-x-8 gap-y-4">
+            <Detail>
+              <DetailLabel>Name</DetailLabel>
+              <DetailValue>{form.name}</DetailValue>
+            </Detail>
+            <Detail>
+              <DetailLabel>Host</DetailLabel>
+              <DetailValue className="break-all">{form.host.trim()}</DetailValue>
+            </Detail>
+            <Detail>
+              <DetailLabel>Port</DetailLabel>
+              <DetailValue>{form.port.trim()}</DetailValue>
+            </Detail>
+            {hasDatabase(form.serviceType) && (
+              <Detail>
+                <DetailLabel>Database</DetailLabel>
+                <DetailValue className="break-all">{form.database.trim()}</DetailValue>
+              </Detail>
+            )}
+            {hasDatabase(form.serviceType) && (
+              <Detail>
+                <DetailLabel>TLS</DetailLabel>
+                <DetailValue>{tlsSummary()}</DetailValue>
+              </Detail>
+            )}
+          </div>
+        )}
+        {isMcp && (
           <div className="flex flex-wrap gap-x-8 gap-y-4">
             <Detail>
               <DetailLabel>Name</DetailLabel>
@@ -127,7 +191,8 @@ export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields
               <DetailValue>{TRANSPORT_LABELS[form.transport]}</DetailValue>
             </Detail>
           </div>
-        ) : (
+        )}
+        {!isNative && !isMcp && (
           <div className="flex flex-wrap gap-x-8 gap-y-4">
             <Detail>
               <DetailLabel>Name</DetailLabel>
@@ -151,6 +216,12 @@ export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields
             </Detail>
           </div>
         )}
+        {form.description.trim() && (
+          <Detail>
+            <DetailLabel>Description</DetailLabel>
+            <DetailValue>{form.description.trim()}</DetailValue>
+          </Detail>
+        )}
       </DetailGroup>
 
       <DetailGroup>
@@ -159,10 +230,20 @@ export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields
           <Detail>
             <DetailLabel>Type</DetailLabel>
             <DetailValue>
-              {isMcp && !isOAuth ? "Bearer Token" : CREDENTIAL_LABELS[form.credentialType]}
+              {isMcp && !isOAuth
+                ? "Bearer Token"
+                : credentialLabel(form.serviceType, form.credentialType)}
             </DetailValue>
           </Detail>
-          {isOAuth && (
+          {isOAuth && isOAuthVariableCredential(form) && (
+            <Detail>
+              <DetailLabel>OAuth Variable</DetailLabel>
+              <DetailValue className="font-mono">
+                {form.oauthVariableKey || storedOAuthVariableKey(service) || "Unchanged"}
+              </DetailValue>
+            </Detail>
+          )}
+          {isOAuth && !isOAuthVariableCredential(form) && (
             <Detail>
               <DetailLabel>Status</DetailLabel>
               <DetailValue>{oauthStatusLabel(form, service)}</DetailValue>
@@ -182,14 +263,38 @@ export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields
               </DetailValue>
             </Detail>
           )}
-          {form.credentialType !== AgentVaultCredentialType.Passthrough && !isOAuth && (
-            <Detail>
-              <DetailLabel>{secretLabel}</DetailLabel>
-              <DetailValue>
-                {outcome(form.secret, isBasic, AgentVaultVariableReferenceField.CredentialValue)}
-              </DetailValue>
-            </Detail>
+          {isSshKey && (
+            <>
+              <Detail>
+                <DetailLabel>Username</DetailLabel>
+                <DetailValue>{keyOutcome(form.username ?? "", hasStoredKey)}</DetailValue>
+              </Detail>
+              <Detail>
+                <DetailLabel>Private Key</DetailLabel>
+                <DetailValue>{keyOutcome(form.sshPrivateKey, hasStoredKey)}</DetailValue>
+              </Detail>
+              <Detail>
+                <DetailLabel>Certificate</DetailLabel>
+                <DetailValue>
+                  {keyOutcome(
+                    form.sshCertificate,
+                    hasStoredCertificate,
+                    form.sshCertificateRemoved
+                  )}
+                </DetailValue>
+              </Detail>
+            </>
           )}
+          {form.credentialType !== AgentVaultCredentialType.Passthrough &&
+            !isOAuth &&
+            !isSshKey && (
+              <Detail>
+                <DetailLabel>{secretLabel}</DetailLabel>
+                <DetailValue>
+                  {outcome(form.secret, isBasic, AgentVaultVariableReferenceField.CredentialValue)}
+                </DetailValue>
+              </Detail>
+            )}
         </div>
         {(headerRows.length > 0 || substitutionRows.length > 0) && (
           <div className="flex flex-col gap-3">
@@ -222,6 +327,29 @@ export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields
               {isAllTools ? "All" : <ExpandableValueList values={form.allowedTools} />}
             </DetailValue>
           </Detail>
+        </DetailGroup>
+      )}
+
+      {showHooks && (
+        <DetailGroup>
+          <DetailGroupHeader className="border-b border-border pb-2">Hook</DetailGroupHeader>
+          {form.hook.hookId ? (
+            <div className="flex flex-wrap gap-x-8 gap-y-4">
+              <Detail>
+                <DetailLabel>Name</DetailLabel>
+                <DetailValue>{form.hook.hookName}</DetailValue>
+              </Detail>
+              <Detail>
+                <DetailLabel>Checks</DetailLabel>
+                <DetailValue className="break-all">
+                  {describeHookNarrowing(buildHookNarrowing(form.hook, form.serviceType)) ??
+                    (isNative ? "Every connection" : "Every request")}
+                </DetailValue>
+              </Detail>
+            </div>
+          ) : (
+            <p className="text-sm text-muted">No hook</p>
+          )}
         </DetailGroup>
       )}
     </div>

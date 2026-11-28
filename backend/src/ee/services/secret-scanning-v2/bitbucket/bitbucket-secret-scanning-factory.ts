@@ -286,8 +286,6 @@ export const BitbucketSecretScanningFactory = () => {
                 finding.StartLine === finding.EndLine
                   ? startLine
                   : convertPatchLineToFileLineNumber(patch, finding.EndLine);
-              const startColumn = finding.StartColumn - 1; // subtract 1 for +
-              const endColumn = finding.EndColumn - 1; // subtract 1 for +
               const authorName = commit.author.user?.display_name || commit.author.raw.split(" <")[0];
               const emailMatch = commit.author.raw.match(ExtractEmailRegex);
               const authorEmail = emailMatch?.[1] ?? "";
@@ -296,14 +294,12 @@ export const BitbucketSecretScanningFactory = () => {
                 ...finding,
                 StartLine: startLine,
                 EndLine: endLine,
-                StartColumn: startColumn,
-                EndColumn: endColumn,
                 File: filePath,
                 Commit: commit.hash,
                 Author: authorName,
                 Email: authorEmail,
                 Message: commit.message,
-                Fingerprint: `${commit.hash}:${filePath}:${finding.RuleID}:${startLine}:${startColumn}`,
+                Fingerprint: `${commit.hash}:${filePath}:${finding.RuleID}:${startLine}:${finding.StartColumn}`,
                 Date: commit.date,
                 Attributes: {
                   ...finding.Attributes,
@@ -323,7 +319,8 @@ export const BitbucketSecretScanningFactory = () => {
         details: toFindingDetails(finding),
         fingerprint: finding.Fingerprint,
         severity: SecretScanningFindingSeverity.High,
-        rule: finding.RuleID
+        rule: finding.RuleID,
+        secretValue: finding.Secret
       }))
     };
   };

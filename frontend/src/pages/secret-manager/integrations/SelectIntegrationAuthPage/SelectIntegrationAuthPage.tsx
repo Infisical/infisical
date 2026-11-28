@@ -164,7 +164,7 @@ export const SelectIntegrationAuthPage = () => {
     return (
       <>
         <PageTitle title="Select Connection" />
-        <div className="container mx-auto flex h-screen w-full items-center justify-center px-8">
+        <div className="container mx-auto flex h-dvh w-full items-center justify-center px-8">
           <Loader variant="brand" size="lg" className="h-32" />
         </div>
       </>

@@ -2,16 +2,20 @@ import z from "zod";
 
 import { KmsKeysSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
-import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { isUuidV4 } from "@app/lib/validator/validate-uuid";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
   server.decorateRequest("kmipUser");
 
   server.addHook("onRequest", async (req) => {
+    // This hook runs before each route's verifyAuth, so it has to refuse an anonymous caller itself.
+    if (!req.auth) throw new UnauthorizedError({ message: "Token missing" });
+
     const clientId = req.headers["x-kmip-client-id"] as string;
     const projectId = req.headers["x-kmip-project-id"] as string;
     const clientCertSerialNumber = req.headers["x-kmip-client-certificate-serial-number"] as string;
@@ -41,6 +45,12 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       });
     }
 
+    if (!isUuidV4(clientId)) {
+      throw new NotFoundError({
+        message: "KMIP client cannot be found."
+      });
+    }
+
     const kmipClient = await server.store.kmipClient.findByProjectAndClientId(projectId, clientId);
 
     if (!kmipClient) {
@@ -49,7 +59,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       });
     }
 
-    if (kmipClient.orgId !== req.permission.orgId) {
+    if (kmipClient.orgId !== req.actor.orgId) {
       throw new ForbiddenRequestError({
         message: "Client specified in the request does not belong in the organization"
       });
@@ -59,7 +69,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     // token) supplies the client identity in headers, so verify the presented client cert serial
     // belongs to this client before acting as it.
     await server.services.kmip.validateKmipSessionCertificates({
-      orgId: req.permission.orgId,
+      orgId: req.actor.orgId,
       kmipClientId: kmipClient.id,
       clientCertificateSerialNumber: clientCertSerialNumber,
       serverCertificateSerialNumber: serverCertSerialNumber
@@ -79,6 +89,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "kmipCreate",
       description: "KMIP endpoint for creating managed objects",
       body: z.object({
         algorithm: z.nativeEnum(SymmetricKeyAlgorithm)
@@ -91,10 +102,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const object = await server.services.kmipOperation.create({
         ...req.kmipUser,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         algorithm: req.body.algorithm
       });
 
@@ -127,9 +135,10 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "kmipGet",
       description: "KMIP endpoint for getting managed objects",
       body: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       response: {
         200: z.object({
@@ -144,10 +153,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const object = await server.services.kmipOperation.get({
         ...req.kmipUser,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.body.id
       });
 
@@ -179,9 +185,10 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "kmipGetAttributes",
       description: "KMIP endpoint for getting attributes of managed object",
       body: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       response: {
         200: z.object({
@@ -198,10 +205,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const object = await server.services.kmipOperation.getAttributes({
         ...req.kmipUser,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.body.id
       });
 
@@ -233,9 +237,10 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "kmipDestroy",
       description: "KMIP endpoint for destroying managed objects",
       body: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       response: {
         200: z.object({
@@ -247,10 +252,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const object = await server.services.kmipOperation.destroy({
         ...req.kmipUser,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.body.id
       });
 
@@ -282,9 +284,10 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "kmipActivate",
       description: "KMIP endpoint for activating managed object",
       body: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       response: {
         200: z.object({
@@ -297,10 +300,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const object = await server.services.kmipOperation.activate({
         ...req.kmipUser,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.body.id
       });
 
@@ -332,9 +332,10 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "kmipRevoke",
       description: "KMIP endpoint for revoking managed object",
       body: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       response: {
         200: z.object({
@@ -347,10 +348,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const object = await server.services.kmipOperation.revoke({
         ...req.kmipUser,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.body.id
       });
 
@@ -382,6 +380,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "kmipLocate",
       description: "KMIP endpoint for locating managed objects",
       response: {
         200: z.object({
@@ -403,10 +402,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const objects = await server.services.kmipOperation.locate({
         ...req.kmipUser,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -439,6 +435,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "kmipRegister",
       description: "KMIP endpoint for registering managed object",
       body: z.object({
         key: z.string(),
@@ -457,10 +454,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       const object = await server.services.kmipOperation.register({
         ...req.kmipUser,
         ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({

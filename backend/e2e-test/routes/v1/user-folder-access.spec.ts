@@ -8,6 +8,9 @@ import {
   TemporaryPermissionMode
 } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { FakePamPermissionService } from "@app/domains/pam/pam/ce/testing/fake-pam-permission-service";
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
+import { agentVaultPersonalValueDALFactory } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { reapDeletedGroupFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
@@ -16,13 +19,11 @@ import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
+import { AuthMethod } from "@app/lib/auth/actor-types";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { alertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
-import { AuthMethod } from "@app/services/auth/auth-type";
-import { membershipDALFactory } from "@app/services/membership/membership-dal";
-import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
@@ -255,7 +256,7 @@ describe("User folder access CRUD", () => {
     let secondGroup: { id: string; name: string; slug: string; orgId: string };
     let removalDeps: Omit<
       Parameters<typeof removeUsersFromGroupByUserIds>[0],
-      "group" | "userIds" | "tx" | "shouldFailOnMissingMembers" | "usageMeteringService"
+      "group" | "userIds" | "tx" | "shouldFailOnMissingMembers"
     >;
 
     const createProjectGroup = async () => {
@@ -284,16 +285,18 @@ describe("User folder access CRUD", () => {
 
     beforeAll(async () => {
       removalDeps = {
+        usageMeteringService: new FakeUsageMeteringService(),
         userDAL: userDALFactory(testDb),
         userGroupMembershipDAL: userGroupMembershipDALFactory(testDb),
+        identityGroupMembershipDAL: identityGroupMembershipDALFactory(testDb),
+        agentVaultPersonalValueDAL: agentVaultPersonalValueDALFactory(testDb),
         membershipGroupDAL: membershipGroupDALFactory(testDb),
         groupDAL: groupDALFactory(testDb),
         projectKeyDAL: projectKeyDALFactory(testDb),
         additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
         alertChannelRecipientDAL: alertChannelRecipientDALFactory(testDb),
         eventEmitter: { emit: async () => {} },
-        membershipDAL: membershipDALFactory(testDb),
-        membershipRoleDAL: membershipRoleDALFactory(testDb),
+        pamPermissionService: new FakePamPermissionService(),
         pamAccountDAL: pamAccountDALFactory(testDb),
         pamSessionDAL: pamSessionDALFactory(testDb),
         gatewayV2Service: { getPAMConnectionDetails: () => Promise.reject(new Error("unexpected gateway call")) }

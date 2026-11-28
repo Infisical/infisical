@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
@@ -12,6 +12,7 @@ import {
   GitMergeIcon,
   GitPullRequestIcon,
   HourglassIcon,
+  ListChecksIcon,
   LucideIcon,
   PlusIcon,
   SearchIcon,
@@ -78,22 +79,30 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import {
+  useBulkActOnSecretApprovalRequests,
   useGetSecretApprovalPolicies,
   useGetSecretApprovalRequestCount,
   useGetSecretApprovalRequests,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import {
+  fetchSecretApprovalRequestList,
+  secretApprovalRequestKeys
+} from "@app/hooks/api/secretApprovalRequest/queries";
+import {
+  BulkChangeRequestAction,
   SecretApprovalRequestOrderBy,
   TBulkChangeRequestResult,
   TSecretApprovalRequest
 } from "@app/hooks/api/secretApprovalRequest/types";
-import { ApprovalStatus } from "@app/hooks/api/types";
 import { formatReservedPaths, parsePathFromReplicatedPath } from "@app/lib/fn/string";
 
 import { BulkReviewChangeRequestsSheet } from "./components/BulkReviewChangeRequestsSheet";
+import {
+  doesChangeRequestNeedUserReview,
+  isChangeRequestMergeable
+} from "./components/changeRequestReviewState";
 import {
   generateCommitText,
   SecretApprovalRequestChanges
@@ -105,7 +114,7 @@ enum ChangeRequestOrderBy {
   OpenedAt = SecretApprovalRequestOrderBy.CreatedAt
 }
 
-const MAX_BULK_SELECTION = 25;
+const MAX_BULK_SELECTION = 50;
 
 type Props = {
   onConfigurePolicies: () => void;
@@ -132,6 +141,14 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   );
   const [failedRequestErrors, setFailedRequestErrors] = useState<Record<string, string>>({});
   const [isBulkReviewOpen, setIsBulkReviewOpen] = useState(false);
+  const [isSelectingAllMatching, setIsSelectingAllMatching] = useState(false);
+  const [isMergingSelection, setIsMergingSelection] = useState(false);
+  const [matchingSelection, setMatchingSelection] = useState<{
+    filtersKey: string;
+    totalCount: number;
+    ids: string[];
+  } | null>(null);
+  const selectionVersion = useRef(0);
 
   const {
     debouncedSearch: debouncedSearchFilter,
@@ -152,21 +169,21 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
     setUserTablePreference("changeRequestsTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const {
-    data,
-    isPending: isApprovalRequestLoading,
-    refetch
-  } = useGetSecretApprovalRequests({
+  const listFilters = {
     projectId,
     status: statusFilter,
     environment: envFilter,
     committer: committerFilter,
     search: debouncedSearchFilter,
-    limit,
-    offset,
     orderBy: sort?.column as SecretApprovalRequestOrderBy | undefined,
     orderDirection: sort?.direction === "ascending" ? OrderByDirection.ASC : OrderByDirection.DESC
-  });
+  };
+
+  const {
+    data,
+    isPending: isApprovalRequestLoading,
+    refetch
+  } = useGetSecretApprovalRequests({ ...listFilters, limit, offset });
 
   const totalApprovalCount = data?.totalCount ?? 0;
   const secretApprovalRequests = data?.approvals ?? [];
@@ -178,6 +195,7 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   });
 
   const { data: secretApprovalRequestCount } = useGetSecretApprovalRequestCount({ projectId });
+  const { mutateAsync: bulkAct } = useBulkActOnSecretApprovalRequests();
   const { user: userSession } = useUser();
   const search = useSearch({
     from: ROUTE_PATHS.SecretManager.ApprovalPage.id
@@ -222,12 +240,18 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   const isPageIndeterminate =
     !isPageSelected && secretApprovalRequests.some(({ id }) => selectedRequests[id]);
 
+  const markSelectionEdited = () => {
+    selectionVersion.current += 1;
+  };
+
   const clearSelection = () => {
+    markSelectionEdited();
     setSelectedRequests({});
     setFailedRequestErrors({});
   };
 
   const toggleRequestSelection = (request: TSecretApprovalRequest) => {
+    markSelectionEdited();
     if (selectedRequests[request.id]) {
       setSelectedRequests(({ [request.id]: _, ...rest }) => rest);
       setFailedRequestErrors(({ [request.id]: _, ...rest }) => rest);
@@ -244,6 +268,7 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   };
 
   const togglePageSelection = () => {
+    markSelectionEdited();
     if (isPageSelected || isPageIndeterminate) {
       const pageIds = new Set(secretApprovalRequests.map(({ id }) => id));
       setSelectedRequests((prev) =>
@@ -265,6 +290,55 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
     }));
   };
 
+  const listFiltersKey = JSON.stringify(listFilters);
+  const isEveryKnownMatchSelected =
+    matchingSelection?.filtersKey === listFiltersKey &&
+    matchingSelection.totalCount === totalApprovalCount &&
+    matchingSelection.ids.every((id) => selectedRequests[id]);
+  const canSelectAllMatching =
+    isOpenTab &&
+    isPageSelected &&
+    totalApprovalCount > secretApprovalRequests.length &&
+    selectedCount < MAX_BULK_SELECTION &&
+    !isEveryKnownMatchSelected;
+
+  const selectAllMatching = async () => {
+    const version = selectionVersion.current;
+    setIsSelectingAllMatching(true);
+    try {
+      const { approvals, totalCount } = await fetchSecretApprovalRequestList({
+        ...listFilters,
+        limit: MAX_BULK_SELECTION,
+        offset: 0
+      });
+      if (version !== selectionVersion.current) return;
+      const unselected = approvals.filter(({ id }) => !selectedRequests[id]);
+      const added = unselected.slice(0, Math.max(0, MAX_BULK_SELECTION - selectedCount));
+      setMatchingSelection({
+        filtersKey: listFiltersKey,
+        totalCount,
+        ids: approvals.map(({ id }) => id)
+      });
+      setSelectedRequests((prev) => ({
+        ...prev,
+        ...Object.fromEntries(added.map((request) => [request.id, request]))
+      }));
+      if (unselected.length > added.length || totalCount > approvals.length) {
+        createNotification({
+          type: "info",
+          text: `Selected ${added.length} more. You can select up to ${MAX_BULK_SELECTION} change requests at once, so some matching requests were left out.`
+        });
+      }
+    } catch {
+      createNotification({
+        type: "error",
+        text: "Could not load the matching change requests. Try again."
+      });
+    } finally {
+      setIsSelectingAllMatching(false);
+    }
+  };
+
   const handleBulkComplete = (results: TBulkChangeRequestResult[]) => {
     const succeededIds = new Set(results.filter(({ isSuccess }) => isSuccess).map(({ id }) => id));
     setSelectedRequests((prev) =>
@@ -277,6 +351,37 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
           .map(({ id, errorMessage }) => [id, errorMessage ?? "This request could not be updated"])
       )
     );
+  };
+
+  const canMergeSelection =
+    selectedCount > 0 &&
+    selectedRequestList.every(
+      (request) => request.status === "open" && isChangeRequestMergeable(request)
+    );
+
+  const mergeSelection = async () => {
+    setIsMergingSelection(true);
+    try {
+      const results = await bulkAct({
+        projectId,
+        action: BulkChangeRequestAction.Merge,
+        requestIds: [...selectedRequestList]
+          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+          .map(({ id }) => id)
+      });
+      handleBulkComplete(results);
+      const failedCount = results.filter(({ isSuccess }) => !isSuccess).length;
+      createNotification({
+        type: failedCount ? "warning" : "success",
+        text: failedCount
+          ? `Merged ${results.length - failedCount} of ${results.length} change requests. The rest stay selected.`
+          : `Merged ${results.length} change request${results.length === 1 ? "" : "s"}`
+      });
+    } catch {
+      clearSelection();
+    } finally {
+      setIsMergingSelection(false);
+    }
   };
 
   const isRequestListEmpty = !isApprovalRequestLoading && secretApprovalRequests?.length === 0;
@@ -549,27 +654,22 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
                     id: reqId,
                     commits,
                     createdAt,
-                    reviewers,
                     status,
                     committerUser,
                     committerUserId,
                     committerIdentity,
                     hasMerged,
                     updatedAt,
-                    policy,
                     environment,
                     secretPath,
                     isReplicated
                   } = secretApproval;
 
-                  const isMergable =
-                    reviewers.filter(
-                      ({ status: reviewStatus }) => reviewStatus === ApprovalStatus.APPROVED
-                    ).length >= policy.approvals;
-
-                  const requiresUserReview =
-                    policy.approvers.find((approver) => approver.userId === userSession.id) &&
-                    !reviewers.find(({ userId }) => userId === userSession.id);
+                  const isMergable = isChangeRequestMergeable(secretApproval);
+                  const requiresUserReview = doesChangeRequestNeedUserReview(
+                    secretApproval,
+                    userSession.id
+                  );
 
                   const environmentDisplayName = environmentNamesBySlug[environment] ?? environment;
                   const secretPathDisplay = isReplicated
@@ -750,10 +850,39 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
         </CardContent>
       </Card>
       <SelectedActionBar selectedCount={selectedCount} onClearSelection={clearSelection}>
-        <Button variant="project" size="xs" onClick={() => setIsBulkReviewOpen(true)}>
-          <GitMergeIcon />
-          Review & Merge
+        {canSelectAllMatching && (
+          <Button
+            variant="ghost"
+            size="xs"
+            isPending={isSelectingAllMatching}
+            onClick={selectAllMatching}
+          >
+            {totalApprovalCount > MAX_BULK_SELECTION
+              ? `Select Up to ${MAX_BULK_SELECTION}`
+              : `Select All ${totalApprovalCount}`}
+          </Button>
+        )}
+        <Button
+          variant={canMergeSelection ? "outline" : "project"}
+          size="xs"
+          isDisabled={isSelectingAllMatching || isMergingSelection}
+          onClick={() => setIsBulkReviewOpen(true)}
+        >
+          <ListChecksIcon />
+          Review
         </Button>
+        {canMergeSelection && (
+          <Button
+            variant="project"
+            size="xs"
+            isDisabled={isSelectingAllMatching}
+            isPending={isMergingSelection}
+            onClick={mergeSelection}
+          >
+            <GitMergeIcon />
+            Merge
+          </Button>
+        )}
       </SelectedActionBar>
       <BulkReviewChangeRequestsSheet
         isOpen={isBulkReviewOpen}
@@ -762,6 +891,10 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
         requests={selectedRequestList}
         environmentNamesBySlug={environmentNamesBySlug}
         onComplete={handleBulkComplete}
+        onOutcomeUnknown={() => {
+          clearSelection();
+          setIsBulkReviewOpen(false);
+        }}
       />
       <SecretApprovalRequestChanges
         approvalRequestId={requestId || ""}

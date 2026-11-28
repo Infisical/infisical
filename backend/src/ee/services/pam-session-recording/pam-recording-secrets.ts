@@ -1,31 +1,75 @@
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { PAM_RECORDING_AAD_VERSION } from "./pam-recording-constants";
 
 const SESSION_KEY_LENGTH = 32; // AES-256
 const UPLOAD_TOKEN_LENGTH = 32; // 256 random bits
+const GCM_TAG_LENGTH = 16;
 
 const buildWrapAad = (projectId: string, sessionId: string) =>
   crypto.nativeCrypto.createHash("sha256").update(`${projectId}|${sessionId}|${PAM_RECORDING_AAD_VERSION}`).digest();
 
-export const generateSessionRecordingSecrets = async ({
+// Must match the AAD the gateway encrypts each chunk with.
+const buildChunkAad = ({
   projectId,
   sessionId,
-  kmsService
+  chunkIndex,
+  storageBackend
 }: {
   projectId: string;
   sessionId: string;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  chunkIndex: number;
+  storageBackend: string;
+}) =>
+  crypto.nativeCrypto
+    .createHash("sha256")
+    .update(`${projectId}|${sessionId}|${chunkIndex}|${storageBackend}|${PAM_RECORDING_AAD_VERSION}`)
+    .digest();
+
+export const decryptRecordingChunk = ({
+  sessionKey,
+  projectId,
+  sessionId,
+  chunkIndex,
+  storageBackend,
+  iv,
+  ciphertext
+}: {
+  sessionKey: Buffer;
+  projectId: string;
+  sessionId: string;
+  chunkIndex: number;
+  storageBackend: string;
+  iv: Buffer;
+  ciphertext: Buffer;
+}) => {
+  if (ciphertext.length < GCM_TAG_LENGTH) {
+    throw new InternalServerError({ message: `Recording chunk ${chunkIndex} is too short to decrypt` });
+  }
+
+  const decipher = crypto.nativeCrypto.createDecipheriv("aes-256-gcm", sessionKey, iv);
+  decipher.setAAD(buildChunkAad({ projectId, sessionId, chunkIndex, storageBackend }));
+  decipher.setAuthTag(ciphertext.subarray(ciphertext.length - GCM_TAG_LENGTH));
+  return Buffer.concat([decipher.update(ciphertext.subarray(0, ciphertext.length - GCM_TAG_LENGTH)), decipher.final()]);
+};
+
+export const generateSessionRecordingSecrets = async ({
+  projectId,
+  sessionId,
+  kmsDataKeyService
+}: {
+  projectId: string;
+  sessionId: string;
+  kmsDataKeyService: TKmsDataKeyService;
 }) => {
   const sessionKey = crypto.randomBytes(SESSION_KEY_LENGTH);
   const uploadToken = crypto.randomBytes(UPLOAD_TOKEN_LENGTH);
 
   const wrapAad = buildWrapAad(projectId, sessionId);
 
-  const { encryptor } = await kmsService.createCipherPairWithDataKey({
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId
   });
@@ -49,14 +93,14 @@ export const decryptSessionKey = async ({
   projectId,
   sessionId,
   encryptedSessionKey,
-  kmsService
+  kmsDataKeyService
 }: {
   projectId: string;
   sessionId: string;
   encryptedSessionKey: Buffer;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
 }) => {
-  const { decryptor } = await kmsService.createCipherPairWithDataKey({
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
     type: KmsDataKey.SecretManager,
     projectId
   });

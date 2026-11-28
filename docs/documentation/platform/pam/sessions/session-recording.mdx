@@ -14,11 +14,11 @@ What a recording contains depends on the [account type](/documentation/platform/
 
 | Account type | What the recording contains |
 | --- | --- |
-| PostgreSQL, MySQL, Microsoft SQL Server, Oracle, MongoDB, Redis, Snowflake, ClickHouse | Each query or command, and the database's response |
+| PostgreSQL, CockroachDB, MySQL, Microsoft SQL Server, Oracle, MongoDB, Redis, Snowflake, ClickHouse | Each query or command, and the database's response |
 | SSH | Terminal input and output, commands run without a shell, and SFTP file operations |
-| Kubernetes, GCP service account, Azure CLI | Each HTTP request to the provider's API, and its response |
+| Kubernetes, GCP service account, Azure CLI, AWS IAM through a Gateway | Each HTTP request to the provider's API, and its response |
 | Windows, Windows AD | A replay of the remote desktop |
-| AWS IAM | Nothing, because connections don't go through the Gateway (use [AWS CloudTrail](/documentation/platform/pam/accounts/aws-iam#track-activity-in-aws) instead) |
+| AWS IAM without a Gateway | Nothing, because connections don't go through a Gateway (use [AWS CloudTrail](/documentation/platform/pam/accounts/aws-iam#track-activity-in-aws) instead) |
 
 ## View a recording
 
@@ -46,6 +46,10 @@ Under **Session Log Masking**, the account's [template](/documentation/platform/
 - **Custom patterns** mask any text that matches one of your regular expressions
 
 You can't mask recordings of Windows and Windows AD sessions.
+
+## Send session activity to your logging system
+
+To also send each session's commands, queries, and requests to your logging system while the session runs, [stream the session activity](/documentation/platform/pam/sessions/activity-streaming) through an audit log stream.
 
 ## Where recordings are stored
 

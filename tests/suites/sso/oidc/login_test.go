@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
+	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/sso"
 	"github.com/Infisical/infisical/tests/internal/apierr"
@@ -149,7 +150,6 @@ func TestOIDCLogin_AllowedEmailDomains(t *testing.T) {
 		// Setup
 		o := setup(t)
 		res, err := o.Tenant.Admin.API.UpdateOidcConfigWithResponse(t.Context(), api.UpdateOidcConfigJSONRequestBody{
-			OrganizationId:      o.Tenant.OrgID.String(),
 			AllowedEmailDomains: new("allowed.test"),
 		})
 		require.NoError(t, err)
@@ -174,7 +174,6 @@ func TestOIDCLogin_AllowedEmailDomains(t *testing.T) {
 		alice := o.Person()
 		_, domain, _ := strings.Cut(alice.Email, "@")
 		res, err := o.Tenant.Admin.API.UpdateOidcConfigWithResponse(t.Context(), api.UpdateOidcConfigJSONRequestBody{
-			OrganizationId:      o.Tenant.OrgID.String(),
 			AllowedEmailDomains: new("allowed.test, " + domain),
 		})
 		require.NoError(t, err)
@@ -185,5 +184,27 @@ func TestOIDCLogin_AllowedEmailDomains(t *testing.T) {
 
 		// Assert
 		require.Equal(t, alice.Email, o.SignupClaims(t, login)["email"])
+	})
+}
+
+func TestOIDCLogin_SeatLimit(t *testing.T) {
+	t.Parallel()
+
+	t.Run("should refuse a new user through OIDC when the plan's member limit is reached, and add no membership", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		o := setup(t)
+		o.Tenant.NewMachineIdentity(t)
+		o.Tenant.SetPlan(t, license.SeatLimited(1))
+		alice := o.Person()
+
+		// Action
+		res := o.Login(t, alice)
+
+		// Assert
+		require.NotEqual(t, http.StatusOK, res.StatusCode())
+		require.Contains(t, string(res.Body), "member limit reached")
+		require.Nil(t, fixture.MembershipOf(t, o.Tenant, alice.Email))
 	})
 }

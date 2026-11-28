@@ -84,8 +84,8 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
    * through a group membership, i.e. they belong to a group that is itself
    * a member of the project.
    *
-   * Note: this intentionally does NOT filter on `isPending`. The permission engine
-   * (`permission-dal.getPermission`) grants project access purely by group membership
+   * Note: this intentionally does NOT filter on `isPending`. Access Control's grant store
+   * (`GrantStore.findActorGrants`) grants project access purely by group membership
    * without considering `isPending`, and the flag is no longer cleared for accepted
    * users (the un-pend transition was removed with the signup-flow simplification).
    * Filtering it here would diverge from what actually grants access.
@@ -216,18 +216,17 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findGroupMembershipsByUserIdInOrg = async (userId: string, orgId: string) => {
+  const findGroupMembershipsByUserIdInOrg = async (userId: string, orgId: string, tx?: Knex) => {
     try {
+      const dbInstance = tx || db.replicaNode();
       // Group visible in org = has Membership with scopeOrgId = orgId (native or inherited)
-      const groupIdsVisibleInOrg = db
-        .replicaNode()(TableName.Membership)
+      const groupIdsVisibleInOrg = dbInstance(TableName.Membership)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .whereNotNull(`${TableName.Membership}.actorGroupId`)
         .select(`${TableName.Membership}.actorGroupId`);
 
-      const docs = await db
-        .replicaNode()(TableName.UserGroupMembership)
+      const docs = await dbInstance(TableName.UserGroupMembership)
         .join(TableName.Groups, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
         .join(TableName.Membership, `${TableName.UserGroupMembership}.userId`, `${TableName.Membership}.actorUserId`)
         .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)

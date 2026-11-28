@@ -30,6 +30,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import {
+  ProjectPermissionActions,
   ProjectPermissionSub,
   useOrganization,
   useProject,
@@ -62,7 +63,7 @@ const AWS_CONNECTION = APP_CONNECTION_MAP[AppConnection.AWS];
 
 export const SessionLogSection = () => {
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
+  const { currentProject, projectId } = useProject();
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
   const queryClient = useQueryClient();
@@ -73,12 +74,24 @@ export const SessionLogSection = () => {
     bucket: string | null;
     keyPrefix: string | null;
   } | null>(null);
-  const { data: state, isPending } = useGetAgentVaultSessionLogSettings();
+  const { data: state, isPending } = useGetAgentVaultSessionLogSettings(projectId);
+  // Only names the connection in use and lists the connections, so each read waits for the permission its API checks.
+  const canConnectAppConnections = permission.can(
+    ProjectPermissionAppConnectionActions.Connect,
+    ProjectPermissionSub.AppConnections
+  );
+  const canReadAppConnections = permission.can(
+    ProjectPermissionAppConnectionActions.Read,
+    ProjectPermissionSub.AppConnections
+  );
   const { data: connections } = useListAvailableAppConnections(
     AppConnection.AWS,
-    currentProject.id
+    currentProject.id,
+    { enabled: canConnectAppConnections }
   );
-  const { data: agentVaultConnections = [] } = useListAppConnections(currentProject.id);
+  const { data: agentVaultConnections = [] } = useListAppConnections(currentProject.id, {
+    enabled: canReadAppConnections
+  });
 
   const settings = state?.settings ?? null;
   const external =
@@ -95,8 +108,8 @@ export const SessionLogSection = () => {
     const { bucket, keyPrefix } = saved.storage;
     const readCheck = await queryClient
       .fetchQuery({
-        queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id),
-        queryFn: fetchAgentVaultSessionLogReadAccess
+        queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id, projectId),
+        queryFn: () => fetchAgentVaultSessionLogReadAccess(projectId)
       })
       .catch(() => null);
     if (readCheck?.status === "cors-missing" || readCheck?.status === "access-denied") {
@@ -119,6 +132,10 @@ export const SessionLogSection = () => {
       )
     : false;
   const hasConnectionMenu = Boolean(external?.appConnectionId) || agentVaultConnections.length > 0;
+  const canEditSettings = permission.can(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.Settings
+  );
 
   return (
     <>
@@ -134,9 +151,11 @@ export const SessionLogSection = () => {
           </CardDescription>
           <CardAction>
             <ButtonGroup>
-              <Button variant="av" isDisabled={isPending} onClick={() => setIsModalOpen(true)}>
-                {settings ? "Configure" : "Set Up Session Logs"}
-              </Button>
+              {canEditSettings && (
+                <Button variant="av" isDisabled={isPending} onClick={() => setIsModalOpen(true)}>
+                  {settings ? "Configure" : "Set Up Session Logs"}
+                </Button>
+              )}
               {hasConnectionMenu && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -170,10 +189,12 @@ export const SessionLogSection = () => {
                         )}
                       </Tooltip>
                     )}
-                    <DropdownMenuItem onClick={() => setIsConnectionsSheetOpen(true)}>
-                      <PlugIcon />
-                      Manage Connections
-                    </DropdownMenuItem>
+                    {canReadAppConnections && (
+                      <DropdownMenuItem onClick={() => setIsConnectionsSheetOpen(true)}>
+                        <PlugIcon />
+                        Manage Connections
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
@@ -236,12 +257,15 @@ export const SessionLogSection = () => {
         )}
       </Card>
 
-      <SessionLogModal
-        isOpen={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        onSaved={offerAwsSetup}
-        onEditCredentials={canEditConnection ? () => setIsEditCredentialsOpen(true) : undefined}
-      />
+      {/* Both stay mounted while closed and read the connections, so each mounts only for someone who can open it. */}
+      {canEditSettings && (
+        <SessionLogModal
+          isOpen={isModalOpen}
+          onOpenChange={setIsModalOpen}
+          onSaved={offerAwsSetup}
+          onEditCredentials={canEditConnection ? () => setIsEditCredentialsOpen(true) : undefined}
+        />
+      )}
 
       <AwsSetupDialog
         isOpen={Boolean(awsSetup)}
@@ -256,10 +280,12 @@ export const SessionLogSection = () => {
         appConnection={editableConnection}
       />
 
-      <SessionLogConnectionsSheet
-        isOpen={isConnectionsSheetOpen}
-        onOpenChange={setIsConnectionsSheetOpen}
-      />
+      {canReadAppConnections && (
+        <SessionLogConnectionsSheet
+          isOpen={isConnectionsSheetOpen}
+          onOpenChange={setIsConnectionsSheetOpen}
+        />
+      )}
     </>
   );
 };

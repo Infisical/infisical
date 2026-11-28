@@ -16,7 +16,7 @@ export const AgentVaultSessionInlineServicesSchema = z.object({
   name: z.string().nullable().optional(),
   type: z.string(),
   config: z.unknown().nullable().optional(),
-  hostPattern: z.string(),
+  hostPattern: z.string().nullable().optional(),
   allowedMethods: z.string().array().nullable().optional(),
   allowedPathPrefixes: z.string().array().nullable().optional(),
   credentialType: z.string(),
@@ -25,7 +25,8 @@ export const AgentVaultSessionInlineServicesSchema = z.object({
   substitutions: z.unknown(),
   encryptedSecrets: zodBuffer.nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  description: z.string().nullable().optional()
 });
 
 export type TAgentVaultSessionInlineServices = z.infer<typeof AgentVaultSessionInlineServicesSchema>;

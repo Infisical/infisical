@@ -1,7 +1,7 @@
 import { FastifyRequest } from "fastify";
 
+import { AuthMode, MfaMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
-import { AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { MfaStepUpResource, TMfaStepUpResource } from "@app/services/mfa-session/mfa-session-types";
 
 export { MfaStepUpResource };
@@ -116,9 +116,9 @@ export const ensureStepUpMfa = async (
 // retried request through, so callers never pass the session id back.
 export const ensureFactorEnrollmentStepUpMfa = async (
   server: FastifyZodProvider,
-  { userId, tokenVersionId, enrollingMethod }: { userId: string; tokenVersionId: string; enrollingMethod: MfaMethod }
+  { userId, tokenVersionId }: { userId: string; tokenVersionId: string }
 ) => {
-  const mfaMethods = await server.services.user.getFactorEnrollmentStepUpMfaMethods(userId, enrollingMethod);
+  const mfaMethods = await server.services.user.getFactorEnrollmentStepUpMfaMethods(userId);
   if (!mfaMethods) return;
 
   await ensureStepUpMfa(server, {

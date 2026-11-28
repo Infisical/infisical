@@ -5,20 +5,27 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ApiDocsTags, CERTIFICATE_AUTHORITIES, CERTIFICATES } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { ms } from "@app/lib/ms";
 import { Pkcs12PasswordSchema } from "@app/lib/validator/password-policy";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addNoCacheHeaders } from "@app/server/lib/caching";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import {
   validateAltNamesField,
   validateCaDateField
 } from "@app/services/certificate-authority/certificate-authority-validators";
 import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
-import { CertExtendedKeyUsage, CertKeyUsage, CrlReason } from "@app/services/certificate/certificate-types";
+import {
+  CertExtendedKeyUsage,
+  CertificateRevocationStatus,
+  CertKeyUsage,
+  CrlReason
+} from "@app/services/certificate/certificate-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+import { RevokeCertResponseSchemas, sendRevocationPendingApproval } from "./certificate-revoke-response";
 
 export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -44,10 +51,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     handler: async (req) => {
       const { cert } = await server.services.certificate.getCert({
         serialNumber: req.params.serialNumber,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -93,10 +97,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     handler: async (req, reply) => {
       const { cert, applicationName, certPrivateKey } = await server.services.certificate.getCertPrivateKey({
         serialNumber: req.params.serialNumber,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -148,10 +149,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       const { certificate, certificateChain, serialNumber, cert, privateKey, applicationName } =
         await server.services.certificate.getCertBundle({
           serialNumber: req.params.serialNumber,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId
+          actor: req.actor
         });
 
       await server.services.auditLog.createAuditLog({
@@ -252,10 +250,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     handler: async (req) => {
       const { certificate, certificateChain, issuingCaCertificate, privateKey, serialNumber, ca } =
         await server.services.internalCertificateAuthority.issueCertFromCa({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.actor,
           ...req.body
         });
 
@@ -275,7 +270,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.IssueCert,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           caId: req.body.caId,
           certificateTemplateId: req.body.certificateTemplateId,
@@ -327,10 +322,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     handler: async (req) => {
       const { certificate, certificateChain, privateKey, serialNumber, cert, applicationName } =
         await server.services.certificate.importCert({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.actor,
           ...req.body
         });
 
@@ -431,10 +423,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       const { certificate, certificateChain, issuingCaCertificate, serialNumber, ca, commonName } =
         await server.services.internalCertificateAuthority.signCertFromCa({
           isInternal: false,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.actor,
           ...req.body
         });
 
@@ -454,7 +443,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignCert,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           caId: req.body.caId,
           certificateTemplateId: req.body.certificateTemplateId,
@@ -489,23 +478,19 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       body: z.object({
         revocationReason: z.nativeEnum(CrlReason).describe(CERTIFICATES.REVOKE.revocationReason)
       }),
-      response: {
-        200: z.object({
-          message: z.string().trim(),
-          serialNumber: z.string().trim().describe(CERTIFICATES.REVOKE.serialNumberRes),
-          revokedAt: z.date().describe(CERTIFICATES.REVOKE.revokedAt)
-        })
-      }
+      response: RevokeCertResponseSchemas
     },
-    handler: async (req) => {
-      const { revokedAt, cert, applicationName, ca } = await server.services.certificate.revokeCert({
+    handler: async (req, reply) => {
+      const result = await server.services.certificate.revokeCert({
         serialNumber: req.params.serialNumber,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body
       });
+      if (result.status === CertificateRevocationStatus.PendingApproval) {
+        return sendRevocationPendingApproval(server, req, reply, result);
+      }
+
+      const { cert, applicationName, ca } = result;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -518,15 +503,18 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
             serialNumber: cert.serialNumber,
             applicationId: cert.applicationId,
             applicationName,
-            revocationReason: req.body.revocationReason
+            revocationReason: req.body.revocationReason,
+            crlWarning: result.crlWarning
           }
         }
       });
 
       return {
         message: "Successfully revoked certificate",
+        status: result.status,
         serialNumber: req.params.serialNumber,
-        revokedAt
+        revokedAt: result.revokedAt,
+        crlWarning: result.crlWarning
       };
     }
   });
@@ -554,10 +542,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     handler: async (req) => {
       const { deletedCert, applicationName, statusAtDeletion } = await server.services.certificate.deleteCert({
         serialNumber: req.params.serialNumber,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         auditLogInfo: req.auditLogInfo
       });
 
@@ -612,10 +597,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       const { certificate, certificateChain, serialNumber, cert, applicationName } =
         await server.services.certificate.getCertBody({
           serialNumber: req.params.serialNumber,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId
+          actor: req.actor
         });
 
       await server.services.auditLog.createAuditLog({
@@ -668,10 +650,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
         serialNumber: req.params.serialNumber,
         password: req.body.password,
         alias: req.body.alias,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({

@@ -1,6 +1,7 @@
-import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
+import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { AlertChannelType } from "../alert-channel-types";
@@ -49,7 +50,10 @@ const signerAlert: TAlertContext = {
 
 const alreadyAlerted = { alertId: "alert-1", channelIds: ["channel-1"], since: new Date() };
 
-const actor = { actor: "user", actorId: "u1", actorAuthMethod: null, actorOrgId: "org-1" } as never;
+const actor = {
+  principal: { type: "user", id: "u1", authMethod: null },
+  org: { id: "org-1" }
+} as never;
 
 const alertRules = [
   { action: "create", subject: "pki-alerts" },
@@ -78,13 +82,15 @@ const buildProvider = (opts?: {
       findSignerNamesByIds: async (_projectId: string, ids: string[]) =>
         ids.includes(SIGNER_ID) ? [{ id: SIGNER_ID, name: "release-signer" }] : []
     },
-    permissionService: {
-      getProjectPermission: async () => ({
-        permission: createMongoAbility((opts?.abilityRules ?? alertRules) as never),
-        hasRole: (role: string) => (opts?.projectRoles ?? []).includes(role)
-      })
+    projectPermissionService: {
+      getProjectPermission: async () =>
+        Object.assign(Permission.fromRules({ rules: (opts?.abilityRules ?? alertRules) as never }), {
+          hasRole: ({ slug }: { slug: string }) => (opts?.projectRoles ?? []).includes(slug)
+        })
     },
-    licenseService: { getPlan: async () => ({ pkiEnterpriseAlerting: opts?.pkiEnterpriseAlerting ?? false }) },
+    licenseService: new FakeLicenseService().setPlan("org-1", {
+      pkiEnterpriseAlerting: opts?.pkiEnterpriseAlerting ?? false
+    }),
     certManagerProjectResolver: { getActiveProjectId: async (orgId: string) => (orgId === "org-1" ? "proj-1" : null) }
   } as unknown as TCertManagerSignerAlertProviderDep);
 
@@ -242,6 +248,15 @@ describe("cert manager signer alert provider", () => {
     expect(payload.items[0].resource).toMatchObject({ signerIds: ["signer-1"], signerNames: ["release-signer"] });
     expect(provider.dedupWindowHours?.({ alertBefore: "30d" })).toBe(44);
     expect(provider.dedupWindowHours?.({ alertBefore: "30d", dailyReminder: true })).toBe(20);
+  });
+
+  // A Product Member assigned only to a signer can open Code Signing but not the certificate page,
+  // which needs product-wide certificate access or assignment to the certificate's application.
+  test("buildPayload gives signer certificates no link to the certificate page", async () => {
+    const provider = buildProvider();
+    const viewUrl = await provider.buildViewUrl(signerAlert);
+    const payload = provider.buildPayload(signerAlert, [signerCertificate()], viewUrl);
+    expect(payload.items[0]).not.toHaveProperty("url");
   });
 
   test("a certificate shared by several signers is one item naming every signer", () => {

@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { QueueJobs, QueueName } from "@app/queue";
 
 import { AuditLogEventClass } from "./audit-log-event-classes";
@@ -63,7 +65,8 @@ const createHarness = ({
     pushToLog: vi.fn<(data: TPushedLog) => Promise<void>>(async () => undefined),
     pushToLogOrThrow: vi.fn<(data: TPushedLog) => Promise<void>>(async () => undefined)
   };
-  const licenseService = { getPlan: vi.fn(async () => ({ auditLogsRetentionDays: retentionDays })) };
+  const licenseService = new FakeLicenseService();
+  licenseService.defaultPlan = { ...licenseService.defaultPlan, auditLogsRetentionDays: retentionDays };
   const auditLogSettingsService = {
     getEffectiveSettings: vi.fn<(orgId: string, projectId?: string | null) => Promise<TEffectiveAuditLogSettings>>(
       async () => ({
@@ -76,10 +79,12 @@ const createHarness = ({
 
   const service = auditLogServiceFactory({
     auditLogDAL: {} as never,
-    permissionService: {} as never,
+    orgPermissionService: {} as never,
+    projectPermissionService: {} as never,
     auditLogQueue: auditLogQueue as never,
     auditLogSettingsService: auditLogSettingsService as never,
-    licenseService: licenseService as never,
+    licenseService,
+    instanceConfigService: new FakeInstanceConfigService(),
     queueService: queueService as never,
     keyStore: keyStore as never,
     smtpService: {} as never,

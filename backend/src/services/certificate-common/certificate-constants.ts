@@ -13,6 +13,18 @@ export const PKI_TEXT_COLUMN_MAX_LENGTH = 255;
 
 export const PKI_ALT_NAMES_COLUMN_MAX_LENGTH = 4096;
 
+/**
+ * Post-quantum keys and signatures (ML-DSA, SLH-DSA) make PEM CSRs far larger than RSA/ECDSA ones;
+ * an SLH-DSA-256f CSR alone is over 60 KB.
+ */
+export const CSR_MAX_LENGTH = 128 * 1024;
+
+export const csrSchema = z
+  .string()
+  .trim()
+  .min(1, "CSR cannot be empty")
+  .max(CSR_MAX_LENGTH, "CSR cannot exceed 128 KB");
+
 const MAX_CERTIFICATE_TTL_MS = 100 * 365 * 24 * 60 * 60 * 1000;
 
 /**
@@ -72,6 +84,11 @@ export enum CertSubjectAlternativeNameType {
   URI = "uri",
   UPN = "upn"
 }
+
+export const ACME_SAN_TYPES: CertSubjectAlternativeNameType[] = [
+  CertSubjectAlternativeNameType.DNS_NAME,
+  CertSubjectAlternativeNameType.IP_ADDRESS
+];
 
 export enum TAltNameType {
   EMAIL = "email",
@@ -326,6 +343,12 @@ export const CERTIFICATE_RENEWAL_CONFIG = {
 } as const;
 
 export const DEFAULT_CRL_VALIDITY_DAYS = 7;
+export const MIN_CRL_VALIDITY_DAYS = 1;
+export const MAX_CRL_VALIDITY_DAYS = 365;
+export const CRL_REBUILD_MAX_LEAD_HOURS = 24;
+export const CRL_REBUILD_LEAD_HOURS_PER_VALIDITY_DAY = 12;
+export const CRL_VALIDITY_TOLERANCE_HOURS = 1;
+export const CRL_REVOCATION_CATCH_UP_MARGIN_MINUTES = 5;
 
 /**
  * Certificates we mint just-in-time are verified by gateways, relays, and agents on hosts whose
@@ -338,16 +361,54 @@ export const DEFAULT_CRL_VALIDITY_DAYS = 7;
  */
 export const CERT_CLOCK_SKEW_MS = 2 * 60 * 1000;
 
-export const ALGORITHM_FAMILIES = {
+// Policies store RSA and ECDSA algorithms in their own spelling; every other request value is stored as is.
+const POLICY_ALGORITHM_ALIASES = {
   ECDSA: {
-    signature: ["SHA256-ECDSA", "SHA384-ECDSA", "SHA512-ECDSA"],
-    key: ["ECDSA-P256", "ECDSA-P384", "ECDSA-P521"]
+    signature: {
+      "SHA256-ECDSA": CertSignatureAlgorithm.ECDSA_SHA256,
+      "SHA384-ECDSA": CertSignatureAlgorithm.ECDSA_SHA384,
+      "SHA512-ECDSA": CertSignatureAlgorithm.ECDSA_SHA512
+    },
+    key: {
+      "ECDSA-P256": CertKeyAlgorithm.ECDSA_P256,
+      "ECDSA-P384": CertKeyAlgorithm.ECDSA_P384,
+      "ECDSA-P521": CertKeyAlgorithm.ECDSA_P521
+    }
   },
   RSA: {
-    signature: ["SHA256-RSA", "SHA384-RSA", "SHA512-RSA"],
-    key: ["RSA-2048", "RSA-3072", "RSA-4096"]
+    signature: {
+      "SHA256-RSA": CertSignatureAlgorithm.RSA_SHA256,
+      "SHA384-RSA": CertSignatureAlgorithm.RSA_SHA384,
+      "SHA512-RSA": CertSignatureAlgorithm.RSA_SHA512
+    },
+    key: {
+      "RSA-2048": CertKeyAlgorithm.RSA_2048,
+      "RSA-3072": CertKeyAlgorithm.RSA_3072,
+      "RSA-4096": CertKeyAlgorithm.RSA_4096
+    }
   }
 } as const;
+
+export const ALGORITHM_FAMILIES = {
+  ECDSA: {
+    signature: Object.keys(POLICY_ALGORITHM_ALIASES.ECDSA.signature),
+    key: Object.keys(POLICY_ALGORITHM_ALIASES.ECDSA.key)
+  },
+  RSA: {
+    signature: Object.keys(POLICY_ALGORITHM_ALIASES.RSA.signature),
+    key: Object.keys(POLICY_ALGORITHM_ALIASES.RSA.key)
+  }
+};
+
+export const POLICY_SIGNATURE_ALGORITHM_TO_REQUEST: Record<string, string> = {
+  ...POLICY_ALGORITHM_ALIASES.ECDSA.signature,
+  ...POLICY_ALGORITHM_ALIASES.RSA.signature
+};
+
+export const POLICY_KEY_ALGORITHM_TO_REQUEST: Record<string, string> = {
+  ...POLICY_ALGORITHM_ALIASES.ECDSA.key,
+  ...POLICY_ALGORITHM_ALIASES.RSA.key
+};
 
 export const SAN_TYPE_OPTIONS = Object.values(CertSubjectAlternativeNameType);
 export const KEY_USAGE_OPTIONS = Object.values(CertKeyUsageType);
@@ -361,6 +422,28 @@ export const POLICY_STATE_OPTIONS = Object.values(CertPolicyState);
 export const KEY_ALGORITHM_OPTIONS = Object.values(CertKeyAlgorithm);
 export const SIGNATURE_ALGORITHM_OPTIONS = Object.values(CertSignatureAlgorithm);
 
+export const POLICY_SIGNATURE_ALGORITHM_VALUES = [
+  ...Object.keys(POLICY_SIGNATURE_ALGORITHM_TO_REQUEST),
+  ...SIGNATURE_ALGORITHM_OPTIONS
+];
+export const POLICY_KEY_ALGORITHM_VALUES = [...Object.keys(POLICY_KEY_ALGORITHM_TO_REQUEST), ...KEY_ALGORITHM_OPTIONS];
+
+// A policy accepts both spellings of the RSA and ECDSA algorithms, but errors and docs list one per algorithm: the
+// policy spelling the UI stores, then the algorithms that have no alias.
+const withoutAliasedValues = (aliases: Record<string, string>, values: string[]) => {
+  const aliased = new Set(Object.values(aliases));
+  return [...Object.keys(aliases), ...values.filter((value) => !aliased.has(value))];
+};
+
+export const POLICY_SIGNATURE_ALGORITHM_DOCUMENTED_VALUES = withoutAliasedValues(
+  POLICY_SIGNATURE_ALGORITHM_TO_REQUEST,
+  SIGNATURE_ALGORITHM_OPTIONS
+);
+export const POLICY_KEY_ALGORITHM_DOCUMENTED_VALUES = withoutAliasedValues(
+  POLICY_KEY_ALGORITHM_TO_REQUEST,
+  KEY_ALGORITHM_OPTIONS
+);
+
 export enum CertExtensionCriticality {
   CRITICAL = "critical",
   NOT_CRITICAL = "not_critical"
@@ -372,6 +455,11 @@ export const CUSTOM_EXTENSION_PRESET_OIDS = {
   MS_CERTIFICATE_TEMPLATE_NAME: "1.3.6.1.4.1.311.20.2",
   MS_CERTIFICATE_TEMPLATE_INFORMATION: "1.3.6.1.4.1.311.21.7"
 } as const;
+
+export const MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS = [
+  CUSTOM_EXTENSION_PRESET_OIDS.NTDS_SID,
+  CUSTOM_EXTENSION_PRESET_OIDS.MS_CERTIFICATE_TEMPLATE_INFORMATION
+];
 
 export const MAX_CUSTOM_EXTENSIONS_PER_PROFILE = 10;
 
@@ -465,6 +553,40 @@ export const subjectAlternativeNameSchema = z.object({
     .max(PKI_TEXT_COLUMN_MAX_LENGTH, `SAN value cannot exceed ${PKI_TEXT_COLUMN_MAX_LENGTH} characters`)
 });
 
+// The item schema is a parameter so a route can add field descriptions without copying the list's limits.
+export const buildAltNamesSchema = <T extends z.ZodType<{ value: string }>>(item: T) =>
+  z
+    .array(item)
+    .max(100, "Cannot exceed 100 subject alternative names")
+    .refine(
+      (names) => names.map((san) => san.value).join(",").length <= PKI_ALT_NAMES_COLUMN_MAX_LENGTH,
+      `Subject alternative names cannot exceed ${PKI_ALT_NAMES_COLUMN_MAX_LENGTH} characters in total`
+    );
+
+export const customExtensionRequestSchema = z.object({
+  oid: certificateExtensionOidSchema,
+  value: customExtensionValueSchema.optional(),
+  critical: z.boolean().optional()
+});
+
+export const buildCustomExtensionsSchema = <T extends z.ZodType<{ oid: string }>>(item: T) =>
+  z
+    .array(item)
+    .max(MAX_CUSTOM_EXTENSIONS_PER_PROFILE)
+    .superRefine((extensions, ctx) => {
+      const seen = new Set<string>();
+      extensions.forEach((extension, index) => {
+        if (seen.has(extension.oid)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [index, "oid"],
+            message: `Duplicate custom extension for OID '${extension.oid}'. Each OID must appear only once.`
+          });
+        }
+        seen.add(extension.oid);
+      });
+    });
+
 export const certificateAttributesSchema = z.object({
   commonName: subjectAttributeSchema.nullish(),
   organization: subjectAttributeSchema.nullish(),
@@ -475,14 +597,7 @@ export const certificateAttributesSchema = z.object({
   domainComponents: domainComponentsSchema.nullish(),
   keyUsages: z.nativeEnum(CertKeyUsageType).array().max(20).optional(),
   extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().max(20).optional(),
-  altNames: z
-    .array(subjectAlternativeNameSchema)
-    .max(100, "Cannot exceed 100 subject alternative names")
-    .refine(
-      (names) => names.map((san) => san.value).join(",").length <= PKI_ALT_NAMES_COLUMN_MAX_LENGTH,
-      `Subject alternative names cannot exceed ${PKI_ALT_NAMES_COLUMN_MAX_LENGTH} characters in total`
-    )
-    .optional(),
+  altNames: buildAltNamesSchema(subjectAlternativeNameSchema).optional(),
   signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
   keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
   ttl: z
@@ -501,27 +616,5 @@ export const certificateAttributesSchema = z.object({
       pathLength: z.number().int().min(0).max(255).optional()
     })
     .optional(),
-  customExtensions: z
-    .array(
-      z.object({
-        oid: certificateExtensionOidSchema,
-        value: customExtensionValueSchema.optional(),
-        critical: z.boolean().optional()
-      })
-    )
-    .max(MAX_CUSTOM_EXTENSIONS_PER_PROFILE)
-    .superRefine((extensions, ctx) => {
-      const seen = new Set<string>();
-      extensions.forEach((extension, index) => {
-        if (seen.has(extension.oid)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: [index, "oid"],
-            message: `Duplicate custom extension for OID '${extension.oid}'. Each OID must appear only once.`
-          });
-        }
-        seen.add(extension.oid);
-      });
-    })
-    .optional()
+  customExtensions: buildCustomExtensionsSchema(customExtensionRequestSchema).optional()
 });

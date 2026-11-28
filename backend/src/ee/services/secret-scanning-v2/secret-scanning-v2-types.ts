@@ -1,11 +1,16 @@
+import { z } from "zod";
+
 import {
   TSecretScanningDataSources,
+  TSecretScanningFindingLocationsInsert,
   TSecretScanningFindings,
   TSecretScanningFindingsInsert,
   TSecretScanningResources,
   TSecretScanningResourcesInsert,
   TSecretScanningScans
 } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import {
   TBitbucketDataSource,
@@ -42,8 +47,13 @@ import {
   SecretScanningScanStatus,
   SecretScanningScanTrigger
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import { SecretScanningAlertEvent } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-events";
+import {
+  GitRepositoryScanFindingDetailsSchema,
+  SecretScanningFindingLocationSchema
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-schemas";
+import { TAlertChannelInput } from "@app/services/alert/alert-channel-service-types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 export type TSecretScanningDataSource = TGitHubDataSource | TBitbucketDataSource | TGitLabDataSource;
 
@@ -117,10 +127,11 @@ export type TCreateSecretScanningDataSourceDTO = Pick<
   isScanNewCommitsEnabled?: boolean;
   isDiscoveryEnabled?: boolean;
   config: Partial<TSecretScanningDataSourceInput["config"]>;
+  alerts?: { eventType: SecretScanningAlertEvent; channels: TAlertChannelInput[] }[];
 };
 
 export type TUpdateSecretScanningDataSourceDTO = Partial<
-  Omit<TCreateSecretScanningDataSourceDTO, "projectId" | "connectionId">
+  Omit<TCreateSecretScanningDataSourceDTO, "projectId" | "connectionId" | "alerts">
 > & {
   dataSourceId: string;
   type: SecretScanningDataSource;
@@ -236,14 +247,14 @@ export type TSecretScanningScanReport = {
   start: () => Promise<void>;
   // Saved on the completed scan, in the transaction that saves its findings.
   getCompletedScanMetadata: (params: TSecretScanningScanReportCompletion) => unknown;
-  // `findings` are every finding the scan matched, with the status each was triaged to.
+  // `findings` are every location the scan matched, with the status its finding was triaged to.
   complete: (params: TSecretScanningScanReportCompletion) => Promise<void>;
   fail: (params: { reason: string; isTimedOut?: boolean }) => Promise<void>;
   cancel: () => Promise<void>;
 };
 
 export type TSecretScanningScanReportCompletion = {
-  findings: TSecretScanningFindings[];
+  findings: TSecretScanningScannedLocation[];
   details?: TSecretScanningRealtimeScanDetails;
 };
 
@@ -315,7 +326,8 @@ export type TSecretScanningFactoryUpdateWebhook<
 
 export type TSecretScanningFactoryParams = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
 };
 
 export type TSecretScanningFactory<
@@ -363,10 +375,35 @@ export type TSecretScanningFactoryProcessEvent<E extends TQueueSecretScanningDat
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   discoverResource: TSecretScanningDiscoverResource;
   queueReportedRealtimeScan: TSecretScanningQueueReportedRealtimeScan;
+  instanceConfigService: TInstanceConfigService;
 }) => Promise<void>;
 
-export type TFindingsPayload = Pick<TSecretScanningFindingsInsert, "details" | "fingerprint" | "severity" | "rule">[];
+// `secretValue` is only used to compute the finding's blind index before it is saved; it is never stored.
+export type TFindingsPayload = (Pick<TSecretScanningFindingLocationsInsert, "details" | "fingerprint" | "rule"> &
+  Pick<TSecretScanningFindingsInsert, "severity"> & {
+    secretValue: string;
+  })[];
+
+export type TGitRepositoryScanFindingDetails = z.infer<typeof GitRepositoryScanFindingDetailsSchema>;
+
+// A row of a scan's findings, with its secret value replaced by the value's blind index.
+export type TFindingLocationRow = Omit<TFindingsPayload[number], "secretValue"> & {
+  secretFindingBlindIndex: string | null;
+};
+
+// A place a scan matched, with the finding (the secret value) it belongs to: `id` and `status` are the finding's.
+// `isNew` is false when an earlier scan saved the location first.
+export type TSecretScanningScannedLocation = Pick<TFindingLocationRow, "fingerprint" | "rule" | "details"> &
+  Pick<TSecretScanningFindings, "id" | "status"> & { isNew: boolean };
 export type TGetFindingsPayload = Promise<TFindingsPayload>;
+
+export type TSecretScanningFindingLocation = z.infer<typeof SecretScanningFindingLocationSchema>;
+
+export type TListSecretScanningFindingLocationsDTO = {
+  findingId: string;
+  offset: number;
+  limit: number;
+};
 
 export type TUpdateSecretScanningFindingDTO = {
   status?: SecretScanningFindingStatus;

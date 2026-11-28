@@ -9,6 +9,7 @@ import {
 } from "@app/ee/services/app-connections/oracledb";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AppConnections } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import {
@@ -83,6 +84,10 @@ import {
 } from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
 import { ConvexConnectionListItemSchema, SanitizedConvexConnectionSchema } from "@app/services/app-connection/convex";
 import {
+  CoolifyConnectionListItemSchema,
+  SanitizedCoolifyConnectionSchema
+} from "@app/services/app-connection/coolify";
+import {
   DatabricksConnectionListItemSchema,
   SanitizedDatabricksConnectionSchema
 } from "@app/services/app-connection/databricks";
@@ -154,6 +159,14 @@ import {
   ImpervaConnectionListItemSchema,
   SanitizedImpervaConnectionSchema
 } from "@app/services/app-connection/imperva";
+import {
+  IncidentIoConnectionListItemSchema,
+  SanitizedIncidentIoConnectionSchema
+} from "@app/services/app-connection/incident-io";
+import {
+  JenkinsConnectionListItemSchema,
+  SanitizedJenkinsConnectionSchema
+} from "@app/services/app-connection/jenkins";
 import { JiraConnectionListItemSchema, SanitizedJiraConnectionSchema } from "@app/services/app-connection/jira";
 import { KeeperConnectionListItemSchema, SanitizedKeeperConnectionSchema } from "@app/services/app-connection/keeper";
 import {
@@ -234,6 +247,10 @@ import {
   SanitizedRenderConnectionSchema
 } from "@app/services/app-connection/render/render-connection-schema";
 import {
+  Rfc2136ConnectionListItemSchema,
+  SanitizedRfc2136ConnectionSchema
+} from "@app/services/app-connection/rfc2136";
+import {
   RundeckConnectionListItemSchema,
   SanitizedRundeckConnectionSchema
 } from "@app/services/app-connection/rundeck";
@@ -299,7 +316,6 @@ import {
   WinRMConnectionListItemSchema
 } from "@app/services/app-connection/winrm/winrm-connection-schemas";
 import { SanitizedZabbixConnectionSchema, ZabbixConnectionListItemSchema } from "@app/services/app-connection/zabbix";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 // can't use discriminated due to multiple schemas for certain apps
 const SanitizedAppConnectionSchema = z.union([
@@ -385,6 +401,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedConvexConnectionSchema.options,
   ...SanitizedRundeckConnectionSchema.options,
   ...SanitizedPortainerConnectionSchema.options,
+  ...SanitizedJenkinsConnectionSchema.options,
+  ...SanitizedCoolifyConnectionSchema.options,
   ...SanitizedQoveryConnectionSchema.options,
   ...SanitizedLiteLLMConnectionSchema.options,
   ...SanitizedFireworksConnectionSchema.options,
@@ -398,7 +416,9 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedServiceNowConnectionSchema.options,
   ...SanitizedS3CompatibleConnectionSchema.options,
   ...SanitizedJiraConnectionSchema.options,
-  ...SanitizedClickHouseConnectionSchema.options
+  ...SanitizedClickHouseConnectionSchema.options,
+  ...SanitizedIncidentIoConnectionSchema.options,
+  ...SanitizedRfc2136ConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -484,6 +504,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   ConvexConnectionListItemSchema,
   RundeckConnectionListItemSchema,
   PortainerConnectionListItemSchema,
+  JenkinsConnectionListItemSchema,
+  CoolifyConnectionListItemSchema,
   QoveryConnectionListItemSchema,
   LiteLLMConnectionListItemSchema,
   FireworksConnectionListItemSchema,
@@ -497,7 +519,9 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   ServiceNowConnectionListItemSchema,
   S3CompatibleConnectionListItemSchema,
   JiraConnectionListItemSchema,
-  ClickHouseConnectionListItemSchema
+  ClickHouseConnectionListItemSchema,
+  IncidentIoConnectionListItemSchema,
+  Rfc2136ConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {
@@ -522,8 +546,8 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: (req) => {
-      const appConnectionOptions = server.services.appConnection.listAppConnectionOptions(req.query.projectType);
+    handler: async (req) => {
+      const appConnectionOptions = await server.services.appConnection.listAppConnectionOptions(req.query.projectType);
       return { appConnectionOptions };
     }
   });
@@ -549,15 +573,11 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId } = req.query;
-      const appConnections = await server.services.appConnection.listAppConnections(
-        req.permission,
-        undefined,
-        projectId
-      );
+      const appConnections = await server.services.appConnection.listAppConnections(req.actor, undefined, projectId);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.GET_APP_CONNECTIONS,

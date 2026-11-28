@@ -124,8 +124,6 @@ export const FolderTableRow = ({
           />
         </div>
       </TableCell>
-      {/* Safari ignores position: relative on <tr>, so this cell must be positioned (relative or
-          sticky) or the RowLink overlay spans the whole table and swallows clicks on other rows. */}
       <TableCell
         isTruncatable
         colSpan={isSingleEnvView ? 2 : undefined}

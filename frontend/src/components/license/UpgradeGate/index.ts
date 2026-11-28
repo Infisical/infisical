@@ -20,7 +20,6 @@ export {
   MachineIdentityTemplatesUpgradeIntent,
   MfaEnforcementUpgradeIntent,
   OidcSsoUpgradeIntent,
-  ProjectLimitUpgradeIntent,
   ProjectTemplatesUpgradeIntent,
   SamlSsoUpgradeIntent,
   ScimUpgradeIntent,
@@ -30,6 +29,8 @@ export {
 export { hasEnvironmentCapacity } from "./environment-limit";
 export type { UpgradeIntent } from "./upgrade-intents";
 export {
+  AgentVaultHooksUpgradeIntent,
+  AgentVaultUpgradeIntent,
   BillingPlan,
   BillingProduct,
   buildUpgradeReturnPath,

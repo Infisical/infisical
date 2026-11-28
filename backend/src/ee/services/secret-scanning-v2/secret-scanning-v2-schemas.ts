@@ -2,14 +2,18 @@ import { z } from "zod";
 
 import {
   SecretScanningDataSourcesSchema,
+  SecretScanningFindingLocationsSchema,
   SecretScanningFindingsSchema,
   SecretScanningResourcesSchema,
   SecretScanningScansSchema
 } from "@app/db/schemas";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import { SecretScanningAlertEvent } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-events";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
-import { SecretScanningDataSources } from "@app/lib/api-docs";
+import { SecretScanningDataSources, SecretScanningFindings } from "@app/lib/api-docs";
 import { slugSchema } from "@app/server/lib/schemas";
+import { CreateChannelInputSchema } from "@app/server/routes/v1/alert-channel-schemas";
+import { MAX_CHANNELS_PER_ALERT } from "@app/services/alert/alert-types";
 
 type SecretScanningDataSourceSchemaOpts = {
   type: SecretScanningDataSource;
@@ -69,7 +73,27 @@ export const BaseCreateSecretScanningDataSourceSchema = ({
       .boolean()
       .optional()
       .describe(SecretScanningDataSources.CREATE(type).isScanNewCommitsEnabled),
-    isDiscoveryEnabled: z.boolean().optional().describe(SecretScanningDataSources.CREATE(type).isDiscoveryEnabled)
+    isDiscoveryEnabled: z.boolean().optional().describe(SecretScanningDataSources.CREATE(type).isDiscoveryEnabled),
+    alerts: z
+      .array(
+        z.object({
+          eventType: z
+            .nativeEnum(SecretScanningAlertEvent)
+            .describe(SecretScanningDataSources.CREATE(type).alertEventType),
+          channels: z
+            .array(CreateChannelInputSchema)
+            .min(1, "Each alert needs at least one channel")
+            .max(MAX_CHANNELS_PER_ALERT)
+            .describe(SecretScanningDataSources.CREATE(type).alertChannels)
+        })
+      )
+      .max(Object.values(SecretScanningAlertEvent).length)
+      .refine(
+        (alerts) => new Set(alerts.map((alert) => alert.eventType)).size === alerts.length,
+        "alerts lists the same event more than once"
+      )
+      .optional()
+      .describe(SecretScanningDataSources.CREATE(type).alerts)
   });
 
 export const BaseUpdateSecretScanningDataSourceSchema = (type: SecretScanningDataSource) =>
@@ -114,12 +138,21 @@ export const GitRepositoryScanFindingDetailsSchema = z.object({
 });
 
 export const BaseSecretScanningFindingSchema = SecretScanningFindingsSchema.omit({
+  secretFindingBlindIndex: true,
   details: true
 }).extend({
+  // still returned for clients built before locations; removed with the columns
+  fingerprint: z.string().describe(SecretScanningFindings.DEPRECATED_FIRST_LOCATION),
+  scanId: z.string().uuid().describe(SecretScanningFindings.DEPRECATED_FIRST_LOCATION),
   projectId: z.string(),
   dataSourceId: z.string().uuid(),
   dataSourceName: z.string(),
-  resourceName: z.string()
+  resourceName: z.string(),
+  locationCount: z.number()
+});
+
+export const SecretScanningFindingLocationSchema = SecretScanningFindingLocationsSchema.extend({
+  details: GitRepositoryScanFindingDetailsSchema
 });
 
 export const SecretScanningResourceSchema = SecretScanningResourcesSchema;

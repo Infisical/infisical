@@ -20,7 +20,7 @@ The account's settings have the following tabs:
 | --- | --- |
 | **Permissions** | Give users, groups, and machine identities access to this account only |
 | **Configuration** | Change the account's name, folder, template, connection details, and credentials |
-| **Rotation** | Set the account that rotates this account's password, or rotate the password now (PostgreSQL, MySQL, Microsoft SQL Server, Oracle, Windows, and Windows AD accounts only) |
+| **Rotation** | Set the account that rotates this account's password, or rotate the password now (PostgreSQL, CockroachDB, MySQL, Microsoft SQL Server, Oracle, Windows, and Windows AD accounts only) |
 | **Advanced** | Override the gateway or recording storage that the account's template sets |
 
 ## Edit the account
@@ -79,7 +79,7 @@ To learn what each role allows, see [Access control](/documentation/platform/pam
 
 The account's [template](/documentation/platform/pam/templates/overview) sets its gateway and, for Windows and Windows AD accounts, where Infisical stores its session recordings. To use a different setting for this account only, go to the **Advanced** tab and select **Override** next to the setting:
 
-- **Gateway**: Select a different gateway or gateway pool (every account type except AWS IAM)
+- **Gateway**: Select a different gateway or gateway pool
 - **Recording Settings**: Select a different bucket for this account's recordings (Windows and Windows AD accounts only, and only if the template's **Storage backend** is **S3 Bucket**), as described in [External storage](/documentation/platform/pam/sessions/external-storage)
 
 Select **Save Changes**. To go back to the template's setting, select **Remove Override**.

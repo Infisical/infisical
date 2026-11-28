@@ -120,6 +120,7 @@ export enum QueueName {
   AuditReportGeneration = "audit-report-generation",
   PamSessionExpiration = "pam-session-expiration",
   PamDiscoveryScan = "pam-discovery-scan",
+  PamSessionActivityExport = "pam-session-activity-export",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryScan = "pki-discovery-scan",
   PkiDiscoveryRescan = "pki-discovery-rescan",
@@ -207,6 +208,7 @@ export enum QueueJobs {
   CertificateV3DailyAutoRenewal = "certificate-v3-daily-auto-renewal",
   PamSessionExpiration = "pam-session-expiration",
   PamDiscoverySourceScan = "pam-discovery-source-scan",
+  PamSessionActivityExport = "pam-session-activity-export",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
   PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
@@ -573,6 +575,10 @@ export type TQueueJobTypes = {
   [QueueName.PamDiscoveryScan]: {
     name: QueueJobs.PamDiscoverySourceScan;
     payload: { sourceId: string; triggeredBy: string };
+  };
+  [QueueName.PamSessionActivityExport]: {
+    name: QueueJobs.PamSessionActivityExport;
+    payload: { orgId: string; sessionId: string; chunkIndex: number };
   };
   [QueueName.PkiAcmeChallengeValidation]: {
     name: QueueJobs.PkiAcmeChallengeValidation;

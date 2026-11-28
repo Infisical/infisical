@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
+import { TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 
@@ -8,11 +9,16 @@ import { TOrgProductStats, TOrgProductStatsDTO } from "./org-product-stats-types
 type TOrgProductStatsServiceFactoryDep = {
   orgProductStatsDAL: TOrgProductStatsDALFactory;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
+  kmsKeyService: TKmsKeyService;
 };
 
 export type TOrgProductStatsServiceFactory = ReturnType<typeof orgProductStatsServiceFactory>;
 
-export const orgProductStatsServiceFactory = ({ orgProductStatsDAL, keyStore }: TOrgProductStatsServiceFactoryDep) => {
+export const orgProductStatsServiceFactory = ({
+  orgProductStatsDAL,
+  keyStore,
+  kmsKeyService
+}: TOrgProductStatsServiceFactoryDep) => {
   const getOrgProductStats = async ({ actorOrgId }: TOrgProductStatsDTO): Promise<TOrgProductStats> => {
     const [
       secretsCount,
@@ -28,9 +34,8 @@ export const orgProductStatsServiceFactory = ({ orgProductStatsDAL, keyStore }: 
       accountsCount,
       accountTemplatesCount,
       foldersCount,
-      accessBundlesCount,
       servicesCount,
-      proxiesCount,
+      skillsCount,
       projectCounts
     ] = await Promise.all([
       orgProductStatsDAL.countSecretsForOrg(actorOrgId),
@@ -38,7 +43,7 @@ export const orgProductStatsServiceFactory = ({ orgProductStatsDAL, keyStore }: 
       orgProductStatsDAL.countCertificatesForOrg(actorOrgId),
       orgProductStatsDAL.countCertificateAuthoritiesForOrg(actorOrgId),
       orgProductStatsDAL.countSignersForOrg(actorOrgId),
-      orgProductStatsDAL.countKmsKeysForOrg(actorOrgId),
+      kmsKeyService.countProjectKeysInOrg(actorOrgId, ProjectType.KMS),
       orgProductStatsDAL.countKmipClientsForOrg(actorOrgId),
       orgProductStatsDAL.countDataSourcesForOrg(actorOrgId),
       orgProductStatsDAL.countSecretScanningResourcesForOrg(actorOrgId),
@@ -52,9 +57,8 @@ export const orgProductStatsServiceFactory = ({ orgProductStatsDAL, keyStore }: 
       orgProductStatsDAL.countPamAccountsForOrg(actorOrgId),
       orgProductStatsDAL.countPamAccountTemplatesForOrg(actorOrgId),
       orgProductStatsDAL.countPamFoldersForOrg(actorOrgId),
-      orgProductStatsDAL.countAgentVaultAccessBundlesForOrg(actorOrgId),
       orgProductStatsDAL.countAgentVaultServicesForOrg(actorOrgId),
-      orgProductStatsDAL.countAgentVaultProxiesForOrg(actorOrgId),
+      orgProductStatsDAL.countAgentVaultSkillsForOrg(actorOrgId),
       orgProductStatsDAL.countProjectsByTypeForOrg(actorOrgId)
     ]);
 
@@ -86,9 +90,9 @@ export const orgProductStatsServiceFactory = ({ orgProductStatsDAL, keyStore }: 
         foldersCount
       },
       agentVault: {
-        accessBundlesCount,
         servicesCount,
-        proxiesCount
+        skillsCount,
+        projectsCount: projectCounts[ProjectType.AgentVault] || 0
       }
     };
   };

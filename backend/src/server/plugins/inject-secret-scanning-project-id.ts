@@ -48,7 +48,7 @@ export const injectSecretScanningProjectId: FastifyPluginAsync = fp(async (serve
   server.decorateRequest("internalSecretScanningProjectId", "");
 
   server.addHook("preValidation", async (req) => {
-    if (!req.permission?.orgId) return;
+    if (!req.actor?.orgId) return;
 
     const routePath = req.routeOptions.url ?? "";
     if (!routePath.startsWith(SECRET_SCANNING_PREFIX)) return;
@@ -59,7 +59,7 @@ export const injectSecretScanningProjectId: FastifyPluginAsync = fp(async (serve
     if (explicit) {
       const isValidForOrg = await server.services.secretScanningV2ProjectResolver.isSecretScanningProject(
         explicit,
-        req.permission.orgId
+        req.actor.orgId
       );
       if (!isValidForOrg) {
         throw new NotFoundError({
@@ -72,11 +72,11 @@ export const injectSecretScanningProjectId: FastifyPluginAsync = fp(async (serve
 
     // The cookie is the project the user last opened in the UI. A stale one is ignored rather than
     // rejected, since the user never typed it.
-    const fromCookie = readProjectIdFromCookie(req.cookies, req.permission.orgId);
+    const fromCookie = readProjectIdFromCookie(req.cookies, req.actor.orgId);
     if (fromCookie) {
       const isValidForOrg = await server.services.secretScanningV2ProjectResolver.isSecretScanningProject(
         fromCookie,
-        req.permission.orgId
+        req.actor.orgId
       );
       if (isValidForOrg) {
         req.internalSecretScanningProjectId = fromCookie;
@@ -85,9 +85,7 @@ export const injectSecretScanningProjectId: FastifyPluginAsync = fp(async (serve
     }
 
     // Never creates the project: these routes accept tokens whose scopes are only checked later, against it.
-    const activeProjectId = await server.services.secretScanningV2ProjectResolver.findActiveProjectId(
-      req.permission.orgId
-    );
+    const activeProjectId = await server.services.secretScanningV2ProjectResolver.findActiveProjectId(req.actor.orgId);
     if (!activeProjectId) {
       throw new BadRequestError({
         message:

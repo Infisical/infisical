@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { AxiosError } from "axios";
-import { ClipboardCheckIcon, CopyIcon, LinkIcon } from "lucide-react";
+import { BracesIcon, ClipboardCheckIcon, CopyIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -120,12 +120,9 @@ export const ResolvedSecretValuePopover = ({
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
             <IconButton
-              variant="ghost-muted"
+              variant="ghost"
               size="xs"
-              className={twMerge(
-                "absolute -top-1 -left-1",
-                isDisabled && "cursor-not-allowed opacity-50"
-              )}
+              className={twMerge("size-7 border-0", isDisabled && "cursor-not-allowed opacity-50")}
               aria-label="View resolved secret value"
               aria-disabled={isDisabled}
               onClick={(e) => {
@@ -134,7 +131,7 @@ export const ResolvedSecretValuePopover = ({
               }}
               onMouseDown={(e) => e.preventDefault()}
             >
-              <LinkIcon />
+              <BracesIcon className="size-3.5" />
             </IconButton>
           </PopoverTrigger>
         </TooltipTrigger>
@@ -143,7 +140,7 @@ export const ResolvedSecretValuePopover = ({
         </TooltipContent>
       </Tooltip>
       <PopoverContent
-        align="start"
+        align="end"
         className="w-96 p-0"
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}

@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { InfoIcon } from "lucide-react";
 
 import {
   Accordion,
@@ -10,9 +11,12 @@ import {
   DetailGroup,
   DetailLabel,
   DetailValue,
-  Separator
+  Separator,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
-import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP } from "@app/helpers/secretSyncs";
+import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 
 import { AwsParameterStoreSyncOptionsSection } from "./AwsParameterStoreSyncOptionsSection";
@@ -32,8 +36,12 @@ type Props = {
 export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
   const {
     destination,
-    syncOptions: { initialSyncBehavior, disableSecretDeletion, keySchema, includeAllSubFolders }
+    syncOptions: { initialSyncBehavior, disableSecretDeletion, keySchema }
   } = secretSync;
+
+  const initialSyncBehaviorDetails = SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP[initialSyncBehavior](
+    SECRET_SYNC_MAP[destination].name
+  );
 
   let AdditionalSyncOptionsComponent: ReactNode;
 
@@ -88,6 +96,7 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
     case SecretSync.Heroku:
     case SecretSync.GitLab:
     case SecretSync.CloudflareSecretsStore:
+    case SecretSync.Convex:
     case SecretSync.Zabbix:
     case SecretSync.Railway:
     case SecretSync.Supabase:
@@ -113,6 +122,8 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
     case SecretSync.Cloud66:
     case SecretSync.Daytona:
     case SecretSync.Keeper:
+    case SecretSync.Jenkins:
+    case SecretSync.Coolify:
       AdditionalSyncOptionsComponent = null;
       break;
     case SecretSync.Spacelift:
@@ -133,7 +144,21 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
               <Detail>
                 <DetailLabel>Initial Sync Behavior</DetailLabel>
                 <DetailValue>
-                  {SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP[initialSyncBehavior](destination).name}
+                  {initialSyncBehaviorDetails.name}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="About Initial Sync Behavior"
+                        className="ml-1 inline-flex align-middle text-label-secondary"
+                      >
+                        <InfoIcon className="size-3" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      {initialSyncBehaviorDetails.description}
+                    </TooltipContent>
+                  </Tooltip>
                 </DetailValue>
               </Detail>
               <Detail>
@@ -145,14 +170,6 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
                 )}
               </Detail>
               {AdditionalSyncOptionsComponent}
-              <Detail>
-                <DetailLabel>Include All Subfolders</DetailLabel>
-                <DetailValue>
-                  <Badge variant={includeAllSubFolders ? "success" : "neutral"}>
-                    {includeAllSubFolders ? "Enabled" : "Disabled"}
-                  </Badge>
-                </DetailValue>
-              </Detail>
               <Detail>
                 <DetailLabel>Secret Deletion Protection</DetailLabel>
                 <DetailValue>

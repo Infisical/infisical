@@ -1,4 +1,4 @@
-import { OrderByDirection, TOrgPermission } from "@app/lib/types";
+import { OrderByDirection, TActorInput } from "@app/lib/types";
 
 export enum SecretScanningRiskStatus {
   FalsePositive = "RESOLVED_FALSE_POSITIVE",
@@ -13,14 +13,14 @@ export enum SecretScanningResolvedStatus {
   Unresolved = "unresolved"
 }
 
-export type TInstallAppSessionDTO = TOrgPermission;
+export type TInstallAppSessionDTO = { orgId: string } & TActorInput;
 
 export type TLinkInstallSessionDTO = {
   installationId: string;
   sessionId: string;
-} & Omit<TOrgPermission, "orgId">;
+} & TActorInput;
 
-export type TGetOrgInstallStatusDTO = TOrgPermission;
+export type TGetOrgInstallStatusDTO = { orgId: string } & TActorInput;
 
 type RiskFilter = {
   offset: number;
@@ -33,13 +33,16 @@ type RiskFilter = {
 
 export type TGetOrgRisksDTO = {
   filter: RiskFilter;
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
 export type TGetAllOrgRisksDTO = {
   filter: Omit<RiskFilter, "offset" | "limit" | "orderBy" | "orderDirection">;
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
 export type TUpdateRiskStatusDTO = {
   riskId: string;
   status: SecretScanningRiskStatus;
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;

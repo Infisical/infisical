@@ -1,8 +1,10 @@
-import { createMongoAbility } from "@casl/ability";
 import knex, { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectType } from "@app/db/schemas";
+import { ActorPermission, Permission } from "@app/domains/platform/access-control/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 
 import { membershipIdentityServiceFactory } from "./membership-identity-service";
 import {
@@ -27,14 +29,10 @@ const MEMBERSHIP_ID = "membership-1";
 // The org-membership delete guard only permits removing a sub-org membership of an
 // identity that lives in the parent org, so root/sub/identity orgs must differ.
 const buildDto = (): TDeleteMembershipIdentityDTO => ({
-  permission: {
-    type: "user",
-    id: "actor-1",
-    authMethod: null,
-    orgId: SUB_ORG_ID,
-    rootOrgId: ROOT_ORG_ID,
-    parentOrgId: ROOT_ORG_ID
-  } as unknown as TDeleteMembershipIdentityDTO["permission"],
+  actor: {
+    principal: { type: "user", id: "actor-1" },
+    org: { id: SUB_ORG_ID, rootOrgId: ROOT_ORG_ID, parentOrgId: ROOT_ORG_ID, shouldUseNewPrivilegeSystem: false }
+  } as unknown as TDeleteMembershipIdentityDTO["actor"],
   scopeData: { scope: AccessScope.Organization, orgId: SUB_ORG_ID },
   selector: { identityId: IDENTITY_ID }
 });
@@ -55,6 +53,7 @@ const createService = ({
   const revoked = [{ orgId: SUB_ORG_ID, identityId: IDENTITY_ID, projectIds: ["project-1"], resources: [] }];
   const revokeActorsInOrgs = vi.fn().mockResolvedValue({ revoked, sendPamCancellations: () => {} });
   const createAuditLog = vi.fn().mockResolvedValue(undefined);
+  const licenseService = new FakeLicenseService();
 
   const membershipIdentityDAL = {
     findOne: vi.fn().mockResolvedValue(existingMembership),
@@ -77,21 +76,33 @@ const createService = ({
       delete: vi.fn().mockResolvedValue(undefined),
       insertMany: vi.fn().mockResolvedValue([])
     } as never,
-    permissionService: {
+    orgPermissionService: {
       getOrgPermission: vi
         .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
-      getProjectPermission: vi
-        .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
+        .mockResolvedValue(
+          ActorPermission.of({ rules: [{ action: "manage", subject: "all" }] as never, usesNewPrivilegeSystem: false })
+        ),
       // These tests cover revocation markers, not the privilege boundary. Built-in roles come back
       // without a `role` field, and an empty target ability clears the boundary for the actor above.
       getOrgPermissionByRoles: vi
         .fn()
-        .mockImplementation(async (roles: string[]) => (roles.length ? [{ permission: createMongoAbility([]) }] : [])),
+        .mockImplementation(async ({ roles }: { roles: string[] }) =>
+          roles.length ? [{ permission: Permission.none() }] : []
+        )
+    } as never,
+    secretsPermissionService: {
+      getProjectPermissionWithFolderGrants: vi
+        .fn()
+        .mockResolvedValue(
+          ActorPermission.of({ rules: [{ action: "manage", subject: "all" }] as never, usesNewPrivilegeSystem: false })
+        )
+    } as never,
+    projectPermissionService: {
       getProjectPermissionByRoles: vi
         .fn()
-        .mockImplementation(async (roles: string[]) => (roles.length ? [{ permission: createMongoAbility([]) }] : []))
+        .mockImplementation(async ({ roles }: { roles: string[] }) =>
+          roles.length ? [{ permission: Permission.none() }] : []
+        )
     } as never,
     orgDAL: {
       findById: vi.fn().mockResolvedValue({}),
@@ -107,13 +118,16 @@ const createService = ({
     } as never,
     identityMetadataDAL: { delete: deleteMetadata },
     identityGroupMembershipDAL: { deleteByIdentityIdsInGroupsOwnedByOrgs },
-    licenseService: { getPlan: vi.fn() } as never,
+    licenseService,
+    usageMeteringService: new FakeUsageMeteringService(),
     applicationMembershipCleanupService: { cleanupActorApplicationMemberships: vi.fn() } as never,
     projectDAL: {
       findById: vi.fn().mockResolvedValue(projectType ? { id: "project-1", type: projectType } : undefined)
     } as never,
-    keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
-    usageMeteringService: { emit: vi.fn(), emitForProject: vi.fn() } as never,
+    keyStore: {
+      sortedSetRangeByScore: vi.fn().mockResolvedValue([]),
+      incrementSeededWithExpiry: vi.fn().mockResolvedValue(1)
+    } as never,
     alertService: { deleteAlertsForResource } as never,
     identityAccessTokenService: {
       insertOrgMembershipRevocationMarker,
@@ -362,6 +376,16 @@ describe("deleteMembership org removal", () => {
     );
   });
 
+  test("leaves the org's groups before the revoke so its personal value clear sees the identity out of them", async () => {
+    const { service, deleteByIdentityIdsInGroupsOwnedByOrgs, revokeActorsInOrgs } = createService();
+
+    await service.deleteMembership(buildDto());
+
+    expect(deleteByIdentityIdsInGroupsOwnedByOrgs.mock.invocationCallOrder[0]).toBeLessThan(
+      revokeActorsInOrgs.mock.invocationCallOrder[0]
+    );
+  });
+
   test("removing a project membership leaves the identity's groups alone", async () => {
     const { service, deleteByIdentityIdsInGroupsOwnedByOrgs } = createService();
 
@@ -400,13 +424,13 @@ describe("removeIdentityFromOrg", () => {
 });
 
 const buildCreateDto = (): TCreateMembershipIdentityDTO => ({
-  permission: buildDto().permission,
+  actor: buildDto().actor,
   scopeData: { scope: AccessScope.Organization, orgId: SUB_ORG_ID },
   data: { identityId: IDENTITY_ID, roles: [{ role: "member", isTemporary: false }] }
 });
 
 const buildUpdateDto = (isActive?: boolean): TUpdateMembershipIdentityDTO => ({
-  permission: buildDto().permission,
+  actor: buildDto().actor,
   scopeData: { scope: AccessScope.Organization, orgId: SUB_ORG_ID },
   selector: { identityId: IDENTITY_ID },
   data: { isActive, roles: [{ role: "member", isTemporary: false }] }

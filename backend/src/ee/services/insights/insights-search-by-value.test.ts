@@ -1,23 +1,27 @@
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
+import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+} from "@app/domains/platform/organizations/ce/module";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import { insightsServiceFactory, TInsightsServiceFactoryDep } from "./insights-service";
 
 const dto = {
   secretValue: "value",
   orgId: "org",
-  actor: ActorType.USER,
-  actorId: "user",
-  actorAuthMethod: AuthMethod.EMAIL,
-  actorOrgId: "org"
+  actor: {
+    principal: { type: ActorType.USER, id: "user", authMethod: AuthMethod.EMAIL },
+    org: { id: "org", rootOrgId: "org", parentOrgId: "org" }
+  } as unknown as TActorContext
 };
 
 const buildService = ({
@@ -33,22 +37,22 @@ const buildService = ({
   const service = insightsServiceFactory({
     orgDAL,
     secretV2BridgeDAL,
-    kmsService: {
+    kmsDataKeyService: {
       createCipherPairWithDataKey: vi.fn(async () => ({
         generateSecretBlindIndex: async () => "digest"
       }))
     },
-    licenseService: { getPlan: vi.fn(async () => ({ secretAccessInsights: hasInsightsPlan })) },
-    permissionService: {
-      getOrgPermission: vi.fn(async () => ({
-        permission: createMongoAbility<OrgPermissionSet>(
-          insightsActions.map((action) => ({ action, subject: OrgPermissionSubjects.SecretsManagementInsights }))
-        ),
-        memberships: [],
-        hasRole: () => false
-      })),
-      getProjectPermission: vi.fn()
-    }
+    licenseService: new FakeLicenseService().setPlan("org", { secretAccessInsights: hasInsightsPlan }),
+    orgPermissionService: {
+      getOrgPermission: vi.fn(async () =>
+        Permission.fromRules({
+          rules: createMongoAbility<OrgPermissionSet>(
+            insightsActions.map((action) => ({ action, subject: OrgPermissionSubjects.SecretsManagementInsights }))
+          ).rules
+        })
+      )
+    },
+    secretsPermissionService: { getSecretsPermission: vi.fn() }
   } as unknown as TInsightsServiceFactoryDep);
 
   return { service, orgDAL, secretV2BridgeDAL };
@@ -62,7 +66,7 @@ describe("searchOrgSecretsByValue", () => {
       insightsActions: [OrgPermissionSecretsManagementInsightsActions.Read]
     });
 
-    await expect(service.searchOrgSecretsByValue(dto)).rejects.toThrow(ForbiddenError);
+    await expect(service.searchOrgSecretsByValue(dto)).rejects.toThrow(PermissionDeniedError);
 
     expect(orgDAL.findById).not.toHaveBeenCalled();
     expect(secretV2BridgeDAL.findSecretsWithMatchingValue).not.toHaveBeenCalled();

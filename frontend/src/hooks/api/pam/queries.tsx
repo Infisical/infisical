@@ -201,6 +201,7 @@ type TListPamAccountsParams = {
   templateId?: string;
   accountType?: string;
   search?: string;
+  filterByAction?: PamResourcePermissionActions;
 };
 
 export type TPamAccountListItem = {
@@ -225,6 +226,7 @@ export type TPamAccountListItem = {
   requiresApproval: boolean;
   supportsCredentialReveal: boolean;
   requireReason: boolean;
+  maxAccessDurationSeconds: number | null;
   accessStatus: PamAccessStatus;
   grantExpiresAt: string | null;
   pendingRequestId: string | null;

@@ -1,10 +1,10 @@
-import { TGenericPermission } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 
 import { AgentVaultDelegationScope, AgentVaultMemberType } from "../agent-vault/agent-vault-enums";
 
 type TAgentVaultDelegationScoped = {
   projectId: string;
-  ctx: TGenericPermission;
+  ctx: TActorContext;
 };
 
 export type TListDelegationsDTO = TAgentVaultDelegationScoped & {

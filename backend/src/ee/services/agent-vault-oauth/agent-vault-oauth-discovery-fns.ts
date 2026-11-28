@@ -39,6 +39,16 @@ export type TOauthDiscovery = {
   // False when the server answered but sent no Bearer challenge and serves no OAuth metadata, which usually
   // means the URL is wrong. Old servers can still work with an admin-entered client, so it only warns.
   oauthAdvertised: boolean;
+  // Set only with `allowIssuerMismatch`, when the metadata names another issuer than the one it was fetched for. Its
+  // endpoints are then untrusted, and good only to prefill a form someone checks.
+  issuerMismatch?: { advertisedIssuer: string | null };
+};
+
+export type TOauthDiscoveryOptions = {
+  allowIssuerMismatch?: boolean;
+  // Without protected resource metadata, also tries the server URL itself as the issuer before its origin, for
+  // providers that host several issuers under paths (a Keycloak realm at /realms/acme).
+  issuerFromServerPath?: boolean;
 };
 
 export const describeServer = (serverUrl: string) => {
@@ -49,8 +59,12 @@ export const describeServer = (serverUrl: string) => {
   }
 };
 
-export const oauthSetupError = (serverUrl: string, problem: string) =>
-  new BadRequestError({ message: `Couldn't set up OAuth for '${describeServer(serverUrl)}': ${problem}` });
+// `oauthSetup` lets the sheet show the refusal on the Credential step without matching the message text.
+export const oauthSetupError = (serverUrl: string, problem: string, details?: { registrationRequired: true }) =>
+  new BadRequestError({
+    message: `Couldn't set up OAuth for '${describeServer(serverUrl)}': ${problem}`,
+    details: { oauthSetup: true, ...details }
+  });
 
 // Printable ASCII only, as RFC 3986 requires: these URLs are stored in jsonb as sent, and the URL parser would
 // accept a NUL or a lone surrogate that the jsonb write then fails on.
@@ -62,7 +76,7 @@ const BEARER_PREFIX_RE = new RE2(/^[\s\v\p{Z}\ufeff,]*Bearer[\s\v\p{Z}\ufeff]*/i
 const CHALLENGE_SEPARATOR_RE = new RE2(/[\s\v\p{Z}\ufeff,]/u);
 const QUOTED_ESCAPE_RE = new RE2(/\\(.)/g);
 
-const isHttpsUrl = (value: unknown): value is string => {
+export const isHttpsUrl = (value: unknown): value is string => {
   if (typeof value !== "string" || value.length > 2048 || !URL_PATTERN.test(value)) return false;
   try {
     const url = new URL(value);
@@ -246,7 +260,11 @@ export const selectScopes = ({
   return [...new Set([...scopes, ...offline])];
 };
 
-const discover = async (http: TOauthHttpClient, serverUrl: string): Promise<TOauthDiscovery> => {
+const discover = async (
+  http: TOauthHttpClient,
+  serverUrl: string,
+  { allowIssuerMismatch = false, issuerFromServerPath = false }: TOauthDiscoveryOptions
+): Promise<TOauthDiscovery> => {
   const compatibility = new Set<AgentVaultOauthCompatibility>();
   let answered = false;
   let isPrivateAddress = false;
@@ -293,6 +311,7 @@ const discover = async (http: TOauthHttpClient, serverUrl: string): Promise<TOau
 
   let resource = serverUrl;
   let issuer = new URL(serverUrl).origin;
+  let issuerCandidates = [issuer];
   if (protectedResource) {
     const checked = checkProtectedResource(serverUrl, protectedResource.resource);
     resource = checked.resource;
@@ -303,13 +322,23 @@ const discover = async (http: TOauthHttpClient, serverUrl: string): Promise<TOau
       throw oauthSetupError(serverUrl, "its protected resource metadata names no https authorization server.");
     }
     issuer = firstServer;
+    issuerCandidates = [issuer];
   } else {
     // The 2025-03-26 spec behavior: the MCP server's origin is its own authorization server.
     compatibility.add(AgentVaultOauthCompatibility.NoProtectedResourceMetadata);
+    const { origin, pathname } = new URL(serverUrl);
+    const path = stripTrailingSlash(pathname);
+    if (issuerFromServerPath && path) issuerCandidates = [`${origin}${path}`, origin];
   }
 
-  const metadataFetches = authorizationServerMetadataUrls(issuer).map((url) => fetchJson(http, url));
-  const metadata = (await firstUsableInOrder(metadataFetches, (result) => Boolean(result.json)))?.json ?? null;
+  const metadataFetches = issuerCandidates.flatMap((candidate) =>
+    authorizationServerMetadataUrls(candidate).map((url) =>
+      fetchJson(http, url).then((result) => ({ ...result, issuer: candidate }))
+    )
+  );
+  const found = await firstUsableInOrder(metadataFetches, (result) => Boolean(result.json));
+  const metadata = found?.json ?? null;
+  if (found) issuer = found.issuer;
   // Guessed endpoints are for servers without metadata; during an outage they would send sign-in to the wrong URL.
   if (!metadata && (await Promise.all(metadataFetches)).every((result) => result.temporary)) {
     throw new BadRequestError({
@@ -350,8 +379,14 @@ const discover = async (http: TOauthHttpClient, serverUrl: string): Promise<TOau
     };
   }
 
-  const issuerCompatibility = checkIssuer(serverUrl, issuer, metadata.issuer);
-  if (issuerCompatibility) compatibility.add(issuerCompatibility);
+  let issuerMismatch: TOauthDiscovery["issuerMismatch"];
+  try {
+    const issuerCompatibility = checkIssuer(serverUrl, issuer, metadata.issuer);
+    if (issuerCompatibility) compatibility.add(issuerCompatibility);
+  } catch (error) {
+    if (!allowIssuerMismatch) throw error;
+    issuerMismatch = { advertisedIssuer: isHttpsUrl(metadata.issuer) ? metadata.issuer : null };
+  }
 
   const authorizationEndpoint = metadata.authorization_endpoint;
   const tokenEndpoint = metadata.token_endpoint;
@@ -393,14 +428,16 @@ const discover = async (http: TOauthHttpClient, serverUrl: string): Promise<TOau
       ? grantTypes.filter((grantType): grantType is string => typeof grantType === "string")
       : null,
     compatibility: [...compatibility],
-    oauthAdvertised
+    oauthAdvertised,
+    ...(issuerMismatch ? { issuerMismatch } : {})
   };
 };
 
 export const discoverOauthServer = async (
   http: TOauthHttpClient,
   serverUrl: string,
-  budgetMs = DISCOVERY_BUDGET_MS
+  budgetMs = DISCOVERY_BUDGET_MS,
+  options: TOauthDiscoveryOptions = {}
 ): Promise<TOauthDiscovery> => {
   let timer: NodeJS.Timeout | undefined;
   const deadline = new Promise<never>((_, reject) => {
@@ -412,7 +449,7 @@ export const discoverOauthServer = async (
     }, budgetMs);
   });
   try {
-    return await Promise.race([discover(http, serverUrl), deadline]);
+    return await Promise.race([discover(http, serverUrl, options), deadline]);
   } finally {
     clearTimeout(timer);
   }

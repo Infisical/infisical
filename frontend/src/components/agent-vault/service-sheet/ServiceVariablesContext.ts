@@ -3,7 +3,10 @@ import { createContext, useContext } from "react";
 import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 
 type TServiceVariables = {
-  /** Keys the form references that Agent Vault has confirmed it does not have. A key still being checked is not in it. */
+  /**
+   * Keys the form references that Agent Vault has confirmed no text variable has, an OAuth variable's included. A key
+   * still being checked is not in it.
+   */
   missingKeys: ReadonlySet<string>;
   /** The keys each stored value uses, by field. The values never return, so the fields list these. */
   storedKeys: {

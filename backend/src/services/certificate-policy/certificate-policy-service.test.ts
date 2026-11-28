@@ -8,16 +8,19 @@
 import { ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
-import { ActorType, AuthMethod } from "../auth/auth-type";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
 } from "../certificate-common/certificate-constants";
+import { buildSubjectAlternativeNamesFromTemplate } from "../certificate-common/certificate-utils";
 import { TCertificatePolicyDALFactory } from "./certificate-policy-dal";
+import { RequestReference } from "./certificate-policy-fns";
 import { certificatePolicyServiceFactory, TCertificatePolicyServiceFactory } from "./certificate-policy-service";
 import {
   TCertificatePolicy,
@@ -45,8 +48,10 @@ describe("CertificatePolicyService", () => {
     countByProjectId: vi.fn(),
     isPolicyInUse: vi.fn(),
     getProfilesUsingPolicy: vi.fn(),
+    findMicrosoftAutoenrollmentProfiles: vi.fn(),
+    lockById: vi.fn(),
     findByNameAndProjectId: vi.fn(),
-    transaction: vi.fn(),
+    transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback("tx")),
     find: vi.fn(),
     findOne: vi.fn(),
     findMany: vi.fn(),
@@ -59,10 +64,10 @@ describe("CertificatePolicyService", () => {
   } as any;
 
   const mockActor = {
-    actor: ActorType.USER,
-    actorId: "user-123",
-    actorAuthMethod: AuthMethod.EMAIL,
-    actorOrgId: "org-123"
+    actor: {
+      principal: { type: ActorType.USER, id: "user-123", authMethod: AuthMethod.EMAIL },
+      org: { id: "org-123" }
+    } as unknown as TActorContext
   };
 
   const samplePolicy: TTemplateV2Policy = {
@@ -125,35 +130,43 @@ describe("CertificatePolicyService", () => {
     detectSubjectType: vi.fn().mockReturnValue("certificate-templates-v2"),
     modelName: "certificate-templates-v2",
     throwUnlessCan: vi.fn(),
-    unlessCan: vi.fn().mockReturnValue({ throwUnlessCan: vi.fn() })
+    unlessCan: vi.fn().mockReturnValue({ throwUnlessCan: vi.fn() }),
+    assert: vi.fn(),
+    toAbility: (): unknown => mockPermission
   };
 
-  const mockPermissionService = {
-    getProjectPermission: vi.fn().mockResolvedValue({
-      permission: mockPermission
-    }),
-    getResourcePermission: vi.fn().mockResolvedValue({
-      permission: mockPermission
-    })
+  const mockProjectPermissionService = {
+    getProjectPermission: vi.fn().mockResolvedValue(mockPermission)
+  };
+
+  const mockCertManagerDomain = {
+    getApplicationPermission: vi.fn().mockResolvedValue(mockPermission)
+  };
+
+  const mockProjectDAL = {
+    findById: vi.fn()
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
 
+    mockProjectDAL.findById.mockResolvedValue({ id: "project-123", orgId: "org-123" });
+
     vi.spyOn(ForbiddenError, "from").mockReturnValue({
       throwUnlessCan: vi.fn()
     } as any);
 
-    mockPermissionService.getProjectPermission.mockResolvedValue({
-      permission: mockPermission
-    });
+    mockProjectPermissionService.getProjectPermission.mockResolvedValue(mockPermission);
+    mockCertManagerDomain.getApplicationPermission.mockResolvedValue(mockPermission);
 
     mockCertificatePolicyDAL.findByNameAndProjectId.mockResolvedValue(null);
     mockCertificatePolicyDAL.findBySlugAndProjectId.mockResolvedValue(null);
 
     service = certificatePolicyServiceFactory({
       certificatePolicyDAL: mockCertificatePolicyDAL as TCertificatePolicyDALFactory,
-      permissionService: mockPermissionService
+      projectPermissionService: mockProjectPermissionService as never,
+      applicationPermissionService: mockCertManagerDomain as never,
+      projectDAL: mockProjectDAL
     });
   });
 
@@ -183,6 +196,41 @@ describe("CertificatePolicyService", () => {
         name: expect.any(String)
       });
       expect(result).toEqual(sampleTemplate);
+    });
+
+    it("refuses a same-as-common-name SAN rule when the subject rules allow no common name", async () => {
+      await expect(
+        service.createPolicy({
+          ...mockActor,
+          projectId: "project-123",
+          data: {
+            ...createData,
+            subject: [{ type: CertSubjectAttributeType.ORGANIZATION, allowed: ["Example Inc"] }],
+            sans: [{ type: CertSubjectAlternativeNameType.DNS_NAME, required: [RequestReference.CommonName] }]
+          }
+        })
+      ).rejects.toThrow('To use "Same as common name"');
+      expect(mockCertificatePolicyDAL.create).not.toHaveBeenCalled();
+    });
+
+    it("refuses a SAN rule that requires and denies the same value", async () => {
+      await expect(
+        service.createPolicy({
+          ...mockActor,
+          projectId: "project-123",
+          data: {
+            ...createData,
+            sans: [
+              {
+                type: CertSubjectAlternativeNameType.DNS_NAME,
+                required: [RequestReference.CommonName],
+                denied: [RequestReference.CommonName]
+              }
+            ]
+          }
+        })
+      ).rejects.toThrow("both requires and denies");
+      expect(mockCertificatePolicyDAL.create).not.toHaveBeenCalled();
     });
 
     // Previously tested service-level validations that are now schema-level:
@@ -270,6 +318,71 @@ describe("CertificatePolicyService", () => {
     });
   });
 
+  describe("SAN rules that reference the request common name", () => {
+    const dns = (value: string) => ({ type: CertSubjectAlternativeNameType.DNS_NAME, value });
+    const sanRulePolicy = (rule: { allowed?: string[]; required?: string[]; denied?: string[] }) =>
+      ({
+        id: "p",
+        projectId: "project-123",
+        name: "p",
+        sans: [{ type: CertSubjectAlternativeNameType.DNS_NAME, ...rule }]
+      }) as never;
+    const isValid = (policy: never, commonName: string | undefined, sanValue: string) =>
+      service.validateRequestAgainstPolicy(policy, { commonName, subjectAlternativeNames: [dns(sanValue)] }).isValid;
+
+    it("requires a DNS SAN equal to the request's common name in any case, and a common name to be present", () => {
+      const policy = sanRulePolicy({ required: [RequestReference.CommonName] });
+
+      expect(isValid(policy, "app.example.com", "APP.example.com")).toBe(true);
+      expect(isValid(policy, "app.example.com", "other.example.com")).toBe(false);
+      expect(isValid(policy, undefined, "app.example.com")).toBe(false);
+    });
+
+    it("refuses a SAN equal to the request's common name when the policy denies it", () => {
+      const policy = sanRulePolicy({ denied: [RequestReference.CommonName] });
+
+      expect(isValid(policy, "app.example.com", "app.example.com")).toBe(false);
+      expect(isValid(policy, "app.example.com", "other.example.com")).toBe(true);
+    });
+
+    it("matches an IP address common name by address, not by spelling", () => {
+      const policy = {
+        id: "p",
+        projectId: "project-123",
+        name: "p",
+        sans: [{ type: CertSubjectAlternativeNameType.IP_ADDRESS, required: [RequestReference.CommonName] }]
+      } as never;
+
+      expect(
+        service.validateRequestAgainstPolicy(policy, {
+          commonName: "::1",
+          subjectAlternativeNames: [{ type: CertSubjectAlternativeNameType.IP_ADDRESS, value: "0:0:0:0:0:0:0:1" }]
+        }).isValid
+      ).toBe(true);
+    });
+
+    it("matches an allowed common name reference as a whole value, never as a wildcard pattern", () => {
+      const policy = sanRulePolicy({ allowed: [RequestReference.CommonName] });
+
+      expect(isValid(policy, "*.example.com", "*.example.com")).toBe(true);
+      expect(isValid(policy, "*.example.com", "api.example.com")).toBe(false);
+    });
+
+    it("applies the same reference rules when building the SANs for a CSR", () => {
+      const sans = (rule: { required?: string[]; denied?: string[] }) => [
+        { type: CertSubjectAlternativeNameType.DNS_NAME, ...rule }
+      ];
+      const request = { commonName: "app.example.com", subjectAlternativeNames: [dns("app.example.com")] };
+
+      expect(buildSubjectAlternativeNamesFromTemplate(request, sans({ required: [RequestReference.CommonName] }))).toBe(
+        "app.example.com"
+      );
+      expect(() =>
+        buildSubjectAlternativeNamesFromTemplate(request, sans({ denied: [RequestReference.CommonName] }))
+      ).toThrow(BadRequestError);
+    });
+  });
+
   describe("updatePolicy", () => {
     it("should update policy with valid data", async () => {
       const updateData = { name: "updated-template-name" };
@@ -285,11 +398,118 @@ describe("CertificatePolicyService", () => {
       });
 
       expect(mockCertificatePolicyDAL.findById).toHaveBeenCalledWith("policy-123");
-      expect(mockCertificatePolicyDAL.updateById).toHaveBeenCalledWith("policy-123", {
-        ...updateData,
-        name: expect.any(String)
-      });
+      expect(mockCertificatePolicyDAL.updateById).toHaveBeenCalledWith(
+        "policy-123",
+        {
+          ...updateData,
+          name: expect.any(String)
+        },
+        "tx"
+      );
       expect(result).toEqual(updatedTemplate);
+    });
+
+    it("keeps a long mixed-case name within the 255-character column, without a trailing hyphen", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.updateById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.findByNameAndProjectId.mockResolvedValue(null);
+
+      await service.updatePolicy({ ...mockActor, policyId: "policy-123", data: { name: `x${"aB".repeat(127)}` } });
+
+      const storedName = mockCertificatePolicyDAL.updateById.mock.calls[0][1].name as string;
+      expect(storedName.length).toBeLessThanOrEqual(255);
+      expect(storedName.endsWith("-")).toBe(false);
+    });
+
+    it("keeps the collision suffix within 255 characters and avoids a double hyphen", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.updateById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.findByNameAndProjectId
+        .mockResolvedValueOnce({ ...sampleTemplate, id: "other-policy" })
+        .mockResolvedValueOnce(null);
+
+      const name = `${"a".repeat(245)}-${"b".repeat(9)}`;
+      await service.updatePolicy({ ...mockActor, policyId: "policy-123", data: { name } });
+
+      const storedName = mockCertificatePolicyDAL.updateById.mock.calls[0][1].name as string;
+      expect(storedName.length).toBeLessThanOrEqual(255);
+      expect(storedName).not.toContain("--");
+      expect(storedName.startsWith(`${"a".repeat(245)}-`)).toBe(true);
+    });
+
+    it("refuses custom extension rules that leave out the extensions a Microsoft Autoenrollment profile on the policy adds", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([]);
+      mockCertificatePolicyDAL.findMicrosoftAutoenrollmentProfiles.mockResolvedValue([
+        { profileName: "windows-computers", applicationName: "fleet" }
+      ]);
+
+      await expect(
+        service.updatePolicy({
+          ...mockActor,
+          policyId: "policy-123",
+          data: { customExtensions: [{ oid: "1.3.6.1.4.1.311.25.2", allowed: ["*"] }] }
+        })
+      ).rejects.toThrow("Allow 1.3.6.1.4.1.311.21.7 in the policy's custom extension rules");
+      expect(mockCertificatePolicyDAL.lockById).toHaveBeenCalledWith("policy-123", "tx");
+      expect(mockCertificatePolicyDAL.findMicrosoftAutoenrollmentProfiles).toHaveBeenCalledWith("policy-123", "tx");
+      expect(mockCertificatePolicyDAL.updateById).not.toHaveBeenCalled();
+    });
+
+    it("refuses removing the key algorithm a Microsoft Autoenrollment profile on the policy asks Windows for", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([]);
+      mockCertificatePolicyDAL.findMicrosoftAutoenrollmentProfiles.mockResolvedValue([
+        { profileName: "windows-computers", profileDefaults: null, applicationName: "fleet" }
+      ]);
+
+      await expect(
+        service.updatePolicy({
+          ...mockActor,
+          policyId: "policy-123",
+          data: { algorithms: { keyAlgorithm: ["RSA-4096"] } }
+        })
+      ).rejects.toThrow(
+        /'windows-computers' uses this policy with Microsoft Autoenrollment in Application 'fleet'.*no default key algorithm/
+      );
+      expect(mockCertificatePolicyDAL.lockById).toHaveBeenCalledWith("policy-123", "tx");
+      expect(mockCertificatePolicyDAL.updateById).not.toHaveBeenCalled();
+    });
+
+    it("refuses a signature-only edit that drops the algorithm a Microsoft Autoenrollment profile has Windows sign with", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([]);
+      mockCertificatePolicyDAL.findMicrosoftAutoenrollmentProfiles.mockResolvedValue([
+        {
+          profileName: "windows-computers",
+          profileDefaults: { keyAlgorithm: "RSA_2048", signatureAlgorithm: "RSA-SHA384" },
+          applicationName: "fleet"
+        }
+      ]);
+
+      await expect(
+        service.updatePolicy({
+          ...mockActor,
+          policyId: "policy-123",
+          data: { algorithms: { signature: ["SHA256-RSA"] } }
+        })
+      ).rejects.toThrow(/asks Windows to sign its requests with RSA-SHA384/);
+      expect(mockCertificatePolicyDAL.updateById).not.toHaveBeenCalled();
+    });
+
+    it("lets a policy restrict custom extensions when no Microsoft Autoenrollment profile uses it", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([]);
+      mockCertificatePolicyDAL.findMicrosoftAutoenrollmentProfiles.mockResolvedValue([]);
+      mockCertificatePolicyDAL.updateById.mockResolvedValue(sampleTemplate);
+
+      await service.updatePolicy({
+        ...mockActor,
+        policyId: "policy-123",
+        data: { customExtensions: [{ oid: "1.2.3.4", allowed: ["*"] }] }
+      });
+
+      expect(mockCertificatePolicyDAL.updateById).toHaveBeenCalled();
     });
 
     it("should throw NotFoundError when template does not exist", async () => {
@@ -302,6 +522,42 @@ describe("CertificatePolicyService", () => {
           data: { name: "updated-name" }
         })
       ).rejects.toThrow(NotFoundError);
+    });
+
+    it("refuses a SAN rule change that leaves a bound profile's common name default without a matching rule", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([
+        {
+          id: "profile-1",
+          slug: "web-servers",
+          defaults: {
+            subjectAltNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: RequestReference.CommonName }]
+          }
+        }
+      ]);
+
+      await expect(
+        service.updatePolicy({
+          ...mockActor,
+          policyId: "policy-123",
+          data: { sans: [{ type: CertSubjectAlternativeNameType.EMAIL, allowed: ["*@example.com"] }] }
+        })
+      ).rejects.toThrow("Certificate profile 'web-servers' uses this policy and would no longer be valid.");
+      expect(mockCertificatePolicyDAL.updateById).not.toHaveBeenCalled();
+    });
+
+    it("accepts turning off the subject restriction while a SAN rule uses the common name", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue({
+        ...sampleTemplate,
+        subject: [{ type: CertSubjectAttributeType.ORGANIZATION, allowed: ["Example Inc"] }],
+        sans: [{ type: CertSubjectAlternativeNameType.DNS_NAME, required: [RequestReference.CommonName] }]
+      });
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([]);
+      mockCertificatePolicyDAL.updateById.mockResolvedValue(sampleTemplate);
+
+      await service.updatePolicy({ ...mockActor, policyId: "policy-123", data: { subject: null } });
+
+      expect(mockCertificatePolicyDAL.updateById).toHaveBeenCalled();
     });
   });
 
@@ -327,6 +583,22 @@ describe("CertificatePolicyService", () => {
           policyId: "nonexistent-policy"
         })
       ).rejects.toThrow(NotFoundError);
+    });
+
+    it("answers a policy in another organization with the same 404 as a missing one, before the permission check", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockProjectDAL.findById.mockResolvedValue({ id: "project-123", orgId: "other-org" });
+
+      const notFound =
+        "Certificate policy with ID 'policy-123' not found. List your organization's certificate policies with GET /api/v1/cert-manager/certificate-policies to find the right ID.";
+
+      await expect(service.getPolicyById({ ...mockActor, policyId: "policy-123" })).rejects.toThrow(notFound);
+      await expect(
+        service.updatePolicy({ ...mockActor, policyId: "policy-123", data: { description: "x" } })
+      ).rejects.toThrow(notFound);
+      await expect(service.deletePolicy({ ...mockActor, policyId: "policy-123" })).rejects.toThrow(notFound);
+      expect(mockProjectPermissionService.getProjectPermission).not.toHaveBeenCalled();
+      expect(mockCertManagerDomain.getApplicationPermission).not.toHaveBeenCalled();
     });
   });
 
@@ -495,7 +767,7 @@ describe("CertificatePolicyService", () => {
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain(
-        "common_name value 'forbidden.com' does not match allowed patterns: *.example.com, example.com"
+        "common_name value 'forbidden.com' does not match allowed patterns: '*.example.com', 'example.com'"
       );
     });
 
@@ -518,7 +790,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("organization value 'Forbidden Corp' is denied by this policy");
+      expect(result.errors).toContain(
+        "organization value 'Forbidden Corp' is denied by the policy. Denied values: 'Forbidden Corp'"
+      );
     });
 
     it("should treat an empty subject policy as nothing allowed (reject request subject attributes)", async () => {
@@ -527,7 +801,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", validRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("common_name is not allowed by this policy");
+      expect(result.errors).toContain(
+        "Subject attribute common_name is not allowed by the policy. The policy allows no subject attributes"
+      );
     });
 
     it("should treat an undefined subject policy as allow all (no subject constraint)", async () => {
@@ -544,7 +820,7 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", validRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("dns_name SAN is not allowed by this policy");
+      expect(result.errors).toContain("SAN type dns_name is not allowed by the policy. The policy allows no SAN types");
     });
 
     it("should treat an undefined SAN policy as allow all (no SAN constraint)", async () => {
@@ -564,7 +840,9 @@ describe("CertificatePolicyService", () => {
       });
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("domain_component is not allowed by this policy");
+      expect(result.errors).toContain(
+        "Subject attribute domain_component is not allowed by the policy. The policy allows no subject attributes"
+      );
     });
 
     it("should detect missing required key usages", async () => {
@@ -573,7 +851,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Missing required key usages: key_encipherment");
+      expect(result.errors).toContain(
+        "The request is missing the required key usages: key_encipherment. Add them to the request's key usages"
+      );
     });
 
     it("should detect invalid key usages", async () => {
@@ -585,7 +865,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Invalid key usages: invalid_usage");
+      expect(result.errors).toContain(
+        "The request includes key usages the policy does not allow: invalid_usage. Allowed key usages: digital_signature, key_encipherment, data_encipherment"
+      );
     });
 
     it("should detect missing required extended key usages", async () => {
@@ -594,7 +876,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Missing required extended key usages: server_auth");
+      expect(result.errors).toContain(
+        "The request is missing the required extended key usages: server_auth. Add them to the request's extended key usages"
+      );
     });
 
     it("should detect invalid extended key usages", async () => {
@@ -606,7 +890,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Invalid extended key usages: invalid_eku");
+      expect(result.errors).toContain(
+        "The request includes extended key usages the policy does not allow: invalid_eku. Allowed extended key usages: server_auth, client_auth"
+      );
     });
 
     it("should detect missing required SAN entries", async () => {
@@ -618,7 +904,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Required email SAN matching pattern 'admin@example.com' not found in request");
+      expect(result.errors).toContain(
+        "The request has no email SAN matching the required pattern 'admin@example.com'. Add one to the request"
+      );
     });
 
     it("should validate SAN values against allowed patterns", async () => {
@@ -634,8 +922,27 @@ describe("CertificatePolicyService", () => {
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain(
-        "dns_name SAN value 'forbidden.com' does not match allowed patterns: *.example.com, *.api.example.com"
+        "dns_name SAN value 'forbidden.com' does not match allowed patterns: 'api.example.com', '*.example.com', '*.api.example.com'"
       );
+    });
+
+    it("should list the allowed patterns once for several disallowed SANs of one type", async () => {
+      const invalidRequest: TCertificateRequest = {
+        ...validRequest,
+        subjectAlternativeNames: [
+          { type: CertSubjectAlternativeNameType.DNS_NAME, value: "forbidden.com" },
+          { type: CertSubjectAlternativeNameType.DNS_NAME, value: "other.org" },
+          { type: CertSubjectAlternativeNameType.EMAIL, value: "admin@example.com" }
+        ]
+      };
+
+      const result = await service.validateCertificateRequest("template-123", invalidRequest);
+
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain(
+        "dns_name SAN values 'forbidden.com', 'other.org' do not match allowed patterns: 'api.example.com', '*.example.com', '*.api.example.com'"
+      );
+      expect(result.errors.filter((error) => error.startsWith("dns_name SAN"))).toHaveLength(1);
     });
 
     it("should detect denied SAN values", async () => {
@@ -663,7 +970,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("email SAN matching denied pattern 'forbidden@example.com' found in request");
+      expect(result.errors).toContain(
+        "email SAN 'forbidden@example.com' matches the denied pattern 'forbidden@example.com'. Remove it from the request, or from the profile's default SANs if a default added it"
+      );
     });
 
     it("should detect invalid signature algorithm", async () => {
@@ -672,7 +981,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Signature algorithm 'MD5-RSA' is not allowed by this policy");
+      expect(result.errors).toContain(
+        "Signature algorithm 'MD5-RSA' is not allowed by the policy. Allowed signature algorithms: RSA-SHA256, ECDSA-SHA256"
+      );
     });
 
     it("should detect invalid key algorithm", async () => {
@@ -681,7 +992,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Key algorithm 'RSA-1024' is not allowed by this policy");
+      expect(result.errors).toContain(
+        "Key algorithm 'RSA-1024' is not allowed by the policy. Allowed key algorithms: RSA_2048, RSA_4096, EC_prime256v1"
+      );
     });
 
     it("should detect TTL exceeding maximum duration", async () => {
@@ -690,7 +1003,13 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Requested validity period exceeds maximum allowed duration");
+      expect(result.errors).toContain(
+        "Requested validity '180d' exceeds the policy's maximum of '90d'. Request a TTL of 90d or less"
+      );
+      expect(result.ttlExceedsMax).toBe(true);
+
+      const withinMax = await service.validateCertificateRequest("template-123", validRequest);
+      expect(withinMax.ttlExceedsMax).toBe(false);
     });
 
     it("should detect TTL exceeding maximum duration", async () => {
@@ -708,7 +1027,9 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Requested validity period exceeds maximum allowed duration");
+      expect(result.errors).toContain(
+        "Requested validity '100d' exceeds the policy's maximum of '90d'. Request a TTL of 90d or less"
+      );
     });
 
     it("should handle various TTL formats", async () => {
@@ -727,7 +1048,7 @@ describe("CertificatePolicyService", () => {
 
           if (testCase.shouldThrow) {
             await expect(service.validateCertificateRequest("template-123", request)).rejects.toThrow(
-              `Invalid TTL format: ${testCase.ttl}`
+              `TTL '${testCase.ttl}' is not in a supported format. Use a number followed by h, d or y, such as 24h, 90d or 1y.`
             );
           } else {
             const result = await service.validateCertificateRequest("template-123", request);
@@ -808,7 +1129,7 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", requestWithNonMatchingWildcard);
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain(
-        "common_name value 'api.notexample.com' does not match allowed patterns: *.example.com, example.com"
+        "common_name value 'api.notexample.com' does not match allowed patterns: '*.example.com', 'example.com'"
       );
     });
 
@@ -973,7 +1294,7 @@ describe("CertificatePolicyService", () => {
       });
       expect(missing.isValid).toBe(false);
       expect(missing.errors).toContain(
-        "Missing required domain_component attribute. This policy requires one of: 'DC=app,DC=example,DC=auth'"
+        "The request is missing the required domain_component attribute. This policy requires one of: 'DC=app,DC=example,DC=auth'"
       );
 
       const outOfOrder = await service.validateCertificateRequest("template-123", {
@@ -1025,7 +1346,9 @@ describe("CertificatePolicyService", () => {
 
       const result = await service.validateCertificateRequest("template-123", request);
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("domain_component is not allowed by this policy");
+      expect(result.errors).toContain(
+        "Subject attribute domain_component is not allowed by the policy. Allowed subject attributes: common_name"
+      );
     });
 
     it("should prevent certificates from including denied SANs", async () => {
@@ -1048,7 +1371,9 @@ describe("CertificatePolicyService", () => {
 
       const result = await service.validateCertificateRequest("template-123", requestWithProhibitedSan);
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("email SAN matching denied pattern 'test@example.com' found in request");
+      expect(result.errors).toContain(
+        "email SAN 'test@example.com' matches the denied pattern '*@example.com'. Remove it from the request, or from the profile's default SANs if a default added it"
+      );
     });
 
     describe("comprehensive template validation scenarios", () => {
@@ -1162,8 +1487,12 @@ describe("CertificatePolicyService", () => {
 
         const result = await service.validateCertificateRequest("template-123", requestWithProhibited);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain("email SAN matching denied pattern 'test@example.com' found in request");
-        expect(result.errors).toContain("uri SAN matching denied pattern 'https://example.com' found in request");
+        expect(result.errors).toContain(
+          "email SAN 'test@example.com' matches the denied pattern '*'. Remove it from the request, or from the profile's default SANs if a default added it"
+        );
+        expect(result.errors).toContain(
+          "uri SAN 'https://example.com' matches the denied pattern '*'. Remove it from the request, or from the profile's default SANs if a default added it"
+        );
       });
 
       it("should validate complex attribute value constraints", async () => {
@@ -1203,7 +1532,9 @@ describe("CertificatePolicyService", () => {
 
         const invalidResult = await service.validateCertificateRequest("template-123", invalidConstrainedRequest);
         expect(invalidResult.isValid).toBe(false);
-        expect(invalidResult.errors).toContain("common_name value 'forbidden.com' is not in allowed values list");
+        expect(invalidResult.errors).toContain(
+          "common_name value 'forbidden.com' is not in the allowed values: 'example.com', 'test.com'"
+        );
       });
 
       it("should validate SAN value constraints with multiple types", async () => {
@@ -1254,7 +1585,7 @@ describe("CertificatePolicyService", () => {
         const missingResult = await service.validateCertificateRequest("template-123", missingSanRequest);
         expect(missingResult.isValid).toBe(false);
         expect(missingResult.errors).toContain(
-          "Required email SAN matching pattern '*@example.com' not found in request"
+          "The request has no email SAN matching the required pattern '*@example.com'. Add one to the request"
         );
       });
 
@@ -1320,7 +1651,9 @@ describe("CertificatePolicyService", () => {
 
         const forbiddenResult = await service.validateCertificateRequest("template-123", forbiddenUsageRequest);
         expect(forbiddenResult.isValid).toBe(false);
-        expect(forbiddenResult.errors).toContain("Invalid key usages: crl_sign");
+        expect(forbiddenResult.errors).toContain(
+          "The request includes key usages the policy does not allow: crl_sign. Allowed key usages: digital_signature, key_encipherment, data_encipherment, key_agreement"
+        );
       });
 
       it("should validate algorithm constraints thoroughly", async () => {
@@ -1362,7 +1695,9 @@ describe("CertificatePolicyService", () => {
 
         const invalidSigResult = await service.validateCertificateRequest("template-123", invalidSigRequest);
         expect(invalidSigResult.isValid).toBe(false);
-        expect(invalidSigResult.errors).toContain("Signature algorithm 'ECDSA-SHA256' is not allowed by this policy");
+        expect(invalidSigResult.errors).toContain(
+          "Signature algorithm 'ECDSA-SHA256' is not allowed by the policy. Allowed signature algorithms: RSA-SHA256, RSA-SHA512"
+        );
 
         const invalidKeyRequest = {
           commonName: "example.com",
@@ -1375,7 +1710,9 @@ describe("CertificatePolicyService", () => {
 
         const invalidKeyResult = await service.validateCertificateRequest("template-123", invalidKeyRequest);
         expect(invalidKeyResult.isValid).toBe(false);
-        expect(invalidKeyResult.errors).toContain("Key algorithm 'EC_prime256v1' is not allowed by this policy");
+        expect(invalidKeyResult.errors).toContain(
+          "Key algorithm 'EC_prime256v1' is not allowed by the policy. Allowed key algorithms: RSA_2048, RSA_4096"
+        );
       });
 
       it("should validate validity period edge cases", async () => {
@@ -1446,7 +1783,9 @@ describe("CertificatePolicyService", () => {
 
         const result = await service.validateCertificateRequest("template-123", requestWithUnlistedKeyUsage);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain("Invalid key usages: encipher_only");
+        expect(result.errors).toContain(
+          "The request includes key usages the policy does not allow: encipher_only. Allowed key usages: digital_signature, key_encipherment, data_encipherment"
+        );
       });
 
       it("should reject requests with unlisted SAN types", async () => {
@@ -1473,7 +1812,7 @@ describe("CertificatePolicyService", () => {
 
         const result = await service.validateCertificateRequest("template-123", requestWithUnlistedSan);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain("email SAN is not allowed by this policy");
+        expect(result.errors).toContain("SAN type email is not allowed by the policy. Allowed SAN types: dns_name");
       });
 
       it("should allow any key usages when template does not define key-usage rules", async () => {
@@ -1510,8 +1849,8 @@ describe("CertificatePolicyService", () => {
         };
 
         const result = await service.validateCertificateRequest("template-123", requestWithAlgorithms);
-        expect(result.errors).not.toContain("Signature algorithm 'RSA-SHA256' is not allowed by this policy");
-        expect(result.errors).not.toContain("Key algorithm 'RSA-2048' is not allowed by this policy");
+        expect(result.errors.some((error) => error.startsWith("Signature algorithm 'RSA-SHA256'"))).toBe(false);
+        expect(result.errors.some((error) => error.startsWith("Key algorithm 'RSA-2048'"))).toBe(false);
       });
     });
 
@@ -1555,7 +1894,9 @@ describe("CertificatePolicyService", () => {
           missingCommonNameRequest
         );
         expect(missingCommonNameResult.isValid).toBe(false);
-        expect(missingCommonNameResult.errors).toContain("Missing required common_name attribute");
+        expect(missingCommonNameResult.errors).toContain(
+          "The request is missing the required common_name attribute. The policy requires a value matching: '*'"
+        );
       });
     });
 
@@ -1598,7 +1939,8 @@ describe("CertificatePolicyService", () => {
           if (!testCase.shouldBeValid) {
             expect(
               result.errors.some(
-                (error) => error.includes("does not match allowed patterns") || error.includes("not in allowed values")
+                (error) =>
+                  error.includes("does not match allowed patterns") || error.includes("is not in the allowed values")
               )
             ).toBe(true);
           }
@@ -1759,8 +2101,8 @@ describe("CertificatePolicyService", () => {
         };
 
         const result = await service.validateCertificateRequest("template-123", requestWithAlgorithms);
-        expect(result.errors).not.toContain("Signature algorithm 'RSA-SHA256' is not allowed by this policy");
-        expect(result.errors).not.toContain("Key algorithm 'RSA_2048' is not allowed by this policy");
+        expect(result.errors.some((error) => error.startsWith("Signature algorithm 'RSA-SHA256'"))).toBe(false);
+        expect(result.errors.some((error) => error.startsWith("Key algorithm 'RSA_2048'"))).toBe(false);
       });
 
       it("should allow requests that match any of multiple attribute policies of same type", async () => {
@@ -1823,7 +2165,7 @@ describe("CertificatePolicyService", () => {
         const result3 = await service.validateCertificateRequest("template-123", requestMatchingNeitherPolicy);
         expect(result3.isValid).toBe(false);
         expect(result3.errors).toContain(
-          "common_name value 'test.example.com' does not match allowed patterns: *.infisical.com, *.infisical2.com"
+          "common_name value 'test.example.com' does not match allowed patterns: '*.infisical.com', '*.infisical2.com'"
         );
       });
     });
@@ -1866,12 +2208,12 @@ describe("CertificatePolicyService", () => {
         const invalidCountryRequest = { ...validComplexRequest, country: "XX" };
         const result2 = await service.validateCertificateRequest("template-123", invalidCountryRequest);
         expect(result2.isValid).toBe(false);
-        expect(result2.errors).toContain("country value 'XX' is denied by this policy");
+        expect(result2.errors).toContain("country value 'XX' is denied by the policy. Denied values: 'XX'");
         const invalidOrgRequest = { ...validComplexRequest, organization: "Different Corp" };
         const result3 = await service.validateCertificateRequest("template-123", invalidOrgRequest);
         expect(result3.isValid).toBe(false);
         expect(result3.errors).toContain(
-          "organization value 'Different Corp' does not match allowed patterns: Example*"
+          "organization value 'Different Corp' does not match allowed patterns: 'Example*'"
         );
       });
 
@@ -1917,7 +2259,9 @@ describe("CertificatePolicyService", () => {
 
         const result2 = await service.validateCertificateRequest("template-123", missingEmailRequest);
         expect(result2.isValid).toBe(false);
-        expect(result2.errors).toContain("Required email SAN matching pattern '*@example.com' not found in request");
+        expect(result2.errors).toContain(
+          "The request has no email SAN matching the required pattern '*@example.com'. Add one to the request"
+        );
 
         const deniedIpRequest = {
           ...validSanRequest,
@@ -1929,7 +2273,9 @@ describe("CertificatePolicyService", () => {
 
         const result3 = await service.validateCertificateRequest("template-123", deniedIpRequest);
         expect(result3.isValid).toBe(false);
-        expect(result3.errors).toContain("ip_address SAN matching denied pattern '192.168.1.100' found in request");
+        expect(result3.errors).toContain(
+          "ip_address SAN '192.168.1.100' matches the denied pattern '192.168.1.*'. Remove it from the request, or from the profile's default SANs if a default added it"
+        );
       });
 
       it("should validate wildcard patterns correctly", async () => {
@@ -2020,7 +2366,7 @@ describe("CertificatePolicyService", () => {
         const result2 = await service.validateCertificateRequest("template-123", incompleteRequest);
         expect(result2.isValid).toBe(false);
         expect(result2.errors).toContain(
-          "Required uri SAN matching pattern 'https://*.example.com/*' not found in request"
+          "The request has no uri SAN matching the required pattern 'https://*.example.com/*'. Add one to the request"
         );
       });
     });

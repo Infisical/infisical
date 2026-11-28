@@ -4,13 +4,15 @@ import { AxiosError } from "axios";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
@@ -40,12 +42,10 @@ import {
   CertSubjectAlternativeNameType,
   mapSanTypeToX509Type
 } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
+import { caAppConnectionNotFoundError, caNotFoundError, duplicateCaNameError } from "../certificate-authority-errors";
 import { createDistinguishedName, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import {
@@ -122,13 +122,13 @@ const sanToVenafiFormat = (san: {
 const getVenafiTppConnection = async (
   appConnectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
+  kmsDataKeyService: TKmsDataKeyService,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ) => {
   const appConnection = await appConnectionDAL.findById(appConnectionId);
   if (!appConnection) {
     logger.error({ appConnectionId }, "Venafi TPP: App connection not found for credential decryption");
-    throw new NotFoundError({ message: `App connection with ID '${appConnectionId}' not found` });
+    throw caAppConnectionNotFoundError(appConnectionId, AppConnection.VenafiTpp);
   }
 
   if (appConnection.app !== AppConnection.VenafiTpp) {
@@ -148,7 +148,7 @@ const getVenafiTppConnection = async (
 
   const credentials = (await decryptAppConnectionCredentials({
     orgId: appConnection.orgId,
-    kmsService,
+    kmsDataKeyService,
     encryptedCredentials: appConnection.encryptedCredentials,
     projectId: appConnection.projectId
   })) as {
@@ -351,8 +351,8 @@ type TVenafiTppCertificateAuthorityFnsDeps = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -366,8 +366,8 @@ export const VenafiTppCertificateAuthorityFns = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  kmsService,
-  projectDAL,
+  kmsDataKeyService,
+  kmsKeyService,
   certificateProfileDAL,
   gatewayV2Service,
   gatewayPoolService
@@ -383,13 +383,13 @@ export const VenafiTppCertificateAuthorityFns = ({
     name: string;
     projectId: string;
     configuration: TCreateVenafiTppCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
     const { appConnectionId, policyDN } = configuration;
     const appConnection = await appConnectionDAL.findById(appConnectionId);
 
     if (!appConnection) {
-      throw new NotFoundError({ message: `App connection with ID '${appConnectionId}' not found` });
+      throw caAppConnectionNotFoundError(appConnectionId, AppConnection.VenafiTpp);
     }
 
     if (appConnection.app !== AppConnection.VenafiTpp) {
@@ -433,9 +433,7 @@ export const VenafiTppCertificateAuthorityFns = ({
         // 23505 = unique constraint violation
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
         if ((error as any)?.error?.code === "23505") {
-          throw new BadRequestError({
-            message: "Certificate authority with the same name already exists in your project"
-          });
+          throw duplicateCaNameError(name);
         }
         throw error;
       }
@@ -459,37 +457,40 @@ export const VenafiTppCertificateAuthorityFns = ({
   }: {
     id: string;
     configuration?: TUpdateVenafiTppCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
     status?: CaStatus;
     name?: string;
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(id);
     if (!ca || !ca.externalCa) {
-      throw new NotFoundError({ message: `Certificate authority with ID '${id}' not found` });
+      throw caNotFoundError(id);
+    }
+
+    // Validated before the transaction: the connection check decrypts through KMS Core, which takes its own connection.
+    if (configuration) {
+      if (configuration.appConnectionId) {
+        const appConnection = await appConnectionDAL.findById(configuration.appConnectionId);
+        if (!appConnection) {
+          throw new NotFoundError({
+            message: `App connection with ID '${configuration.appConnectionId}' not found`
+          });
+        }
+        if (appConnection.app !== AppConnection.VenafiTpp) {
+          throw new BadRequestError({
+            message: `App connection with ID '${configuration.appConnectionId}' is not a Venafi TPP connection`
+          });
+        }
+
+        await appConnectionService.validateAppConnectionUsageById(
+          appConnection.app as AppConnection,
+          { connectionId: configuration.appConnectionId, projectId: ca.projectId },
+          actor
+        );
+      }
     }
 
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
-        if (configuration.appConnectionId) {
-          const appConnection = await appConnectionDAL.findById(configuration.appConnectionId);
-          if (!appConnection) {
-            throw new NotFoundError({
-              message: `App connection with ID '${configuration.appConnectionId}' not found`
-            });
-          }
-          if (appConnection.app !== AppConnection.VenafiTpp) {
-            throw new BadRequestError({
-              message: `App connection with ID '${configuration.appConnectionId}' is not a Venafi TPP connection`
-            });
-          }
-
-          await appConnectionService.validateAppConnectionUsageById(
-            appConnection.app as AppConnection,
-            { connectionId: configuration.appConnectionId, projectId: ca.projectId },
-            actor
-          );
-        }
-
         const existingConfig = (ca.externalCa?.configuration as { policyDN?: string } | null) || {};
         await externalCertificateAuthorityDAL.update(
           { caId: id, type: CaType.VENAFI_TPP },
@@ -609,20 +610,16 @@ export const VenafiTppCertificateAuthorityFns = ({
       "Venafi TPP: Starting certificate order from profile"
     );
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
     const { credentials, gatewayId } = await getVenafiTppConnection(
       venafiCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService,
+      kmsDataKeyService,
       gatewayPoolService
     );
 
@@ -839,6 +836,10 @@ export const VenafiTppCertificateAuthorityFns = ({
         plainText: Buffer.from(certificateChainPem)
       });
 
+      const encryptedPrivateKey = skLeaf
+        ? (await kmsEncryptor({ plainText: Buffer.from(skLeaf) })).cipherTextBlob
+        : undefined;
+
       if (isCancelled && (await isCancelled())) {
         throw new CertificateRequestCancelledError();
       }
@@ -882,11 +883,7 @@ export const VenafiTppCertificateAuthorityFns = ({
           tx
         );
 
-        if (skLeaf) {
-          const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
-            plainText: Buffer.from(skLeaf)
-          });
-
+        if (encryptedPrivateKey) {
           await certificateSecretDAL.create(
             {
               certId: cert.id,
@@ -929,7 +926,12 @@ export const VenafiTppCertificateAuthorityFns = ({
         ca: venafiCa
       };
     } catch (error: unknown) {
-      if (error instanceof BadRequestError || error instanceof NotFoundError) {
+      if (
+        error instanceof BadRequestError ||
+        error instanceof NotFoundError ||
+        error instanceof RuleViolationError ||
+        error instanceof EntityNotFoundError
+      ) {
         throw error;
       }
       if (error instanceof AxiosError) {

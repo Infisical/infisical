@@ -1,11 +1,17 @@
-import { createMongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
+
+import { ActorPermission, Permission } from "@app/domains/platform/access-control/ce/module";
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
+import { FakeOrganizationsService } from "@app/domains/platform/organizations/ce/testing/fake-organizations-service";
 
 import { identityServiceFactory } from "./identity-service";
 import { TDeleteIdentityDTO } from "./identity-types";
 
-vi.mock("@app/lib/config/env", () => ({
+vi.mock("@app/lib/config/env", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   getConfig: () => ({})
 }));
 
@@ -30,15 +36,15 @@ const TX = { sentinel: "tx" } as unknown as Knex;
 
 const buildDto = (): TDeleteIdentityDTO =>
   ({
-    actor: "user",
-    actorId: "actor-1",
-    actorAuthMethod: null,
-    actorOrgId: ORG_ID,
+    actor: {
+      principal: { type: "user", id: "actor-1" },
+      org: { id: ORG_ID, shouldUseNewPrivilegeSystem: false }
+    },
     id: IDENTITY_ID
   }) as unknown as TDeleteIdentityDTO;
 
 const createService = ({
-  // Equal to actorOrgId means the identity lives here and the row itself is deleted. Different
+  // Equal to the actor's org means the identity lives here and the row itself is deleted. Different
   // means it was only invited in, so the delete just takes the membership away.
   identityOrgId = ORG_ID,
   hasDeleteProtection = false,
@@ -63,6 +69,8 @@ const createService = ({
     })
   };
 
+  const licenseService = new FakeLicenseService();
+
   const service = identityServiceFactory({
     identityDAL: identityDAL as never,
     identityMetadataDAL: { delete: vi.fn().mockResolvedValue(undefined) } as never,
@@ -71,19 +79,22 @@ const createService = ({
     membershipIdentityService: { removeIdentityFromOrg },
     membershipRoleDAL: {} as never,
     identityProjectDAL: { findByIdentityId: vi.fn() } as never,
-    permissionService: {
+    orgPermissionService: {
       getOrgPermission: vi
         .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
-      getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ permission: createMongoAbility([]) }])
+        .mockResolvedValue(
+          ActorPermission.of({ rules: [{ action: "manage", subject: "all" }], usesNewPrivilegeSystem: false })
+        ),
+      getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ permission: Permission.fromRules({ rules: [] }) }])
     } as never,
-    licenseService: { getPlan: vi.fn(), getOrgSeatUsage: vi.fn(), updateSubscriptionOrgMemberCount: vi.fn() } as never,
+    licenseService,
+    usageMeteringService: new FakeUsageMeteringService(),
+    organizationsService: new FakeOrganizationsService(),
+    instanceConfigService: new FakeInstanceConfigService(),
     keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
     orgDAL: {
-      findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: false }),
       findEffectiveOrgMembership: vi.fn().mockResolvedValue({ id: "membership-1", scopeOrgId: ORG_ID })
     } as never,
-    usageMeteringService: { emit: vi.fn() } as never,
     alertService: { deleteAlertsForDeletedResource } as never,
     identityAccessTokenService: {
       insertIdentityWideRevocationMarker: vi.fn().mockResolvedValue(undefined),

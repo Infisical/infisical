@@ -3,9 +3,11 @@ import { isIP } from "node:net";
 
 import ldapjs from "@infisical/ldapjs";
 
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { stripIpv6Brackets } from "@app/lib/tls";
+import { buildSsrfSafeUrl, PRIVATE_ADDRESS_REFUSED_MESSAGE } from "@app/lib/validator";
 
 import { TLDAPConfig, TTestLDAPConfigDTO } from "./ldap-config-types";
 
@@ -74,16 +76,52 @@ export const buildLdapTlsOptions = (cfg: TLdapTlsConfigInput) => {
   return tlsOptions;
 };
 
+// ldapjs resolves the URL's host itself when it connects, so validating the URL beforehand does not stop a
+// DNS answer that changes in between from sending the connection to an internal address. Connect to the
+// validated IP instead.
+export const pinLdapTarget = async <T extends object>(url: string, tlsOptions: T | undefined) => {
+  let pinned: Awaited<ReturnType<typeof buildSsrfSafeUrl>>;
+  try {
+    pinned = await buildSsrfSafeUrl(url);
+  } catch (error) {
+    // Logins check the address too now, not only config saves, so a self-hosted LDAP server on a private IP
+    // that was saved before the save check existed starts failing here; say how to allow it
+    if (error instanceof BadRequestError && error.message === PRIVATE_ADDRESS_REFUSED_MESSAGE) {
+      throw new BadRequestError({
+        message: `The LDAP server URL resolves to a private or local IP address, which is not allowed.${
+          getConfig().isCloud
+            ? ""
+            : " If you are self-hosting and the LDAP server is on your internal network, set the ALLOW_INTERNAL_IP_CONNECTIONS environment variable to true."
+        }`
+      });
+    }
+    throw error;
+  }
+  const { url: pinnedUrl, checkServerIdentity } = pinned;
+  return {
+    url: pinnedUrl,
+    tlsOptions: checkServerIdentity ? { ...tlsOptions, checkServerIdentity } : tlsOptions
+  };
+};
+
 /**
  * Test the LDAP configuration by attempting to bind to the LDAP server
  * @param ldapConfig - The LDAP configuration to test
  * @returns {Boolean} isConnected - Whether or not the connection was successful
  */
 export const testLDAPConfig = async (ldapConfig: TTestLDAPConfigDTO): Promise<boolean> => {
+  let target: Awaited<ReturnType<typeof pinLdapTarget>>;
+  try {
+    target = await pinLdapTarget(ldapConfig.url, buildLdapTlsOptions(ldapConfig));
+  } catch (error) {
+    if (error instanceof BadRequestError) throw error;
+    // an unresolvable host fails the same way the connection itself would
+    return false;
+  }
+  const { url, tlsOptions } = target;
   return new Promise((resolve) => {
-    const tlsOptions = buildLdapTlsOptions(ldapConfig);
     const ldapClient = ldapjs.createClient({
-      url: ldapConfig.url,
+      url,
       bindDN: ldapConfig.bindDN,
       bindCredentials: ldapConfig.bindPass,
       ...(tlsOptions ? { tlsOptions } : {})
@@ -139,10 +177,10 @@ export const searchGroups = async (
   filter: string,
   base: string
 ): Promise<{ dn: string; cn: string }[]> => {
+  const { url, tlsOptions } = await pinLdapTarget(ldapConfig.url, buildLdapTlsOptions(ldapConfig));
   return new Promise((resolve, reject) => {
-    const tlsOptions = buildLdapTlsOptions(ldapConfig);
     const ldapClient = ldapjs.createClient({
-      url: ldapConfig.url,
+      url,
       bindDN: ldapConfig.bindDN,
       bindCredentials: ldapConfig.bindPass,
       ...(tlsOptions ? { tlsOptions } : {})

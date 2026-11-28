@@ -6,6 +6,7 @@ export { useDebounce } from "./useDebounce";
 export { useDelayedLoading } from "./useDelayedLoading";
 export { useDiscardChangesGuard } from "./useDiscardChangesGuard";
 export * from "./useGetProjectTypeFromRoute";
+export { useActiveProduct } from "./useActiveProduct";
 export { useImplicitProduct } from "./useImplicitProduct";
 export { useImplicitProjectId } from "./useImplicitProjectId";
 export { useLastLogin } from "./useLastLogin";

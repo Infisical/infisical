@@ -211,7 +211,7 @@ describe("buildSyncPayload", () => {
         projectFolderGrantDAL: { find: async () => [] },
         actorOrgId: "org-1",
         orgDAL: { findOrgById: async () => ({ allowCrossProjectSecretSharing: false }) },
-        kmsService: {
+        kmsDataKeyService: {
           createCipherPairWithDataKey: async () => ({
             decryptor: () => "",
             encryptor: () => ({ cipherTextBlob: Buffer.from("") })
@@ -227,6 +227,7 @@ describe("buildSyncPayload", () => {
         sourcePath: "/",
         sourceFolderId: "root",
         syncOptions: { includeAllSubFolders: true },
+        includeAllSubFolders: true,
         includeImports: true
       },
       buildDeps
@@ -271,7 +272,7 @@ describe("buildSyncPayload cross-folder duplicates", () => {
       projectFolderGrantDAL: { find: async () => [] },
       actorOrgId: "org-1",
       orgDAL: { findOrgById: async () => ({ allowCrossProjectSecretSharing: false }) },
-      kmsService: {
+      kmsDataKeyService: {
         createCipherPairWithDataKey: async () => ({
           decryptor: () => "",
           encryptor: () => ({ cipherTextBlob: Buffer.from("") })
@@ -286,6 +287,7 @@ describe("buildSyncPayload cross-folder duplicates", () => {
     sourcePath: "/",
     sourceFolderId: "root",
     syncOptions: { includeAllSubFolders: true },
+    includeAllSubFolders: true,
     includeImports: true
   } as Parameters<typeof buildSyncPayload>[0];
 
@@ -298,10 +300,10 @@ describe("buildSyncPayload cross-folder duplicates", () => {
   });
 
   // A sync whose secrets collide across folders would otherwise be stuck: it fails to sync, and
-  // until dedupeConflicts() existed, it also failed to remove, which is the only way to delete it.
-  test("dedupeConflicts() lets the remove path complete despite the same duplicate", async () => {
+  // until tolerateConflicts() existed, it also failed to remove, which is the only way to delete it.
+  test("tolerateConflicts() lets the remove path complete despite the same duplicate", async () => {
     const payload = await buildSyncPayload(args, dedupeDeps);
-    const deduped = payload.dedupeConflicts();
+    const deduped = payload.tolerateConflicts();
 
     expect(() => deduped.flatten()).not.toThrow();
     expect(Object.keys(deduped.flatten())).toEqual(["DB_URL"]);

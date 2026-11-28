@@ -1,6 +1,6 @@
 import { useMatchRoute, useNavigate } from "@tanstack/react-router";
 
-import { useOrganization } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 
 import {
   AgentVaultSetupStep,
@@ -17,9 +17,15 @@ export const useOpenAgentVaultSetupStep = (
   const navigate = useNavigate();
   const matchRoute = useMatchRoute();
   const { currentOrg } = useOrganization();
+  const { projectId } = useProject();
 
   return (step: AgentVaultSetupStep) => {
-    const link = getAgentVaultSetupStepLink(step, currentOrg.id, progress.newestBundle?.id);
+    const link = getAgentVaultSetupStepLink(
+      step,
+      currentOrg.id,
+      projectId,
+      progress.newestBundle?.id
+    );
     const opensCreate = doesAgentVaultSetupStepOpenCreate(step, progress);
     const isHere = Boolean(matchRoute(link));
     if (isHere && !opensCreate) return;

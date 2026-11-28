@@ -51,10 +51,11 @@ Go to the **Certificate Requests** tab and select **Request Certificate**. Selec
 | **CSR** | You provide your own Certificate Signing Request |
 
 For automated issuance, configure an [enrollment method](/documentation/platform/pki/applications/enrollment-methods/overview):
-- [API](/documentation/platform/pki/applications/enrollment-methods/api) — Direct API calls or Infisical Agent
-- [ACME](/documentation/platform/pki/applications/enrollment-methods/acme) — Certbot, cert-manager, and ACME clients
-- [EST](/documentation/platform/pki/applications/enrollment-methods/est) — RFC 7030 enrollment
-- [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) — Mobile device management (Jamf, Intune)
+- [API](/documentation/platform/pki/applications/enrollment-methods/api): Direct API calls or Infisical Agent
+- [ACME](/documentation/platform/pki/applications/enrollment-methods/acme): Certbot, cert-manager, and ACME clients
+- [EST](/documentation/platform/pki/applications/enrollment-methods/est): RFC 7030 enrollment
+- [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep): Mobile device management (Jamf, Intune)
+- [Microsoft Autoenrollment](/documentation/platform/pki/applications/enrollment-methods/microsoft-autoenrollment): Domain-joined Windows computers through Group Policy
 
 ### When issuance fails
 
@@ -67,6 +68,12 @@ Some requests are rejected before Infisical creates a certificate request, such 
 Select **Import** on the Certificates tab to bring in a certificate you already hold, either as PEM files or as a `.p12` / `.pfx` keystore with its password.
 
 A keystore can hold several certificates. Infisical lists what is inside so you can pick which ones to import.
+
+### Importing a deleted certificate again
+
+You can import a deleted certificate again. It's added as a new certificate, and the deleted one stays in the inventory. A certificate with a revocation recorded in your organization can't be imported.
+
+If you import it into a profile on the same certificate authority as the deleted certificate, revoking either certificate revokes both. So when you import it into a different Application or profile than the one it was deleted from, the import needs permission to revoke the deleted certificate, and if a [revocation approval policy](/documentation/platform/pki/applications/approvals#revocation) covers the deleted certificate, the Application and profile you import into must be covered by the same policy.
 
 ### Managing an imported certificate
 
@@ -89,6 +96,16 @@ The certificate has to satisfy the profile's certificate policy, because that po
 You can also attach one backed by a different authority, including a self-signed profile. The certificate you already hold stays in service, and its replacement is issued by the authority you're moving to. Renewal works in both cases, because a renewal is a new certificate signed by the profile's authority.
 
 Revocation behaves differently. It only takes effect through the issuing authority, because that authority publishes the revocation list clients check. Infisical therefore refuses to revoke an imported certificate whose profile is backed by a different authority. Revoke those certificates with their original issuer instead.
+
+### Keeping your private key on your own servers
+
+If you generated the certificate's private key yourself, you don't have to give it to Infisical for renewals to keep the same key pair. Paste the certificate signing request (CSR) you generated from that key in **Certificate Signing Request PEM** after you pick the profile. Automatic renewals send that CSR to the profile's authority, so the renewed certificate carries the public key your servers already use. When you renew manually, choose **Reuse the existing key pair** to do the same.
+
+- The field appears when you import PEM files, the profile is backed by a certificate authority, and you haven't pasted a private key
+- Profiles backed by AWS Certificate Manager don't accept a CSR, because AWS Certificate Manager can't issue from one
+- Infisical refuses a CSR that wasn't generated from the certificate's private key, that names a domain or address the certificate doesn't, or that the profile's certificate policy wouldn't accept at renewal
+- Over the API, send the CSR as `csr` to the [Import certificate](/api-reference/endpoints/certificates/import-certificate) endpoint
+- If you imported a certificate without its CSR, [renew it](/documentation/platform/pki/applications/certificate-renewal) once with **Use a CSR**, and later renewals reuse that CSR
 
 ### What each external CA needs
 
@@ -126,7 +143,7 @@ You'll find the order id on the certificate details page. It matters most over t
 | **Server-driven** | Infisical automatically renews before expiration and pushes to [syncs](/documentation/platform/pki/applications/certificate-syncs/overview) |
 | **Manual** | You renew on demand from the certificate, and can change its properties as part of the renewal |
 
-Server-driven renewal requires [API enrollment](/documentation/platform/pki/applications/enrollment-methods/api) with Infisical-managed keys. Enable it on the [enrollment method](/documentation/platform/pki/applications/enrollment-methods/api) or toggle it per-certificate.
+Server-driven renewal requires [API enrollment](/documentation/platform/pki/applications/enrollment-methods/api), and Infisical has to hold either the certificate's private key or a [CSR generated from it](#keeping-your-private-key-on-your-own-servers). Enable it on the [enrollment method](/documentation/platform/pki/applications/enrollment-methods/api) or toggle it per-certificate.
 
 Both automatic types reissue the certificate exactly as it is. To change the subject, the names it covers, its validity, or how its key pair is handled, [renew it manually](/documentation/platform/pki/applications/certificate-renewal).
 
@@ -140,6 +157,8 @@ Both automatic types reissue the certificate exactly as it is. To change the sub
 ## Revocation
 
 Revoke a certificate when it's compromised or no longer needed. Specify a [reason code](https://datatracker.ietf.org/doc/html/rfc5280#section-5.3.1) (key compromise, superseded, etc.).
+
+If a [revocation policy](/documentation/platform/pki/applications/approvals#revocation) covers the certificate's profile, revoking the certificate creates an approval request, and Infisical doesn't revoke the certificate for that request until the request is approved.
 
 Revoked certificates are added to the issuing CA's [CRL](/documentation/platform/pki/ca/crl-distribution). Verify revocation status:
 
@@ -160,7 +179,7 @@ openssl verify -crl_check -CAfile chain.pem -CRLfile crl.pem cert.pem
     Get notified before certificates expire.
   </Card>
   <Card title="Approvals" icon="check-check" href="/documentation/platform/pki/applications/approvals">
-    Require human review before issuance.
+    Require human review before issuance or revocation.
   </Card>
   <Card title="Enrollment Methods" icon="log-in" href="/documentation/platform/pki/applications/enrollment-methods/overview">
     Configure how certificates are requested.

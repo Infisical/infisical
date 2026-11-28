@@ -6,7 +6,9 @@ import {
   hasClientAuthorityChanged,
   hasWithdrawnTokenExchangeTrust,
   isAllowedRedirectUri,
+  isClientMetadataDocumentUrl,
   isRegisteredRedirectUri,
+  OauthClientMetadataDocumentSchema,
   parseBasicAuthHeader
 } from "./oauth-client-fns";
 import { OauthGrantType } from "./oauth-client-types";
@@ -121,6 +123,85 @@ describe("isRegisteredRedirectUri", () => {
         "https://coder.example.com/external-auth/other"
       )
     ).toBe(false);
+  });
+
+  test("matches a loopback URI on any port", () => {
+    expect(isRegisteredRedirectUri(["http://localhost/callback"], "http://localhost:53682/callback")).toBe(true);
+    expect(isRegisteredRedirectUri(["http://127.0.0.1:3000/callback"], "http://127.0.0.1:4000/callback")).toBe(true);
+  });
+
+  test("still matches the path of a loopback URI exactly", () => {
+    expect(isRegisteredRedirectUri(["http://localhost/callback"], "http://localhost:53682/other")).toBe(false);
+  });
+
+  test("matches an https URI on its registered port only", () => {
+    expect(isRegisteredRedirectUri(["https://app.example.com/callback"], "https://app.example.com:8443/callback")).toBe(
+      false
+    );
+  });
+});
+
+describe("isClientMetadataDocumentUrl", () => {
+  test("accepts an https URL with a path", () => {
+    expect(isClientMetadataDocumentUrl("https://claude.ai/oauth/mcp-client.json")).toBe(true);
+  });
+
+  test("rejects generated client IDs, plain http and bare origins", () => {
+    expect(isClientMetadataDocumentUrl("oauth_client_0123456789abcdef")).toBe(false);
+    expect(isClientMetadataDocumentUrl("http://claude.ai/oauth/mcp-client.json")).toBe(false);
+    expect(isClientMetadataDocumentUrl("https://claude.ai/")).toBe(false);
+  });
+});
+
+describe("OauthClientMetadataDocumentSchema", () => {
+  const document = {
+    client_id: "https://claude.ai/oauth/mcp-client.json",
+    client_name: "Claude",
+    redirect_uris: ["https://claude.ai/api/mcp/auth_callback", "http://localhost/callback"],
+    token_endpoint_auth_method: "none"
+  };
+
+  test("accepts a public client document", () => {
+    expect(OauthClientMetadataDocumentSchema.safeParse(document).success).toBe(true);
+  });
+
+  test("rejects a redirect URI that is neither https nor loopback", () => {
+    const parsed = OauthClientMetadataDocumentSchema.safeParse({
+      ...document,
+      redirect_uris: ["http://claude.ai/callback"]
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  test("rejects a client that can only authenticate at the token endpoint", () => {
+    const parsed = OauthClientMetadataDocumentSchema.safeParse({
+      ...document,
+      token_endpoint_auth_method: "private_key_jwt"
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  test("accepts a client that prefers private_key_jwt but also supports none, as ChatGPT does", () => {
+    const parsed = OauthClientMetadataDocumentSchema.safeParse({
+      ...document,
+      token_endpoint_auth_method: "private_key_jwt",
+      token_endpoint_auth_methods_supported: ["none", "private_key_jwt"]
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  test("rejects a client whose supported methods leave out none, even without a single method", () => {
+    const { token_endpoint_auth_method: _, ...withoutMethod } = document;
+    const parsed = OauthClientMetadataDocumentSchema.safeParse({
+      ...withoutMethod,
+      token_endpoint_auth_methods_supported: ["private_key_jwt"]
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  test("accepts a client that names no method", () => {
+    const { token_endpoint_auth_method: _, ...withoutMethod } = document;
+    expect(OauthClientMetadataDocumentSchema.safeParse(withoutMethod).success).toBe(true);
   });
 });
 

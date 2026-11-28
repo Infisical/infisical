@@ -1,9 +1,9 @@
 import RE2 from "re2";
 
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { PlanFeature, PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { matchesNormalizedPattern } from "@app/services/certificate-policy/certificate-policy-fns";
+import { matchesNormalizedPattern, matchesSanRuleValue } from "@app/services/certificate-policy/certificate-policy-fns";
 import { TSubjectRule } from "@app/services/certificate-policy/certificate-policy-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -27,13 +27,13 @@ export const validatePqcLicense = async ({
   keyAlgorithm: string;
   projectId: string;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
 }) => {
   if (!isPqcAlgorithm(keyAlgorithm)) return;
   const project = await projectDAL.findById(projectId);
   if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
   const plan = await licenseService.getPlan(project.orgId);
-  if (!plan.pkiPqc) {
+  if (!plan.has(PlanFeature.PkiPqc)) {
     throw new BadRequestError({
       message:
         "Your license does not include PQC algorithms. Please upgrade to the Enterprise plan to use a PQC algorithm."
@@ -66,7 +66,7 @@ export const validateCertificateRequestLicense = async ({
   altNames?: string | null;
   projectId: string;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
   // When absent the caps are skipped, so an issuance entry point that forgets it is silently uncapped.
   quotaDeps?: TCertificateQuotaDeps;
   // Nothing sets this today: renewal does not route through here. Kept because a refused renewal lets
@@ -89,17 +89,16 @@ export const validateCertificateRequestLicense = async ({
 
   const plan = await licenseService.getPlan(project.orgId);
 
-  if (pqcAlgorithm && !plan.pkiPqc) {
+  if (pqcAlgorithm && !plan.has(PlanFeature.PkiPqc)) {
     throw new BadRequestError({
       message:
         "Your license does not include PQC algorithms. Please upgrade to the Enterprise plan to use a PQC algorithm."
     });
   }
 
-  const { maxSansPerCertificate } = plan;
-  if (typeof maxSansPerCertificate === "number" && distinctSanCount > maxSansPerCertificate) {
+  if (plan.exceeds(PlanLimit.SansPerCertificate, distinctSanCount, 0)) {
     throw new BadRequestError({
-      message: `This certificate requests ${distinctSanCount} subject alternative names, above the ${maxSansPerCertificate} allowed on your plan. Upgrade plan to issue certificates with more SANs.`
+      message: `This certificate requests ${distinctSanCount} subject alternative names, above the ${plan.limit(PlanLimit.SansPerCertificate)} allowed on your plan. Upgrade plan to issue certificates with more SANs.`
     });
   }
 
@@ -189,17 +188,8 @@ export const buildCertificateSubjectFromTemplate = (
   return subject;
 };
 
-const validateValueAgainstPatterns = (value: string, patterns: string[]): boolean => {
-  if (!patterns || patterns.length === 0) {
-    return false;
-  }
-
-  const normalizedValue = value.toLowerCase();
-  return patterns.some((pattern) => matchesNormalizedPattern(normalizedValue, pattern.toLowerCase()));
-};
-
 export const buildSubjectAlternativeNamesFromTemplate = (
-  request: { subjectAlternativeNames?: Array<{ type: string; value: string }> },
+  request: { commonName?: string | null; subjectAlternativeNames?: Array<{ type: string; value: string }> },
   templateSans?: Array<{
     type: string;
     allowed?: string[];
@@ -218,21 +208,31 @@ export const buildSubjectAlternativeNamesFromTemplate = (
   const allowedSans: string[] = [];
 
   request.subjectAlternativeNames.forEach((san) => {
-    const templateSan = templateSans.find((template) => template.type === san.type);
+    const sanRule = templateSans.find((rule) => rule.type === san.type);
 
-    if (!templateSan) {
+    if (!sanRule) {
       allowedSans.push(san.value);
       return;
     }
 
-    if (templateSan.denied && validateValueAgainstPatterns(san.value, templateSan.denied)) {
+    const matchesAny = (ruleValues?: string[]) =>
+      Boolean(
+        ruleValues?.some((ruleValue) =>
+          matchesSanRuleValue({
+            sanType: san.type,
+            sanValue: san.value,
+            ruleValue,
+            commonName: request.commonName,
+            matchesPattern: (value, pattern) => matchesNormalizedPattern(value.toLowerCase(), pattern.toLowerCase())
+          })
+        )
+      );
+
+    if (matchesAny(sanRule.denied)) {
       throw new BadRequestError({ message: `SAN value '${san.value}' is explicitly denied for type '${san.type}'` });
     }
 
-    const isRequired = templateSan.required && validateValueAgainstPatterns(san.value, templateSan.required);
-    const isAllowed = templateSan.allowed && validateValueAgainstPatterns(san.value, templateSan.allowed);
-
-    if (isRequired || isAllowed || (!templateSan.allowed && !templateSan.required)) {
+    if (matchesAny(sanRule.required) || matchesAny(sanRule.allowed) || (!sanRule.allowed && !sanRule.required)) {
       allowedSans.push(san.value);
     } else {
       throw new BadRequestError({ message: `SAN value '${san.value}' is not allowed for type '${san.type}'` });

@@ -5,6 +5,8 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 
+const EST_CSR_CONTENT_TYPE = "application/pkcs10";
+
 export const registerCertificateEstRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
 
@@ -38,7 +40,7 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
   };
 
   // add support for CSR bodies
-  server.addContentTypeParser("application/pkcs10", { parseAs: "string" }, (_, body, done) => {
+  server.addContentTypeParser(EST_CSR_CONTENT_TYPE, { parseAs: "string" }, (_, body, done) => {
     try {
       let csrBody = body as string;
       // some EST clients send CSRs in PEM format and some in base64 format
@@ -60,8 +62,8 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
     const lastFragment = urlPath.split("/").pop() ?? "";
     if (lastFragment === "simpleenroll" || lastFragment === "simplereenroll") {
       const contentType = (req.headers["content-type"] ?? "").toString().toLowerCase().split(";")[0].trim();
-      if (contentType && contentType !== "application/pkcs10") {
-        await res.code(415).type("text/plain").send("Content-Type must be application/pkcs10");
+      if (contentType && contentType !== EST_CSR_CONTENT_TYPE) {
+        await res.code(415).type("text/plain").send(`Content-Type must be ${EST_CSR_CONTENT_TYPE}`);
       }
     }
   });
@@ -102,14 +104,10 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
     }
 
     const params = (req.params as { identifier?: string; applicationId?: string; profileId?: string }) ?? {};
-    const isAppScoped = matchedRoute.startsWith("/applications/");
+    const { applicationId, profileId } = params;
 
     let estConfig;
-    if (isAppScoped) {
-      const { applicationId, profileId } = params;
-      if (!applicationId || !profileId) {
-        throw new NotFoundError({ message: "Certificate profile not found" });
-      }
+    if (applicationId && profileId) {
       estConfig = await server.services.certificateProfile.getEstConfigurationByProfile({
         profileId,
         applicationId,
@@ -174,6 +172,8 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "postEstSimpleEnroll",
+      consumes: [EST_CSR_CONTENT_TYPE],
       body: z.string().min(1),
       params: z.object({
         identifier: z.string().min(1)
@@ -212,6 +212,8 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "postEstSimpleReenroll",
+      consumes: [EST_CSR_CONTENT_TYPE],
       body: z.string().min(1),
       params: z.object({
         identifier: z.string().min(1)
@@ -250,6 +252,7 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getEstCaCerts",
       params: z.object({
         identifier: z.string().min(1)
       }),
@@ -286,6 +289,8 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
     url: "/applications/:applicationId/profiles/:profileId/simpleenroll",
     config: { rateLimit: writeLimit },
     schema: {
+      operationId: "postEstApplicationSimpleEnroll",
+      consumes: [EST_CSR_CONTENT_TYPE],
       body: z.string().min(1),
       params: z.object({
         applicationId: z.string().uuid(),
@@ -312,6 +317,8 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
     url: "/applications/:applicationId/profiles/:profileId/simplereenroll",
     config: { rateLimit: writeLimit },
     schema: {
+      operationId: "postEstApplicationSimpleReenroll",
+      consumes: [EST_CSR_CONTENT_TYPE],
       body: z.string().min(1),
       params: z.object({
         applicationId: z.string().uuid(),
@@ -338,6 +345,7 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
     url: "/applications/:applicationId/profiles/:profileId/cacerts",
     config: { rateLimit: readLimit },
     schema: {
+      operationId: "getEstApplicationCaCerts",
       params: z.object({
         applicationId: z.string().uuid(),
         profileId: z.string().uuid()

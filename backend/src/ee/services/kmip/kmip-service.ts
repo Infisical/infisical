@@ -1,15 +1,20 @@
-import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
-import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { TKmsPermissionService } from "@app/domains/kms/kms/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import {
+  OrgPermissionKmipActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionKmipActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { isValidIp } from "@app/lib/ip";
 import { ms } from "@app/lib/ms";
-import { isFQDN } from "@app/lib/validator/validate-url";
-import { ActorType } from "@app/services/auth/auth-type";
 import {
   createDistinguishedName,
   createSerialNumber,
@@ -19,15 +24,10 @@ import {
 import { extractAlgorithmsFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import { TLicenseServiceFactory } from "../license/license-service";
-import { OrgPermissionKmipActions, OrgPermissionSubjects } from "../permission/org-permission";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { ProjectPermissionKmipActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TKmipClientCertificateDALFactory } from "./kmip-client-certificate-dal";
 import { TKmipClientDALFactory } from "./kmip-client-dal";
+import { getKmipServerAltNameType, KMIP_SERVER_HOSTNAMES_OR_IPS_MESSAGE } from "./kmip-fns";
 import { TKmipOrgConfigDALFactory } from "./kmip-org-config-dal";
 import { TKmipOrgServerCertificateDALFactory } from "./kmip-org-server-certificate-dal";
 import {
@@ -72,10 +72,11 @@ type TKmipServiceFactoryDep = {
   kmipClientDAL: TKmipClientDALFactory;
   kmipClientCertificateDAL: TKmipClientCertificateDALFactory;
   kmipOrgServerCertificateDAL: TKmipOrgServerCertificateDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  orgPermissionService: TOrgPermissionService;
+  kmsPermissionService: TKmsPermissionService;
+  kmsDataKeyService: TKmsDataKeyService;
   kmipOrgConfigDAL: TKmipOrgConfigDALFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
 };
 
 export type TKmipServiceFactory = ReturnType<typeof kmipServiceFactory>;
@@ -103,10 +104,11 @@ export const assertTtlAtLeastFloor = (ttl: string) => {
 
 export const kmipServiceFactory = ({
   kmipClientDAL,
-  permissionService,
+  orgPermissionService,
+  kmsPermissionService,
   kmipClientCertificateDAL,
   kmipOrgConfigDAL,
-  kmsService,
+  kmsDataKeyService,
   kmipOrgServerCertificateDAL,
   licenseService
 }: TKmipServiceFactoryDep) => {
@@ -118,10 +120,11 @@ export const kmipServiceFactory = ({
    * (Root CA, Server Intermediate CA, Client Intermediate CA) within a transaction with advisory lock.
    */
   const $getOrgKmipCAs = async (orgId: string, caKeyAlgorithm: CertKeyAlgorithm = DEFAULT_CA_KEY_ALGORITHM) => {
-    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId
-    });
+    const { encryptor: orgKmsEncryptor, decryptor: orgKmsDecryptor } =
+      await kmsDataKeyService.createCipherPairWithDataKey({
+        type: KmsDataKey.Organization,
+        orgId
+      });
 
     const kmipOrgConfig = await kmipOrgConfigDAL.transaction(async (tx) => {
       const existingConfig = await kmipOrgConfigDAL.findOne({ orgId }, tx);
@@ -153,6 +156,7 @@ export const kmipServiceFactory = ({
         extensions: [
           // eslint-disable-next-line no-bitwise
           new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true),
+          new x509.BasicConstraintsExtension(true, 1, true),
           await x509.SubjectKeyIdentifierExtension.create(rootCaKeys.publicKey)
         ]
       });
@@ -303,38 +307,19 @@ export const kmipServiceFactory = ({
     };
   };
 
-  const createKmipClient = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    projectId,
-    name,
-    description,
-    permissions
-  }: TCreateKmipClientDTO) => {
+  const createKmipClient = async ({ actor, projectId, name, description, permissions }: TCreateKmipClientDTO) => {
     if (crypto.isFipsModeEnabled()) {
       throw new BadRequestError({
         message: "KMIP is currently not supported in FIPS mode of operation."
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionKmipActions.CreateClients,
-      ProjectPermissionSub.Kmip
-    );
+    permission.assert({ action: ProjectPermissionKmipActions.CreateClients, subject: ProjectPermissionSub.Kmip });
 
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.kmip)
+    const plan = await licenseService.getPlan(actor.org.id);
+    if (!plan.has(PlanFeature.Kmip))
       throw new BadRequestError({
         message: "Failed to create KMIP client. Upgrade your plan to enterprise."
       });
@@ -349,16 +334,7 @@ export const kmipServiceFactory = ({
     return kmipClient;
   };
 
-  const updateKmipClient = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    name,
-    description,
-    permissions,
-    id
-  }: TUpdateKmipClientDTO) => {
+  const updateKmipClient = async ({ actor, name, description, permissions, id }: TUpdateKmipClientDTO) => {
     const kmipClient = await kmipClientDAL.findById(id);
 
     if (!kmipClient) {
@@ -367,25 +343,15 @@ export const kmipServiceFactory = ({
       });
     }
 
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.kmip)
+    const plan = await licenseService.getPlan(actor.org.id);
+    if (!plan.has(PlanFeature.Kmip))
       throw new BadRequestError({
         message: "Failed to update KMIP client. Upgrade your plan to enterprise."
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: kmipClient.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId: kmipClient.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionKmipActions.UpdateClients,
-      ProjectPermissionSub.Kmip
-    );
+    permission.assert({ action: ProjectPermissionKmipActions.UpdateClients, subject: ProjectPermissionSub.Kmip });
 
     const updatedKmipClient = await kmipClientDAL.updateById(id, {
       name,
@@ -396,7 +362,7 @@ export const kmipServiceFactory = ({
     return updatedKmipClient;
   };
 
-  const deleteKmipClient = async ({ actor, actorId, actorOrgId, actorAuthMethod, id }: TDeleteKmipClientDTO) => {
+  const deleteKmipClient = async ({ actor, id }: TDeleteKmipClientDTO) => {
     const kmipClient = await kmipClientDAL.findById(id);
 
     if (!kmipClient) {
@@ -405,32 +371,16 @@ export const kmipServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: kmipClient.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId: kmipClient.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionKmipActions.DeleteClients,
-      ProjectPermissionSub.Kmip
-    );
-
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.kmip)
-      throw new BadRequestError({
-        message: "Failed to delete KMIP client. Upgrade your plan to enterprise."
-      });
+    permission.assert({ action: ProjectPermissionKmipActions.DeleteClients, subject: ProjectPermissionSub.Kmip });
 
     const deletedKmipClient = await kmipClientDAL.deleteById(id);
 
     return deletedKmipClient;
   };
 
-  const getKmipClient = async ({ actor, actorId, actorOrgId, actorAuthMethod, id }: TGetKmipClientDTO) => {
+  const getKmipClient = async ({ actor, id }: TGetKmipClientDTO) => {
     const kmipClient = await kmipClientDAL.findById(id);
 
     if (!kmipClient) {
@@ -439,47 +389,23 @@ export const kmipServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: kmipClient.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId: kmipClient.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionKmipActions.ReadClients, ProjectPermissionSub.Kmip);
+    permission.assert({ action: ProjectPermissionKmipActions.ReadClients, subject: ProjectPermissionSub.Kmip });
 
     return kmipClient;
   };
 
-  const listKmipClientsByProjectId = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    projectId,
-    ...rest
-  }: TListKmipClientsByProjectIdDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.KMS
-    });
+  const listKmipClientsByProjectId = async ({ actor, projectId, ...rest }: TListKmipClientsByProjectIdDTO) => {
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionKmipActions.ReadClients, ProjectPermissionSub.Kmip);
+    permission.assert({ action: ProjectPermissionKmipActions.ReadClients, subject: ProjectPermissionSub.Kmip });
 
     return kmipClientDAL.findByProjectId({ projectId, ...rest });
   };
 
   const createKmipClientCertificate = async ({
     actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     ttl,
     keyAlgorithm,
     clientId,
@@ -493,28 +419,21 @@ export const kmipServiceFactory = ({
       });
     }
 
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.kmip)
+    const plan = await licenseService.getPlan(actor.org.id);
+    if (!plan.has(PlanFeature.Kmip))
       throw new BadRequestError({
         message: "Failed to create KMIP client. Upgrade your plan to enterprise."
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: kmipClient.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.KMS
+    const permission = await kmsPermissionService.getKmsPermission({ actor, projectId: kmipClient.projectId });
+
+    permission.assert({
+      action: ProjectPermissionKmipActions.GenerateClientCertificates,
+      subject: ProjectPermissionSub.Kmip
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionKmipActions.GenerateClientCertificates,
-      ProjectPermissionSub.Kmip
-    );
-
     // Lazily initialize KMIP org config if not already set up
-    const orgKmipCAs = await $getOrgKmipCAs(actorOrgId);
+    const orgKmipCAs = await $getOrgKmipCAs(actor.org.id);
 
     const caCertObj = new x509.X509Certificate(orgKmipCAs.clientIntermediateCaCertificate);
 
@@ -686,7 +605,7 @@ export const kmipServiceFactory = ({
       });
     }
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -707,7 +626,7 @@ export const kmipServiceFactory = ({
     keyAlgorithm
   }: TGenerateOrgKmipServerCertificateDTO) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.kmip)
+    if (!plan.has(PlanFeature.Kmip))
       throw new BadRequestError({
         message: "Failed to generate KMIP server certificate. Upgrade your plan to enterprise."
       });
@@ -715,7 +634,7 @@ export const kmipServiceFactory = ({
     // Initialize KMIP org config (or return existing one)
     const orgKmipCAs = await $getOrgKmipCAs(orgId);
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
@@ -764,21 +683,14 @@ export const kmipServiceFactory = ({
       .split(",")
       .map((name) => name.trim())
       .map((altName) => {
-        if (isFQDN(altName, { allow_wildcard: true })) {
-          return {
-            type: "dns",
-            value: altName
-          };
+        const type = getKmipServerAltNameType(altName);
+        if (!type) {
+          throw new BadRequestError({
+            message: `Cannot issue a KMIP server certificate for "${altName}". ${KMIP_SERVER_HOSTNAMES_OR_IPS_MESSAGE}.`
+          });
         }
 
-        if (isValidIp(altName)) {
-          return {
-            type: "ip",
-            value: altName
-          };
-        }
-
-        throw new Error(`Invalid altName: ${altName}`);
+        return { type, value: altName };
       });
 
     const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
@@ -838,46 +750,30 @@ export const kmipServiceFactory = ({
     };
   };
 
-  const registerServer = async ({
-    actorOrgId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    ttl,
-    commonName,
-    keyAlgorithm,
-    hostnamesOrIps
-  }: TRegisterServerDTO) => {
+  const registerServer = async ({ actor, ttl, commonName, keyAlgorithm, hostnamesOrIps }: TRegisterServerDTO) => {
     // Enforced here rather than per route, since both enrollment paths issue through this.
     assertTtlAtLeastFloor(ttl);
 
     // KMIP servers authenticate via their enrollment-based access token, which is itself the
     // authorization — no org-level permission needed. The legacy machine-identity path still
     // requires the (deprecated) KMIP proxy permission.
-    if (actor !== ActorType.KMIP_SERVER) {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: actorOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
+    if (actor.principal.type !== ActorType.KMIP_SERVER) {
+      const permission = await orgPermissionService.getOrgPermission({ actor });
 
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+      permission.assert({ action: OrgPermissionKmipActions.Proxy, subject: OrgPermissionSubjects.Kmip });
     }
 
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.kmip)
+    const plan = await licenseService.getPlan(actor.org.id);
+    if (!plan.has(PlanFeature.Kmip))
       throw new BadRequestError({
         message: "Failed to register KMIP server. Upgrade your plan to enterprise."
       });
 
     // Initialize KMIP org config (or return existing one)
-    const orgKmipCAs = await $getOrgKmipCAs(actorOrgId);
+    const orgKmipCAs = await $getOrgKmipCAs(actor.org.id);
 
     const { privateKey, certificate, certificateChain, serialNumber } = await generateOrgKmipServerCertificate({
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       commonName: commonName ?? "kmip-server",
       altNames: hostnamesOrIps,
       keyAlgorithm: keyAlgorithm ?? (orgKmipCAs.config.caKeyAlgorithm as CertKeyAlgorithm),

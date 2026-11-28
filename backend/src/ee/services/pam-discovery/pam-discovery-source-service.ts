@@ -1,12 +1,17 @@
 import { ForbiddenError } from "@casl/ability";
 import pLimit from "p-limit";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { EntityNotFoundError, PermissionDeniedError, RuleViolationError } from "@app/domains/lib/errors";
+import { PamResourcePermissionActions, TPamPermissionService } from "@app/domains/pam/pam/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
+import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -14,9 +19,6 @@ import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } 
 import { logger } from "@app/lib/logger";
 import { createSshCert, createSshKeyPair, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
-import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import {
@@ -26,7 +28,7 @@ import {
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamAccountServiceFactory } from "../pam-account/pam-account-service";
 import { PamAccountType, PamPostgresAuthMethod, PamProductRole, PamSshAuthMethod } from "../pam/pam-enums";
-import { checkAccountAccess, TActorContext, verifyProductMembership } from "../pam/pam-permission";
+import { checkAccountAccess, verifyProductMembership } from "../pam/pam-permission";
 import { validateGatewayAttachment } from "../pam/pam-validators";
 import { TPamAccountDependencyDALFactory } from "./pam-account-dependency-dal";
 import { TPamDiscoveredAccountDALFactory } from "./pam-discovered-account-dal";
@@ -71,11 +73,10 @@ type TPamDiscoverySourceServiceFactoryDep = {
     TPamAccountRotationServiceFactory,
     "setRotationAccount" | "rotateNow" | "getSharedIdentity"
   >;
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getProjectPermission" | "getResourcePermission" | "getOrgPermission"
-  >;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  projectPermissionService: TProjectPermissionService;
+  pamPermissionService: TPamPermissionService;
+  orgPermissionService: TOrgPermissionService;
+  kmsDataKeyService: TKmsDataKeyService;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
@@ -98,12 +99,15 @@ const IMPORT_ROTATION_CONCURRENCY = 5;
 
 export const MAX_ROTATIONS_PER_IMPORT = 50;
 
-const toResultMessage = (err: unknown, fallback: string, logMessage: string) => {
+export const toResultMessage = (err: unknown, fallback: string, logMessage: string) => {
   if (
     err instanceof BadRequestError ||
     err instanceof NotFoundError ||
     err instanceof ForbiddenRequestError ||
-    err instanceof ForbiddenError
+    err instanceof ForbiddenError ||
+    err instanceof PermissionDeniedError ||
+    err instanceof RuleViolationError ||
+    err instanceof EntityNotFoundError
   ) {
     return err.message;
   }
@@ -143,8 +147,9 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     pamAccountDAL,
     pamAccountService,
     pamAccountRotationService,
-    permissionService,
-    kmsService,
+    projectPermissionService,
+    pamPermissionService,
+    kmsDataKeyService,
     gatewayV2Service,
     gatewayPoolService,
     queueService,
@@ -161,7 +166,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     );
 
   const getProjectCipher = (projectId: string) =>
-    kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const decryptToObject = (blob: Buffer, decryptor: (i: { cipherTextBlob: Buffer }) => Buffer) =>
     JSON.parse(decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<string, unknown>;
@@ -216,8 +221,8 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
   };
 
   const verifyAdmin = async (projectId: string, ctx: TActorContext) => {
-    const { hasRole } = await verifyProductMembership(permissionService, projectId, ctx);
-    if (!hasRole(PamProductRole.Admin)) {
+    const productPermission = await verifyProductMembership(projectPermissionService, projectId, ctx);
+    if (!productPermission.hasRole({ slug: PamProductRole.Admin })) {
       throw new ForbiddenRequestError({ message: "Discovery requires the PAM product Admin role" });
     }
   };
@@ -233,11 +238,11 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       throw new NotFoundError({ message: `Credential account with ID '${credentialAccountId}' not found` });
     }
     await checkAccountAccess(
-      permissionService,
+      pamPermissionService,
       credentialAccountId,
       account.folderId,
       projectId,
-      ResourcePermissionPamResourceActions.LaunchSessions,
+      PamResourcePermissionActions.LaunchSessions,
       ctx
     );
     const expectedType = getCredentialAccountType(discoveryType);
@@ -273,11 +278,11 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
           : authMethod === PamSshAuthMethod.Password || authMethod === "sql-login";
       if (sendsPassword) {
         await checkAccountAccess(
-          permissionService,
+          pamPermissionService,
           credentialAccountId,
           account.folderId,
           projectId,
-          ResourcePermissionPamResourceActions.ViewCredentials,
+          PamResourcePermissionActions.ViewCredentials,
           ctx
         );
       }
@@ -328,7 +333,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     });
   };
 
-  const list = async ({ projectId, search, ...ctx }: TListDiscoverySourcesDTO) => {
+  const list = async ({ projectId, search, actor: ctx }: TListDiscoverySourcesDTO) => {
     await verifyAdmin(projectId, ctx);
     const sources = await pamDiscoverySourceDAL.find(
       { projectId, ...(search ? { $search: { name: search } } : {}) },
@@ -337,7 +342,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     return withLastRunStatus(sources);
   };
 
-  const getById = async ({ projectId, sourceId, discoveryType, ...ctx }: TGetDiscoverySourceDTO) => {
+  const getById = async ({ projectId, sourceId, discoveryType, actor: ctx }: TGetDiscoverySourceDTO) => {
     await verifyAdmin(projectId, ctx);
     const source = await pamDiscoverySourceDAL.findById(sourceId);
     if (!source || source.projectId !== projectId || source.discoveryType !== discoveryType) {
@@ -356,7 +361,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     gatewayPoolId,
     schedule,
     configuration,
-    ...ctx
+    actor: ctx
   }: TCreateDiscoverySourceDTO) => {
     await verifyAdmin(projectId, ctx);
     getDiscoveryTypeConfig(discoveryType);
@@ -399,7 +404,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     gatewayPoolId,
     schedule,
     configuration,
-    ...ctx
+    actor: ctx
   }: TUpdateDiscoverySourceDTO) => {
     await verifyAdmin(projectId, ctx);
     const source = await pamDiscoverySourceDAL.findById(sourceId);
@@ -440,7 +445,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     }
   };
 
-  const deleteSource = async ({ projectId, sourceId, discoveryType, ...ctx }: TDeleteDiscoverySourceDTO) => {
+  const deleteSource = async ({ projectId, sourceId, discoveryType, actor: ctx }: TDeleteDiscoverySourceDTO) => {
     await verifyAdmin(projectId, ctx);
     const source = await pamDiscoverySourceDAL.findById(sourceId);
     if (!source || source.projectId !== projectId || source.discoveryType !== discoveryType) {
@@ -638,7 +643,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     }
   };
 
-  const triggerScan = async ({ projectId, sourceId, discoveryType, ...ctx }: TTriggerScanDTO) => {
+  const triggerScan = async ({ projectId, sourceId, discoveryType, actor: ctx }: TTriggerScanDTO) => {
     await verifyAdmin(projectId, ctx);
     const source = await pamDiscoverySourceDAL.findById(sourceId);
     if (!source || source.projectId !== projectId || source.discoveryType !== discoveryType) {
@@ -654,7 +659,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     return { message: "Scan started" };
   };
 
-  const listRuns = async ({ projectId, sourceId, offset = 0, limit = 20, ...ctx }: TListRunsDTO) => {
+  const listRuns = async ({ projectId, sourceId, offset = 0, limit = 20, actor: ctx }: TListRunsDTO) => {
     await verifyAdmin(projectId, ctx);
     const source = await pamDiscoverySourceDAL.findById(sourceId);
     if (!source || source.projectId !== projectId) {
@@ -667,7 +672,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     return runs;
   };
 
-  const listDiscovered = async ({ projectId, sourceId, search, offset, limit, ...ctx }: TListDiscoveredDTO) => {
+  const listDiscovered = async ({ projectId, sourceId, search, offset, limit, actor: ctx }: TListDiscoveredDTO) => {
     await verifyAdmin(projectId, ctx);
     const source = await pamDiscoverySourceDAL.findById(sourceId);
     if (!source || source.projectId !== projectId) {
@@ -702,7 +707,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     };
   };
 
-  const listStale = async ({ projectId, sourceId, search, offset, limit, ...ctx }: TListDiscoveredDTO) => {
+  const listStale = async ({ projectId, sourceId, search, offset, limit, actor: ctx }: TListDiscoveredDTO) => {
     await verifyAdmin(projectId, ctx);
     const source = await pamDiscoverySourceDAL.findById(sourceId);
     if (!source || source.projectId !== projectId) {
@@ -723,17 +728,17 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     };
   };
 
-  const listAccountDependencies = async ({ accountId, projectId, ...ctx }: TListAccountDependenciesDTO) => {
+  const listAccountDependencies = async ({ accountId, projectId, actor: ctx }: TListAccountDependenciesDTO) => {
     const account = await pamAccountDAL.findByIdWithDetails(accountId);
     if (!account || account.projectId !== projectId) {
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
     await checkAccountAccess(
-      permissionService,
+      pamPermissionService,
       accountId,
       account.folderId,
       projectId,
-      ResourcePermissionPamResourceActions.ReadAccounts,
+      PamResourcePermissionActions.ReadAccounts,
       ctx
     );
 
@@ -762,7 +767,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     folderId,
     accounts,
     auditLogInfo,
-    ...ctx
+    actor: ctx
   }: TImportDiscoveredDTO) => {
     await verifyAdmin(projectId, ctx);
     if (accounts.filter((a) => a.rotationAccountId).length > MAX_ROTATIONS_PER_IMPORT) {
@@ -787,14 +792,19 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       let names: { accountName: string; rotationAccountName: string | null; scheduledRotationEnabled: boolean };
       try {
         // the Rotation tab warns before rotating a password another account stores; an import can't ask, so it skips
-        const shared = await pamAccountRotationService.getSharedIdentity({ accountId, projectId, ...ctx });
+        const shared = await pamAccountRotationService.getSharedIdentity({ accountId, projectId, actor: ctx });
         if (shared.length) {
           return {
             rotationStatus: ROTATION_STATUS.Failed,
             rotationMessage: `Not rotated, because its password is also stored in ${shared.map((ref) => `'${ref.name}'`).join(", ")}`
           };
         }
-        names = await pamAccountRotationService.setRotationAccount({ accountId, rotationAccountId, projectId, ...ctx });
+        names = await pamAccountRotationService.setRotationAccount({
+          accountId,
+          rotationAccountId,
+          projectId,
+          actor: ctx
+        });
       } catch (err) {
         return {
           rotationStatus: ROTATION_STATUS.Failed,
@@ -808,7 +818,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       const { accountName, rotationAccountName, scheduledRotationEnabled } = names;
       await auditAfterImport({
         ...auditLogInfo,
-        orgId: ctx.actorOrgId,
+        orgId: ctx.org.id,
         projectId,
         event: {
           type: EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT,
@@ -817,7 +827,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       });
 
       const { rotationStatus, message } = await pamAccountRotationService
-        .rotateNow({ accountId, projectId, ...ctx })
+        .rotateNow({ accountId, projectId, actor: ctx })
         .catch((err: unknown) => ({
           rotationStatus: ROTATION_STATUS.Failed,
           message: toResultMessage(
@@ -828,7 +838,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
         }));
       await auditAfterImport({
         ...auditLogInfo,
-        orgId: ctx.actorOrgId,
+        orgId: ctx.org.id,
         projectId,
         event: {
           type: EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS,
@@ -881,7 +891,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
             credentials: details.credentials,
             // the scan already reached these accounts; skip the per-account connection test
             skipConnectionTest: true,
-            ...ctx
+            actor: ctx
           });
 
           await pamDiscoveredAccountDAL.updateById(discovered.id, { importedAccountId: account.id });

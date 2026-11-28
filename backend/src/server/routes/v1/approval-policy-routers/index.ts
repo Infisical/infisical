@@ -1,3 +1,4 @@
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { BaseCheckPolicyMatchResponseSchema } from "@app/services/approval-policy/approval-policy-schemas";
 import {
@@ -8,6 +9,14 @@ import {
   CreateCertRequestPolicySchema,
   UpdateCertRequestPolicySchema
 } from "@app/services/approval-policy/cert-request/cert-request-policy-schemas";
+import {
+  CertRevocationPolicyInputsSchema,
+  CertRevocationPolicySchema,
+  CertRevocationRequestGrantSchema,
+  CertRevocationRequestSchema,
+  CreateCertRevocationPolicySchema,
+  UpdateCertRevocationPolicySchema
+} from "@app/services/approval-policy/cert-revocation/cert-revocation-policy-schemas";
 import {
   CodeSigningPolicyInputsSchema,
   CodeSigningPolicySchema,
@@ -27,7 +36,6 @@ import {
   PamAccessRequestSchema,
   UpdatePamAccessPolicySchema
 } from "@app/services/approval-policy/pam-access/pam-access-policy-schemas";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerApprovalPolicyEndpoints } from "./approval-policy-endpoints";
 
@@ -66,6 +74,23 @@ export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Partial<
       // before its certificate request row exists, and once it exists the row already carries
       // its own approval request. Exposing creation would let a caller pick which policy gates
       // a certificate request they did not create, so it stays off.
+      allowRequestCreation: false
+    });
+  },
+  [ApprovalPolicyType.CertRevocation]: async (server: FastifyZodProvider) => {
+    registerApprovalPolicyEndpoints({
+      server,
+      policyType: ApprovalPolicyType.CertRevocation,
+      createPolicySchema: CreateCertRevocationPolicySchema,
+      updatePolicySchema: UpdateCertRevocationPolicySchema,
+      policyResponseSchema: CertRevocationPolicySchema,
+      requestResponseSchema: CertRevocationRequestSchema,
+      grantResponseSchema: CertRevocationRequestGrantSchema,
+      inputsSchema: CertRevocationPolicyInputsSchema,
+      checkPolicyMatchResponseSchema: BaseCheckPolicyMatchResponseSchema,
+      // Revocation requests are opened only by the revoke endpoints, atomically with the certificate they
+      // hold, so a caller can't pick which policy gates a revocation or open one for a certificate it can't
+      // revoke.
       allowRequestCreation: false
     });
   },

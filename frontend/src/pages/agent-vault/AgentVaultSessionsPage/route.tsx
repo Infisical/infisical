@@ -7,7 +7,7 @@ import { agentVaultSheetSearchParams } from "@app/hooks/useAgentVaultSheetState"
 import { AgentVaultSessionsPage } from "./AgentVaultSessionsPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/sessions"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/sessions"
 )({
   component: AgentVaultSessionsPage,
   validateSearch: zodValidator(

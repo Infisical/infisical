@@ -18,7 +18,6 @@ export type RateLimitConfiguration = {
 
 // Requests without an org, and the limits the license server does not set per plan, use these.
 // Read, write and secrets limits come from the org's plan (see inject-rate-limits.ts).
-// Mirrored in backend-go/internal/ee/services/ratelimit/types.go.
 export const DEFAULT_RATE_LIMITS: Readonly<RateLimitConfiguration> = Object.freeze({
   readLimit: 60,
   publicEndpointLimit: 30,
@@ -65,12 +64,28 @@ export const writeLimit: RateLimitOptions = {
   keyGenerator: (req) => req.realIp
 };
 
+// Each request to a bulk endpoint can carry up to 50 writes, so writeLimit would let one address
+// run thousands per minute.
+export const bulkWriteLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 20,
+  keyGenerator: (req) => req.realIp
+};
+
 // OCSP is per-handshake traffic, so readLimit is the wrong budget: a mutual TLS fleet behind one NAT
 // address would spend it on revocation checks alone and read the resulting tryLater as the responder
 // being down. The endpoint is unauthenticated, so the IP is all there is to key on, and
 // OCSP_MAX_CONCURRENT_SIGNATURES is what caps the expensive work; this only has to stop one address
 // flooding us with cache hits.
 export const ocspLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 600,
+  keyGenerator: (req) => req.realIp
+};
+
+export const microsoftAutoenrollmentLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   hook: "preValidation",
   max: 600,
@@ -90,7 +105,8 @@ export const externalInboundCallbackLimit: RateLimitOptions = {
 // Cloud providers fetch the OIDC issuer's discovery document and JWKS from egress addresses shared by all of
 // their tenants, so readLimit would let one org's token exchanges throttle another's. Responses are small and
 // cacheable; this only has to stop one address flooding us.
-export const oidcIssuerLimit: RateLimitOptions = {
+// Verifiers fetch JWKS and OIDC discovery documents anonymously, so they are limited per IP
+export const publicJwksLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   hook: "preValidation",
   max: 600,
@@ -161,6 +177,17 @@ export const agentVaultBootstrapLimit: RateLimitOptions = {
   }
 };
 
+// One report a minute per proxy, plus room for a backlog it resends after Infisical was unreachable.
+export const agentVaultUsageLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 120,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `agent-vault-usage:${actorId}` : req.realIp;
+  }
+};
+
 export const agentVaultHeartbeatLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   hook: "preValidation",
@@ -178,6 +205,18 @@ export const secretsLimit: RateLimitOptions = {
   hook: "preValidation",
   max: (req) => req.rateLimits.secretsLimit,
   keyGenerator: (req) => req.realIp
+};
+
+// The secrets budget, counted per caller: claude.ai and ChatGPT call the MCP endpoint from a few shared addresses, so
+// counting per IP would put all of their users in one bucket.
+export const mcpLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.secretsLimit,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `mcp:${actorId}` : req.realIp;
+  }
 };
 
 export const authRateLimit: RateLimitOptions = {

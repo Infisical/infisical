@@ -1,0 +1,44 @@
+/* eslint-disable class-methods-use-this */
+import { InstanceEntitlements, InstanceType, TInstanceEntitlementsRecord } from "../models/instance-entitlements";
+import { Plan, TPlanFeatures } from "../models/plan";
+import { SeatUsage } from "../models/seat-usage";
+import { TLicenseService } from "../services/license/service";
+import { testFeatures } from "./test-features";
+
+const noSeatsUsed = () => SeatUsage.create({ membersUsed: 0, identitiesUsed: 0 });
+
+// For tests of code that uses License: set a plan per org.
+export class FakeLicenseService implements TLicenseService {
+  instance: TInstanceEntitlementsRecord = {
+    instanceType: InstanceType.Cloud,
+    features: testFeatures(),
+    licenseId: null
+  };
+
+  plans = new Map<string, TPlanFeatures>();
+
+  defaultPlan: TPlanFeatures = testFeatures();
+
+  setPlan(orgId: string, plan: Partial<TPlanFeatures>) {
+    this.plans.set(orgId, { ...testFeatures(), ...plan });
+    return this;
+  }
+
+  getInstanceEntitlements = () => InstanceEntitlements.restore(this.instance);
+
+  refreshInstanceEntitlements = async () => undefined;
+
+  getPlan = async (orgId: string) => {
+    return Plan.restore(this.plans.get(orgId) ?? this.defaultPlan);
+  };
+
+  refreshPlan = async () => undefined;
+
+  getSeatUsage: TLicenseService["getSeatUsage"] = async () => noSeatsUsed();
+
+  getSeatCountScope = (orgId: string) => (this.instance.instanceType === InstanceType.Cloud ? orgId : null);
+
+  closeDeletedOrg = async () => ({ licensesClosed: 0, canceledSubscriptionIds: [], commitmentForfeited: false });
+
+  hasOfflineLicenseKey = () => false;
+}

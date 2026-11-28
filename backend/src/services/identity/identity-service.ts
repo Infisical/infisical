@@ -1,31 +1,34 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
-import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { AccessScope, OrgMembershipRole, TableName } from "@app/db/schemas";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import {
-  assertRoleSetBoundary,
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
-import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
+  Meter,
+  PlanFeature,
+  PlanLimit,
+  SeatUsage,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
+import {
+  OrgPermissionIdentityActions,
+  OrgPermissionSubjects,
+  TOrganizationsService,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
-import { AgentVaultIdentities, IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
-import { ActorType } from "../auth/auth-type";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TMembershipIdentityServiceFactory } from "../membership-identity/membership-identity-service";
-import { resolveMembershipRoleSlugs } from "../membership/membership-fns";
+import { resolveMembershipRoleSlugs, toBoundsTargets } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -51,11 +54,13 @@ type TIdentityServiceFactoryDep = {
   membershipIdentityService: Pick<TMembershipIdentityServiceFactory, "removeIdentityFromOrg">;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
+  orgPermissionService: TOrgPermissionService;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
+  organizationsService: TOrganizationsService;
+  instanceConfigService: TInstanceConfigService;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
@@ -70,83 +75,56 @@ export const identityServiceFactory = ({
   identityMetadataDAL,
   identityOrgMembershipDAL,
   identityProjectDAL,
-  permissionService,
+  orgPermissionService,
   licenseService,
+  usageMeteringService,
+  organizationsService,
+  instanceConfigService,
   keyStore,
   orgDAL,
   membershipIdentityDAL,
   membershipIdentityService,
   membershipRoleDAL,
-  usageMeteringService,
   alertService,
   identityAccessTokenService
 }: TIdentityServiceFactoryDep) => {
-  const createIdentity = async ({
-    name,
-    role,
-    hasDeleteProtection,
-    actor,
-    orgId,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    metadata
-  }: TCreateIdentityDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
+  const createIdentity = async ({ name, role, hasDeleteProtection, actor, orgId, metadata }: TCreateIdentityDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionIdentityActions.Create, subject: OrgPermissionSubjects.Identity });
 
-    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], orgId);
+    const [rolePermissionDetails] = await orgPermissionService.getOrgPermissionByRoles({ orgId, roles: [role] });
 
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
-      orgDAL.findById(actorOrgId)
-    );
     const isCustomRole = Boolean(rolePermissionDetails?.role);
     if (isCustomRole) {
       const plan = await licenseService.getPlan(orgId);
-      if (!plan?.rbac)
+      if (!plan?.has(PlanFeature.Rbac))
         throw new BadRequestError({
           message:
             "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
         });
     }
     if (role !== OrgMembershipRole.NoAccess) {
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.GrantPrivileges,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermissionDetails.permission
-      );
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to create identity",
-            shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.GrantPrivileges,
-            OrgPermissionSubjects.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+      permission.assertBounds({
+        actions: OrgPermissionIdentityActions.GrantPrivileges,
+        subject: OrgPermissionSubjects.Identity,
+        targets: [{ permission: rolePermissionDetails.permission }],
+        message: "Failed to create identity"
+      });
     }
 
-    const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(orgId));
+    // Before the transaction: a plan cache miss calls the License Server.
+    const plan = await licenseService.getPlan(orgId);
+
+    const seatCountScope = licenseService.getSeatCountScope(orgId);
 
     const identity = await identityDAL.transaction(async (tx) => {
-      // Acquire advisory lock to prevent race conditions when checking identity limits
-      // This ensures that concurrent requests cannot bypass the identity limit check
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateIdentity(orgId)]);
-
-      // Count seats inside the transaction, after the lock, so a concurrent create can't slip past
-      if (identityLimit) {
-        const { identitiesUsed } = await licenseService.getOrgSeatUsage(orgId, tx);
-        if (identitiesUsed >= identityLimit) {
+      // Counted under the seat lock on this transaction, so concurrent creates can't pass the limit together.
+      if (plan.isLimited(PlanLimit.Identities)) {
+        const counts = await organizationsService
+          .within(sealKnexTransaction(tx))
+          .lockAndCountBillableOrgActors(seatCountScope);
+        if (!counts) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+        if (plan.exceeds(PlanLimit.Identities, SeatUsage.fromBillableActors(counts).identitiesUsed)) {
           throw new BadRequestError({
             message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
           });
@@ -195,8 +173,8 @@ export const identityServiceFactory = ({
         metadata: insertedMetadata
       };
     });
-    await licenseService.updateSubscriptionOrgMemberCount(orgId);
-    usageMeteringService.emit(orgId, IdentitiesMeter.key);
+    await usageMeteringService.syncSeats(orgId);
+    usageMeteringService.emit(orgId, Meter.Identities);
 
     return identity;
   };
@@ -207,40 +185,30 @@ export const identityServiceFactory = ({
     hasDeleteProtection,
     name,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     metadata,
     isActorSuperAdmin
   }: TUpdateIdentityDTO) => {
     const identityOrgMembership = await orgDAL.findEffectiveOrgMembership({
       actorType: ActorType.IDENTITY,
       actorId: id,
-      orgId: actorOrgId
+      orgId: actor.org.id
     });
     if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: identityOrgMembership.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId: identityOrgMembership.scopeOrgId });
+    permission.assert({ action: OrgPermissionIdentityActions.Edit, subject: OrgPermissionSubjects.Identity });
 
-    let customRole: TRoles | undefined;
+    let customRole: { id: string } | undefined;
     if (role) {
-      const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], actorOrgId);
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
-        orgDAL.findById(actorOrgId)
-      );
+      const [rolePermissionDetails] = await orgPermissionService.getOrgPermissionByRoles({
+        orgId: actor.org.id,
+        roles: [role]
+      });
 
       const isCustomRole = Boolean(rolePermissionDetails?.role);
       if (isCustomRole) {
-        const plan = await licenseService.getPlan(actorOrgId);
-        if (!plan?.rbac)
+        const plan = await licenseService.getPlan(actor.org.id);
+        if (!plan?.has(PlanFeature.Rbac))
           throw new BadRequestError({
             message:
               "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
@@ -249,41 +217,30 @@ export const identityServiceFactory = ({
       const targetRoles = resolveMembershipRoleSlugs(
         await membershipRoleDAL.findRolesByMembershipIds([identityOrgMembership.id])
       );
-      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, actorOrgId, {
+      const targetPermissions = await orgPermissionService.getOrgPermissionByRoles({
+        orgId: actor.org.id,
+        roles: targetRoles,
         ignoreUnresolvedRoles: true
       });
 
-      assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem,
-        opActions: OrgPermissionIdentityActions.GrantPrivileges,
-        opSubject: OrgPermissionSubjects.Identity,
-        actorPermission: permission,
-        targetPermissions,
-        baseMessage: "Failed to change the roles of a more privileged identity"
+      permission.assertBounds({
+        actions: OrgPermissionIdentityActions.GrantPrivileges,
+        subject: OrgPermissionSubjects.Identity,
+        targets: toBoundsTargets(targetPermissions),
+        message: "Failed to change the roles of a more privileged identity"
       });
 
-      const appliedRolePermissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.GrantPrivileges,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermissionDetails?.permission
-      );
-      if (!appliedRolePermissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to update identity",
-            shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.GrantPrivileges,
-            OrgPermissionSubjects.Identity
-          ),
-          details: { missingPermissions: appliedRolePermissionBoundary.missingPermissions }
-        });
+      permission.assertBounds({
+        actions: OrgPermissionIdentityActions.GrantPrivileges,
+        subject: OrgPermissionSubjects.Identity,
+        targets: [{ permission: rolePermissionDetails?.permission }],
+        message: "Failed to update identity"
+      });
 
       if (isCustomRole) customRole = rolePermissionDetails?.role;
     }
 
-    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigService, id, isActorSuperAdmin);
 
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
 
@@ -297,7 +254,7 @@ export const identityServiceFactory = ({
 
     const identity = await identityDAL.transaction(async (tx) => {
       const newIdentity =
-        identityDetails.orgId === actorOrgId && (name || hasDeleteProtection)
+        identityDetails.orgId === actor.org.id && (name || hasDeleteProtection)
           ? await identityDAL.updateById(id, { name, hasDeleteProtection }, tx)
           : identityDetails;
 
@@ -318,7 +275,7 @@ export const identityServiceFactory = ({
         value: string;
       }> = [];
 
-      if (metadata && identityDetails.orgId === actorOrgId) {
+      if (metadata && identityDetails.orgId === actor.org.id) {
         await identityMetadataDAL.delete({ orgId: newIdentity.orgId, identityId: id }, tx);
 
         if (metadata.length) {
@@ -342,24 +299,17 @@ export const identityServiceFactory = ({
     return { ...identity, orgId: identityOrgMembership.scopeOrgId };
   };
 
-  const getIdentityById = async ({ id, actor, actorId, actorOrgId, actorAuthMethod }: TGetIdentityByIdDTO) => {
+  const getIdentityById = async ({ id, actor }: TGetIdentityByIdDTO) => {
     const doc = await identityOrgMembershipDAL.find({
       [`${TableName.Membership}.actorIdentityId` as "actorIdentityId"]: id,
       scope: AccessScope.Organization,
-      scopeOrgId: actorOrgId
+      scopeOrgId: actor.org.id
     });
     const identity = doc[0];
     if (!identity) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: identity.orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId: identity.orgId });
+    permission.assert({ action: OrgPermissionIdentityActions.Read, subject: OrgPermissionSubjects.Identity });
 
     const activeLockoutAuthMethods = await getIdentityActiveLockoutAuthMethods(id, keyStore);
 
@@ -369,58 +319,41 @@ export const identityServiceFactory = ({
     };
   };
 
-  const deleteIdentity = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    id,
-    isActorSuperAdmin
-  }: TDeleteIdentityDTO) => {
+  const deleteIdentity = async ({ actor, id, isActorSuperAdmin }: TDeleteIdentityDTO) => {
     const identityOrgMembership = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
-        orgId: actorOrgId
+        orgId: actor.org.id
       },
       identityId: id
     });
     if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: identityOrgMembership.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId: identityOrgMembership.scopeOrgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
+    permission.assert({ action: OrgPermissionIdentityActions.Delete, subject: OrgPermissionSubjects.Identity });
 
     const targetRoles = resolveMembershipRoleSlugs(identityOrgMembership.roles);
-    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, actorOrgId, {
+    const targetPermissions = await orgPermissionService.getOrgPermissionByRoles({
+      orgId: actor.org.id,
+      roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actorOrgId), () =>
-      orgDAL.findById(actorOrgId)
-    );
 
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem,
-      opActions: OrgPermissionIdentityActions.Delete,
-      opSubject: OrgPermissionSubjects.Identity,
-      actorPermission: permission,
-      targetPermissions,
-      baseMessage: "Failed to remove a more privileged identity from the organization"
+    permission.assertBounds({
+      actions: OrgPermissionIdentityActions.Delete,
+      subject: OrgPermissionSubjects.Identity,
+      targets: toBoundsTargets(targetPermissions),
+      message: "Failed to remove a more privileged identity from the organization"
     });
 
-    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigService, id, isActorSuperAdmin);
 
     if (identityOrgMembership.identity.projectId) {
       throw new BadRequestError({ message: `Identity is managed by project` });
     }
 
-    if (identityOrgMembership.identity.orgId === actorOrgId) {
+    if (identityOrgMembership.identity.orgId === actor.org.id) {
       if (identityOrgMembership.identity.hasDeleteProtection)
         throw new BadRequestError({ message: "Identity has delete protection" });
 
@@ -437,47 +370,35 @@ export const identityServiceFactory = ({
         return identityDAL.deleteById(id, tx);
       });
       await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: id });
-      await licenseService.updateSubscriptionOrgMemberCount(identityOrgMembership.scopeOrgId);
-      usageMeteringService.emit(identityOrgMembership.scopeOrgId, IdentitiesMeter.key);
-      usageMeteringService.emit(identityOrgMembership.scopeOrgId, SecretIdentities.key);
-      usageMeteringService.emit(identityOrgMembership.scopeOrgId, PamIdentities.key);
-      usageMeteringService.emit(identityOrgMembership.scopeOrgId, AgentVaultIdentities.key);
+      await usageMeteringService.syncSeats(identityOrgMembership.scopeOrgId);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.Identities);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities);
       return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
     }
 
-    await membershipIdentityService.removeIdentityFromOrg({ identityId: id, orgId: actorOrgId });
+    await membershipIdentityService.removeIdentityFromOrg({ identityId: id, orgId: actor.org.id });
 
     const deletedIdentity = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
-    usageMeteringService.emit(identityOrgMembership.scopeOrgId, IdentitiesMeter.key);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.Identities);
     // Deleting the identity cascades its project + group memberships, so the secret-manager and PAM
     // identity meters change too.
-    usageMeteringService.emit(identityOrgMembership.scopeOrgId, SecretIdentities.key);
-    usageMeteringService.emit(identityOrgMembership.scopeOrgId, PamIdentities.key);
-    usageMeteringService.emit(identityOrgMembership.scopeOrgId, AgentVaultIdentities.key);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities);
     return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
   };
 
   const listOrgIdentities = async ({
     orgId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     limit,
     offset,
     orderBy,
     orderDirection,
     search
   }: TListOrgIdentitiesByOrgIdDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionIdentityActions.Read, subject: OrgPermissionSubjects.Identity });
 
     const identityMemberships = await identityOrgMembershipDAL.find({
       [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
@@ -500,24 +421,14 @@ export const identityServiceFactory = ({
   const searchOrgIdentities = async ({
     orgId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     limit,
     offset,
     orderBy,
     orderDirection,
     searchFilter = {}
   }: TSearchOrgIdentitiesByOrgIdDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId: actor.org.id });
+    permission.assert({ action: OrgPermissionIdentityActions.Read, subject: OrgPermissionSubjects.Identity });
 
     const { totalCount, docs } = await identityOrgMembershipDAL.searchIdentities({
       orgId,
@@ -544,29 +455,29 @@ export const identityServiceFactory = ({
   const listProjectIdentitiesByIdentityId = async ({
     identityId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    limit,
+    offset,
+    search,
+    orderDirection,
+    excludeProjectType
   }: TListProjectIdentitiesByIdentityIdDTO) => {
     const identityOrgMembership = await orgDAL.findEffectiveOrgMembership({
       actorType: ActorType.IDENTITY,
       actorId: identityId,
-      orgId: actorOrgId
+      orgId: actor.org.id
     });
     if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${identityId}` });
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: identityOrgMembership.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId: identityOrgMembership.scopeOrgId });
+    permission.assert({ action: OrgPermissionIdentityActions.Read, subject: OrgPermissionSubjects.Identity });
 
-    const identityMemberships = await identityProjectDAL.findByIdentityId(identityId, actorOrgId);
-    return identityMemberships;
+    return identityProjectDAL.findByIdentityId(identityId, actor.org.id, {
+      limit,
+      offset,
+      search,
+      orderDirection,
+      excludeProjectType
+    });
   };
 
   return {

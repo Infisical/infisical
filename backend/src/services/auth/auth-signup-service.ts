@@ -1,6 +1,8 @@
 import { AccessScope, OrgMembershipStatus, TSignupOnboardingResponsesUpdate } from "@app/db/schemas";
+import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { findOrgIdByVerifiedDomain } from "@app/ee/services/email-domain/email-domain-fns";
+import { AuthMethod, AuthTokenType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
@@ -15,6 +17,7 @@ import {
   emailDispatchRequestCounter
 } from "@app/lib/telemetry/metrics";
 import { isAliasedEmail, isDisposableEmail, normalizeEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
+import { createBreachedPasswordError, isPasswordBreached } from "@app/lib/validator/breached-password";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
@@ -28,7 +31,7 @@ import { extractBearerToken, resolveInvitingOrgId } from "./auth-fns";
 import { TAuthLoginFactory } from "./auth-login-service";
 import { TSignupOnboardingResponseDALFactory } from "./auth-signup-onboarding-dal";
 import { CompleteAccountType, TCompleteAccountDTO, TRecordSignupOnboardingDTO } from "./auth-signup-type";
-import { AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType } from "./auth-type";
+import { AuthModeSignUpTokenPayload } from "./auth-type";
 import { verifyPublicEmailCaptcha } from "./captcha-fns";
 import { EmailDispatchPurpose, TEmailDispatchGuardFactory } from "./email-dispatch-guard";
 
@@ -44,6 +47,7 @@ type TAuthSignupDep = {
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   signupOnboardingResponseDAL: Pick<TSignupOnboardingResponseDALFactory, "upsert">;
   emailDispatchGuard: TEmailDispatchGuardFactory;
+  usageMeteringService: TUsageMeteringService;
 };
 
 const DUMMY_USER_ID = "00000000-0000-0000-0000-000000000000";
@@ -60,6 +64,7 @@ const signupTrafficAttributes = (email: string) => ({
 
 export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
 export const authSignupServiceFactory = ({
+  usageMeteringService,
   authDAL,
   userDAL,
   userAliasDAL,
@@ -97,7 +102,7 @@ export const authSignupServiceFactory = ({
       throw err;
     }
 
-    const isEmailInvalid = await isDisposableEmail(sanitizedEmail);
+    const isEmailInvalid = isDisposableEmail(sanitizedEmail);
     if (isEmailInvalid) {
       throw new BadRequestError({ message: "Disposable email addresses cannot be used to sign up" });
     }
@@ -271,11 +276,18 @@ export const authSignupServiceFactory = ({
       // Determine rejection before hashing, but don't throw yet
       const shouldReject = !user || user.isAccepted || Boolean(decodedToken?.aliasId);
 
-      // Always hash the password so bcrypt cost is incurred regardless of validity
-      const hashedPassword = await crypto.hashing().createHash(dto.password, appCfg.SALT_ROUNDS);
+      // Always hash and run the breach lookup so their cost is incurred regardless of validity
+      const [hashedPassword, isBreached] = await Promise.all([
+        crypto.hashing().createHash(dto.password, appCfg.SALT_ROUNDS),
+        isPasswordBreached(dto.password)
+      ]);
 
       if (shouldReject) {
         throw new BadRequestError({ message: "Invalid token" });
+      }
+
+      if (isBreached) {
+        throw createBreachedPasswordError();
       }
 
       const updatedUser = await authDAL.transaction(async (tx) => {
@@ -317,6 +329,11 @@ export const authSignupServiceFactory = ({
       });
       user = updatedUser;
       authMethod = AuthMethod.EMAIL;
+      // createOrganization ran inside the transaction above, so the seat sync and usage event wait for its commit.
+      if (organizationId) {
+        await usageMeteringService.syncSeats(organizationId);
+        usageMeteringService.emit(organizationId, Meter.PamIdentities);
+      }
     } else {
       // Alias verification
       const userAlias =

@@ -1,6 +1,8 @@
 /* eslint-disable no-case-declarations */
 import { AxiosError, AxiosResponse } from "axios";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
@@ -11,10 +13,15 @@ import {
   getAppConnectionMethodName
 } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
+import {
+  getAzureManagedIdentityAccessToken,
+  getCachedAzureManagedIdentityAccessToken,
+  isAzureAccessTokenValid
+} from "../shared/azure/azure-managed-identity-fns";
 import { AzureDevOpsConnectionMethod } from "./azure-devops-enums";
 import {
   ExchangeCodeAzureResponse,
@@ -23,16 +30,19 @@ import {
   TAzureDevOpsConnectionCredentials
 } from "./azure-devops-types";
 
-export const getAzureDevopsConnectionListItem = () => {
-  const { INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID } = getConfig();
-
+export const getAzureDevopsConnectionListItem = ({
+  INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID
+}: {
+  INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID?: string;
+}) => {
   return {
     name: "Azure DevOps" as const,
     app: AppConnection.AzureDevOps as const,
     methods: Object.values(AzureDevOpsConnectionMethod) as [
       AzureDevOpsConnectionMethod.OAuth,
       AzureDevOpsConnectionMethod.AccessToken,
-      AzureDevOpsConnectionMethod.ClientSecret
+      AzureDevOpsConnectionMethod.ClientSecret,
+      AzureDevOpsConnectionMethod.ManagedIdentity
     ],
     oauthClientId: INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID
   };
@@ -41,7 +51,9 @@ export const getAzureDevopsConnectionListItem = () => {
 export const getAzureDevopsConnection = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsDataKeyService: TKmsDataKeyService,
+  instanceConfigService: TInstanceConfigService,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
@@ -60,8 +72,9 @@ export const getAzureDevopsConnection = async (
   // Handle different connection methods
   switch (appConnection.method) {
     case AzureDevOpsConnectionMethod.OAuth:
-      const appCfg = getConfig();
-      if (!appCfg.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID || !appCfg.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET) {
+      const { INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID, INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET } =
+        await instanceConfigService.getOverridableEnv();
+      if (!INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID || !INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET) {
         throw new BadRequestError({
           message: `Azure environment variables have not been configured`
         });
@@ -69,7 +82,7 @@ export const getAzureDevopsConnection = async (
 
       const oauthCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
-        kmsService,
+        kmsDataKeyService,
         encryptedCredentials: appConnection.encryptedCredentials,
         projectId: appConnection.projectId
       })) as TAzureDevOpsConnectionCredentials;
@@ -85,8 +98,8 @@ export const getAzureDevopsConnection = async (
         new URLSearchParams({
           grant_type: "refresh_token",
           scope: `https://app.vssps.visualstudio.com/.default`,
-          client_id: appCfg.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID,
-          client_secret: appCfg.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET,
+          client_id: INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID,
+          client_secret: INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET,
           refresh_token: refreshToken
         })
       );
@@ -101,7 +114,7 @@ export const getAzureDevopsConnection = async (
       const encryptedOAuthCredentials = await encryptAppConnectionCredentials({
         credentials: updatedOAuthCredentials,
         orgId: appConnection.orgId,
-        kmsService,
+        kmsDataKeyService,
         projectId: appConnection.projectId
       });
 
@@ -112,7 +125,7 @@ export const getAzureDevopsConnection = async (
     case AzureDevOpsConnectionMethod.AccessToken:
       const accessTokenCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
-        kmsService,
+        kmsDataKeyService,
         encryptedCredentials: appConnection.encryptedCredentials,
         projectId: appConnection.projectId
       })) as { accessToken: string };
@@ -126,15 +139,14 @@ export const getAzureDevopsConnection = async (
     case AzureDevOpsConnectionMethod.ClientSecret:
       const clientSecretCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
-        kmsService,
+        kmsDataKeyService,
         encryptedCredentials: appConnection.encryptedCredentials,
         projectId: appConnection.projectId
       })) as TAzureDevOpsConnectionClientSecretCredentials;
 
       const { accessToken, expiresAt, clientId, clientSecret, tenantId: clientTenantId } = clientSecretCredentials;
 
-      // Check if token is still valid (with 5 minute buffer)
-      if (accessToken && expiresAt && expiresAt > currentTime + 300000) {
+      if (isAzureAccessTokenValid({ accessToken, expiresAt })) {
         return accessToken;
       }
 
@@ -157,7 +169,7 @@ export const getAzureDevopsConnection = async (
       const encryptedClientCredentials = await encryptAppConnectionCredentials({
         credentials: updatedClientCredentials,
         orgId: appConnection.orgId,
-        kmsService,
+        kmsDataKeyService,
         projectId: appConnection.projectId
       });
 
@@ -165,16 +177,27 @@ export const getAzureDevopsConnection = async (
 
       return clientData.access_token;
 
+    case AzureDevOpsConnectionMethod.ManagedIdentity:
+      return getCachedAzureManagedIdentityAccessToken(
+        { appConnection, scope: "https://app.vssps.visualstudio.com/.default" },
+        { appConnectionDAL, kmsDataKeyService, oidcIssuerService }
+      );
+
     default:
       throw new BadRequestError({ message: `Unsupported connection method` });
   }
 };
 
-export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDevOpsConnectionConfig) => {
-  const { credentials: inputCredentials, method } = config;
+export const validateAzureDevOpsConnectionCredentials = async (
+  config: TAzureDevOpsConnectionConfig,
+  instanceConfigService: TInstanceConfigService,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
+) => {
+  const { credentials: inputCredentials, method, orgId, projectId, connection } = config;
 
-  const { INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID, INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET, SITE_URL } =
-    getConfig();
+  const { INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID, INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET } =
+    await instanceConfigService.getOverridableEnv();
+  const { SITE_URL } = getConfig();
 
   switch (method) {
     case AzureDevOpsConnectionMethod.OAuth:
@@ -374,6 +397,60 @@ export const validateAzureDevOpsConnectionCredentials = async (config: TAzureDev
             message: "Failed to validate Azure DevOps client credentials"
           });
         }
+      }
+
+    case AzureDevOpsConnectionMethod.ManagedIdentity:
+      const {
+        tenantId: managedIdentityTenantId,
+        clientId: managedIdentityClientId,
+        orgName: managedIdentityOrgName
+      } = inputCredentials as { tenantId: string; clientId: string; orgName: string };
+
+      // A new connection has no ID yet, so Azure cannot trust its subject. Verifying it after create runs the
+      // exchange once the customer has added the federated credential.
+      if (!connection) {
+        return {
+          tenantId: managedIdentityTenantId,
+          clientId: managedIdentityClientId,
+          orgName: managedIdentityOrgName
+        };
+      }
+
+      try {
+        const managedIdentityToken = await getAzureManagedIdentityAccessToken(
+          {
+            appConnection: { ...connection, orgId, projectId },
+            tenantId: managedIdentityTenantId,
+            clientId: managedIdentityClientId,
+            scope: "https://app.vssps.visualstudio.com/.default"
+          },
+          oidcIssuerService
+        );
+
+        await request.get(
+          `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${encodeURIComponent(managedIdentityOrgName)}/_apis/projects?api-version=7.2-preview.2&$top=1`,
+          {
+            headers: {
+              Authorization: `Bearer ${managedIdentityToken.accessToken}`
+            }
+          }
+        );
+
+        return {
+          tenantId: managedIdentityTenantId,
+          clientId: managedIdentityClientId,
+          orgName: managedIdentityOrgName,
+          ...managedIdentityToken
+        };
+      } catch (e: unknown) {
+        if (e instanceof AxiosError) {
+          throw new BadRequestError({
+            message: `Failed to authenticate with Azure DevOps using the managed identity: ${
+              (e?.response?.data as { error_description?: string })?.error_description || e.message
+            }`
+          });
+        }
+        throw e;
       }
 
     default:

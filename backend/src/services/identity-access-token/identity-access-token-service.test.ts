@@ -3,10 +3,10 @@ import jwt from "jsonwebtoken";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { IdentityAuthMethod, TableName } from "@app/db/schemas";
+import { AuthTokenType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto";
 import { IPType, TIp } from "@app/lib/ip";
 
-import { AuthTokenType } from "../auth/auth-type";
 import {
   computeCertificateThumbprint,
   signIdentityAccessToken,
@@ -185,7 +185,7 @@ describe("identityAccessTokenServiceFactory", () => {
   beforeAll(async () => {
     previousFipsEnabled = process.env.FIPS_ENABLED;
     process.env.FIPS_ENABLED = "false";
-    await crypto.initialize({} as never, {} as never, {} as never);
+    await crypto.initialize(async () => null);
   });
 
   afterAll(() => {
@@ -1198,7 +1198,7 @@ describe("certificate-bound access tokens", () => {
   beforeAll(async () => {
     previousFipsEnabled = process.env.FIPS_ENABLED;
     process.env.FIPS_ENABLED = "false";
-    await crypto.initialize({} as never, {} as never, {} as never);
+    await crypto.initialize(async () => null);
     x509.cryptoProvider.set(globalThis.crypto);
     boundPem = await makeCertificatePem("bound-client");
     otherPem = await makeCertificatePem("other-client");

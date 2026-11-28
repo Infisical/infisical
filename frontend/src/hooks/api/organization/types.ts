@@ -26,7 +26,7 @@ export type Organization = {
   slug: string;
   defaultMembershipRole: string;
   enforceMfa: boolean;
-  selectedMfaMethod?: MfaMethod;
+  allowedMfaMethods?: MfaMethod[] | null;
   ssoMfaTrust: SsoMfaTrust;
   shouldUseNewPrivilegeSystem: boolean;
   allowSecretSharingOutsideOrganization?: boolean;
@@ -47,22 +47,32 @@ export type Organization = {
   rootOrgId: string | null;
   secretShareBrandConfig?: TSecretShareBrandConfig;
   pamProjectId: string | null;
-  agentVaultProjectId: string | null;
+};
+
+export type TOrgSsoSettings = {
+  orgId: string;
+  authEnforced: boolean;
+  googleSsoAuthEnforced: boolean;
+  bypassOrgAuthEnabled: boolean;
+  ssoMfaTrust: SsoMfaTrust;
+};
+
+export type UpdateOrgSsoSettingsDTO = {
+  authEnforced?: boolean;
+  googleSsoAuthEnforced?: boolean;
+  bypassOrgAuthEnabled?: boolean;
+  ssoMfaTrust?: SsoMfaTrust;
 };
 
 export type UpdateOrgDTO = {
   orgId: string;
   name?: string;
-  authEnforced?: boolean;
-  googleSsoAuthEnforced?: boolean;
   scimEnabled?: boolean;
   slug?: string;
   defaultMembershipRoleSlug?: string;
   enforceMfa?: boolean;
-  selectedMfaMethod?: MfaMethod;
-  ssoMfaTrust?: SsoMfaTrust;
+  allowedMfaMethods?: MfaMethod[];
   allowSecretSharingOutsideOrganization?: boolean;
-  bypassOrgAuthEnabled?: boolean;
   userTokenExpiration?: string;
   secretsProductEnabled?: boolean;
   pkiProductEnabled?: boolean;
@@ -130,8 +140,8 @@ export type TOrgProductStats = {
     foldersCount: number;
   };
   agentVault: {
-    accessBundlesCount: number;
     servicesCount: number;
-    proxiesCount: number;
+    skillsCount: number;
+    projectsCount: number;
   };
 };

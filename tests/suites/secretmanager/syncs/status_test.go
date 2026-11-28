@@ -115,7 +115,7 @@ func TestSecretSync_Status(t *testing.T) {
 		proj, conn, _ := setup(t)
 		s := newSync(t, proj, conn, repoScope("acme", "app"))
 		admin := proj.Tenant().Admin.API
-		res, err := admin.DeleteProjectWithResponse(t.Context(), proj.ID)
+		res, err := admin.DeleteProjectWithResponse(t.Context(), proj.ID, nil)
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "deleting the project returned %s", apierr.Body(res.Body))
 

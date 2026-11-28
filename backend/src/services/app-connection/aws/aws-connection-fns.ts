@@ -8,8 +8,8 @@ import {
 import { AxiosError } from "axios";
 
 import { ProjectType } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
-import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -60,9 +60,11 @@ const getStsSigningRegion = (stsEndpoint?: string) => {
   }
 };
 
-export const getAwsConnectionListItem = () => {
-  const { INF_APP_CONNECTION_AWS_ACCESS_KEY_ID } = getConfig();
-
+export const getAwsConnectionListItem = ({
+  INF_APP_CONNECTION_AWS_ACCESS_KEY_ID
+}: {
+  INF_APP_CONNECTION_AWS_ACCESS_KEY_ID?: string;
+}) => {
   return {
     name: "AWS" as const,
     app: AppConnection.AWS as const,
@@ -73,11 +75,10 @@ export const getAwsConnectionListItem = () => {
 
 export const getAwsConnectionConfig = async (
   appConnection: TAwsConnectionConfig,
+  instanceConfigService: TInstanceConfigService,
   region = AWSRegion.US_EAST_1,
   { stsRequestHandler }: { stsRequestHandler?: STSClientConfig["requestHandler"] } = {}
 ) => {
-  const appCfg = getConfig();
-
   let accessKeyId: string;
   let secretAccessKey: string;
   let sessionToken: undefined | string;
@@ -86,6 +87,8 @@ export const getAwsConnectionConfig = async (
 
   switch (method) {
     case AwsConnectionMethod.AssumeRole: {
+      const { INF_APP_CONNECTION_AWS_ACCESS_KEY_ID, INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY } =
+        await instanceConfigService.getOverridableEnv();
       const stsRegion = getStsSigningRegion(credentials.stsEndpoint);
 
       const client = new STSClient({
@@ -99,10 +102,10 @@ export const getAwsConnectionConfig = async (
               useFipsEndpoint: crypto.isFipsModeEnabled()
             }),
         credentials:
-          appCfg.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID && appCfg.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
+          INF_APP_CONNECTION_AWS_ACCESS_KEY_ID && INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
             ? {
-                accessKeyId: appCfg.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID,
-                secretAccessKey: appCfg.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
+                accessKeyId: INF_APP_CONNECTION_AWS_ACCESS_KEY_ID,
+                secretAccessKey: INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
               }
             : undefined, // if hosting on AWS
         ...(stsRequestHandler ? { requestHandler: stsRequestHandler } : {})
@@ -111,14 +114,11 @@ export const getAwsConnectionConfig = async (
       // v1 (legacy) always used orgId; v2+ uses projectId when available, orgId otherwise.
       // Certificate Manager connections try orgId first (the recommended ExternalID),
       // then fall back to projectId for backwards compatibility with existing trust policies.
-      // Agent Vault's project is implicit and never shown to users, so its connections use orgId.
       const externalIds: string[] = [];
       if ((version ?? 1) >= 2) {
         if (projectType === ProjectType.CertificateManager) {
           externalIds.push(orgId);
           if (projectId && projectId !== orgId) externalIds.push(projectId);
-        } else if (projectType === ProjectType.AgentVault) {
-          externalIds.push(orgId);
         } else {
           externalIds.push(projectId ?? orgId);
         }
@@ -190,7 +190,10 @@ export const buildAwsConnectionConfig = (
     projectType: connection.projectType
   }) as TAwsConnectionConfig;
 
-export const validateAwsConnectionCredentials = async (appConnection: TAwsConnectionConfig) => {
+export const validateAwsConnectionCredentials = async (
+  appConnection: TAwsConnectionConfig,
+  instanceConfigService: TInstanceConfigService
+) => {
   const stsEndpoint =
     appConnection.method === AwsConnectionMethod.AssumeRole ? appConnection.credentials.stsEndpoint : undefined;
   const stsRegion = getStsSigningRegion(stsEndpoint);
@@ -202,7 +205,7 @@ export const validateAwsConnectionCredentials = async (appConnection: TAwsConnec
   }
 
   try {
-    const awsConfig = await getAwsConnectionConfig(appConnection);
+    const awsConfig = await getAwsConnectionConfig(appConnection, instanceConfigService);
 
     const sts = new STSClient({
       region: stsRegion.region ?? awsConfig.region,
@@ -242,9 +245,12 @@ export const validateAwsConnectionCredentials = async (appConnection: TAwsConnec
   return appConnection.credentials;
 };
 
-export const getAwsAccountId = async (appConnection: TAwsConnectionConfig): Promise<string | null> => {
+export const getAwsAccountId = async (
+  appConnection: TAwsConnectionConfig,
+  instanceConfigService: TInstanceConfigService
+): Promise<string | null> => {
   try {
-    const awsConfig = await getAwsConnectionConfig(appConnection);
+    const awsConfig = await getAwsConnectionConfig(appConnection, instanceConfigService);
 
     const stsEndpoint =
       appConnection.method === AwsConnectionMethod.AssumeRole ? appConnection.credentials.stsEndpoint : undefined;

@@ -1,16 +1,16 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../../../../services/app-connection/app-connection-enums";
-import { TLicenseServiceFactory } from "../../license/license-service";
 import { listOCICompartments, listOCIVaultKeys, listOCIVaults } from "./oci-connection-fns";
 import { TOCIConnection } from "./oci-connection-types";
 
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TOCIConnection>;
 
 type TListOCIVaultsDTO = {
@@ -25,21 +25,18 @@ type TListOCIVaultKeysDTO = {
 };
 
 // Enterprise check
-export const checkPlan = async (licenseService: Pick<TLicenseServiceFactory, "getPlan">, orgId: string) => {
+export const checkPlan = async (licenseService: TLicenseService, orgId: string) => {
   const plan = await licenseService.getPlan(orgId);
-  if (!plan.enterpriseAppConnections)
+  if (!plan.has(PlanFeature.EnterpriseAppConnections))
     throw new BadRequestError({
       message:
         "Failed to use app connection due to plan restriction. Upgrade plan to access enterprise app connections."
     });
 };
 
-export const ociConnectionService = (
-  getAppConnection: TGetAppConnectionFunc,
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">
-) => {
-  const listCompartments = async (connectionId: string, actor: OrgServiceActor) => {
-    await checkPlan(licenseService, actor.orgId);
+export const ociConnectionService = (getAppConnection: TGetAppConnectionFunc, licenseService: TLicenseService) => {
+  const listCompartments = async (connectionId: string, actor: TActorContext) => {
+    await checkPlan(licenseService, actor.org.id);
 
     const appConnection = await getAppConnection(AppConnection.OCI, connectionId, actor);
 
@@ -52,8 +49,8 @@ export const ociConnectionService = (
     }
   };
 
-  const listVaults = async ({ connectionId, compartmentOcid }: TListOCIVaultsDTO, actor: OrgServiceActor) => {
-    await checkPlan(licenseService, actor.orgId);
+  const listVaults = async ({ connectionId, compartmentOcid }: TListOCIVaultsDTO, actor: TActorContext) => {
+    await checkPlan(licenseService, actor.org.id);
 
     const appConnection = await getAppConnection(AppConnection.OCI, connectionId, actor);
 
@@ -68,9 +65,9 @@ export const ociConnectionService = (
 
   const listVaultKeys = async (
     { connectionId, compartmentOcid, vaultOcid }: TListOCIVaultKeysDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    await checkPlan(licenseService, actor.orgId);
+    await checkPlan(licenseService, actor.org.id);
 
     const appConnection = await getAppConnection(AppConnection.OCI, connectionId, actor);
 

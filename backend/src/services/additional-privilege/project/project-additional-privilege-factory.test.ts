@@ -1,16 +1,17 @@
-import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
+import { MongoAbility, RawRuleOf } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { ActorPermission, Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
-import { conditionsMatcher } from "@app/lib/casl";
+} from "@app/domains/platform/projects/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { PermissionBoundaryError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { newProjectAdditionalPrivilegesFactory } from "./project-additional-privilege-factory";
 
@@ -20,27 +21,33 @@ const ACTOR_ID = "actor-user";
 const TARGET_ID = "target-user";
 
 const createFactory = (actorRules: Rule[]) => {
-  const actorPermission = createMongoAbility<ProjectPermissionSet>(actorRules, { conditionsMatcher });
-  const targetPermission = createMongoAbility<ProjectPermissionSet>([]);
+  const withMembership = (permission: Permission<ProjectPermissionSet>, actorUserId: string) =>
+    Object.assign(permission, { memberships: [{ toJSON: () => ({ actorUserId }) }] });
+  const actorPermission = withMembership(
+    ActorPermission.of({ rules: actorRules, usesNewPrivilegeSystem: true }),
+    ACTOR_ID
+  );
+  const targetPermission = withMembership(Permission.none<ProjectPermissionSet>(), TARGET_ID);
 
-  const permissionService = {
-    getProjectPermission: vi
+  const secretsPermissionService = {
+    getProjectPermissionWithFolderGrants: vi
       .fn()
-      .mockImplementation(({ actorId }: { actorId: string }) =>
-        Promise.resolve(
-          actorId === TARGET_ID
-            ? { permission: targetPermission, memberships: [{ actorUserId: TARGET_ID }] }
-            : { permission: actorPermission, memberships: [{ actorUserId: ACTOR_ID }] }
-        )
+      .mockImplementation(({ actor }: { actor: TActorContext }) =>
+        Promise.resolve(actor.principal.id === TARGET_ID ? targetPermission : actorPermission)
       )
   };
 
   return newProjectAdditionalPrivilegesFactory({
-    permissionService,
+    secretsPermissionService,
+    actorContextService: {
+      forPrincipal: vi
+        .fn()
+        .mockImplementation(async ({ principal }: { principal: unknown }) => ({ principal, org: { id: "org-1" } }))
+    },
     additionalPrivilegeDAL: { findOne: vi.fn() },
-    orgDAL: { findById: vi.fn().mockResolvedValue({ id: "org-1", shouldUseNewPrivilegeSystem: true }) },
     membershipDAL: { findOne: vi.fn() },
     userDAL: { findById: vi.fn().mockResolvedValue({ id: TARGET_ID, email: "target@example.com" }) },
+    identityDAL: { findById: vi.fn() },
     projectDAL: {
       findById: vi
         .fn()
@@ -51,7 +58,10 @@ const createFactory = (actorRules: Rule[]) => {
 
 const createPrivilege = (factory: ReturnType<typeof createFactory>, permissions: unknown) =>
   factory.onCreateAdditionalPrivilegesGuard({
-    permission: { type: ActorType.USER, id: ACTOR_ID, orgId: "org-1", authMethod: null, rootOrgId: "org-1" },
+    actor: {
+      principal: { type: ActorType.USER, id: ACTOR_ID, authMethod: null },
+      org: { id: "org-1", rootOrgId: "org-1", shouldUseNewPrivilegeSystem: true }
+    },
     scopeData: { scope: AccessScope.Project, orgId: "org-1", projectId: "project-1" },
     data: { actorId: TARGET_ID, actorType: ActorType.USER, name: "extra", permissions, isTemporary: false }
   } as never);

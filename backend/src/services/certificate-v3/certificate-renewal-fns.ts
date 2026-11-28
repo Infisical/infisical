@@ -8,6 +8,7 @@ import { isPqcAlgorithm } from "@app/lib/crypto/pqc/pqc-utils";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
+import { TCertRequestRequestData } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
 import { TCertificateAuthorityWithAssociatedCa } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaCapability, CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
@@ -21,7 +22,9 @@ import {
   CertKeyAlgorithm,
   CertSignatureAlgorithm,
   CertStatus,
-  mapSanTypeToX509Type
+  mapLegacyAltNameType,
+  TAltNameType,
+  toAltNameMappings
 } from "@app/services/certificate/certificate-types";
 
 import { CertExtendedKeyUsageType, CertKeyUsageType } from "../certificate-common/certificate-constants";
@@ -45,7 +48,8 @@ export enum CertificateRenewalMode {
   SelfSigned = "self-signed",
   InternalCa = "internal-ca",
   KeyPreserving = "key-preserving",
-  ExternalCa = "external-ca"
+  ExternalCa = "external-ca",
+  AwaitingApproval = "awaiting-approval"
 }
 
 export const certificateSpanToTtl = (notBefore: Date, notAfter: Date): string => {
@@ -241,7 +245,10 @@ export const isCertificateContentEdit = ({
   return suppliedAttributeKeys(attributes).length > 0;
 };
 
-export const assertCsrRenewalAttributes = (attributes?: TRenewalAttributes) => {
+export const assertCsrRenewalAttributes = (
+  attributes?: TRenewalAttributes,
+  { isStoredCsr = false }: { isStoredCsr?: boolean } = {}
+) => {
   if (!attributes) return;
 
   const rejected = suppliedAttributeKeys(attributes)
@@ -253,7 +260,9 @@ export const assertCsrRenewalAttributes = (attributes?: TRenewalAttributes) => {
       (key) => RENEWAL_ATTRIBUTES[key].label
     );
     throw new BadRequestError({
-      message: `The CSR is the source of truth for ${rejected.join(", ")}. Update the CSR instead, or renew without one. Only ${settable.join(", ")} can be set alongside a CSR.`
+      message: isStoredCsr
+        ? `Reusing this key pair renews from the signing request Infisical holds for it and the certificate's current names, which set ${rejected.join(", ")}. To change them, renew with a new CSR or a new key pair. Only ${settable.join(", ")} can be set when reusing the key pair.`
+        : `The CSR is the source of truth for ${rejected.join(", ")}. Update the CSR instead, or renew without one. Only ${settable.join(", ")} can be set alongside a CSR.`
     });
   }
 };
@@ -391,6 +400,22 @@ export const resolveRenewalSubject = (
   };
 };
 
+const CURRENT_SAN_TYPES = Object.values(CertSubjectAlternativeNameType) as string[];
+
+export const withIssuedRenewalNames = (
+  csrRequest: TCertificateRequest,
+  issued: { commonName: string | null; altNames?: { type: CertSubjectAlternativeNameType; value: string }[] | null }
+): TCertificateRequest => ({
+  ...csrRequest,
+  commonName: csrRequest.commonName || issued.commonName || undefined,
+  subjectAlternativeNames: issued.altNames?.length
+    ? issued.altNames.map(({ type, value }) => ({
+        type: CURRENT_SAN_TYPES.includes(type) ? type : mapLegacyAltNameType(type as unknown as TAltNameType),
+        value
+      }))
+    : csrRequest.subjectAlternativeNames
+});
+
 export const resolveRenewalAltNames = (
   requested: { exists: boolean; altNames: { type: CertSubjectAlternativeNameType; value: string }[] | null },
   certificateAltNames: string | null | undefined
@@ -454,6 +479,23 @@ export const buildCsrRenewalCertificateRequest = ({
   };
 };
 
+// Where the CSR is silent, a CSR renewal keeps what the certificate already has, as every other renewal
+// does, so an unchanged renewal passes the policy the certificate passed. The signature algorithm always
+// comes from the certificate: the CSR's own signature only proves possession of its key and says nothing
+// about how the CA signs, so an ECDSA CSR for a certificate an RSA CA signed must not ask for ECDSA.
+export const keepCertificateFactsInCsrRenewal = (
+  csrRequest: TCertificateRequest,
+  certificate: Pick<TCertificateRequest, "signatureAlgorithm" | "keyUsages" | "extendedKeyUsages" | "basicConstraints">
+): TCertificateRequest => ({
+  ...csrRequest,
+  signatureAlgorithm: certificate.signatureAlgorithm ?? csrRequest.signatureAlgorithm,
+  keyUsages: csrRequest.keyUsages?.length ? csrRequest.keyUsages : certificate.keyUsages,
+  extendedKeyUsages: csrRequest.extendedKeyUsages?.length
+    ? csrRequest.extendedKeyUsages
+    : certificate.extendedKeyUsages,
+  basicConstraints: csrRequest.basicConstraints ?? certificate.basicConstraints
+});
+
 export const buildRenewalAuditChanges = (
   replayedRequest: TCertificateRequest,
   issuedRequest: TCertificateRequest
@@ -463,6 +505,27 @@ export const buildRenewalAuditChanges = (
     from: RENEWAL_ATTRIBUTES[field].issued(replayedRequest),
     to: RENEWAL_ATTRIBUTES[field].issued(issuedRequest)
   })).filter(({ from, to }) => from !== to);
+
+export const haveDifferentSubjectAlternativeNames = (
+  replayedRequest: TCertificateRequest,
+  issuedRequest: TCertificateRequest
+) => {
+  const typedAltNames = (request: TCertificateRequest) =>
+    (request.subjectAlternativeNames ?? []).map((san) => `${san.type}:${san.value}`).join(",");
+  return typedAltNames(replayedRequest) !== typedAltNames(issuedRequest);
+};
+
+const requestedCustomExtensionKeys = (extensions: unknown) =>
+  readStoredCustomExtensions(extensions)
+    .filter((extension) => !extension.issuerAdded && !isIssuerGeneratedExtensionOid(extension.oid))
+    .map((extension) => `${extension.oid}|${extension.critical ? "critical" : ""}|${extension.value}`)
+    .sort()
+    .join(",");
+
+export const haveDifferentCustomExtensions = (
+  certificateExtensions: unknown,
+  renewalExtensions: TResolvedCustomExtension[] | undefined
+) => requestedCustomExtensionKeys(certificateExtensions) !== requestedCustomExtensionKeys(renewalExtensions ?? []);
 
 export type TIssuerModifiedField = {
   field: string;
@@ -643,10 +706,7 @@ export const buildCsrFromExistingKey = async ({
   const algorithm = keyAlgorithmToAlgCfg(keyAlgorithm);
   const { privateKey, publicKey } = await importKeyPairFromPem({ privateKeyPem, keyAlgorithm });
 
-  const altNames = (certificateRequest.subjectAlternativeNames ?? []).map((san) => ({
-    type: mapSanTypeToX509Type(san.type),
-    value: san.value
-  }));
+  const altNames = toAltNameMappings(certificateRequest.subjectAlternativeNames ?? []);
 
   const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
     name: buildRenewalDistinguishedName(certificateRequest),
@@ -683,30 +743,38 @@ export const validateRenewalEligibility = (
 
   const now = new Date();
   if (certificate.notAfter <= now) {
-    errors.push("Certificate is already expired");
+    errors.push("Certificate has already expired. Issue a new certificate instead");
   }
 
   if (certificate.revokedAt) {
-    errors.push("Certificate is revoked and cannot be renewed");
+    errors.push("Certificate is revoked and cannot be renewed. Issue a new certificate instead");
   }
 
   const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
   const isImportedCertificate = certificate.pkiSubscriberId != null && !certificate.profileId;
 
   if (!caSupportsCapability(caType, CaCapability.RENEW_CERTIFICATES)) {
-    errors.push(`CA type ${String(caType)} does not support renewal`);
+    errors.push(
+      `Certificate authority type '${String(caType)}' does not support renewal. Issue a new certificate instead`
+    );
   }
 
   if (isImportedCertificate) {
-    errors.push("Externally imported certificates cannot be renewed");
+    errors.push(
+      "Externally imported certificates cannot be renewed. Issue a new certificate through a certificate profile instead"
+    );
   }
 
   if (ca.status !== CaStatus.ACTIVE) {
-    errors.push(`Certificate Authority is ${ca.status}, must be ${CaStatus.ACTIVE}`);
+    errors.push(
+      ca.status === CaStatus.PENDING_CERTIFICATE && caType === CaType.INTERNAL
+        ? "The issuing certificate authority is pending-certificate. Generate its CA certificate (a root CA) or install a signed one (an intermediate CA) before renewing"
+        : `The issuing certificate authority is ${ca.status}. Enable it before renewing`
+    );
   }
 
   if (certificate.renewedByCertificateId) {
-    errors.push("Certificate has already been renewed");
+    errors.push("Certificate has already been renewed. Renew the certificate that replaced it instead");
   }
 
   const certificateTtlInDays = requestedTtl
@@ -719,7 +787,7 @@ export const validateRenewalEligibility = (
 
     if (proposedCertExpiryDate > caExpiryDate) {
       errors.push(
-        `New certificate would expire (${proposedCertExpiryDate.toISOString()}) after its issuing CA (${caExpiryDate.toISOString()})`
+        `New certificate would expire (${proposedCertExpiryDate.toISOString()}) after its issuing CA (${caExpiryDate.toISOString()}). Request a shorter TTL or renew the CA first`
       );
     }
   }
@@ -729,3 +797,49 @@ export const validateRenewalEligibility = (
     errors
   };
 };
+
+export const buildRenewalApprovalSnapshot = ({
+  certificateRequest,
+  renewalAltNames,
+  ttl,
+  effectiveSignatureAlgorithm,
+  effectiveKeyAlgorithm,
+  renewalBasicConstraints,
+  resolvedCustomExtensions
+}: {
+  certificateRequest: TCertificateRequest;
+  renewalAltNames: { type: CertSubjectAlternativeNameType; value: string }[];
+  ttl: string;
+  effectiveSignatureAlgorithm: CertSignatureAlgorithm;
+  effectiveKeyAlgorithm: CertKeyAlgorithm;
+  renewalBasicConstraints?: { isCA: boolean; pathLength?: number };
+  resolvedCustomExtensions?: TResolvedCustomExtension[];
+}): TCertRequestRequestData["certificateRequest"] => ({
+  commonName: certificateRequest.commonName,
+  organization: certificateRequest.organization,
+  organizationalUnit: certificateRequest.organizationalUnit,
+  country: certificateRequest.country,
+  state: certificateRequest.state,
+  locality: certificateRequest.locality,
+  domainComponents: certificateRequest.domainComponents,
+  keyUsages: certificateRequest.keyUsages,
+  extendedKeyUsages: certificateRequest.extendedKeyUsages,
+  altNames: renewalAltNames,
+  validity: { ttl },
+  signatureAlgorithm: effectiveSignatureAlgorithm,
+  keyAlgorithm: effectiveKeyAlgorithm,
+  basicConstraints: renewalBasicConstraints,
+  customExtensions: resolvedCustomExtensions
+});
+
+const canonicalJson = (value: unknown) =>
+  JSON.stringify(value, (_key, nested: unknown) =>
+    nested && typeof nested === "object" && !Array.isArray(nested)
+      ? Object.fromEntries(Object.entries(nested).sort(([a], [b]) => a.localeCompare(b)))
+      : nested
+  );
+
+export const isSameRenewalApprovalSnapshot = (
+  reviewed: TCertRequestRequestData["certificateRequest"],
+  rebuilt: TCertRequestRequestData["certificateRequest"]
+) => canonicalJson(reviewed) === canonicalJson(rebuilt);

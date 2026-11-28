@@ -24,6 +24,7 @@ import {
 } from "@app/hooks/api/pam";
 import { TPamAccessRequest } from "@app/hooks/api/pam/types";
 
+import { formatAccessDurationLimit, isAccessDurationCapped } from "../../components/accessDuration";
 import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
 import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRequestStatus";
 import {
@@ -38,9 +39,15 @@ type Props = {
   request: TPamAccessRequest | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  canRevokeGrants?: boolean;
 };
 
-export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Props) => {
+export const ApprovalRequestDetailSheet = ({
+  request,
+  isOpen,
+  onOpenChange,
+  canRevokeGrants = true
+}: Props) => {
   const { user } = useUser();
   const reviewMutation = useReviewPamAccessRequest();
   const revokeMutation = useRevokePamAccessRequest();
@@ -55,10 +62,19 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
     request ?? { status: PamAccessRequestStatus.Pending, grantExpiresAt: null }
   );
   const requestData = request?.requestData?.requestData;
+  const grantedSeconds =
+    request?.grantCreatedAt && request.grantExpiresAt
+      ? Math.round(
+          (new Date(request.grantExpiresAt).getTime() -
+            new Date(request.grantCreatedAt).getTime()) /
+            1000
+        )
+      : null;
+  const maxAccessDurationSeconds = request?.maxAccessDurationSeconds ?? null;
   const isPending = request?.status === PamAccessRequestStatus.Pending;
   // Self-approval is always blocked server-side; denying your own request stays allowed
   const isOwnRequest = Boolean(request?.requesterId && request.requesterId === user?.id);
-  const canRevoke = isGrantActive(request);
+  const canRevoke = canRevokeGrants && isGrantActive(request);
 
   const handleReview = (decision: PamAccessRequestDecision) => {
     if (!request) return;
@@ -243,11 +259,26 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
             )}
 
             <div>
-              <p className="mb-2 text-sm font-medium text-foreground">Access duration</p>
+              <p className="mb-2 text-sm font-medium text-foreground">Requested duration</p>
               <div className="flex items-center gap-2 rounded-md border border-border bg-container px-3 py-2.5 text-sm text-foreground">
                 <Clock className="size-4 text-muted" />
                 {formatDuration(requestData?.duration)}
               </div>
+              {grantedSeconds !== null &&
+                isAccessDurationCapped(requestData?.duration, grantedSeconds) && (
+                  <p className="mt-1.5 text-xs text-muted">
+                    Granted {formatAccessDurationLimit(grantedSeconds)}, the template&apos;s Max
+                    Access Duration at approval time.
+                  </p>
+                )}
+              {isPending &&
+                maxAccessDurationSeconds !== null &&
+                isAccessDurationCapped(requestData?.duration, maxAccessDurationSeconds) && (
+                  <p className="mt-1.5 text-xs text-warning">
+                    Approving grants {formatAccessDurationLimit(maxAccessDurationSeconds)}, the most
+                    this account&apos;s template now allows.
+                  </p>
+                )}
             </div>
 
             {!isPending && !canRevoke && (

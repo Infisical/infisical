@@ -13,6 +13,7 @@ import {
   FieldContent,
   FieldLabel
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { actorIdsPayload } from "@app/helpers/agentVaultMembers";
 import { useUpdateAgentVaultMemberRoles } from "@app/hooks/api/agentVault";
 import { TAgentVaultProductMember } from "@app/hooks/api/agentVault/types";
@@ -27,7 +28,8 @@ type Props = {
 };
 
 export const ProductRoleDialog = ({ member, onOpenChange, subject }: Props) => {
-  const updateRole = useUpdateAgentVaultMemberRoles();
+  const { projectId } = useProject();
+  const updateRole = useUpdateAgentVaultMemberRoles(projectId);
   const currentRole = member?.role ?? ProjectMembershipRole.Member;
   const [role, setRole] = useState(currentRole);
 
@@ -48,7 +50,7 @@ export const ProductRoleDialog = ({ member, onOpenChange, subject }: Props) => {
               type: "success"
             }
           : {
-              text: `Role not changed. ${subject} may have been removed from Agent Vault or already has that role.`,
+              text: `Role not changed. ${subject} may have been removed from this project or already has that role.`,
               type: "info"
             }
       );
@@ -63,7 +65,7 @@ export const ProductRoleDialog = ({ member, onOpenChange, subject }: Props) => {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Change Role</DialogTitle>
-          <DialogDescription>Choose what {subject} can do in Agent Vault.</DialogDescription>
+          <DialogDescription>Choose what {subject} can do in this project.</DialogDescription>
         </DialogHeader>
         <Field>
           <FieldLabel>Product Role</FieldLabel>

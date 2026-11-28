@@ -7,7 +7,7 @@ description: "Open a session on an account from your browser or the Infisical CL
 You can connect to an [account](/documentation/platform/pam/accounts/overview) in your browser or with the Infisical CLI. Either way, Infisical opens a [session](/documentation/platform/pam/sessions/overview), and a [gateway](/documentation/platform/gateways/overview) supplies the account's credential so that you never see it. Infisical records everything you do in the session.
 
 <Tip>
-To give an AI agent access to accounts, use [`infisical pam agentic access`](/documentation/platform/pam/ai-agents/overview) instead.
+[AI agents](/documentation/platform/pam/ai-agents/overview) use the same CLI commands.
 </Tip>
 
 ## Prerequisites
@@ -36,7 +36,7 @@ To give an AI agent access to accounts, use [`infisical pam agentic access`](/do
 
         What the tab shows depends on the account type:
 
-        - **PostgreSQL, MySQL, Snowflake, and ClickHouse**: a table browser and a SQL editor
+        - **PostgreSQL, CockroachDB, MySQL, Snowflake, and ClickHouse**: a table browser and a SQL editor
         - **Redis**: a console for Redis commands
         - **SSH**: a terminal
         - **Windows and Windows AD**: a remote desktop
@@ -56,7 +56,7 @@ To give an AI agent access to accounts, use [`infisical pam agentic access`](/do
         What happens next depends on the account type:
 
         - **SSH**: The CLI opens a shell on the server (add `--proxy` to use your own SSH client instead)
-        - **AWS IAM**: The CLI writes temporary credentials to your AWS credentials file
+        - **AWS IAM**: The CLI writes temporary credentials to your AWS credentials file, or [opens a shell that sends AWS CLI requests through the Gateway](/documentation/platform/pam/accounts/aws-iam#connect) if the account has one
         - **Every other account type**: The CLI starts a local proxy on `127.0.0.1` and prints its port
 
         If the CLI starts a proxy, connect your own client, such as `psql` or `kubectl`, to the printed port. The proxy signs in for you, so the client doesn't need a password.

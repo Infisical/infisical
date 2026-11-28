@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Controller, FormProvider, useForm } from "react-hook-form";
+import { Controller, FieldErrors, FieldPath, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangleIcon } from "lucide-react";
 
@@ -28,8 +28,15 @@ import {
   StepperStep,
   Toggle
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization, useProject, useProjectPermission } from "@app/context";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
+import {
+  AlertEventType,
+  AlertResourceType,
+  TChannelForm,
+  toChannelInput,
+  useCreateAlert
+} from "@app/hooks/api/alerts";
 import {
   SecretSync,
   SecretSyncInitialSyncBehavior,
@@ -40,8 +47,14 @@ import {
   useSecretSyncOption
 } from "@app/hooks/api/secretSyncs";
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
+import { DEFAULT_ALERT_NAMES } from "@app/views/Alerts";
 
 import { getSecretSyncDestinationConfig, SecretSyncFormSchema, TSecretSyncForm } from "./schemas";
+import {
+  buildProjectAdminsChannel,
+  canManageFailureAlert,
+  SecretSyncAlertsFields
+} from "./SecretSyncAlertsFields";
 import { SecretSyncDestinationFields } from "./SecretSyncDestinationFields";
 import { SecretSyncDetailsFields } from "./SecretSyncDetailsFields";
 import {
@@ -70,14 +83,22 @@ type FormTab = {
   subtitle: string;
   rightLabel: string;
   rightDescription: string;
-  fields: (keyof TSecretSyncForm)[];
+  rightExtra?: {
+    title: string;
+    description: string;
+  };
+  fields: FieldPath<TSecretSyncForm>[];
 };
 
-const getFormTabs = (destination: SecretSync, destinationName: string): FormTab[] => {
+const getFormTabs = (
+  destination: SecretSync,
+  destinationName: string,
+  supportsFolderStructure: boolean
+): FormTab[] => {
   const sourceFields: (keyof TSecretSyncForm)[] =
     destination === SecretSync.AzureEntraIdScim
-      ? ["secretPath", "environment", "syncOptions"]
-      : ["secretPath", "environment"];
+      ? ["secretPath", "environment", "includeAllSubFolders", "syncOptions"]
+      : ["secretPath", "environment", "includeAllSubFolders"];
 
   return [
     {
@@ -89,7 +110,17 @@ const getFormTabs = (destination: SecretSync, destinationName: string): FormTab[
       rightLabel: "SOURCE",
       rightDescription:
         "Choose what gets synced. The environment + path together define the set of secrets this sync will push out.",
-      fields: sourceFields
+      fields: sourceFields,
+      ...(supportsFolderStructure && {
+        subtitle: "Pick the Infisical environment, path, and how deep this sync reaches.",
+        rightDescription:
+          "Choose what gets synced. The environment and path define the set of secrets this sync pushes out. Including nested folders sweeps every folder under the path into the same sync.",
+        rightExtra: {
+          title: "About duplicate keys",
+          description:
+            "The same key can exist in several folders. What happens to duplicates is decided by the folder mapping in the Destination step: preserving the folder structure keeps every value at its own path, while flattening needs each name to be unique."
+        }
+      })
     },
     {
       name: "Destination",
@@ -99,7 +130,16 @@ const getFormTabs = (destination: SecretSync, destinationName: string): FormTab[
       subtitle: "Choose a connection and configure the target location.",
       rightLabel: "DESTINATION",
       rightDescription: `Tell Infisical where to write. Pick a ${destinationName} connection and the exact destination, like a workspace, project, namespace, or whatever this provider expects.`,
-      fields: ["connection", "destinationConfig"]
+      fields: ["connection", "destinationConfig"],
+      ...(supportsFolderStructure && {
+        rightExtra: {
+          title: "Folder mapping",
+          description:
+            destination === SecretSync.AWSParameterStore
+              ? "Preserving the folder structure recreates your Infisical folder tree under the base path, one-to-one. Every key keeps its own path, so duplicate keys never collide."
+              : "Preserving the folder structure prefixes each secret's name with its folder, one-to-one. Every key keeps its own name, so duplicate keys never collide."
+        }
+      })
     },
     {
       name: "Initial Sync",
@@ -110,7 +150,9 @@ const getFormTabs = (destination: SecretSync, destinationName: string): FormTab[
       rightLabel: "INITIAL SYNC",
       rightDescription:
         "The first run is special. Infisical can either overwrite everything in the destination or import existing secrets back into Infisical. Subsequent runs follow your sync options.",
-      fields: ["syncOptions"]
+      // Only the field this step shows: a check on another step's sync option would otherwise block
+      // the way forward to the step where it can be fixed.
+      fields: ["syncOptions.initialSyncBehavior"]
     },
     {
       name: "Sync Options",
@@ -133,6 +175,18 @@ const getFormTabs = (destination: SecretSync, destinationName: string): FormTab[
       rightDescription:
         "A clear name helps when you have multiple syncs. The description shows up in the sync list as a tooltip.",
       fields: ["name", "description"]
+    },
+    {
+      name: "Alerts",
+      key: "alerts",
+      shortDescription: "Failure notifications",
+      title: "Set up failure alerts",
+      subtitle:
+        "Choose where Infisical sends a notice when this sync fails. You can skip this step.",
+      rightLabel: "ALERTS",
+      rightDescription:
+        "Infisical sends a notice to every enabled channel when a sync, import or remove fails after all of its retries. You can change these channels later from the sync's edit form.",
+      fields: ["isFailureAlertEnabled", "channels"]
     },
     {
       name: "Review",
@@ -158,22 +212,25 @@ export const CreateSecretSyncForm = ({
   startOnDestination = Boolean(initialFormData)
 }: Props) => {
   const createSecretSync = useCreateSecretSync();
+  const createAlert = useCreateAlert();
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
   const { currentOrg } = useOrganization();
   const { name: destinationName } = SECRET_SYNC_MAP[destination];
-  const formTabs = getFormTabs(destination, destinationName);
+  const { syncOption } = useSecretSyncOption(destination);
+  const supportsFolderStructure = Boolean(syncOption?.supportsPreserveFolderStructure);
 
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const [selectedTabIndex, setSelectedTabIndex] = useState(startOnDestination ? 1 : 0);
 
-  const { syncOption } = useSecretSyncOption(destination);
-
   const formMethods = useForm<TSecretSyncForm>({
-    resolver: zodResolver(SecretSyncFormSchema),
+    resolver: zodResolver(SecretSyncFormSchema()),
     defaultValues: {
       destination,
       isAutoSyncEnabled: true,
+      isFailureAlertEnabled: true,
+      channels: [buildProjectAdminsChannel(currentProject.id)],
       syncOptions: {
         initialSyncBehavior: syncOption?.canImportSecrets
           ? SecretSyncInitialSyncBehavior.ImportPrioritizeSource
@@ -189,6 +246,8 @@ export const CreateSecretSyncForm = ({
   });
 
   const { handleSubmit, trigger, control, watch, formState } = formMethods;
+  const preservesFolderStructure = Boolean(watch("syncOptions.preserveFolderStructure"));
+  const formTabs = getFormTabs(destination, destinationName, supportsFolderStructure);
   const hasUnsavedChanges = formState.isDirty || initialFormDataIsDirty;
   const {
     confirmDiscard,
@@ -202,7 +261,32 @@ export const CreateSecretSyncForm = ({
     return () => onDirtyChange(false);
   }, [hasUnsavedChanges, onDirtyChange]);
 
-  const onSubmit = async ({ environment, connection, ...formData }: TSecretSyncForm) => {
+  const saveFailureAlert = async (
+    secretSync: TSecretSync,
+    isFailureAlertEnabled: boolean,
+    channels: TChannelForm[],
+    canManage: boolean
+  ) => {
+    if (!isFailureAlertEnabled || !canManage) return;
+    await createAlert.mutateAsync({
+      name: DEFAULT_ALERT_NAMES[AlertEventType.SecretSyncFailed],
+      resourceType: AlertResourceType.SecretSync,
+      resourceId: secretSync.id,
+      eventType: AlertEventType.SecretSyncFailed,
+      projectId: secretSync.projectId,
+      enabled: true,
+      condition: null,
+      channels: channels.map(toChannelInput)
+    });
+  };
+
+  const onSubmit = async ({
+    environment,
+    connection,
+    isFailureAlertEnabled,
+    channels,
+    ...formData
+  }: TSecretSyncForm) => {
     try {
       const secretSync = await createSecretSync.mutateAsync({
         ...formData,
@@ -210,6 +294,21 @@ export const CreateSecretSyncForm = ({
         environment: environment.slug,
         projectId: currentProject.id
       });
+
+      try {
+        await saveFailureAlert(
+          secretSync,
+          isFailureAlertEnabled,
+          channels,
+          canManageFailureAlert(permission, {
+            environment: environment.slug,
+            secretPath: formData.secretPath,
+            connectionId: connection.id
+          })
+        );
+      } catch {
+        // MutationCache reports why the alert request failed. The sync itself is created either way.
+      }
 
       createNotification({
         text: `Successfully added ${destinationName} Sync`,
@@ -255,17 +354,33 @@ export const CreateSecretSyncForm = ({
     environment: watch("environment")?.slug,
     secretPath: watch("secretPath"),
     keySchema,
-    includeAllSubFolders:
-      Boolean(watch("syncOptions.includeAllSubFolders")) && !importsFromDestination
+    includeAllSubFolders: Boolean(watch("includeAllSubFolders")) && !importsFromDestination
   });
 
   const isStepValid = async (index: number) => trigger(formTabs[index].fields);
 
+  // Duplicate names block a flattened sync. Where the destination can keep folders instead, that
+  // choice is made in the Destination step, so the block moves there and lifts once folders are kept.
+  const isSourceBlocked = !supportsFolderStructure && recursiveConflicts.length > 0;
+  const isDestinationBlocked =
+    supportsFolderStructure && !preservesFolderStructure && recursiveConflicts.length > 0;
+
+  const goToFirstErrorStep = (errors: FieldErrors<TSecretSyncForm>) => {
+    setShowConfirmation(false);
+    const erroredFields = Object.keys(errors);
+    const errorStepIndex = formTabs.findIndex((tab) =>
+      tab.fields.some((field) => erroredFields.includes(field))
+    );
+    if (errorStepIndex >= 0) setSelectedTabIndex(errorStepIndex);
+  };
+
   const isFinalStep = selectedTabIndex === formTabs.length - 1;
   const isSourceStep = selectedTabIndex === 0;
+  const isDestinationStep = selectedTabIndex === 1;
   const isNextButtonDisabled =
     (isFinalStep && hasDuplicate && currentOrg?.blockDuplicateSecretSyncDestinations) ||
-    (isSourceStep && recursiveConflicts.length > 0);
+    (isSourceStep && isSourceBlocked) ||
+    (isDestinationStep && isDestinationBlocked);
 
   const handleNext = async () => {
     if (isFinalStep) {
@@ -273,7 +388,7 @@ export const CreateSecretSyncForm = ({
       return;
     }
 
-    if (isSourceStep && recursiveConflicts.length > 0) return;
+    if ((isSourceStep && isSourceBlocked) || (isDestinationStep && isDestinationBlocked)) return;
 
     const isValid = await isStepValid(selectedTabIndex);
 
@@ -300,8 +415,10 @@ export const CreateSecretSyncForm = ({
     }
 
     // The Source step (index 0) is always behind a forward jump, since targetTab > selectedTabIndex
-    // here, so a conflict there must block the jump the same way it blocks handleNext.
-    if (recursiveConflicts.length > 0) return;
+    // here, so a conflict there must block the jump the same way it blocks handleNext. The same goes
+    // for the Destination step (index 1) when the jump passes it.
+    if (isSourceBlocked) return;
+    if (isDestinationBlocked && selectedTabIndex <= 1 && targetTab > 1) return;
 
     let canJump = true;
     for (let i = selectedTabIndex; i < targetTab; i += 1) {
@@ -386,7 +503,10 @@ export const CreateSecretSyncForm = ({
               </SecretSyncOptionsFields>
             )}
             {selectedTabIndex === 4 && <SecretSyncDetailsFields />}
-            {selectedTabIndex === 5 && <SecretSyncReviewFields />}
+            {selectedTabIndex === 5 && (
+              <SecretSyncAlertsFields projectId={currentProject.id} isAlertUnavailable={false} />
+            )}
+            {selectedTabIndex === 6 && <SecretSyncReviewFields />}
           </div>
 
           <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
@@ -403,6 +523,16 @@ export const CreateSecretSyncForm = ({
               <p className="mt-2 text-sm leading-relaxed text-muted">
                 {currentTab.rightDescription}
               </p>
+              {currentTab.rightExtra && (
+                <>
+                  <p className="mt-6 text-sm font-semibold text-foreground">
+                    {currentTab.rightExtra.title}
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">
+                    {currentTab.rightExtra.description}
+                  </p>
+                </>
+              )}
             </div>
             {selectedTabIndex >= 2 && (
               <InitialSyncAlerts
@@ -464,7 +594,7 @@ export const CreateSecretSyncForm = ({
             <AlertDialogAction
               variant="project"
               isDisabled={createSecretSync.isPending}
-              onClick={handleSubmit(onSubmit)}
+              onClick={handleSubmit(onSubmit, goToFirstErrorStep)}
             >
               I Understand
             </AlertDialogAction>

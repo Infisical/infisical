@@ -1,36 +1,37 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { OrganizationActionScope, TIdentityKubernetesAuthsUpdate, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
+import { TIdentityKubernetesAuthsUpdate, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
-import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
-import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
-import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
+  OrgPermission,
   OrgPermissionGatewayActions,
   OrgPermissionGatewayPoolActions,
   OrgPermissionIdentityActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
+} from "@app/domains/platform/organizations/ce/module";
+import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
+import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
+import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
+import { ActorType } from "@app/lib/auth/actor-types";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { sanitizeUrlForLog } from "@app/lib/logger";
-import { TOrgPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
 import { withKubernetesHostScheme } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-fns";
 import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 import { validateKubernetesConnectionFields } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-validators";
 import { TIdentityLdapAuthDALFactory } from "@app/services/identity-ldap-auth/identity-ldap-auth-dal";
 import { TIdentityOidcAuthDALFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-dal";
-import { assertIdentityAuthAccessAllowed } from "@app/services/identity/identity-auth-permission-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
+import {
+  assertIdentityAuthAccessAllowed,
+  TIdentityAuthPermissionDeps
+} from "@app/services/identity/identity-auth-permission-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TIdentityAuthTemplateDALFactory } from "./identity-auth-template-dal";
@@ -50,6 +51,7 @@ import {
 } from "./identity-auth-template-types";
 
 type TIdentityAuthTemplateServiceFactoryDep = {
+  instanceConfigService: TInstanceConfigService;
   identityAuthTemplateDAL: TIdentityAuthTemplateDALFactory;
   identityLdapAuthDAL: Pick<TIdentityLdapAuthDALFactory, "updateByTemplateId">;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "updateByTemplateId">;
@@ -57,20 +59,17 @@ type TIdentityAuthTemplateServiceFactoryDep = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
-  >;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithInputKey" | "decryptWithInputKey">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  kmsDataKeyService: TKmsDataKeyService;
+  licenseService: TLicenseService;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-};
+} & TIdentityAuthPermissionDeps;
 
 export type TIdentityAuthTemplateServiceFactory = ReturnType<typeof identityAuthTemplateServiceFactory>;
 
 const AUDIT_FANOUT_CHUNK_SIZE = 20;
 
 export const identityAuthTemplateServiceFactory = ({
+  instanceConfigService,
   identityAuthTemplateDAL,
   identityLdapAuthDAL,
   identityKubernetesAuthDAL,
@@ -78,15 +77,25 @@ export const identityAuthTemplateServiceFactory = ({
   gatewayV2DAL,
   gatewayPoolDAL,
   orgDAL,
-  permissionService,
-  kmsService,
+  orgPermissionService,
+  projectPermissionService,
+  secretsPermissionService,
+  actorGrantsService,
+  kmsDataKeyService,
   licenseService,
   auditLogService
 }: TIdentityAuthTemplateServiceFactoryDep) => {
+  const identityAuthPermissionDeps = {
+    orgPermissionService,
+    projectPermissionService,
+    secretsPermissionService,
+    actorGrantsService
+  };
+
   // Plan check
   const $checkPlan = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.machineIdentityAuthTemplates)
+    if (!plan.has(PlanFeature.MachineIdentityAuthTemplates))
       throw new BadRequestError({
         message:
           "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
@@ -187,31 +196,28 @@ export const identityAuthTemplateServiceFactory = ({
   }: {
     gatewayId?: string | null;
     gatewayPoolId?: string | null;
-    plan: Awaited<ReturnType<TLicenseServiceFactory["getPlan"]>>;
-    permission: Awaited<ReturnType<TPermissionServiceFactory["getOrgPermission"]>>["permission"];
+    plan: Awaited<ReturnType<TLicenseService["getPlan"]>>;
+    permission: OrgPermission;
   }) => {
     if (gatewayId) {
-      if (!plan.gateway) {
+      if (!plan.has(PlanFeature.Gateway)) {
         throw new BadRequestError({
           message:
             "Your current plan does not support gateway usage with identity k8s auth. Please upgrade your plan or contact Infisical Sales for assistance."
         });
       }
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionGatewayActions.AttachGateways,
-        OrgPermissionSubjects.Gateway
-      );
+      permission.assert({ action: OrgPermissionGatewayActions.AttachGateways, subject: OrgPermissionSubjects.Gateway });
     }
     if (gatewayPoolId) {
-      if (!plan.gatewayPool) {
+      if (!plan.has(PlanFeature.GatewayPool)) {
         throw new BadRequestError({
           message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
         });
       }
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionGatewayPoolActions.AttachGatewayPools,
-        OrgPermissionSubjects.GatewayPool
-      );
+      permission.assert({
+        action: OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        subject: OrgPermissionSubjects.GatewayPool
+      });
     }
   };
 
@@ -283,28 +289,18 @@ export const identityAuthTemplateServiceFactory = ({
     name,
     authMethod,
     templateFields,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
+    actor
   }: {
     name: string;
     authMethod: string;
     templateFields: Record<string, unknown>;
-  } & Omit<TOrgPermission, "orgId">) => {
-    const plan = await $checkPlan(actorOrgId);
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
+  } & TActorInput) => {
+    const plan = await $checkPlan(actor.org.id);
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({
+      action: OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates,
+      subject: OrgPermissionSubjects.MachineIdentityAuthTemplate
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates,
-      OrgPermissionSubjects.MachineIdentityAuthTemplate
-    );
 
     let fieldsToPersist: Record<string, unknown> = templateFields;
     let gatewayColumns: Pick<TIdentityAuthTemplates, "gatewayId" | "gatewayV2Id" | "gatewayPoolId"> = {
@@ -339,11 +335,11 @@ export const identityAuthTemplateServiceFactory = ({
           plan,
           permission
         });
-        await assertIndividualGatewayAllowed({ orgDAL, orgId: actorOrgId, gatewayId: normalizedFields.gatewayId });
+        await assertIndividualGatewayAllowed({ orgDAL, orgId: actor.org.id, gatewayId: normalizedFields.gatewayId });
         const { resolvedGatewayV2Id, resolvedGatewayPoolId } = await $resolveKubernetesTemplateGateway({
           gatewayId: normalizedFields.gatewayId,
           gatewayPoolId: normalizedFields.gatewayPoolId,
-          orgId: actorOrgId
+          orgId: actor.org.id
         });
         gatewayColumns = {
           gatewayId: null,
@@ -365,16 +361,16 @@ export const identityAuthTemplateServiceFactory = ({
       await $validateTemplateHost((templateFields as TLdapTemplateFields).url, "LDAP URL");
     }
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: actorOrgId
+      orgId: actor.org.id
     });
     const blobFields = $toBlobFields(fieldsToPersist);
     const template = await identityAuthTemplateDAL.create({
       name,
       authMethod,
       templateFields: encryptor({ plainText: Buffer.from(JSON.stringify(blobFields)) }).cipherTextBlob,
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       ...gatewayColumns
     });
 
@@ -385,37 +381,29 @@ export const identityAuthTemplateServiceFactory = ({
     templateId,
     name,
     templateFields,
-    actorId,
-    actorAuthMethod,
     actor,
-    actorOrgId,
-    auditLogInfo
+    auditLogInfo,
+    isActorSuperAdmin
   }: {
     templateId: string;
     name?: string;
     templateFields?: Record<string, unknown>;
     auditLogInfo?: AuditLogInfo;
-  } & Omit<TOrgPermission, "orgId">) => {
-    const plan = await $checkPlan(actorOrgId);
-    const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actorOrgId);
+    isActorSuperAdmin?: boolean;
+  } & TActorInput) => {
+    const plan = await $checkPlan(actor.org.id);
+    const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actor.org.id);
     if (!template) {
       throw new NotFoundError({ message: "Template not found" });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: template.orgId,
-      actorAuthMethod,
-      actorOrgId
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId: template.orgId });
+    permission.assert({
+      action: OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates,
+      subject: OrgPermissionSubjects.MachineIdentityAuthTemplate
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates,
-      OrgPermissionSubjects.MachineIdentityAuthTemplate
-    );
 
-    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: template.orgId
     });
@@ -449,25 +437,30 @@ export const identityAuthTemplateServiceFactory = ({
       : [];
     const checkedIdentityIds = linkedIdentities.map(({ identityId }) => identityId);
 
+    if (linkedIdentities.length > 0 && !isActorSuperAdmin) {
+      const { adminIdentityIds } = await instanceConfigService.getSettings();
+      const adminIdentity = linkedIdentities.find(({ identityId }) => adminIdentityIds?.includes(identityId));
+      if (adminIdentity) {
+        throw new ForbiddenRequestError({
+          message: `Auth template '${template.name}' is linked to server admin identity '${adminIdentity.identityName}'. Ask a server admin to update it, or unlink the identity from the template first.`
+        });
+      }
+    }
+
     // a field patch rewrites every linked identity's auth, so the editor needs edit-auth on each.
     // otherwise EditTemplates alone lets you point them at an LDAP server or OIDC issuer you control
     // and log in as them
-    for (const { identityId, identityProjectId } of linkedIdentities) {
+    for (const { identityId, identityName, identityProjectId } of linkedIdentities) {
       // eslint-disable-next-line no-await-in-loop
-      await assertIdentityAuthAccessAllowed(
-        { permissionService, orgDAL },
-        {
-          identityId,
-          orgId: template.orgId,
-          projectId: identityProjectId,
-          action: OrgPermissionIdentityActions.EditAuth,
-          baseMessage: "Failed to update auth template linked to identity with more privileged role",
-          actor,
-          actorId,
-          actorAuthMethod,
-          actorOrgId
-        }
-      );
+      await assertIdentityAuthAccessAllowed(identityAuthPermissionDeps, {
+        identityId,
+        identityName,
+        orgId: template.orgId,
+        projectId: identityProjectId,
+        action: OrgPermissionIdentityActions.EditAuth,
+        baseMessage: "Failed to update auth template linked to identity with more privileged role",
+        actor
+      });
     }
 
     const currentTemplateFields = $withGatewayFields(
@@ -714,32 +707,18 @@ export const identityAuthTemplateServiceFactory = ({
     return $sanitizeTemplate(updatedTemplate, mergedTemplateFields);
   };
 
-  const deleteTemplate = async ({
-    templateId,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId,
-    auditLogInfo
-  }: TDeleteIdentityAuthTemplateDTO) => {
-    await $checkPlan(actorOrgId);
-    const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actorOrgId);
+  const deleteTemplate = async ({ templateId, actor, auditLogInfo }: TDeleteIdentityAuthTemplateDTO) => {
+    await $checkPlan(actor.org.id);
+    const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actor.org.id);
     if (!template) {
       throw new NotFoundError({ message: "Template not found" });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: template.orgId,
-      actorAuthMethod,
-      actorOrgId
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId: template.orgId });
+    permission.assert({
+      action: OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates,
+      subject: OrgPermissionSubjects.MachineIdentityAuthTemplate
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates,
-      OrgPermissionSubjects.MachineIdentityAuthTemplate
-    );
 
     const linkedIdentities = (await identityAuthTemplateDAL.findTemplateUsages(templateId, template.authMethod)) as {
       identityId: string;
@@ -794,33 +773,20 @@ export const identityAuthTemplateServiceFactory = ({
     return { ...deletedTemplate, templateFields: {} };
   };
 
-  const getTemplate = async ({
-    templateId,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TGetIdentityAuthTemplateDTO) => {
-    await $checkPlan(actorOrgId);
-    const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actorOrgId);
+  const getTemplate = async ({ templateId, actor }: TGetIdentityAuthTemplateDTO) => {
+    await $checkPlan(actor.org.id);
+    const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actor.org.id);
     if (!template) {
       throw new NotFoundError({ message: "Template not found" });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: template.orgId,
-      actorAuthMethod,
-      actorOrgId
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId: template.orgId });
+    permission.assert({
+      action: OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates,
+      subject: OrgPermissionSubjects.MachineIdentityAuthTemplate
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates,
-      OrgPermissionSubjects.MachineIdentityAuthTemplate
-    );
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: template.orgId
     });
@@ -830,34 +796,19 @@ export const identityAuthTemplateServiceFactory = ({
     return $sanitizeTemplate(template, $withGatewayFields(template, decryptedTemplateFields));
   };
 
-  const listTemplates = async ({
-    limit,
-    offset,
-    search,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TListIdentityAuthTemplatesDTO) => {
-    await $checkPlan(actorOrgId);
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
+  const listTemplates = async ({ limit, offset, search, actor }: TListIdentityAuthTemplatesDTO) => {
+    await $checkPlan(actor.org.id);
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({
+      action: OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates,
+      subject: OrgPermissionSubjects.MachineIdentityAuthTemplate
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates,
-      OrgPermissionSubjects.MachineIdentityAuthTemplate
-    );
 
-    const { docs, totalCount } = await identityAuthTemplateDAL.findByOrgId(actorOrgId, { limit, offset, search });
+    const { docs, totalCount } = await identityAuthTemplateDAL.findByOrgId(actor.org.id, { limit, offset, search });
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: actorOrgId
+      orgId: actor.org.id
     });
     return {
       totalCount,
@@ -871,32 +822,19 @@ export const identityAuthTemplateServiceFactory = ({
     };
   };
 
-  const getTemplatesByAuthMethod = async ({
-    authMethod,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TGetTemplatesByAuthMethodDTO) => {
-    await $checkPlan(actorOrgId);
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
+  const getTemplatesByAuthMethod = async ({ authMethod, actor }: TGetTemplatesByAuthMethodDTO) => {
+    await $checkPlan(actor.org.id);
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({
+      action: OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
+      subject: OrgPermissionSubjects.MachineIdentityAuthTemplate
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
-      OrgPermissionSubjects.MachineIdentityAuthTemplate
-    );
 
-    const docs = await identityAuthTemplateDAL.findByAuthMethod(authMethod, actorOrgId);
+    const docs = await identityAuthTemplateDAL.findByAuthMethod(authMethod, actor.org.id);
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: actorOrgId
+      orgId: actor.org.id
     });
     return docs.map((doc) => {
       const parsedTemplateFields = JSON.parse(decryptor({ cipherTextBlob: doc.templateFields }).toString()) as Record<
@@ -907,28 +845,15 @@ export const identityAuthTemplateServiceFactory = ({
     });
   };
 
-  const findTemplateUsages = async ({
-    templateId,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TFindTemplateUsagesDTO) => {
-    await $checkPlan(actorOrgId);
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
+  const findTemplateUsages = async ({ templateId, actor }: TFindTemplateUsagesDTO) => {
+    await $checkPlan(actor.org.id);
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({
+      action: OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates,
+      subject: OrgPermissionSubjects.MachineIdentityAuthTemplate
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates,
-      OrgPermissionSubjects.MachineIdentityAuthTemplate
-    );
 
-    const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actorOrgId);
+    const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actor.org.id);
     if (!template) {
       throw new NotFoundError({ message: "Template not found" });
     }
@@ -937,30 +862,15 @@ export const identityAuthTemplateServiceFactory = ({
     return docs;
   };
 
-  const unlinkTemplateUsage = async ({
-    templateId,
-    identityIds,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId,
-    auditLogInfo
-  }: TUnlinkTemplateUsageDTO) => {
-    await $checkPlan(actorOrgId);
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
+  const unlinkTemplateUsage = async ({ templateId, identityIds, actor, auditLogInfo }: TUnlinkTemplateUsageDTO) => {
+    await $checkPlan(actor.org.id);
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({
+      action: OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates,
+      subject: OrgPermissionSubjects.MachineIdentityAuthTemplate
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates,
-      OrgPermissionSubjects.MachineIdentityAuthTemplate
-    );
 
-    const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actorOrgId);
+    const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actor.org.id);
     if (!template) {
       throw new NotFoundError({ message: "Template not found" });
     }

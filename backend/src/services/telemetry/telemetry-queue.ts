@@ -1,12 +1,12 @@
 import { PostHog } from "posthog-node";
 
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 
-import { TUsageCounterDALFactory } from "../license-client/usage";
-import { getServerCfg } from "../super-admin/super-admin-service";
 import { TTelemetryDALFactory } from "./telemetry-dal";
 import {
   TELEMETRY_SECRET_OPERATIONS_KEY,
@@ -19,20 +19,22 @@ const AGGREGATED_EVENTS_HANDLER_TIMEOUT_MS = 8 * 60 * 1000;
 const PKI_ORG_USAGE_HANDLER_TIMEOUT_MS = 15 * 60 * 1000;
 
 type TTelemetryQueueServiceFactoryDep = {
+  instanceConfigService: TInstanceConfigService;
   cronJob: TCronJobFactory;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "deleteItem">;
   telemetryDAL: TTelemetryDALFactory;
-  usageCounterDAL: Pick<TUsageCounterDALFactory, "getPkiUsageByRootOrg">;
+  certManagerService: TCertManagerService;
   telemetryService: Pick<TTelemetryServiceFactory, "processAggregatedEvents" | "setOrgGroupProperties">;
 };
 
 export type TTelemetryQueueServiceFactory = ReturnType<typeof telemetryQueueServiceFactory>;
 
 export const telemetryQueueServiceFactory = ({
+  instanceConfigService,
   cronJob,
   keyStore,
   telemetryDAL,
-  usageCounterDAL,
+  certManagerService,
   telemetryService
 }: TTelemetryQueueServiceFactoryDep) => {
   const appCfg = getConfig();
@@ -51,7 +53,7 @@ export const telemetryQueueServiceFactory = ({
       pattern: "0 0 * * *",
       runHashTtlS: 3 * 24 * 60 * 60,
       handler: async () => {
-        const { instanceId } = await getServerCfg();
+        const { instanceId } = await instanceConfigService.getSettings();
         const telemetryStats = await telemetryDAL.getTelemetryInstanceStats();
         const numberOfSecretOperationsMade = parseInt(
           (await keyStore.getItem(TELEMETRY_SECRET_OPERATIONS_KEY)) || "0",
@@ -101,7 +103,7 @@ export const telemetryQueueServiceFactory = ({
       handlerTimeoutMs: PKI_ORG_USAGE_HANDLER_TIMEOUT_MS,
       leaseDurationMs: PKI_ORG_USAGE_HANDLER_TIMEOUT_MS,
       handler: async () => {
-        const usage = await usageCounterDAL.getPkiUsageByRootOrg();
+        const usage = await certManagerService.getPkiUsageByRootOrg();
         const countedAt = new Date().toISOString();
 
         await telemetryService.setOrgGroupProperties(

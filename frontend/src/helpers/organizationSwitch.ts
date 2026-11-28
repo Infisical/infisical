@@ -2,6 +2,8 @@ import type { ParsedLocation } from "@tanstack/react-router";
 
 const organizationSwitchSections = [
   "projects/secret-management/product-settings",
+  "projects/cert-manager/product-settings",
+  "projects/secret-scanning/product-settings",
   "projects/secret-management/secret-sharing",
   "projects/secret-management/insights",
   "projects/kms/kmip-servers",
@@ -9,6 +11,7 @@ const organizationSwitchSections = [
   "projects/cert-manager",
   "projects/secret-scanning",
   "projects/kms",
+  "projects/agent-vault",
   "projects",
   "networking",
   "access-management",
@@ -24,14 +27,7 @@ const organizationSwitchSections = [
   "pam/sessions",
   "pam/approval-requests",
   "pam/audit-logs",
-  "pam/access-management",
-  "agent-vault/sessions",
-  "agent-vault/access-bundles",
-  "agent-vault/variables",
-  "agent-vault/proxies",
-  "agent-vault/settings",
-  "agent-vault/audit-logs",
-  "agent-vault/access-management"
+  "pam/access-management"
 ];
 
 export const getOrganizationSwitchDestination = (
@@ -40,7 +36,7 @@ export const getOrganizationSwitchDestination = (
   isSubOrganization = false
 ) => {
   const path = location.pathname.match(/^\/organizations\/[^/]+\/(.*?)\/?$/)?.[1] ?? "";
-  const accessResource = path.match(/^(?:(pam|agent-vault)\/)?(groups|members|roles|identities)\//);
+  const accessResource = path.match(/^(?:(pam)\/)?(groups|members|roles|identities)\//);
   let section = organizationSwitchSections.find(
     (candidate) => path === candidate || path.startsWith(`${candidate}/`)
   );

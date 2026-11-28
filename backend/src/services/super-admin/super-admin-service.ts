@@ -1,63 +1,49 @@
+import { AccessScope, IdentityAuthMethod, OrgMembershipRole, OrgMembershipStatus, TUsers } from "@app/db/schemas";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import {
-  AccessScope,
-  IdentityAuthMethod,
-  OrgMembershipRole,
-  OrgMembershipStatus,
-  TSuperAdmin,
-  TSuperAdminUpdate,
-  TUsers
-} from "@app/db/schemas";
+  LoginMethod,
+  ReadFrom,
+  TInstanceConfigPatch,
+  TInstanceConfigService
+} from "@app/domains/platform/instance-config-core/ce/module";
+import { RootKeyEncryptionStrategy, TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
+import {
+  InstanceFeature,
+  Meter,
+  PlanFeature,
+  PlanLimit,
+  TLicenseService,
+  TUsageMeteringService
+} from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
-import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
-import { withCache } from "@app/lib/cache/with-cache";
-import {
-  getConfig,
-  getOriginalConfig,
-  overrideEnvConfig,
-  overwriteSchema,
-  validateOverrides
-} from "@app/lib/config/env";
-import { startLocalRefresh } from "@app/lib/cron/local-refresh";
+import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
+import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TIp } from "@app/lib/ip";
-import { logger } from "@app/lib/logger";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
 import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
+import { assertPasswordNotBreached } from "@app/lib/validator/breached-password";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import {
-  AgentVaultIdentities,
-  IdentitiesMeter,
-  PamIdentities,
-  SecretIdentities,
-  UserIdentities
-} from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
 import { AlertPrincipalType } from "../alert/alert-types";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
-import { ActorType, AuthMethod } from "../auth/auth-type";
-import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TIdentityTokenAuthDALFactory } from "../identity-token-auth/identity-token-auth-dal";
-import { KMS_ROOT_CONFIG_UUID } from "../kms/kms-fns";
-import { TKmsRootConfigDALFactory } from "../kms/kms-root-config-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { RootKeyEncryptionStrategy } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -70,11 +56,9 @@ import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TInvalidateCacheQueueFactory } from "./invalidate-cache-queue";
-import { TSuperAdminDALFactory } from "./super-admin-dal";
+import { assertInstanceSetupToken } from "./super-admin-fns";
 import {
   CacheType,
-  EnvOverrides,
-  LoginMethod,
   SuperAdminErrorCode,
   TAdminBootstrapInstanceDTO,
   TAdminCreateEmailDomainDTO,
@@ -82,7 +66,6 @@ import {
   TAdminGetEmailDomainsDTO,
   TAdminGetIdentitiesDTO,
   TAdminGetUsersDTO,
-  TAdminIntegrationConfig,
   TAdminSignUpDTO,
   TCreateOrganizationDTO,
   TGetOrganizationsDTO,
@@ -94,7 +77,7 @@ type TSuperAdminServiceFactoryDep = {
   identityTokenAuthDAL: TIdentityTokenAuthDALFactory;
   identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "issueIdentityAccessToken">;
   orgDAL: TOrgDALFactory;
-  serverCfgDAL: TSuperAdminDALFactory;
+  instanceConfigService: TInstanceConfigService;
   userDAL: TUserDALFactory;
   membershipUserDAL: TMembershipUserDALFactory;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
@@ -109,61 +92,21 @@ type TSuperAdminServiceFactoryDep = {
   eventEmitter: TEventEmitter;
   emailDomainDAL: TEmailDomainDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
-  kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey" | "updateEncryptionStrategy">;
-  kmsRootConfigDAL: TKmsRootConfigDALFactory;
+  kmsRootKeyService: TKmsRootKeyService;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
-  licenseService: Pick<
-    TLicenseServiceFactory,
-    "onPremFeatures" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount"
-  >;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;
   invalidateCacheQueue: TInvalidateCacheQueueFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
   tokenService: TAuthTokenServiceFactory;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
 
-// eslint-disable-next-line
-export let getServerCfg: () => Promise<
-  TSuperAdmin & {
-    defaultAuthOrgSlug: string | null;
-    defaultAuthOrgAuthEnforced?: boolean | null;
-    defaultAuthOrgAuthMethod?: string | null;
-  }
->;
-
-let adminIntegrationsConfig: TAdminIntegrationConfig = {
-  slack: {
-    clientSecret: "",
-    clientId: ""
-  },
-  microsoftTeams: {
-    appId: "",
-    clientSecret: "",
-    botId: ""
-  },
-  gitHubAppConnection: {
-    clientId: "",
-    clientSecret: "",
-    appSlug: "",
-    appId: "",
-    privateKey: ""
-  }
-};
-
-Object.freeze(adminIntegrationsConfig);
-
-export const getInstanceIntegrationsConfig = () => {
-  return adminIntegrationsConfig;
-};
-
-export const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
-
 export const superAdminServiceFactory = ({
-  serverCfgDAL,
+  instanceConfigService,
   userDAL,
   identityDAL,
   orgDAL,
@@ -172,9 +115,9 @@ export const superAdminServiceFactory = ({
   authService,
   orgService,
   keyStore,
-  kmsRootConfigDAL,
-  kmsService,
+  kmsRootKeyService,
   licenseService,
+  usageMeteringService,
   identityAccessTokenService,
   identityTokenAuthDAL,
   microsoftTeamsService,
@@ -184,7 +127,6 @@ export const superAdminServiceFactory = ({
   membershipIdentityDAL,
   membershipUserDAL,
   membershipRoleDAL,
-  usageMeteringService,
   alertChannelRecipientDAL,
   pamSessionDAL,
   gatewayV2Service,
@@ -193,177 +135,7 @@ export const superAdminServiceFactory = ({
   auditLogService,
   eventEmitter
 }: TSuperAdminServiceFactoryDep) => {
-  const initServerCfg = async () => {
-    // TODO(akhilmhdh): bad  pattern time less change this later to me itself
-    getServerCfg = async () => {
-      const serverCfg = await withCache({
-        keyStore,
-        key: KeyStorePrefixes.AdminConfig,
-        ttlSeconds: KeyStoreTtls.AdminConfigInSeconds,
-        fetcher: async () => {
-          const cfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-          if (!cfg) {
-            throw new NotFoundError({ message: "Admin config not found" });
-          }
-          return cfg;
-        }
-      });
-
-      // Normalize dates — on cache hit they arrive as ISO strings from JSON.parse,
-      // on miss they are already Date objects. new Date() handles both.
-      return {
-        ...serverCfg,
-        createdAt: new Date(serverCfg.createdAt),
-        updatedAt: new Date(serverCfg.updatedAt)
-      };
-    };
-
-    // reset on initialized
-    await keyStore.deleteItem(KeyStorePrefixes.AdminConfig);
-    const serverCfg = await serverCfgDAL.transaction(async (tx) => {
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SuperAdminInit]);
-      const serverCfgInDB = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-      if (serverCfgInDB) return serverCfgInDB;
-
-      const newCfg = await serverCfgDAL.create({
-        // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
-        id: ADMIN_CONFIG_DB_UUID,
-        fipsEnabled: crypto.isFipsModeEnabled(),
-        initialized: false,
-        allowSignUp: true,
-        defaultAuthOrgId: null
-      });
-      return newCfg;
-    });
-    return serverCfg;
-  };
-
-  const getAdminIntegrationsConfig = async () => {
-    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-
-    if (!serverCfg) {
-      throw new NotFoundError({ name: "AdminConfig", message: "Admin config not found" });
-    }
-
-    const decrypt = kmsService.decryptWithRootKey();
-
-    const slackClientId = serverCfg.encryptedSlackClientId ? decrypt(serverCfg.encryptedSlackClientId).toString() : "";
-    const slackClientSecret = serverCfg.encryptedSlackClientSecret
-      ? decrypt(serverCfg.encryptedSlackClientSecret).toString()
-      : "";
-
-    const microsoftAppId = serverCfg.encryptedMicrosoftTeamsAppId
-      ? decrypt(serverCfg.encryptedMicrosoftTeamsAppId).toString()
-      : "";
-    const microsoftClientSecret = serverCfg.encryptedMicrosoftTeamsClientSecret
-      ? decrypt(serverCfg.encryptedMicrosoftTeamsClientSecret).toString()
-      : "";
-    const microsoftBotId = serverCfg.encryptedMicrosoftTeamsBotId
-      ? decrypt(serverCfg.encryptedMicrosoftTeamsBotId).toString()
-      : "";
-
-    const gitHubAppConnectionClientId = serverCfg.encryptedGitHubAppConnectionClientId
-      ? decrypt(serverCfg.encryptedGitHubAppConnectionClientId).toString()
-      : "";
-    const gitHubAppConnectionClientSecret = serverCfg.encryptedGitHubAppConnectionClientSecret
-      ? decrypt(serverCfg.encryptedGitHubAppConnectionClientSecret).toString()
-      : "";
-
-    const gitHubAppConnectionAppSlug = serverCfg.encryptedGitHubAppConnectionSlug
-      ? decrypt(serverCfg.encryptedGitHubAppConnectionSlug).toString()
-      : "";
-
-    const gitHubAppConnectionAppId = serverCfg.encryptedGitHubAppConnectionId
-      ? decrypt(serverCfg.encryptedGitHubAppConnectionId).toString()
-      : "";
-    const gitHubAppConnectionAppPrivateKey = serverCfg.encryptedGitHubAppConnectionPrivateKey
-      ? decrypt(serverCfg.encryptedGitHubAppConnectionPrivateKey).toString()
-      : "";
-
-    return {
-      slack: {
-        clientSecret: slackClientSecret,
-        clientId: slackClientId
-      },
-      microsoftTeams: {
-        appId: microsoftAppId,
-        clientSecret: microsoftClientSecret,
-        botId: microsoftBotId
-      },
-      gitHubAppConnection: {
-        clientId: gitHubAppConnectionClientId,
-        clientSecret: gitHubAppConnectionClientSecret,
-        appSlug: gitHubAppConnectionAppSlug,
-        appId: gitHubAppConnectionAppId,
-        privateKey: gitHubAppConnectionAppPrivateKey
-      }
-    };
-  };
-
-  const $syncAdminIntegrationConfig = async () => {
-    const config = await getAdminIntegrationsConfig();
-    Object.freeze(config);
-    adminIntegrationsConfig = config;
-  };
-
-  const getEnvOverrides = async () => {
-    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-
-    if (!serverCfg || !serverCfg.encryptedEnvOverrides) {
-      return {};
-    }
-
-    const decrypt = kmsService.decryptWithRootKey();
-
-    const overrides = JSON.parse(decrypt(serverCfg.encryptedEnvOverrides).toString()) as Record<string, string>;
-
-    return overrides;
-  };
-
-  const getEnvOverridesOrganized = async (): Promise<EnvOverrides> => {
-    const overrides = await getEnvOverrides();
-    const ogConfig = getOriginalConfig();
-
-    return Object.fromEntries(
-      Object.entries(overwriteSchema).map(([groupKey, groupDef]) => [
-        groupKey,
-        {
-          name: groupDef.name,
-          fields: groupDef.fields.map(({ key, description }) => ({
-            key,
-            description,
-            value: overrides[key] || "",
-            hasEnvEntry: !!(ogConfig as unknown as Record<string, string | undefined>)[key]
-          }))
-        }
-      ])
-    );
-  };
-
-  const $syncEnvConfig = async () => {
-    const config = await getEnvOverrides();
-
-    overrideEnvConfig(config);
-  };
-
-  const updateServerCfg = async (
-    data: TSuperAdminUpdate & {
-      slackClientId?: string;
-      slackClientSecret?: string;
-      microsoftTeamsAppId?: string;
-      microsoftTeamsClientSecret?: string;
-      microsoftTeamsBotId?: string;
-      gitHubAppConnectionClientId?: string;
-      gitHubAppConnectionClientSecret?: string;
-      gitHubAppConnectionSlug?: string;
-      gitHubAppConnectionId?: string;
-      gitHubAppConnectionPrivateKey?: string;
-      envOverrides?: Record<string, string>;
-    },
-    userId: string
-  ) => {
-    const updatedData = data;
-
+  const updateServerCfg = async (data: TInstanceConfigPatch, userId: string) => {
     // The lockout guard protects a user admin. A machine identity admin signs in with none of these
     // login methods, so there is nothing to lock it out of and no user row to read.
     const superAdminUser = data.enabledLoginMethods ? await userDAL.findById(userId) : undefined;
@@ -399,9 +171,7 @@ export const superAdminServiceFactory = ({
 
       const canServerAdminAccessAfterApply =
         data.enabledLoginMethods.some((loginMethod) =>
-          loginMethodToAuthMethod[loginMethod as LoginMethod].some((authMethod) =>
-            superAdminUser.authMethods?.includes(authMethod)
-          )
+          loginMethodToAuthMethod[loginMethod].some((authMethod) => superAdminUser.authMethods?.includes(authMethod))
         ) ||
         isUserSamlAccessEnabled ||
         isUserOidcAccessEnabled;
@@ -414,142 +184,22 @@ export const superAdminServiceFactory = ({
       }
     }
 
-    const encryptWithRoot = kmsService.encryptWithRootKey();
-    if (data.slackClientId) {
-      const encryptedClientId = encryptWithRoot(Buffer.from(data.slackClientId));
+    const config = await instanceConfigService.updateConfig(data);
 
-      updatedData.encryptedSlackClientId = encryptedClientId;
-      updatedData.slackClientId = undefined;
-    }
-
-    if (data.slackClientSecret) {
-      const encryptedClientSecret = encryptWithRoot(Buffer.from(data.slackClientSecret));
-
-      updatedData.encryptedSlackClientSecret = encryptedClientSecret;
-      updatedData.slackClientSecret = undefined;
-    }
-
-    let microsoftTeamsSettingsUpdated = false;
-    if (data.microsoftTeamsAppId) {
-      const encryptedClientId = encryptWithRoot(Buffer.from(data.microsoftTeamsAppId));
-
-      updatedData.encryptedMicrosoftTeamsAppId = encryptedClientId;
-      updatedData.microsoftTeamsAppId = undefined;
-      microsoftTeamsSettingsUpdated = true;
-    }
-
-    if (data.microsoftTeamsClientSecret) {
-      const encryptedClientSecret = encryptWithRoot(Buffer.from(data.microsoftTeamsClientSecret));
-
-      updatedData.encryptedMicrosoftTeamsClientSecret = encryptedClientSecret;
-      updatedData.microsoftTeamsClientSecret = undefined;
-      microsoftTeamsSettingsUpdated = true;
-    }
-
-    if (data.microsoftTeamsBotId) {
-      const encryptedBotId = encryptWithRoot(Buffer.from(data.microsoftTeamsBotId));
-
-      updatedData.encryptedMicrosoftTeamsBotId = encryptedBotId;
-      updatedData.microsoftTeamsBotId = undefined;
-      microsoftTeamsSettingsUpdated = true;
-    }
-
-    let gitHubAppConnectionSettingsUpdated = false;
-    if (data.gitHubAppConnectionClientId !== undefined) {
-      const encryptedClientId = encryptWithRoot(Buffer.from(data.gitHubAppConnectionClientId));
-      updatedData.encryptedGitHubAppConnectionClientId = encryptedClientId;
-      updatedData.gitHubAppConnectionClientId = undefined;
-      gitHubAppConnectionSettingsUpdated = true;
-    }
-
-    if (data.gitHubAppConnectionClientSecret !== undefined) {
-      const encryptedClientSecret = encryptWithRoot(Buffer.from(data.gitHubAppConnectionClientSecret));
-      updatedData.encryptedGitHubAppConnectionClientSecret = encryptedClientSecret;
-      updatedData.gitHubAppConnectionClientSecret = undefined;
-      gitHubAppConnectionSettingsUpdated = true;
-    }
-
-    if (data.gitHubAppConnectionSlug !== undefined) {
-      const encryptedAppSlug = encryptWithRoot(Buffer.from(data.gitHubAppConnectionSlug));
-      updatedData.encryptedGitHubAppConnectionSlug = encryptedAppSlug;
-      updatedData.gitHubAppConnectionSlug = undefined;
-      gitHubAppConnectionSettingsUpdated = true;
-    }
-
-    if (data.gitHubAppConnectionId !== undefined) {
-      const encryptedAppId = encryptWithRoot(Buffer.from(data.gitHubAppConnectionId));
-      updatedData.encryptedGitHubAppConnectionId = encryptedAppId;
-      updatedData.gitHubAppConnectionId = undefined;
-      gitHubAppConnectionSettingsUpdated = true;
-    }
-
-    if (data.gitHubAppConnectionPrivateKey !== undefined) {
-      const encryptedAppPrivateKey = encryptWithRoot(Buffer.from(data.gitHubAppConnectionPrivateKey));
-      updatedData.encryptedGitHubAppConnectionPrivateKey = encryptedAppPrivateKey;
-      updatedData.gitHubAppConnectionPrivateKey = undefined;
-      gitHubAppConnectionSettingsUpdated = true;
-    }
-
-    let envOverridesUpdated = false;
-    if (data.envOverrides !== undefined) {
-      // Verify input format
-      validateOverrides(data.envOverrides);
-
-      const encryptedEnvOverrides = encryptWithRoot(Buffer.from(JSON.stringify(data.envOverrides)));
-      updatedData.encryptedEnvOverrides = encryptedEnvOverrides;
-      updatedData.envOverrides = undefined;
-      envOverridesUpdated = true;
-    }
-
-    if (!Object.values(updatedData).some((value) => value !== undefined)) {
-      throw new BadRequestError({
-        message:
-          "No recognized instance configuration fields were provided. Settings that have been removed are no longer accepted."
+    if (data.microsoftTeamsAppId || data.microsoftTeamsClientSecret || data.microsoftTeamsBotId) {
+      const { credentials, configUpdatedAt } = await instanceConfigService.getMicrosoftTeamsCredentials({
+        readFrom: ReadFrom.Primary
       });
+      if (credentials.isComplete()) {
+        await microsoftTeamsService.initializeTeamsBot({
+          botAppId: credentials.appId,
+          botAppPassword: credentials.clientSecret,
+          lastUpdatedAt: configUpdatedAt
+        });
+      }
     }
 
-    const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, updatedData);
-
-    try {
-      await keyStore.setItemWithExpiry(
-        KeyStorePrefixes.AdminConfig,
-        KeyStoreTtls.AdminConfigInSeconds,
-        JSON.stringify(updatedServerCfg)
-      );
-    } catch (err) {
-      logger.warn(
-        { key: KeyStorePrefixes.AdminConfig, err },
-        `updateServerCfg: cache write failed [key=${KeyStorePrefixes.AdminConfig}]`
-      );
-    }
-
-    if (gitHubAppConnectionSettingsUpdated) {
-      await $syncAdminIntegrationConfig();
-    }
-
-    if (envOverridesUpdated) {
-      await $syncEnvConfig();
-    }
-
-    if (
-      updatedServerCfg.encryptedMicrosoftTeamsAppId &&
-      updatedServerCfg.encryptedMicrosoftTeamsClientSecret &&
-      updatedServerCfg.encryptedMicrosoftTeamsBotId &&
-      microsoftTeamsSettingsUpdated
-    ) {
-      const decryptWithRoot = kmsService.decryptWithRootKey();
-      decryptWithRoot(updatedServerCfg.encryptedMicrosoftTeamsBotId); // validate that we're able to decrypt the bot ID
-      const decryptedAppId = decryptWithRoot(updatedServerCfg.encryptedMicrosoftTeamsAppId);
-      const decryptedAppPassword = decryptWithRoot(updatedServerCfg.encryptedMicrosoftTeamsClientSecret);
-
-      await microsoftTeamsService.initializeTeamsBot({
-        botAppId: decryptedAppId.toString(),
-        botAppPassword: decryptedAppPassword.toString(),
-        lastUpdatedAt: updatedServerCfg.updatedAt
-      });
-    }
-
-    return updatedServerCfg;
+    return config;
   };
 
   const adminSignUp = async ({
@@ -559,17 +209,31 @@ export const superAdminServiceFactory = ({
     password,
     organizationName,
     ip,
-    userAgent
+    userAgent,
+    setupToken
   }: TAdminSignUpDTO) => {
     const appCfg = getConfig();
+    assertInstanceSetupToken(setupToken);
 
     const sanitizedEmail = email.trim().toLowerCase();
     const existingUser = await userDAL.findOne({ username: sanitizedEmail });
     if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exists" });
 
+    await assertPasswordNotBreached(password);
+    // The lookup can take seconds, so another admin signup may have finished meanwhile.
+    const { initialized } = await instanceConfigService.getSettings();
+    if (initialized) throw new BadRequestError({ message: "Admin account has already been set up" });
+
     const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
 
-    const userInfo = await userDAL.transaction(async (tx) => {
+    const initialOrganizationName = organizationName ?? appCfg.INITIAL_ORGANIZATION_NAME ?? "Admin Org";
+
+    // One transaction from the claim to completion: of two signups at once, the second waits on the claim and is
+    // refused before it creates anything.
+    const { userInfo, organization } = await userDAL.transaction(async (tx) => {
+      const instanceConfig = instanceConfigService.within(sealKnexTransaction(tx));
+      await instanceConfig.claimSetup();
+
       const newUser = await userDAL.create(
         {
           firstName,
@@ -585,22 +249,19 @@ export const superAdminServiceFactory = ({
         },
         tx
       );
+      const newOrganization = await orgService.createOrganization(
+        { userId: newUser.id, orgName: initialOrganizationName },
+        tx
+      );
 
-      return { user: { ...newUser, hashedPassword: null } };
+      await instanceConfig.completeSetup({ closeSignUp: !appCfg.isCloud });
+      return { userInfo: { user: { ...newUser, hashedPassword: null } }, organization: newOrganization };
     });
 
-    const initialOrganizationName = organizationName ?? appCfg.INITIAL_ORGANIZATION_NAME ?? "Admin Org";
+    await usageMeteringService.syncSeats(organization.id);
+    usageMeteringService.emit(organization.id, Meter.PamIdentities);
+    await instanceConfigService.refreshSharedCopy();
 
-    const organization = await orgService.createOrganization({
-      userId: userInfo.user.id,
-      orgName: initialOrganizationName
-    });
-
-    const shouldDisableSignUp = !appCfg.isCloud;
-    await updateServerCfg(
-      { initialized: true, ...(shouldDisableSignUp ? { allowSignUp: false } : {}) },
-      userInfo.user.id
-    );
     const token = await authService.generateUserTokens({
       userId: userInfo.user.id,
       authMethod: AuthMethod.EMAIL,
@@ -612,19 +273,30 @@ export const superAdminServiceFactory = ({
     return { token, user: userInfo, organization };
   };
 
-  const bootstrapInstance = async ({ email, password, organizationName }: TAdminBootstrapInstanceDTO) => {
+  const bootstrapInstance = async ({ email, password, organizationName, setupToken }: TAdminBootstrapInstanceDTO) => {
     const appCfg = getConfig();
     const sanitizedEmail = email.trim().toLowerCase();
-    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-    if (serverCfg?.initialized) {
-      throw new BadRequestError({ message: "Instance has already been set up" });
+    const { initialized } = await instanceConfigService.getSettings();
+    if (initialized) {
+      throw new BadRequestError({
+        name: SuperAdminErrorCode.InstanceAlreadySetUp,
+        message: "Instance has already been set up"
+      });
     }
+
+    assertInstanceSetupToken(setupToken);
 
     const existingUser = await userDAL.findOne({ email: sanitizedEmail });
     if (existingUser) throw new BadRequestError({ name: "Instance initialization", message: "User already exists" });
 
-    const userInfo = await userDAL.transaction(async (tx) => {
-      const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
+    const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
+    const initialOrganizationName = organizationName ?? "Admin Org";
+
+    // One transaction from the claim to completion, as in adminSignUp.
+    const { userInfo, organization, identity, credentials } = await userDAL.transaction(async (tx) => {
+      const instanceConfig = instanceConfigService.within(sealKnexTransaction(tx));
+      await instanceConfig.claimSetup();
+
       const newUser = await userDAL.create(
         {
           firstName: "Admin",
@@ -650,22 +322,16 @@ export const superAdminServiceFactory = ({
         tx
       );
 
-      return { user: { ...newUser, hashedPassword: null }, enc: userEnc };
-    });
+      const newOrganization = await orgService.createOrganization(
+        { userId: newUser.id, orgName: initialOrganizationName },
+        tx
+      );
 
-    const initialOrganizationName = organizationName ?? "Admin Org";
-
-    const organization = await orgService.createOrganization({
-      userId: userInfo.user.id,
-      orgName: initialOrganizationName
-    });
-
-    const { identity, credentials } = await identityDAL.transaction(async (tx) => {
-      const newIdentity = await identityDAL.create({ name: "Instance Admin Identity", orgId: organization.id }, tx);
+      const newIdentity = await identityDAL.create({ name: "Instance Admin Identity", orgId: newOrganization.id }, tx);
       const membership = await membershipIdentityDAL.create(
         {
           actorIdentityId: newIdentity.id,
-          scopeOrgId: organization.id,
+          scopeOrgId: newOrganization.id,
           scope: AccessScope.Organization
         },
         tx
@@ -707,10 +373,10 @@ export const superAdminServiceFactory = ({
         identityId: newIdentity.id,
         identityName: newIdentity.name,
         authMethod: IdentityAuthMethod.TOKEN_AUTH,
-        orgId: organization.id,
-        rootOrgId: organization.id,
-        parentOrgId: organization.id,
-        subOrganizationId: organization.id,
+        orgId: newOrganization.id,
+        rootOrgId: newOrganization.id,
+        parentOrgId: newOrganization.id,
+        subOrganizationId: newOrganization.id,
         accessTokenTTL: Number(tokenAuth.accessTokenTTL),
         accessTokenMaxTTL: Number(tokenAuth.accessTokenMaxTTL),
         accessTokenNumUsesLimit: Number(tokenAuth.accessTokenNumUsesLimit),
@@ -719,18 +385,19 @@ export const superAdminServiceFactory = ({
         persistToPg: { tx, name: "Instance Admin Token" }
       });
 
-      return { identity: newIdentity, auth: tokenAuth, credentials: { token: accessToken } };
+      await instanceConfig.completeSetup({ closeSignUp: !appCfg.isCloud, adminIdentityId: newIdentity.id });
+
+      return {
+        userInfo: { user: { ...newUser, hashedPassword: null }, enc: userEnc },
+        organization: newOrganization,
+        identity: newIdentity,
+        credentials: { token: accessToken }
+      };
     });
 
-    const shouldDisableSignUp = !appCfg.isCloud;
-    await updateServerCfg(
-      {
-        initialized: true,
-        adminIdentityIds: [identity.id],
-        ...(shouldDisableSignUp ? { allowSignUp: false } : {})
-      },
-      userInfo.user.id
-    );
+    await usageMeteringService.syncSeats(organization.id);
+    usageMeteringService.emit(organization.id, Meter.PamIdentities);
+    await instanceConfigService.refreshSharedCopy();
 
     return {
       user: userInfo,
@@ -757,11 +424,10 @@ export const superAdminServiceFactory = ({
   const emitUserDeletionMeterEvents = (orgMemberships: { scopeOrgId?: string | null }[]) => {
     const orgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId).filter((id): id is string => Boolean(id)))];
     orgIds.forEach((orgId) => {
-      usageMeteringService.emit(orgId, IdentitiesMeter.key);
-      usageMeteringService.emit(orgId, UserIdentities.key);
-      usageMeteringService.emit(orgId, SecretIdentities.key);
-      usageMeteringService.emit(orgId, PamIdentities.key);
-      usageMeteringService.emit(orgId, AgentVaultIdentities.key);
+      usageMeteringService.emit(orgId, Meter.Identities);
+      usageMeteringService.emit(orgId, Meter.UserIdentities);
+      usageMeteringService.emit(orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(orgId, Meter.PamIdentities);
     });
   };
 
@@ -855,7 +521,7 @@ export const superAdminServiceFactory = ({
     return users;
   };
 
-  const deleteIdentitySuperAdminAccess = async (identityId: string, actorId: string) => {
+  const deleteIdentitySuperAdminAccess = async (identityId: string) => {
     const identity = await requestMemoize(requestMemoKeys.identityFindById(identityId), () =>
       identityDAL.findById(identityId)
     );
@@ -863,12 +529,7 @@ export const superAdminServiceFactory = ({
       throw new NotFoundError({ name: "Identity", message: "Identity not found" });
     }
 
-    const currentAdminIdentityIds = (await getServerCfg()).adminIdentityIds ?? [];
-    if (!currentAdminIdentityIds?.includes(identityId)) {
-      throw new BadRequestError({ name: "Identity", message: "Identity does not have super admin access" });
-    }
-
-    await updateServerCfg({ adminIdentityIds: currentAdminIdentityIds.filter((id) => id !== identityId) }, actorId);
+    await instanceConfigService.revokeAdminIdentity(identityId);
 
     return identity;
   };
@@ -916,9 +577,9 @@ export const superAdminServiceFactory = ({
       throw new BadRequestError({ message: "This endpoint is not supported for cloud instances" });
 
     const serverAdmin = await userDAL.findById(actor.id);
-    const identityLimit = getEnforcedIdentityLimit(licenseService.onPremFeatures);
+    const instancePlan = licenseService.getInstanceEntitlements().plan();
 
-    const isEmailInvalid = await isDisposableEmail(inviteAdminEmails);
+    const isEmailInvalid = isDisposableEmail(inviteAdminEmails);
     if (isEmailInvalid) {
       throw new BadRequestError({
         message: "Disposable emails are not allowed",
@@ -941,18 +602,18 @@ export const superAdminServiceFactory = ({
       });
     }
 
+    if (instancePlan.isLimited(PlanLimit.Identities)) {
+      const { identitiesUsed } = await licenseService.getSeatUsage(null);
+      if (instancePlan.exceeds(PlanLimit.Identities, identitiesUsed)) {
+        throw new BadRequestError({
+          name: "InviteUser",
+          message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
+        });
+      }
+    }
+
     const { organization, users: usersToEmail } = await orgDAL.transaction(async (tx) => {
       const org = await orgService.createOrganization({ orgName: name }, tx);
-
-      if (identityLimit) {
-        const { identitiesUsed } = await licenseService.getOrgSeatUsage(org.id, tx);
-        if (identitiesUsed >= identityLimit) {
-          throw new BadRequestError({
-            name: "InviteUser",
-            message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
-          });
-        }
-      }
 
       const users: Pick<TUsers, "id" | "firstName" | "lastName" | "email" | "username" | "isAccepted">[] = [];
 
@@ -1015,7 +676,8 @@ export const superAdminServiceFactory = ({
       return { organization: org, users };
     });
 
-    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
+    await usageMeteringService.syncSeats(organization.id);
+    usageMeteringService.emit(organization.id, Meter.PamIdentities);
 
     await Promise.allSettled(
       usersToEmail.map(async (user) => {
@@ -1064,11 +726,6 @@ export const superAdminServiceFactory = ({
     return organization;
   };
 
-  const deleteOrganization = async (organizationId: string) => {
-    const organization = await orgDAL.deleteById(organizationId);
-    return organization;
-  };
-
   const deleteOrganizationMembership = async (
     organizationId: string,
     membershipId: string,
@@ -1101,7 +758,7 @@ export const superAdminServiceFactory = ({
       orgId: organizationId,
       orgDAL,
       userAliasDAL,
-      licenseService,
+      usageMeteringService,
       userId: actorType === ActorType.USER ? actorId : undefined,
       membershipUserDAL,
       userGroupMembershipDAL,
@@ -1110,9 +767,8 @@ export const superAdminServiceFactory = ({
       eventEmitter
     });
 
-    usageMeteringService.emit(organizationId, SecretIdentities.key);
-    usageMeteringService.emit(organizationId, PamIdentities.key);
-    usageMeteringService.emit(organizationId, AgentVaultIdentities.key);
+    usageMeteringService.emit(organizationId, Meter.SecretIdentities);
+    usageMeteringService.emit(organizationId, Meter.PamIdentities);
     return { ...organizationMembership, role: membershipRole.role, orgId: organizationId };
   };
 
@@ -1225,19 +881,19 @@ export const superAdminServiceFactory = ({
       searchTerm,
       sortBy: "name"
     });
-    const serverCfg = await getServerCfg();
+    const { adminIdentityIds } = await instanceConfigService.getSettings();
 
     return {
       identities: result.identities.map((identity) => ({
         ...identity,
-        isInstanceAdmin: Boolean(serverCfg?.adminIdentityIds?.includes(identity.id))
+        isInstanceAdmin: Boolean(adminIdentityIds?.includes(identity.id))
       })),
       total: result.total
     };
   };
 
   const grantServerAdminAccessToUser = async (userId: string) => {
-    if (!licenseService.onPremFeatures?.instanceUserManagement) {
+    if (!licenseService.getInstanceEntitlements().has(InstanceFeature.InstanceUserManagement)) {
       throw new BadRequestError({
         message: "Failed to grant server admin access to user due to plan restriction. Upgrade to Infisical's Pro plan."
       });
@@ -1245,48 +901,14 @@ export const superAdminServiceFactory = ({
     await userDAL.updateById(userId, { superAdmin: true });
   };
 
-  const getConfiguredEncryptionStrategies = async () => {
-    const appCfg = getConfig();
-
-    const kmsRootCfg = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
-
-    if (!kmsRootCfg) {
-      throw new NotFoundError({ name: "KmsRootConfig", message: "KMS root configuration not found" });
-    }
-
-    const selectedStrategy = kmsRootCfg.encryptionStrategy;
-    const enabledStrategies: { enabled: boolean; strategy: RootKeyEncryptionStrategy }[] = [];
-
-    if (appCfg.ROOT_ENCRYPTION_KEY || appCfg.ENCRYPTION_KEY) {
-      const basicStrategy = RootKeyEncryptionStrategy.Software;
-
-      enabledStrategies.push({
-        enabled: selectedStrategy === basicStrategy,
-        strategy: basicStrategy
-      });
-    }
-    if (appCfg.isHsmConfigured) {
-      const hsmStrategy = RootKeyEncryptionStrategy.HSM;
-
-      enabledStrategies.push({
-        enabled: selectedStrategy === hsmStrategy,
-        strategy: hsmStrategy
-      });
-    }
-
-    return {
-      strategies: enabledStrategies
-    };
-  };
-
   const updateRootEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
-    if (!licenseService.onPremFeatures.hsm) {
+    if (!licenseService.getInstanceEntitlements().plan().has(PlanFeature.Hsm)) {
       throw new BadRequestError({
         message: "Failed to update encryption strategy due to plan restriction. Upgrade to Infisical's Enterprise plan."
       });
     }
 
-    const configuredStrategies = await getConfiguredEncryptionStrategies();
+    const configuredStrategies = await kmsRootKeyService.listEncryptionStrategies();
 
     const foundStrategy = configuredStrategies.strategies.find((s) => s.strategy === strategy);
 
@@ -1298,7 +920,7 @@ export const superAdminServiceFactory = ({
       throw new BadRequestError({ message: "The selected encryption strategy is already enabled" });
     }
 
-    await kmsService.updateEncryptionStrategy(strategy);
+    await kmsRootKeyService.updateEncryptionStrategy(strategy);
   };
 
   const invalidateCache = async (type: CacheType) => {
@@ -1311,31 +933,6 @@ export const superAdminServiceFactory = ({
     return (await keyStore.getItem(KeyStorePrefixes.InvalidatingCache)) !== null;
   };
 
-  const initializeAdminIntegrationConfigSync = async () => {
-    logger.info("Setting up background sync process for admin integrations config");
-
-    // initial sync upon startup
-    await $syncAdminIntegrationConfig();
-
-    return startLocalRefresh({
-      name: "admin-integration-config-sync",
-      intervalMs: 5 * 60 * 1000,
-      task: $syncAdminIntegrationConfig
-    });
-  };
-
-  const initializeEnvConfigSync = async () => {
-    logger.info("Setting up background sync process for environment overrides");
-
-    await $syncEnvConfig();
-
-    return startLocalRefresh({
-      name: "env-config-sync",
-      intervalMs: 5 * 60 * 1000,
-      task: $syncEnvConfig
-    });
-  };
-
   const getEmailDomains = async ({ offset, limit, searchTerm }: TAdminGetEmailDomainsDTO) => {
     return emailDomainDAL.findByFilter({ offset, limit, searchTerm });
   };
@@ -1346,8 +943,9 @@ export const superAdminServiceFactory = ({
 
     const config = getConfig();
     if (!config.isCloud) {
-      const plan = licenseService.onPremFeatures;
-      const canEmailDomainVerification = plan.samlSSO || plan.ldap || plan.oidcSSO;
+      const plan = licenseService.getInstanceEntitlements().plan();
+      const canEmailDomainVerification =
+        plan.has(PlanFeature.SamlSso) || plan.has(PlanFeature.Ldap) || plan.has(PlanFeature.OidcSso);
       if (!canEmailDomainVerification) {
         throw new BadRequestError({
           message: "Failed to add email domain due to plan restriction. Upgrade plan to use email domain verification."
@@ -1400,28 +998,20 @@ export const superAdminServiceFactory = ({
   };
 
   return {
-    initServerCfg,
     updateServerCfg,
     adminSignUp,
     bootstrapInstance,
     getUsers,
     deleteUser,
     getIdentities,
-    getAdminIntegrationsConfig,
     updateRootEncryptionStrategy,
-    getConfiguredEncryptionStrategies,
     grantServerAdminAccessToUser,
     deleteIdentitySuperAdminAccess,
     deleteUserSuperAdminAccess,
     invalidateCache,
     checkIfInvalidatingCache,
     getOrganizations,
-    deleteOrganization,
     deleteOrganizationMembership,
-    initializeAdminIntegrationConfigSync,
-    initializeEnvConfigSync,
-    getEnvOverrides,
-    getEnvOverridesOrganized,
     deleteUsers,
     createOrganization,
     joinOrganization,

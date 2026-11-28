@@ -67,6 +67,7 @@ import { registerIdentitySpiffeAuthRouter } from "./identity-spiffe-auth-router"
 import { registerIdentityTlsCertAuthRouter } from "./identity-tls-cert-auth-router";
 import { registerIdentityTokenAuthRouter } from "./identity-token-auth-router";
 import { registerIdentityUaRouter } from "./identity-universal-auth-router";
+import { registerInstanceRouter } from "./instance-router";
 import { registerIntegrationAuthRouter } from "./integration-auth-router";
 import { registerIntegrationRouter } from "./integration-router";
 import { registerInviteOrgRouter } from "./invite-org-router";
@@ -76,8 +77,10 @@ import { registerOAuthRouter } from "./oauth-router";
 import { registerOidcIssuerRouter } from "./oidc-issuer-router";
 import { registerOrgAdminRouter } from "./org-admin-router";
 import { registerOrgIdentityRouter } from "./org-identity-router";
+import { registerOrgAiConfigRouter } from "./organization-ai-config-router";
 import { registerOrganizationMembershipsRouter } from "./organization-memberships-router";
 import { registerOrgRouter } from "./organization-router";
+import { registerOrgSsoSettingsRouter } from "./organization-sso-settings-router";
 import { registerPasswordRouter } from "./password-router";
 import { registerPkiAlertRouter } from "./pki-alert-router";
 import { registerPkiApplicationRouter } from "./pki-application-router";
@@ -135,6 +138,8 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(
     async (orgRouter) => {
       await orgRouter.register(registerOrgRouter);
+      await orgRouter.register(registerOrgAiConfigRouter);
+      await orgRouter.register(registerOrgSsoSettingsRouter);
       await orgRouter.register(registerOrgIdentityRouter);
       await orgRouter.register(registerIdentityOrgMembershipRouter);
       await orgRouter.register(registerGroupOrgMembershipRouter);
@@ -143,6 +148,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   );
   await server.register(registerOrganizationMembershipsRouter, { prefix: "/organizations" });
   await server.register(registerAdminRouter, { prefix: "/admin" });
+  await server.register(registerInstanceRouter, { prefix: "/instance" });
   await server.register(registerOrgAdminRouter, { prefix: "/organization-admin" });
   await server.register(registerUserRouter, { prefix: "/user" });
   await server.register(registerNotificationRouter, { prefix: "/notifications" });
@@ -229,9 +235,9 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(
         async (applicationsRouter) => {
           applicationsRouter.addHook("preHandler", async (req) => {
-            if (!req.permission?.orgId) return;
+            if (!req.actor?.orgId) return;
             const activeProjectId = await applicationsRouter.services.certManagerProjectResolver.getActiveProjectId(
-              req.permission.orgId
+              req.actor.orgId
             );
             if (!activeProjectId) {
               throw new BadRequestError({

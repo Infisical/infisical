@@ -409,6 +409,31 @@ describe("withCacheFingerprint", () => {
     expect(mockKeyStore.setItemWithExpiry).not.toHaveBeenCalled();
   });
 
+  it("should check the fingerprint on every read and write no marker when the marker TTL is 0", async () => {
+    const { withCacheFingerprint } = await import("./with-cache");
+    const stale = { fingerprint: "fp-old", payload: { role: "admin" } };
+    mockKeyStore.getItem.mockImplementation(async (key: string) => {
+      if (key === "marker-key") return "1";
+      if (key === "data-key") return JSON.stringify(stale);
+      return null;
+    });
+    const dataFetcher = vi.fn().mockResolvedValue({ role: "member" });
+
+    const result = await withCacheFingerprint({
+      keyStore: mockKeyStore,
+      dataKey: "data-key",
+      markerKey: "marker-key",
+      markerTtlSeconds: 0,
+      dataTtlSeconds: 600,
+      fingerprintFetcher: vi.fn().mockResolvedValue("fp-new"),
+      dataFetcher
+    });
+
+    expect(result).toEqual({ role: "member" });
+    expect(mockKeyStore.getItem).not.toHaveBeenCalledWith("marker-key");
+    expect(mockKeyStore.setItemWithExpiry).not.toHaveBeenCalledWith("marker-key", expect.anything(), expect.anything());
+  });
+
   it("should revalidate and reset marker on marker miss + data hit + fingerprint match (1 DB read)", async () => {
     const { withCacheFingerprint } = await import("./with-cache");
     const payload = { id: "user-456", permissions: ["admin"] };
@@ -437,7 +462,7 @@ describe("withCacheFingerprint", () => {
     expect(result).toEqual(payload);
     expect(fingerprintFetcher).toHaveBeenCalledOnce();
     expect(dataFetcher).not.toHaveBeenCalled();
-    expect(mockKeyStore.setItemWithExpiry).toHaveBeenCalledWith("marker-key", 10, "1");
+    expect(mockKeyStore.setItemWithExpiry).toHaveBeenCalledWith("marker-key", 10, fingerprint);
   });
 
   it("should full re-fetch on fingerprint mismatch (1 heavy DB read)", async () => {
@@ -475,7 +500,7 @@ describe("withCacheFingerprint", () => {
       600,
       JSON.stringify({ fingerprint: newFingerprint, payload: newPayload })
     );
-    expect(mockKeyStore.setItemWithExpiry).toHaveBeenCalledWith("marker-key", 10, "1");
+    expect(mockKeyStore.setItemWithExpiry).toHaveBeenCalledWith("marker-key", 10, newFingerprint);
   });
 
   it("should full re-fetch on marker miss + data miss", async () => {
@@ -506,7 +531,7 @@ describe("withCacheFingerprint", () => {
       600,
       JSON.stringify({ fingerprint, payload })
     );
-    expect(mockKeyStore.setItemWithExpiry).toHaveBeenCalledWith("marker-key", 10, "1");
+    expect(mockKeyStore.setItemWithExpiry).toHaveBeenCalledWith("marker-key", 10, fingerprint);
   });
 
   it("should call reviver on cache hits", async () => {
@@ -650,5 +675,85 @@ describe("withCacheFingerprint", () => {
         dataFetcher
       })
     ).rejects.toThrow("Database query failed");
+  });
+});
+
+describe("readCacheFingerprint", () => {
+  // An in-memory key store, so withCacheFingerprint and readCacheFingerprint share real state.
+  const memoryKeyStore = () => {
+    const items = new Map<string, string>();
+    return {
+      items,
+      getItem: async (key: string) => items.get(key) ?? null,
+      setItemWithExpiry: async (key: string, _ttl: number | string, value: string | number | Buffer) => {
+        items.set(key, String(value));
+        return "OK" as const;
+      }
+    };
+  };
+  const keys = { dataKey: "data-key", markerKey: "marker-key", markerTtlSeconds: 10 };
+
+  it("should return the fingerprint of the served data while the marker is live, even after the source changed", async () => {
+    // Setup
+    const { withCacheFingerprint, readCacheFingerprint } = await import("./with-cache");
+    const keyStore = memoryKeyStore();
+    let source = "fp-old";
+    await withCacheFingerprint({
+      keyStore,
+      ...keys,
+      dataTtlSeconds: 600,
+      fingerprintFetcher: async () => source,
+      dataFetcher: async () => ({ access: "old" })
+    });
+    source = "fp-new";
+    const fingerprintFetcher = vi.fn(async () => source);
+
+    // Action
+    const fingerprint = await readCacheFingerprint({ keyStore, ...keys, fingerprintFetcher });
+
+    // Assert
+    expect(fingerprint).toBe("fp-old");
+    expect(fingerprintFetcher).not.toHaveBeenCalled();
+  });
+
+  it("should return a fresh fingerprint without renewing the marker when the cached data is stale", async () => {
+    // Setup
+    const { readCacheFingerprint } = await import("./with-cache");
+    const keyStore = memoryKeyStore();
+    keyStore.items.set("data-key", JSON.stringify({ fingerprint: "fp-old", payload: {} }));
+
+    // Action
+    const fingerprint = await readCacheFingerprint({ keyStore, ...keys, fingerprintFetcher: async () => "fp-new" });
+
+    // Assert
+    expect(fingerprint).toBe("fp-new");
+    expect(keyStore.items.has("marker-key")).toBe(false);
+  });
+
+  it("should renew the marker when the cached data still matches the fresh fingerprint", async () => {
+    // Setup
+    const { readCacheFingerprint } = await import("./with-cache");
+    const keyStore = memoryKeyStore();
+    keyStore.items.set("data-key", JSON.stringify({ fingerprint: "fp-same", payload: {} }));
+
+    // Action
+    const fingerprint = await readCacheFingerprint({ keyStore, ...keys, fingerprintFetcher: async () => "fp-same" });
+
+    // Assert
+    expect(fingerprint).toBe("fp-same");
+    expect(keyStore.items.get("marker-key")).toBe("fp-same");
+  });
+
+  it("should ignore a marker written before markers carried the fingerprint", async () => {
+    // Setup
+    const { readCacheFingerprint } = await import("./with-cache");
+    const keyStore = memoryKeyStore();
+    keyStore.items.set("marker-key", "1");
+
+    // Action
+    const fingerprint = await readCacheFingerprint({ keyStore, ...keys, fingerprintFetcher: async () => "fp-fresh" });
+
+    // Assert
+    expect(fingerprint).toBe("fp-fresh");
   });
 });

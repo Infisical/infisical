@@ -2,15 +2,18 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import { ApproverType, BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
-import { removeTrailingSlash } from "@app/lib/fn";
+import { SECRET_CHANGE_POLICIES } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
+import { canonicalizeSecretPathPattern, hasDotPathSegment, removeTrailingSlash } from "@app/lib/fn";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { secretChangePolicyPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { DelegatedApprovalSchema } from "@app/services/delegated-approval/delegated-approval-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+const SECRET_PATH_DOT_SEGMENT_ERR_MSG = "Secret path cannot contain '.' or '..' as a folder name";
 
 export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -30,7 +33,9 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           secretPath: z
             .string()
             .min(1, { message: "Secret path cannot be empty" })
-            .transform((val) => removeTrailingSlash(val)),
+            .max(1024)
+            .refine((val) => !hasDotPathSegment(val), SECRET_PATH_DOT_SEGMENT_ERR_MSG)
+            .transform(canonicalizeSecretPathPattern),
           approvers: z
             .discriminatedUnion("type", [
               z.object({ type: z.literal(ApproverType.Group), id: z.string() }),
@@ -58,6 +63,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
           allowedSelfApprovals: z.boolean().default(true),
+          enforceOnSecretImports: z.boolean().default(false).describe(SECRET_CHANGE_POLICIES.enforceOnSecretImports),
           bypassForMachineIdentities: z.boolean().default(false),
           delegatedApproval: DelegatedApprovalSchema.optional().describe(
             "Not supported on secret change policies. Only secret access policies can be handled by a delegated approval system, so sending this returns an error."
@@ -66,17 +72,14 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         .refine((data) => data.environment || data.environments, "At least one environment should be provided"),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: secretChangePolicyPubSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const approval = await server.services.secretApprovalPolicy.createSecretApprovalPolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+      const approval = await server.services.secretChangePolicy.createSecretApprovalPolicy({
+        actor: req.actor,
         ...req.body,
         name: req.body.name ?? `${req.body.environment || req.body.environments?.join(",")}-${nanoid(3)}`,
         enforcementLevel: req.body.enforcementLevel
@@ -86,7 +89,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretApprovalPolicyCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             policyId: approval.id,
             projectId: approval.projectId,
@@ -94,6 +97,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
             secretPath: req.body.secretPath,
             approvals: req.body.approvals,
             enforcementLevel: req.body.enforcementLevel,
+            enforceOnSecretImports: approval.enforceOnSecretImports,
             ...req.auditLogInfo
           }
         })
@@ -137,10 +141,13 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           .string()
           .trim()
           .min(1, { message: "Secret path cannot be empty" })
+          .max(1024)
+          .refine((val) => !hasDotPathSegment(val), SECRET_PATH_DOT_SEGMENT_ERR_MSG)
           .optional()
-          .transform((val) => (val ? removeTrailingSlash(val) : undefined)),
+          .transform((val) => (val ? canonicalizeSecretPathPattern(val) : undefined)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
         allowedSelfApprovals: z.boolean().default(true),
+        enforceOnSecretImports: z.boolean().optional().describe(SECRET_CHANGE_POLICIES.enforceOnSecretImports),
         bypassForMachineIdentities: z.boolean().optional(),
         environments: z.array(z.string()).optional(),
         delegatedApproval: DelegatedApprovalSchema.optional().describe(
@@ -149,17 +156,14 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: secretChangePolicyPubSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const approval = await server.services.secretApprovalPolicy.updateSecretApprovalPolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+      const approval = await server.services.secretChangePolicy.updateSecretApprovalPolicy({
+        actor: req.actor,
         ...req.body,
         secretPolicyId: req.params.sapId
       });
@@ -168,8 +172,8 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretApprovalPolicyUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: { policyId: req.params.sapId }
+          organizationId: req.actor.orgId,
+          properties: { policyId: req.params.sapId, enforceOnSecretImports: approval.enforceOnSecretImports }
         })
         .catch(() => {});
 
@@ -190,17 +194,14 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: secretChangePolicyPubSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const approval = await server.services.secretApprovalPolicy.deleteSecretApprovalPolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+      const approval = await server.services.secretChangePolicy.deleteSecretApprovalPolicy({
+        actor: req.actor,
         secretPolicyId: req.params.sapId
       });
 
@@ -208,7 +209,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretApprovalPolicyDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             policyId: approval.id,
             projectId: approval.projectId,
@@ -234,7 +235,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approvals: sapPubSchema
+          approvals: secretChangePolicyPubSchema
             .extend({
               approvers: z
                 .object({
@@ -255,11 +256,8 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const approvals = await server.services.secretApprovalPolicy.getSecretApprovalPolicyByProjectId({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+      const approvals = await server.services.secretChangePolicy.getSecretApprovalPolicyByProjectId({
+        actor: req.actor,
         projectId: req.query.projectId
       });
       return { approvals };
@@ -279,7 +277,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema.extend({
+          approval: secretChangePolicyPubSchema.extend({
             approvers: z
               .object({
                 id: z.string().nullable().optional(),
@@ -300,15 +298,69 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const approval = await server.services.secretApprovalPolicy.getSecretApprovalPolicyById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+      const approval = await server.services.secretChangePolicy.getSecretApprovalPolicyById({
+        actor: req.actor,
         ...req.params
       });
 
       return { approval };
+    }
+  });
+
+  server.route({
+    url: "/:sapId/imports",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "listSecretApprovalPolicyImports",
+      description: SECRET_CHANGE_POLICIES.LIST_IMPORTS.description,
+      params: z.object({
+        sapId: z.string().uuid().describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.sapId)
+      }),
+      querystring: z.object({
+        isReplication: z
+          .enum(["true", "false"])
+          .transform((value) => value === "true")
+          .optional()
+          .describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.isReplicationFilter)
+      }),
+      response: {
+        200: z.object({
+          imports: z
+            .object({
+              id: z.string().describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.id),
+              environment: z
+                .object({
+                  slug: z.string().describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.environmentSlug),
+                  name: z.string().describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.environmentName)
+                })
+                .describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.environment),
+              secretPath: z.string().describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.secretPath),
+              sourceEnvironment: z
+                .object({
+                  slug: z.string().describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.environmentSlug),
+                  name: z.string().describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.environmentName)
+                })
+                .describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.sourceEnvironment),
+              sourceSecretPath: z.string().describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.sourceSecretPath),
+              isReplication: z.boolean().describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.isReplication)
+            })
+            .array()
+            .describe(SECRET_CHANGE_POLICIES.LIST_IMPORTS.imports)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const imports = await server.services.secretChangePolicy.listSecretApprovalPolicyImports({
+        actor: req.actor,
+        sapId: req.params.sapId,
+        isReplication: req.query.isReplication
+      });
+      return { imports };
     }
   });
 
@@ -327,7 +379,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          policy: sapPubSchema
+          policy: secretChangePolicyPubSchema
             .extend({
               userApprovers: z.object({ userId: z.string().nullable().optional() }).array()
             })
@@ -337,11 +389,8 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+      const policy = await server.services.secretChangePolicy.getSecretApprovalPolicyOfFolder({
+        actor: req.actor,
         ...req.query
       });
       return { policy };

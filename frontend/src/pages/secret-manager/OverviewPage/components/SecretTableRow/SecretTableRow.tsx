@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
@@ -43,13 +42,12 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
-import { ProjectPermissionActions, useProject, useProjectPermission } from "@app/context";
+import { ProjectPermissionActions, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
-import { useUpdateSecretV3 } from "@app/hooks/api";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { ProjectEnv } from "@app/hooks/api/types";
@@ -67,6 +65,7 @@ import {
   TABLE_ROW_NAME_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
 import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
+import { getUnsavedDraftKey, useUnsavedDraftKeys } from "../UnsavedEditsBar";
 import { EnvironmentSecretAction, SecretEditTableRow } from "./SecretEditTableRow";
 import { SecretOverrideRow } from "./SecretOverrideRow";
 import SecretRenameForm from "./SecretRenameForm";
@@ -130,6 +129,8 @@ type Props = {
   timestampSortField?: "createdAt" | "updatedAt";
   activityId: TableRowActivityId;
   onActivityChange: TableRowActivityChangeHandler;
+  initialAction?: EnvironmentSecretAction;
+  onInitialActionHandled?: () => void;
 };
 
 type ExpandedTableSortColumn = "environment";
@@ -164,7 +165,9 @@ export const SecretTableRow = ({
   onAccessInsightsUpgrade,
   timestampSortField,
   activityId,
-  onActivityChange
+  onActivityChange,
+  initialAction,
+  onInitialActionHandled
 }: Props) => {
   const telemetry = useOverviewTelemetry();
   const totalCols = environments.length + 2; // secret key row + icon
@@ -199,8 +202,6 @@ export const SecretTableRow = ({
   const isRowActive = isSingleEnvView
     ? isSingleEnvBaseActive || isSingleEnvOverrideActive
     : isExpanded;
-  const { projectId } = useProject();
-  const { mutateAsync: updateSecretV3ForRename } = useUpdateSecretV3();
 
   useEffect(() => {
     onActivityChange(activityId, isRowActive);
@@ -232,23 +233,6 @@ export const SecretTableRow = ({
     ? creatingOverrideEnvs.has(singleEnvSlug)
     : false;
   const singleEnvShowOverride = singleEnvHasOverride || singleEnvIsCreatingOverride;
-
-  const handleSecretRename = async (newName: string) => {
-    if (!isSingleEnvView || !singleEnvSecret) return;
-    try {
-      await updateSecretV3ForRename({
-        environment: singleEnvSecret.env,
-        projectId,
-        secretPath,
-        secretKey: singleEnvSecret.key,
-        type: SecretType.Shared,
-        newSecretName: newName
-      });
-      createNotification({ type: "success", text: "Successfully renamed the secret" });
-    } catch {
-      createNotification({ type: "error", text: "Error renaming the secret" });
-    }
-  };
 
   // Clean up creatingOverrideEnvs once the query refetch confirms the override exists.
   // This prevents the override row from flickering between "creating" and "has override" states.
@@ -322,6 +306,8 @@ export const SecretTableRow = ({
   const sortedEnvironments = [...environments];
 
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
+  const unsavedDraftKeys = useUnsavedDraftKeys();
+
   const renderEnvironmentAnnotations = (slug: string) => {
     const secret = getSecretByKey(slug, secretKey);
     if (!secret) return null;
@@ -422,6 +408,7 @@ export const SecretTableRow = ({
       },
       environment: slug,
       environmentName: name,
+      initialActionEntryPoint: "name-cell-icon",
       isRotatedSecret: secret?.isRotatedSecret,
       isHoneyTokenSecret: secret?.isHoneyTokenSecret,
       importedBy,
@@ -527,6 +514,9 @@ export const SecretTableRow = ({
           <SecretEditTableRow
             isSingleEnvView
             isBatchMode
+            initialAction={initialAction}
+            initialActionEntryPoint="quick-add"
+            onInitialActionHandled={onInitialActionHandled}
             onBatchRevert={onBatchRevert}
             onPendingSave={onPendingSave}
             isPendingCreate={singleEnvPendingAction === PendingAction.Create}
@@ -538,7 +528,6 @@ export const SecretTableRow = ({
                 ? singleEnvSecret.key
                 : undefined
             }
-            onSecretRename={handleSecretRename}
             secretPath={secretPath}
             isVisible={isSecretVisible || isSingleEnvSecretsVisible}
             secretName={secretKey}
@@ -698,6 +687,9 @@ export const SecretTableRow = ({
 
             const isSecretPresent = Boolean(secret);
             const isSecretEmpty = secret?.isEmpty;
+            const pendingDraftAction = isSecretPresent
+              ? PendingAction.Update
+              : PendingAction.Create;
 
             let status: EnvironmentStatus;
 
@@ -716,6 +708,11 @@ export const SecretTableRow = ({
                 key={`sec-overview-${slug}-${i + 1}-value`}
                 status={status}
                 hasOverride={Boolean(secret?.idOverride)}
+                pendingAction={
+                  unsavedDraftKeys.has(getUnsavedDraftKey(slug, secretPath, secretKey))
+                    ? pendingDraftAction
+                    : undefined
+                }
                 className="group/cell cursor-pointer"
                 onClick={(event) => {
                   event.stopPropagation();

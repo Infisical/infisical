@@ -5,10 +5,11 @@ import { splitVariableReferences } from "@app/helpers/agentVaultVariables";
 import {
   AgentVaultCredentialType,
   AgentVaultVariableReferenceField,
+  isNativeServiceType,
   TAgentVaultMemberProvidedField
 } from "@app/hooks/api/agentVault";
 
-import { TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
+import { isOAuthVariableCredential, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
 import { useMissingVariableKeys } from "./ServiceVariablesContext";
 import { VariableChip } from "./VariableChips";
 
@@ -59,7 +60,10 @@ export const SendsPreview = () => {
     username,
     secret,
     memberProvidedFields,
-    customHeaders
+    customHeaders,
+    serviceType,
+    oauthUsesVariable,
+    oauthVariableKey
   ] = useWatch({
     control,
     name: [
@@ -69,9 +73,15 @@ export const SendsPreview = () => {
       "username",
       "secret",
       "memberProvidedFields",
-      "customHeaders"
+      "customHeaders",
+      "serviceType",
+      "oauthUsesVariable",
+      "oauthVariableKey"
     ]
   });
+  // A database or SSH login sends no HTTP header.
+  if (isNativeServiceType(serviceType)) return null;
+
   const isMemberProvided = (field: TAgentVaultMemberProvidedField) =>
     memberProvidedFields.includes(field);
 
@@ -98,7 +108,13 @@ export const SendsPreview = () => {
       id: "credential",
       content: (
         <>
-          Authorization: Bearer <span className="text-muted">&lt;access token&gt;</span>
+          Authorization: Bearer{" "}
+          <span className="text-muted">
+            {isOAuthVariableCredential({ serviceType, credentialType, oauthUsesVariable }) &&
+            oauthVariableKey
+              ? `<${oauthVariableKey} access token>`
+              : "<access token>"}
+          </span>
         </>
       )
     });

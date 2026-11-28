@@ -1,8 +1,7 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { request } from "@app/lib/config/request";
-import { removeTrailingSlash } from "@app/lib/fn";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
@@ -15,21 +14,25 @@ import {
   TDatabricksListSecretScopesResponse,
   TDatabricksListServicePrincipalsResponse
 } from "@app/services/app-connection/databricks/databricks-connection-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TDatabricksConnection>;
 
 const listDatabricksSecretScopes = async (
   appConnection: TDatabricksConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
+  kmsDataKeyService: TKmsDataKeyService,
   deps: TDatabricksGatewayDeps
 ) => {
-  const accessToken = await getDatabricksConnectionAccessToken(appConnection, appConnectionDAL, kmsService, deps);
+  const accessToken = await getDatabricksConnectionAccessToken(
+    appConnection,
+    appConnectionDAL,
+    kmsDataKeyService,
+    deps
+  );
 
   const data = await databricksRequest<TDatabricksListSecretScopesResponse>(
     appConnection,
@@ -51,13 +54,9 @@ const listDatabricksSecretScopes = async (
 const listDatabricksServicePrincipals = async (
   appConnection: TDatabricksConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsDataKeyService: TKmsDataKeyService
 ) => {
-  const {
-    credentials: { workspaceUrl }
-  } = appConnection;
-
-  const accessToken = await getDatabricksConnectionAccessToken(appConnection, appConnectionDAL, kmsService);
+  const accessToken = await getDatabricksConnectionAccessToken(appConnection, appConnectionDAL, kmsDataKeyService);
 
   const allServicePrincipals: Array<{ id: string; name: string; clientId: string }> = [];
   let startIndex = 1;
@@ -67,19 +66,18 @@ const listDatabricksServicePrincipals = async (
 
   while (currentPage < maxPages) {
     // eslint-disable-next-line no-await-in-loop
-    const { data } = await request.get<TDatabricksListServicePrincipalsResponse>(
-      `${removeTrailingSlash(workspaceUrl)}/api/2.0/preview/scim/v2/ServicePrincipals`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
-        },
-        params: {
-          startIndex,
-          count: itemsPerPage
-        }
+    const data = await databricksRequest<TDatabricksListServicePrincipalsResponse>(appConnection, {
+      method: "GET",
+      path: "/api/2.0/preview/scim/v2/ServicePrincipals",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      params: {
+        startIndex,
+        count: itemsPerPage
       }
-    );
+    });
 
     const resources = data.Resources ?? [];
     allServicePrincipals.push(
@@ -106,14 +104,14 @@ const listDatabricksServicePrincipals = async (
 export const databricksConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
+  kmsDataKeyService: TKmsDataKeyService,
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ) => {
-  const listSecretScopes = async (connectionId: string, actor: OrgServiceActor) => {
+  const listSecretScopes = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Databricks, connectionId, actor);
 
-    const secretScopes = await listDatabricksSecretScopes(appConnection, appConnectionDAL, kmsService, {
+    const secretScopes = await listDatabricksSecretScopes(appConnection, appConnectionDAL, kmsDataKeyService, {
       gatewayV2Service,
       gatewayPoolService
     });
@@ -121,10 +119,10 @@ export const databricksConnectionService = (
     return secretScopes;
   };
 
-  const listServicePrincipals = async (connectionId: string, actor: OrgServiceActor) => {
+  const listServicePrincipals = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Databricks, connectionId, actor);
 
-    const servicePrincipals = await listDatabricksServicePrincipals(appConnection, appConnectionDAL, kmsService);
+    const servicePrincipals = await listDatabricksServicePrincipals(appConnection, appConnectionDAL, kmsDataKeyService);
 
     return servicePrincipals;
   };

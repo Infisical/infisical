@@ -5,7 +5,9 @@ import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms
 import { ReviewField } from "@app/components/secret-rotations-v2/forms/shared";
 import { DetailGroup, DetailGroupHeader } from "@app/components/v3";
 import { getRotateAtLocal } from "@app/helpers/secretRotationsV2";
+import { ALERT_EVENT_TYPE_LABELS, AlertEventType, TChannelForm } from "@app/hooks/api/alerts";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
+import { describeChannel } from "@app/views/Alerts";
 
 import { Auth0ClientSecretRotationReviewFields } from "./Auth0ClientSecretRotationReviewFields";
 import { AwsIamUserSecretRotationReviewFields } from "./AwsIamUserSecretRotationReviewFields";
@@ -69,7 +71,45 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.ClickHouseCredentials]: SqlCredentialsRotationReviewFields
 };
 
-export const SecretRotationV2ReviewFields = () => {
+const FailureAlertReview = ({
+  isFailureAlertEnabled,
+  channels,
+  isFailureAlertUnavailable
+}: {
+  isFailureAlertEnabled: boolean;
+  channels: TChannelForm[];
+  isFailureAlertUnavailable: boolean;
+}) => {
+  if (isFailureAlertUnavailable) {
+    return (
+      <span className="text-sm text-muted">Not loaded. Saving leaves the alert unchanged.</span>
+    );
+  }
+
+  if (!isFailureAlertEnabled) {
+    return <span className="text-sm text-muted">No alert</span>;
+  }
+
+  return (
+    <>
+      <ReviewField label="Event">
+        {ALERT_EVENT_TYPE_LABELS[AlertEventType.SecretRotationFailed]}
+      </ReviewField>
+      {channels.map((channel) => (
+        <ReviewField key={channel.id ?? channel.name} label={channel.name}>
+          {describeChannel(channel)}
+          {channel.enabled ? "" : " (disabled)"}
+        </ReviewField>
+      ))}
+    </>
+  );
+};
+
+type Props = {
+  isFailureAlertUnavailable: boolean;
+};
+
+export const SecretRotationV2ReviewFields = ({ isFailureAlertUnavailable }: Props) => {
   const { watch } = useFormContext<TSecretRotationV2Form>();
 
   const {
@@ -80,7 +120,9 @@ export const SecretRotationV2ReviewFields = () => {
     name,
     description,
     rotationInterval,
-    rotateAtUtc
+    rotateAtUtc,
+    isFailureAlertEnabled,
+    channels
   } = watch();
 
   const Component = COMPONENT_MAP[type];
@@ -107,6 +149,16 @@ export const SecretRotationV2ReviewFields = () => {
         <div className="flex flex-wrap gap-x-8 gap-y-2">
           <ReviewField label="Name">{name}</ReviewField>
           <ReviewField label="Description">{description}</ReviewField>
+        </div>
+      </DetailGroup>
+      <DetailGroup>
+        <DetailGroupHeader className="border-b border-border pb-1">Alerts</DetailGroupHeader>
+        <div className="flex flex-wrap gap-x-8 gap-y-2">
+          <FailureAlertReview
+            isFailureAlertEnabled={isFailureAlertEnabled}
+            channels={channels}
+            isFailureAlertUnavailable={isFailureAlertUnavailable}
+          />
         </div>
       </DetailGroup>
     </div>

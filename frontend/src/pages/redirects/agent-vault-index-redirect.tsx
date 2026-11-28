@@ -7,22 +7,23 @@ import {
   useAgentVaultSetupProgress
 } from "@app/components/agent-vault/SetupChecklist";
 import { PageLoader } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 
-// Until an admin finishes setup (or hides the checklist), the product opens on the first unfinished step.
-// If the progress can't be read, it opens on Sessions as it did before the checklist existed.
+// Until setup is finished (or the checklist hidden), someone who can set Agent Vault up lands on the first unfinished
+// step. If the progress can't be read, it opens on Sessions as it did before the checklist existed.
 const AgentVaultIndexRedirect = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
-  const { isAdmin, isLoaded, isFailed, isVisible, nextStep, newestBundle } =
+  const { projectId } = useProject();
+  const { canSetUp, isLoaded, isFailed, isVisible, nextStep, newestBundle } =
     useAgentVaultSetupProgress();
-  const isResolved = !isAdmin || isLoaded || isFailed;
+  const isResolved = !canSetUp || isLoaded || isFailed;
 
   useEffect(() => {
     if (!isResolved) return;
     const step = isVisible && nextStep ? nextStep : AgentVaultSetupStep.Session;
     navigate({
-      ...getAgentVaultSetupStepLink(step, currentOrg.id, newestBundle?.id),
+      ...getAgentVaultSetupStepLink(step, currentOrg.id, projectId, newestBundle?.id),
       replace: true
     });
   }, [isResolved]);
@@ -31,7 +32,7 @@ const AgentVaultIndexRedirect = () => {
 };
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/"
 )({
   component: AgentVaultIndexRedirect
 });

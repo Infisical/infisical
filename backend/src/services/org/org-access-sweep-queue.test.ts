@@ -1,5 +1,5 @@
-import { ActorType } from "@app/services/auth/auth-type";
-import { TEventInput } from "@app/services/event-outbox/event-outbox-types";
+import { TEventInput } from "@app/domains/platform/events/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 
 import {
   ORG_ACCESS_SWEEP_LIMIT,

@@ -3,12 +3,13 @@ import { z } from "zod";
 import { PkiSignersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
-import { CertKeySource } from "@app/services/signer/signer-enums";
+import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertKeySource, SIGNER_CERTIFICATE_REQUEST_STATUSES } from "@app/services/signer/signer-enums";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import {
@@ -17,8 +18,15 @@ import {
   SignerCertificateInputSchema,
   SignerExternalConfigurationSchema,
   SignerIdParamsSchema,
-  SignerKeyAlgorithm
+  SignerKeyAlgorithm,
+  SignerRevocationResponseSchema
 } from "./schemas";
+
+const ExternalOrderResponseSchema = z.object({
+  provider: z.string(),
+  orderId: z.number(),
+  status: z.string().nullable()
+});
 
 const SignerWithCertificateResponseSchema = PkiSignersSchema.extend({
   certificateCommonName: z.string().nullable().optional(),
@@ -28,17 +36,31 @@ const SignerWithCertificateResponseSchema = PkiSignersSchema.extend({
   certificateKeyAlgorithm: z.string().nullable().optional(),
   certificateKeySource: z.string().nullable().optional(),
   certificateHsmConnectorId: z.string().nullable().optional(),
+  certificateHsmKeyLabel: z.string().nullable().optional(),
   certificateStatus: z.string().nullable().optional(),
   certificateCaId: z.string().nullable().optional(),
-  approvalPolicyName: z.string().nullable().optional(),
-  externalOrder: z
+  caType: z.nativeEnum(CaType).nullable().optional(),
+  certificateAuthority: z
     .object({
-      provider: z.string(),
-      orderId: z.number(),
-      status: z.string().nullable()
+      id: z.string(),
+      name: z.string(),
+      status: z.nativeEnum(CaStatus),
+      type: z.nativeEnum(CaType)
     })
     .nullable()
-    .optional()
+    .optional(),
+  approvalPolicyName: z.string().nullable().optional(),
+  externalOrder: ExternalOrderResponseSchema.nullable().optional(),
+  hasOpenCertificateRequest: z.boolean().optional(),
+  certificateRequest: z
+    .object({
+      status: z.enum(SIGNER_CERTIFICATE_REQUEST_STATUSES),
+      failureReason: z.string().nullable(),
+      externalOrder: ExternalOrderResponseSchema.nullable()
+    })
+    .nullable()
+    .optional(),
+  revocation: SignerRevocationResponseSchema
 });
 
 export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) => {
@@ -88,10 +110,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       const signer = await server.services.pkiSigner.create({
         ...req.body,
         projectId: req.body.projectId ?? req.internalCertManagerProjectId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -116,9 +135,9 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignerCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: signer.projectId,
           signerId: signer.id
         }
@@ -150,7 +169,8 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
               certificateCommonName: z.string().nullable().optional(),
               certificateSerialNumber: z.string().nullable().optional(),
               certificateNotAfter: z.date().nullable().optional(),
-              approvalPolicyName: z.string().nullable().optional()
+              approvalPolicyName: z.string().nullable().optional(),
+              hasOpenCertificateRequest: z.boolean()
             })
           ),
           totalCount: z.number()
@@ -163,10 +183,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       const { signers, totalCount } = await server.services.pkiSigner.list({
         ...req.query,
         projectId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -204,10 +221,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const signer = await server.services.pkiSigner.getById({
         signerId: req.params.signerId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -257,10 +271,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const data = await server.services.pkiSigner.getMyPermissions({
         signerId: req.params.signerId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
       return { data };
     }
@@ -285,10 +296,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const signer = await server.services.pkiSigner.checkIssuanceNow({
         signerId: req.params.signerId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
       return signer;
     }
@@ -318,10 +326,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       const signer = await server.services.pkiSigner.update({
         signerId: req.params.signerId,
         ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -339,9 +344,9 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignerUpdated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: signer.projectId,
           signerId: signer.id
         }
@@ -369,10 +374,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const signer = await server.services.pkiSigner.delete({
         signerId: req.params.signerId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -390,9 +392,9 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignerDeleted,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: signer.projectId,
           signerId: signer.id
         }
@@ -421,17 +423,11 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       const signer = wantDisabled
         ? await server.services.pkiSigner.disable({
             signerId: req.params.signerId,
-            actor: req.permission.type,
-            actorId: req.permission.id,
-            actorAuthMethod: req.permission.authMethod,
-            actorOrgId: req.permission.orgId
+            actor: req.actor
           })
         : await server.services.pkiSigner.enable({
             signerId: req.params.signerId,
-            actor: req.permission.type,
-            actorId: req.permission.id,
-            actorAuthMethod: req.permission.authMethod,
-            actorOrgId: req.permission.orgId
+            actor: req.actor
           });
 
       await server.services.auditLog.createAuditLog({
@@ -446,9 +442,9 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignerUpdated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: signer.projectId,
           signerId: signer.id,
           status: req.body.status

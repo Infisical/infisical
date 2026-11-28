@@ -19,11 +19,13 @@ export type TAccessApprovalPolicy = {
   policyType: PolicyType;
   approversRequired: boolean;
   enforcementLevel: EnforcementLevel;
+  createdAt: Date;
   updatedAt: Date;
   approvers?: Approver[];
   bypassers?: Bypasser[];
   allowedSelfApprovals: boolean;
   bypassForMachineIdentities?: boolean;
+  enforceOnSecretImports?: boolean;
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
   delegatedApproval?: TDelegatedApprovalPolicyInput | null;

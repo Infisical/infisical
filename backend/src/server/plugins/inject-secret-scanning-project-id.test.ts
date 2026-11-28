@@ -39,7 +39,7 @@ const buildServer = async ({
     secretScanningV2ProjectResolver: { findActiveProjectId, isSecretScanningProject }
   } as never);
   app.addHook("onRequest", async (req) => {
-    if (isAuthenticated) Object.assign(req, { permission: { orgId: ORG_ID } });
+    if (isAuthenticated) Object.assign(req, { actor: { orgId: ORG_ID } });
   });
   await app.register(injectSecretScanningProjectId);
 

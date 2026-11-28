@@ -13,7 +13,9 @@ import { AsnConvert } from "@peculiar/asn1-schema";
 import { SubjectPublicKeyInfo } from "@peculiar/asn1-x509";
 
 import { ProjectType } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
@@ -28,9 +30,7 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
-import { ECDSA_SIGNATURE_ALGORITHMS } from "@app/services/certificate/certificate-fns";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import {
@@ -47,6 +47,7 @@ import {
   resolveAwsKmsDigestSigning,
   toAwsKmsError
 } from "./aws-kms-ca-key-source-fns";
+import { AWS_KMS_REQUIRED_SIGNATURE_ALGORITHMS } from "./ca-key-source-fns";
 import { TExternalCaKeyInput, TExternalCaKeyProvider } from "./ca-key-source-types";
 
 const AWS_KMS_KEY_DELETION_WINDOW_DAYS = 30;
@@ -54,9 +55,10 @@ const AWS_KMS_KEY_DELETION_WINDOW_DAYS = 30;
 type TAwsKmsCaKeySourceDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
 };
 
 const requireAwsKmsInput = (input: TExternalCaKeyInput) => {
@@ -71,7 +73,8 @@ const requireAwsKmsInput = (input: TExternalCaKeyInput) => {
 export const awsKmsCaKeySourceFactory = ({
   appConnectionDAL,
   appConnectionService,
-  kmsService,
+  kmsDataKeyService,
+  instanceConfigService,
   projectDAL,
   licenseService
 }: TAwsKmsCaKeySourceDep): TExternalCaKeyProvider => {
@@ -86,9 +89,10 @@ export const awsKmsCaKeySourceFactory = ({
       throw new BadRequestError({ message: `App connection with ID '${appConnectionId}' is not an AWS connection` });
     }
 
-    const decryptedConnection = (await decryptAppConnection(appConnection, kmsService)) as TAwsConnection;
+    const decryptedConnection = (await decryptAppConnection(appConnection, kmsDataKeyService)) as TAwsConnection;
     const awsConfig = await getAwsConnectionConfig(
       { ...decryptedConnection, projectType: ProjectType.CertificateManager },
+      instanceConfigService,
       region as AWSRegion
     );
 
@@ -129,7 +133,7 @@ export const awsKmsCaKeySourceFactory = ({
       const project = await projectDAL.findById(projectId);
       if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
       const plan = await licenseService.getPlan(project.orgId);
-      if (!plan.pkiAwsKmsSigning) {
+      if (!plan.has(PlanFeature.PkiAwsKmsSigning)) {
         throw new BadRequestError({
           message:
             "Failed to create certificate authority with an AWS KMS key due to plan restriction. Upgrade plan to use AWS KMS-backed certificate authorities."
@@ -251,10 +255,7 @@ export const awsKmsCaKeySourceFactory = ({
       });
     },
 
-    requiredSignatureAlgorithm: (keyAlgorithm) => {
-      const keyAlgCfg = keyAlgorithmToAlgCfg(keyAlgorithm);
-      return keyAlgCfg.name === "ECDSA" ? ECDSA_SIGNATURE_ALGORITHMS[keyAlgCfg.hash] : undefined;
-    },
+    requiredSignatureAlgorithm: (keyAlgorithm) => AWS_KMS_REQUIRED_SIGNATURE_ALGORITHMS[keyAlgorithm],
 
     describeKey: async ({ reference }) => {
       const { appConnectionId, externalKeyId: keyArn } = reference;

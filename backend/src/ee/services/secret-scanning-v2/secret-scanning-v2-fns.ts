@@ -26,11 +26,25 @@ import { getConfig, SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT } from "@app/lib/
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { titleCaseToCamelCase } from "@app/lib/fn";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { GitLabDataSourceScope } from "./gitlab/gitlab-secret-scanning-enums";
-import { SecretScanningDataSource, SecretScanningFindingSeverity } from "./secret-scanning-v2-enums";
-import { TCloneRepository, TGetFindingsPayload, TSecretScanningDataSourceListItem } from "./secret-scanning-v2-types";
+import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
+import {
+  SecretScanningDataSource,
+  SecretScanningFindingSeverity,
+  SecretScanningScanStatus
+} from "./secret-scanning-v2-enums";
+import { emitSecretScanningScanFailed, emitSecretScanningSecretsDetected } from "./secret-scanning-v2-events";
+import {
+  TCloneRepository,
+  TFindingLocationRow,
+  TGetFindingsPayload,
+  TSecretScanningDataSourceListItem,
+  TSecretScanningScannedLocation
+} from "./secret-scanning-v2-types";
 
 const SECRET_SCANNING_SOURCE_LIST_OPTIONS: Record<SecretScanningDataSource, TSecretScanningDataSourceListItem> = {
   [SecretScanningDataSource.GitHub]: GITHUB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION,
@@ -393,12 +407,22 @@ export const scanGitRepositoryAndGetFindings = async (
 
   const findingsData = JSON.parse(await readFindingsFile(findingsPath)) as SecretMatch[];
 
-  return findingsData.map((finding) => ({
-    details: toFindingDetails(finding),
-    fingerprint: `${finding.Fingerprint}:${finding.StartColumn}`,
-    severity: SecretScanningFindingSeverity.High,
-    rule: finding.RuleID
-  }));
+  return findingsData.map((match) => {
+    // A rule that matches only a file's path comes back without a fingerprint, so every such match in a repository
+    // would share one place. This builds the one the scanner gives other matches.
+    const finding = {
+      ...match,
+      Fingerprint: match.Fingerprint || `${match.Commit}:${match.File}:${match.RuleID}:${match.StartLine}`
+    };
+
+    return {
+      details: toFindingDetails(finding),
+      fingerprint: `${finding.Fingerprint}:${finding.StartColumn}`,
+      severity: SecretScanningFindingSeverity.High,
+      rule: finding.RuleID,
+      secretValue: finding.Secret
+    };
+  });
 };
 
 export const replaceNonChangesWithNewlines = (patch: string) => {
@@ -599,4 +623,141 @@ export const scanSecretPolicyViolations = async (
   } finally {
     await deleteTempFolder(tempFolder);
   }
+};
+
+/**
+ * Closing a scan. Each outcome is one transaction that moves the scan to its final status and emits its alert, so an
+ * alert goes out exactly when its scan closes. A scan something else already closed (the stuck-scan reaper, another
+ * attempt) keeps that outcome: completing it returns null counts and failing it returns false, and neither emits.
+ */
+export type TScanOutcomeDeps = {
+  secretScanningV2DAL: Pick<TSecretScanningV2DALFactory, "scans" | "findings">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  eventEmitter: TEventEmitter;
+};
+
+type TScanDataSource = { id: string; projectId: string };
+
+// Read before the transaction that emits, so the emit adds no read to it. A project being deleted is hidden from
+// findById before its scans are removed, so there is no scope then: the scan still closes, with no alert.
+const getScanAlertScope = async (projectDAL: TScanOutcomeDeps["projectDAL"], dataSource: TScanDataSource) => {
+  const project = await projectDAL.findById(dataSource.projectId);
+  if (!project) return undefined;
+
+  return { orgId: project.orgId, projectId: dataSource.projectId, dataSourceId: dataSource.id };
+};
+
+// Counts are read back rather than passed in: a resumed full scan never saw the batches an earlier attempt saved.
+export const completeFullScan = async (
+  { secretScanningV2DAL, projectDAL, eventEmitter }: TScanOutcomeDeps,
+  { dataSource, scanId }: { dataSource: TScanDataSource; scanId: string }
+) => {
+  const alertScope = await getScanAlertScope(projectDAL, dataSource);
+
+  return secretScanningV2DAL.scans.transaction(async (tx) => {
+    if (!(await secretScanningV2DAL.scans.markCompleted({ scanId }, tx))) return null;
+
+    const counts = await secretScanningV2DAL.findings.countByScanId(scanId, tx);
+
+    // A full scan never alerts on a finding it reopened: a secret coming back is news when someone pushes it, not when
+    // history is read again.
+    if (alertScope) {
+      const newFindings = await secretScanningV2DAL.findings.countUnresolvedCreatedByScanId(scanId, tx);
+
+      if (newFindings) {
+        await emitSecretScanningSecretsDetected(
+          eventEmitter,
+          { ...alertScope, scanId, unresolvedFindings: newFindings },
+          tx
+        );
+      }
+    }
+
+    return counts;
+  });
+};
+
+// A diff scan saves its findings in the transaction that closes it. They are saved even when the scan was already
+// closed, since they are real; only the outcome the customer was told about is left alone.
+export const completeDiffScan = async (
+  { secretScanningV2DAL, projectDAL, eventEmitter }: TScanOutcomeDeps,
+  {
+    dataSource,
+    resourceId,
+    scanId,
+    rows,
+    getMetadata
+  }: {
+    dataSource: TScanDataSource;
+    resourceId: string;
+    scanId: string;
+    rows: TFindingLocationRow[];
+    getMetadata?: (scannedLocations: TSecretScanningScannedLocation[]) => unknown;
+  }
+) => {
+  const alertScope = await getScanAlertScope(projectDAL, dataSource);
+
+  return secretScanningV2DAL.findings.transaction(async (tx) => {
+    const persisted = rows.length
+      ? await secretScanningV2DAL.findings.persistLocations({ resourceId, scanId, rows }, tx)
+      : { scannedLocations: [], reopenedFindings: [] };
+
+    const completed = await secretScanningV2DAL.scans.markCompleted(
+      { scanId, metadata: getMetadata?.(persisted.scannedLocations) },
+      tx
+    );
+
+    if (!completed) return { ...persisted, counts: null };
+
+    const counts = await secretScanningV2DAL.findings.countByScanId(scanId, tx);
+
+    // Only a secret this scan found first, or a resolved one it brought back, is news. A new location of a secret
+    // that's still unresolved has already been alerted on, and one of a false positive or an ignored finding needs
+    // no action.
+    const newFindings =
+      (await secretScanningV2DAL.findings.countUnresolvedCreatedByScanId(scanId, tx)) +
+      persisted.reopenedFindings.length;
+
+    if (newFindings && alertScope) {
+      await emitSecretScanningSecretsDetected(
+        eventEmitter,
+        { ...alertScope, scanId, unresolvedFindings: newFindings },
+        tx
+      );
+    }
+
+    return { ...persisted, counts };
+  });
+};
+
+/**
+ * `queued` is accepted alongside `scanning` by default because a failure before the status was set leaves the row
+ * `queued`. Only a failure with an `alertDataSource` alerts: leave it out when the scan never really ran for the
+ * customer (a duplicate of a scan in progress, a job that couldn't be queued or prepared).
+ */
+export const failScan = async (
+  { secretScanningV2DAL, projectDAL, eventEmitter }: TScanOutcomeDeps,
+  {
+    scanId,
+    statusMessage,
+    alertDataSource,
+    fromStatuses = [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning]
+  }: {
+    scanId: string;
+    statusMessage: string;
+    alertDataSource?: TScanDataSource;
+    fromStatuses?: SecretScanningScanStatus[];
+  }
+) => {
+  const alertScope = alertDataSource ? await getScanAlertScope(projectDAL, alertDataSource) : undefined;
+
+  return secretScanningV2DAL.scans.transaction(async (tx) => {
+    const failed = await secretScanningV2DAL.scans.markFailed({ scanId, statusMessage, fromStatuses }, tx);
+
+    if (failed && alertScope) {
+      await emitSecretScanningScanFailed(eventEmitter, { ...alertScope, scanId, errorMessage: statusMessage }, tx);
+    }
+
+    return failed;
+  });
 };

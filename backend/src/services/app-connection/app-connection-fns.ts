@@ -1,4 +1,7 @@
 import { ProjectType, TAppConnections } from "@app/db/schemas";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService, TKmsDataKeyTransaction } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   ChefConnectionMethod,
   getChefConnectionListItem,
@@ -11,7 +14,6 @@ import {
 } from "@app/ee/services/app-connections/oci";
 import { getOracleDBConnectionListItem, OracleDBConnectionMethod } from "@app/ee/services/app-connections/oracledb";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { getSecretRotationConnectionApps } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
@@ -28,8 +30,6 @@ import { DELEGATED_APPROVAL_CONNECTION_MAP } from "@app/services/delegated-appro
 import { EXTERNAL_MIGRATION_APP_CONNECTIONS } from "@app/services/external-migration/external-migration-map";
 import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { SECRET_SYNC_CONNECTION_MAP } from "@app/services/secret-sync/secret-sync-maps";
 
@@ -55,7 +55,12 @@ import {
 } from "./app-connection-types";
 import { Auth0ConnectionMethod } from "./auth0";
 import { getAuth0ConnectionListItem, validateAuth0ConnectionCredentials } from "./auth0/auth0-connection-fns";
-import { AwsConnectionMethod, getAwsConnectionListItem, validateAwsConnectionCredentials } from "./aws";
+import {
+  AwsConnectionMethod,
+  getAwsConnectionListItem,
+  TAwsConnectionConfig,
+  validateAwsConnectionCredentials
+} from "./aws";
 import { AzureADCSConnectionMethod } from "./azure-adcs";
 import {
   getAzureADCSConnectionListItem,
@@ -64,9 +69,10 @@ import {
 import {
   AzureAppConfigurationConnectionMethod,
   getAzureAppConfigurationConnectionListItem,
+  TAzureAppConfigurationConnectionConfig,
   validateAzureAppConfigurationConnectionCredentials
 } from "./azure-app-configuration";
-import { AzureClientSecretsConnectionMethod } from "./azure-client-secrets";
+import { AzureClientSecretsConnectionMethod, TAzureClientSecretsConnectionConfig } from "./azure-client-secrets";
 import {
   getAzureClientSecretsConnectionListItem,
   validateAzureClientSecretsConnectionCredentials
@@ -76,23 +82,21 @@ import {
   getAzureDevopsConnectionListItem,
   validateAzureDevOpsConnectionCredentials
 } from "./azure-devops/azure-devops-fns";
+import { TAzureDevOpsConnectionConfig } from "./azure-devops/azure-devops-types";
 import { AzureDnsConnectionMethod } from "./azure-dns/azure-dns-connection-enums";
 import {
   getAzureDnsConnectionListItem,
   validateAzureDnsConnectionCredentials
 } from "./azure-dns/azure-dns-connection-fns";
+import { TAzureDnsConnectionConfig } from "./azure-dns/azure-dns-connection-types";
 import {
   AzureEntraIdConnectionMethod,
   getAzureEntraIdConnectionListItem,
+  TAzureEntraIdConnectionConfig,
   validateAzureEntraIdConnectionCredentials
 } from "./azure-entra-id";
+import { AzureKeyVaultConnectionMethod, TAzureKeyVaultConnectionConfig } from "./azure-key-vault";
 import {
-  AzureKeyVaultConnectionMethod,
-  TAzureKeyVaultConnectionConfig,
-  TAzureKeyVaultConnectionFederatedCredential
-} from "./azure-key-vault";
-import {
-  getAzureKeyVaultConnectionFederatedCredential,
   getAzureKeyVaultConnectionListItem,
   validateAzureKeyVaultConnectionCredentials
 } from "./azure-key-vault/azure-key-vault-connection-fns";
@@ -125,6 +129,7 @@ import {
   validateCloudflareConnectionCredentials
 } from "./cloudflare/cloudflare-connection-fns";
 import { ConvexConnectionMethod, getConvexConnectionListItem, validateConvexConnectionCredentials } from "./convex";
+import { CoolifyConnectionMethod, getCoolifyConnectionListItem, validateCoolifyConnectionCredentials } from "./coolify";
 import { AppConnectionCredentialRotationStatus } from "./credential-rotation";
 import { decryptRotationMessage } from "./credential-rotation/app-connection-credential-rotation-fns";
 import { DatabricksConnectionMethod } from "./databricks";
@@ -169,7 +174,14 @@ import {
   validateFireworksConnectionCredentials
 } from "./fireworks";
 import { FlyioConnectionMethod, getFlyioConnectionListItem, validateFlyioConnectionCredentials } from "./flyio";
-import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
+import {
+  GcpConnectionMethod,
+  getGcpConnectionFederatedCredential,
+  getGcpConnectionListItem,
+  TGcpConnectionConfig,
+  TGcpConnectionFederatedCredential,
+  validateGcpConnectionCredentials
+} from "./gcp";
 import {
   getGitHubConnectionListItem,
   GitHubConnectionMethod,
@@ -179,9 +191,10 @@ import {
 import {
   getGitHubRadarConnectionListItem,
   GitHubRadarConnectionMethod,
+  TGitHubRadarConnectionConfig,
   validateGitHubRadarConnectionCredentials
 } from "./github-radar";
-import { GitLabConnectionMethod } from "./gitlab";
+import { GitLabConnectionMethod, TGitLabConnectionConfig } from "./gitlab";
 import { getGitLabConnectionListItem, validateGitLabConnectionCredentials } from "./gitlab/gitlab-connection-fns";
 import { getGoDaddyConnectionListItem, GoDaddyConnectionMethod, validateGoDaddyConnectionCredentials } from "./godaddy";
 import {
@@ -194,7 +207,7 @@ import {
   HCVaultConnectionMethod,
   validateHCVaultConnectionCredentials
 } from "./hc-vault";
-import { HerokuConnectionMethod } from "./heroku";
+import { HerokuConnectionMethod, THerokuConnectionConfig } from "./heroku";
 import { getHerokuConnectionListItem, validateHerokuConnectionCredentials } from "./heroku/heroku-connection-fns";
 import { getHpeIloConnectionListItem, HpeIloConnectionMethod, validateHpeIloConnectionCredentials } from "./hpe-ilo";
 import {
@@ -203,6 +216,12 @@ import {
   validateHumanitecConnectionCredentials
 } from "./humanitec";
 import { getImpervaConnectionListItem, ImpervaConnectionMethod, validateImpervaConnectionCredentials } from "./imperva";
+import {
+  getIncidentIoConnectionListItem,
+  IncidentIoConnectionMethod,
+  validateIncidentIoConnectionCredentials
+} from "./incident-io";
+import { getJenkinsConnectionListItem, JenkinsConnectionMethod, validateJenkinsConnectionCredentials } from "./jenkins";
 import { getJiraConnectionListItem, JiraConnectionMethod, validateJiraConnectionCredentials } from "./jira";
 import { getKeeperConnectionListItem, KeeperConnectionMethod, validateKeeperConnectionCredentials } from "./keeper";
 import {
@@ -277,10 +296,12 @@ import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } fr
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
+import { getRfc2136ConnectionListItem, Rfc2136ConnectionMethod, validateRfc2136ConnectionCredentials } from "./rfc2136";
 import { getRundeckConnectionListItem, RundeckConnectionMethod, validateRundeckConnectionCredentials } from "./rundeck";
 import {
   getS3CompatibleConnectionListItem,
   S3CompatibleConnectionMethod,
+  TS3CompatibleConnectionConfig,
   validateS3CompatibleConnectionCredentials
 } from "./s3-compatible";
 import {
@@ -293,6 +314,7 @@ import {
   ServiceNowConnectionMethod,
   validateServiceNowConnectionCredentials
 } from "./servicenow";
+import { getAzureConnectionFederatedCredential } from "./shared/azure/azure-managed-identity-fns";
 import { getSmbConnectionListItem, SmbConnectionMethod, validateSmbConnectionCredentials } from "./smb";
 import {
   getSnowflakeConnectionListItem,
@@ -305,7 +327,7 @@ import {
   validateSpaceliftConnectionCredentials
 } from "./spacelift";
 import { getSshConnectionListItem, SshConnectionMethod, validateSshConnectionCredentials } from "./ssh";
-import { StripeConnectionMethod } from "./stripe";
+import { StripeConnectionMethod, TStripeConnectionConfig } from "./stripe";
 import { getStripeConnectionListItem, validateStripeConnectionCredentials } from "./stripe/stripe-connection-fns";
 import {
   getSupabaseConnectionListItem,
@@ -353,6 +375,8 @@ import {
 import { getWinRMConnectionListItem, validateWinRMConnectionCredentials, WinRMConnectionMethod } from "./winrm";
 import { getZabbixConnectionListItem, validateZabbixConnectionCredentials, ZabbixConnectionMethod } from "./zabbix";
 
+export type TCipherPairSource = Pick<TKmsDataKeyTransaction, "createCipherPairWithDataKey">;
+
 const SECRET_SYNC_APP_CONNECTION_MAP = Object.fromEntries(
   Object.entries(SECRET_SYNC_CONNECTION_MAP).map(([key, value]) => [value, key])
 );
@@ -378,6 +402,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.UltraDNS,
   AppConnection.AzureDNS,
   AppConnection.PowerDns,
+  AppConnection.Rfc2136,
   AppConnection.Venafi,
   AppConnection.VenafiTpp,
   AppConnection.NetScaler,
@@ -400,7 +425,7 @@ const DELEGATED_APPROVAL_POLICY_APP_CONNECTION_MAP = Object.fromEntries(
 
 const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
 
-const PAM_APP_CONNECTIONS = [AppConnection.Jira];
+const PAM_APP_CONNECTIONS = [AppConnection.Jira, AppConnection.IncidentIo];
 
 export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?: ProjectType) => {
   switch (projectType) {
@@ -430,15 +455,33 @@ export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?
 // Add a product only once nothing creates other connection types in it through the API.
 export const PROJECT_TYPES_ENFORCING_APP_CONNECTION_TYPES = [ProjectType.AgentVault];
 
-export const listAppConnectionOptions = (projectType?: ProjectType) => {
+export const listAppConnectionOptions = async (
+  instanceConfigService: TInstanceConfigService,
+  projectType?: ProjectType
+) => {
+  const {
+    INF_APP_CONNECTION_AWS_ACCESS_KEY_ID,
+    INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID,
+    INF_APP_CONNECTION_GITHUB_APP_SLUG,
+    INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG,
+    INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID,
+    INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID,
+    INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID,
+    INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID,
+    INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID,
+    INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID,
+    INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID,
+    INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL
+  } = await instanceConfigService.getOverridableEnv();
+
   return [
-    getAwsConnectionListItem(),
-    getGitHubConnectionListItem(),
-    getGitHubRadarConnectionListItem(),
+    getAwsConnectionListItem({ INF_APP_CONNECTION_AWS_ACCESS_KEY_ID }),
+    getGitHubConnectionListItem({ INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID, INF_APP_CONNECTION_GITHUB_APP_SLUG }),
+    getGitHubRadarConnectionListItem({ INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG }),
     getGcpConnectionListItem(),
-    getAzureKeyVaultConnectionListItem(),
-    getAzureAppConfigurationConnectionListItem(),
-    getAzureDevopsConnectionListItem(),
+    getAzureKeyVaultConnectionListItem({ INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID }),
+    getAzureAppConfigurationConnectionListItem({ INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID }),
+    getAzureDevopsConnectionListItem({ INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID }),
     getAzureADCSConnectionListItem(),
     getADCSConnectionListItem(),
     getWinRMConnectionListItem(),
@@ -450,7 +493,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getMsSqlConnectionListItem(),
     getMySqlConnectionListItem(),
     getCamundaConnectionListItem(),
-    getAzureClientSecretsConnectionListItem(),
+    getAzureClientSecretsConnectionListItem({ INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID }),
     getWindmillConnectionListItem(),
     getAuth0ConnectionListItem(),
     getHCVaultConnectionListItem(),
@@ -459,14 +502,14 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getOCIConnectionListItem(),
     getOracleDBConnectionListItem(),
     getOnePassConnectionListItem(),
-    getHerokuConnectionListItem(),
+    getHerokuConnectionListItem({ INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID }),
     getHasuraCloudConnectionListItem(),
     getRenderConnectionListItem(),
     getLaravelForgeConnectionListItem(),
     getOctopusDeployConnectionListItem(),
     getFlyioConnectionListItem(),
     getTriggerDevConnectionListItem(),
-    getGitLabConnectionListItem(),
+    getGitLabConnectionListItem({ INF_APP_CONNECTION_GITLAB_OAUTH_CLIENT_ID }),
     getCloudflareConnectionListItem(),
     getDNSMadeEasyConnectionListItem(),
     getUltraDNSConnectionListItem(),
@@ -514,6 +557,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getConvexConnectionListItem(),
     getRundeckConnectionListItem(),
     getPortainerConnectionListItem(),
+    getJenkinsConnectionListItem(),
+    getCoolifyConnectionListItem(),
     getQoveryConnectionListItem(),
     getLiteLLMConnectionListItem(),
     getFireworksConnectionListItem(),
@@ -521,13 +566,18 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getPowerDnsConnectionListItem(),
     getSpaceliftConnectionListItem(),
     getDaytonaConnectionListItem(),
-    getStripeConnectionListItem(),
+    getStripeConnectionListItem({
+      INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID,
+      INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL
+    }),
     getKeeperConnectionListItem(),
     getHpeIloConnectionListItem(),
     getServiceNowConnectionListItem(),
     getS3CompatibleConnectionListItem(),
     getJiraConnectionListItem(),
-    getClickHouseConnectionListItem()
+    getClickHouseConnectionListItem(),
+    getIncidentIoConnectionListItem(),
+    getRfc2136ConnectionListItem()
   ]
     .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -536,15 +586,15 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
 export const encryptAppConnectionCredentials = async ({
   orgId,
   credentials,
-  kmsService,
+  kmsDataKeyService,
   projectId
 }: {
   orgId: string;
   credentials: TAppConnection["credentials"];
-  kmsService: TAppConnectionServiceFactoryDep["kmsService"];
+  kmsDataKeyService: TCipherPairSource;
   projectId: string | null | undefined;
 }) => {
-  const { encryptor } = await kmsService.createCipherPairWithDataKey(
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -566,15 +616,15 @@ export const encryptAppConnectionCredentials = async ({
 export const decryptAppConnectionCredentials = async ({
   orgId,
   encryptedCredentials,
-  kmsService,
+  kmsDataKeyService,
   projectId
 }: {
   orgId: string;
   encryptedCredentials: Buffer;
-  kmsService: TAppConnectionServiceFactoryDep["kmsService"];
+  kmsDataKeyService: TCipherPairSource;
   projectId: string | null | undefined;
 }) => {
-  const { decryptor } = await kmsService.createCipherPairWithDataKey(
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? { type: KmsDataKey.SecretManager, projectId }
       : {
@@ -593,17 +643,17 @@ export const decryptAppConnectionCredentials = async ({
 export const encryptAppConnectionConfiguration = async ({
   orgId,
   configuration,
-  kmsService,
+  kmsDataKeyService,
   projectId
 }: {
   orgId: string;
   configuration: TAppConnectionConfiguration;
-  kmsService: TAppConnectionServiceFactoryDep["kmsService"];
+  kmsDataKeyService: TCipherPairSource;
   projectId: string | null | undefined;
 }) => {
   if (!configuration) return null;
 
-  const { encryptor } = await kmsService.createCipherPairWithDataKey(
+  const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? {
           type: KmsDataKey.SecretManager,
@@ -625,17 +675,17 @@ export const encryptAppConnectionConfiguration = async ({
 export const decryptAppConnectionConfiguration = async ({
   orgId,
   encryptedConfiguration,
-  kmsService,
+  kmsDataKeyService,
   projectId
 }: {
   orgId: string;
   encryptedConfiguration: Buffer | null | undefined;
-  kmsService: TAppConnectionServiceFactoryDep["kmsService"];
+  kmsDataKeyService: TCipherPairSource;
   projectId: string | null | undefined;
 }): Promise<TAppConnectionConfiguration> => {
   if (!encryptedConfiguration) return undefined;
 
-  const { decryptor } = await kmsService.createCipherPairWithDataKey(
+  const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey(
     projectId
       ? { type: KmsDataKey.SecretManager, projectId }
       : {
@@ -657,32 +707,61 @@ export const validateAppConnectionCredentials = async (
   deps: {
     identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
     gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
-    kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+    kmsDataKeyService: TKmsDataKeyService;
+    instanceConfigService: TInstanceConfigService;
     keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
     oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
     actorId?: string;
   }
 ): Promise<TAppConnection["credentials"]> => {
   const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TAppConnectionCredentialsValidator> = {
-    [AppConnection.AWS]: validateAwsConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.AWS]: ((config: TAppConnectionConfig) =>
+      validateAwsConnectionCredentials(
+        config as TAwsConnectionConfig,
+        deps.instanceConfigService
+      )) as TAppConnectionCredentialsValidator,
     [AppConnection.Databricks]: validateDatabricksConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GitHub]: ((config: TAppConnectionConfig, gw) =>
       validateGitHubConnectionCredentials(config as TGitHubConnectionConfig, gw, {
         gitHubAppDAL: deps.gitHubAppDAL,
-        kmsService: deps.kmsService
+        kmsDataKeyService: deps.kmsDataKeyService,
+        instanceConfigService: deps.instanceConfigService
       })) as TAppConnectionCredentialsValidator,
-    [AppConnection.GitHubRadar]: validateGitHubRadarConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.GCP]: validateGcpConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.GitHubRadar]: ((config: TAppConnectionConfig) =>
+      validateGitHubRadarConnectionCredentials(
+        config as TGitHubRadarConnectionConfig,
+        deps.instanceConfigService
+      )) as TAppConnectionCredentialsValidator,
+    [AppConnection.GCP]: ((config: TAppConnectionConfig) =>
+      validateGcpConnectionCredentials(
+        config as TGcpConnectionConfig,
+        deps.oidcIssuerService,
+        deps.instanceConfigService
+      )) as TAppConnectionCredentialsValidator,
     [AppConnection.AzureKeyVault]: ((config: TAppConnectionConfig) =>
       validateAzureKeyVaultConnectionCredentials(
         config as TAzureKeyVaultConnectionConfig,
+        deps.oidcIssuerService,
+        deps.instanceConfigService
+      )) as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureAppConfiguration]: ((config: TAppConnectionConfig) =>
+      validateAzureAppConfigurationConnectionCredentials(
+        config as TAzureAppConfigurationConnectionConfig,
+        deps.instanceConfigService,
         deps.oidcIssuerService
       )) as TAppConnectionCredentialsValidator,
-    [AppConnection.AzureAppConfiguration]:
-      validateAzureAppConfigurationConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.AzureClientSecrets]:
-      validateAzureClientSecretsConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.AzureDevOps]: validateAzureDevOpsConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureClientSecrets]: ((config: TAppConnectionConfig) =>
+      validateAzureClientSecretsConnectionCredentials(
+        config as TAzureClientSecretsConnectionConfig,
+        deps.instanceConfigService,
+        deps.oidcIssuerService
+      )) as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureDevOps]: ((config: TAppConnectionConfig) =>
+      validateAzureDevOpsConnectionCredentials(
+        config as TAzureDevOpsConnectionConfig,
+        deps.instanceConfigService,
+        deps.oidcIssuerService
+      )) as TAppConnectionCredentialsValidator,
     [AppConnection.AzureADCS]: validateAzureADCSConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ADCS]: validateADCSConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.WinRM]: validateWinRMConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -701,17 +780,29 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.OCI]: validateOCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OracleDB]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.OnePass]: validateOnePassConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Heroku]: validateHerokuConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Heroku]: ((config: TAppConnectionConfig) =>
+      validateHerokuConnectionCredentials(
+        config as THerokuConnectionConfig,
+        deps.instanceConfigService
+      )) as TAppConnectionCredentialsValidator,
     [AppConnection.HasuraCloud]: validateHasuraCloudConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Render]: validateRenderConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.LaravelForge]: validateLaravelForgeConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.TriggerDev]: validateTriggerDevConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.GitLab]: validateGitLabConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.GitLab]: ((config: TAppConnectionConfig) =>
+      validateGitLabConnectionCredentials(
+        config as TGitLabConnectionConfig,
+        deps.instanceConfigService
+      )) as TAppConnectionCredentialsValidator,
     [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.DNSMadeEasy]: validateDNSMadeEasyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.UltraDNS]: validateUltraDNSConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.AzureDNS]: validateAzureDnsConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureDNS]: ((config: TAppConnectionConfig) =>
+      validateAzureDnsConnectionCredentials(
+        config as TAzureDnsConnectionConfig,
+        deps.oidcIssuerService
+      )) as TAppConnectionCredentialsValidator,
     [AppConnection.Zabbix]: validateZabbixConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Railway]: validateRailwayConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Bitbucket]: validateBitbucketConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -734,7 +825,11 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Devin]: validateDevinConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Cloud66]: validateCloud66ConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.AzureEntraId]: validateAzureEntraIdConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureEntraId]: ((config: TAppConnectionConfig) =>
+      validateAzureEntraIdConnectionCredentials(
+        config as TAzureEntraIdConnectionConfig,
+        deps.oidcIssuerService
+      )) as TAppConnectionCredentialsValidator,
     [AppConnection.MicrosoftIntune]: validateMicrosoftIntuneConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.VenafiTpp]: ((config: TAppConnectionConfig) =>
@@ -765,6 +860,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Convex]: validateConvexConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Rundeck]: validateRundeckConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Portainer]: validatePortainerConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Jenkins]: validateJenkinsConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Coolify]: validateCoolifyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Qovery]: validateQoveryConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.LiteLLM]: validateLiteLLMConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Fireworks]: validateFireworksConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -773,13 +870,23 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.PowerDns]: validatePowerDnsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Spacelift]: validateSpaceliftConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Daytona]: validateDaytonaConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Stripe]: validateStripeConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Stripe]: ((config: TAppConnectionConfig) =>
+      validateStripeConnectionCredentials(
+        config as TStripeConnectionConfig,
+        deps.instanceConfigService
+      )) as TAppConnectionCredentialsValidator,
     [AppConnection.Keeper]: validateKeeperConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.HpeIloRedFish]: validateHpeIloConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ServiceNow]: validateServiceNowConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.S3Compatible]: validateS3CompatibleConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.S3Compatible]: ((config: TAppConnectionConfig) =>
+      validateS3CompatibleConnectionCredentials(
+        config as TS3CompatibleConnectionConfig,
+        deps.instanceConfigService
+      )) as TAppConnectionCredentialsValidator,
     [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.ClickHouse]: validateClickHouseConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.ClickHouse]: validateClickHouseConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.IncidentIo]: validateIncidentIoConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Rfc2136]: validateRfc2136ConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayV2Service);
@@ -815,6 +922,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "Assume Role";
     case GcpConnectionMethod.ServiceAccountImpersonation:
       return "Service Account Impersonation";
+    case GcpConnectionMethod.WorkloadIdentityFederation:
+      return "Workload Identity Federation";
     case DatabricksConnectionMethod.ServicePrincipal:
       return "Service Principal";
     case CamundaConnectionMethod.ClientCredentials:
@@ -835,6 +944,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case TravisCIConnectionMethod.ApiToken:
     case RundeckConnectionMethod.ApiToken:
     case PortainerConnectionMethod.ApiToken:
+    case JenkinsConnectionMethod.ApiToken:
+    case CoolifyConnectionMethod.ApiToken:
     case DatadogConnectionMethod.Token:
     case JiraConnectionMethod.ApiToken:
       return "API Token";
@@ -900,9 +1011,12 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DaytonaConnectionMethod.ApiKey:
     case ImpervaConnectionMethod.ApiKey:
     case KeeperConnectionMethod.ApiKey:
+    case IncidentIoConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
+    case Rfc2136ConnectionMethod.TsigKey:
+      return "TSIG Key";
     case QoveryConnectionMethod.AccessToken:
     case SupabaseConnectionMethod.AccessToken:
       return "Access Token";
@@ -921,6 +1035,11 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case OVHConnectionMethod.Certificate:
       return "Certificate";
     case AzureKeyVaultConnectionMethod.ManagedIdentity:
+    case AzureAppConfigurationConnectionMethod.ManagedIdentity:
+    case AzureClientSecretsConnectionMethod.ManagedIdentity:
+    case AzureDevOpsConnectionMethod.ManagedIdentity:
+    case AzureDnsConnectionMethod.ManagedIdentity:
+    case AzureEntraIdConnectionMethod.ManagedIdentity:
       return "Managed Identity";
     case OVHConnectionMethod.Token:
       return "Token";
@@ -941,7 +1060,7 @@ export const decryptAppConnection = async (
     };
     project?: { name: string; id: string; type: string; slug: string } | null;
   },
-  kmsService: TAppConnectionServiceFactoryDep["kmsService"]
+  kmsDataKeyService: TAppConnectionServiceFactoryDep["kmsDataKeyService"]
 ) => {
   const { encryptedCredentials, encryptedConfiguration, ...connectionWithoutEncrypted } = appConnection;
 
@@ -955,7 +1074,7 @@ export const decryptAppConnection = async (
                 orgId: appConnection.orgId,
                 projectId: appConnection.projectId,
                 encryptedLastRotationMessage: appConnection.rotation.encryptedLastRotationMessage,
-                kmsService
+                kmsDataKeyService
               })
             : null
         }
@@ -964,45 +1083,87 @@ export const decryptAppConnection = async (
       encryptedCredentials,
       orgId: appConnection.orgId,
       projectId: appConnection.projectId,
-      kmsService
+      kmsDataKeyService
     }),
     configuration: await decryptAppConnectionConfiguration({
       encryptedConfiguration,
       orgId: appConnection.orgId,
       projectId: appConnection.projectId,
-      kmsService
+      kmsDataKeyService
     }),
     credentialsHash: crypto.nativeCrypto.createHash("sha256").update(encryptedCredentials).digest("hex")
   } as TAppConnection;
 };
 
-type TAzureKeyVaultManagedIdentityConnection = Extract<
+type TAzureManagedIdentityConnection = Extract<
   TAppConnection,
-  { app: AppConnection.AzureKeyVault; method: AzureKeyVaultConnectionMethod.ManagedIdentity }
+  {
+    method:
+      | AzureKeyVaultConnectionMethod.ManagedIdentity
+      | AzureAppConfigurationConnectionMethod.ManagedIdentity
+      | AzureClientSecretsConnectionMethod.ManagedIdentity
+      | AzureDevOpsConnectionMethod.ManagedIdentity
+      | AzureDnsConnectionMethod.ManagedIdentity
+      | AzureEntraIdConnectionMethod.ManagedIdentity;
+  }
 >;
 
-// Only for connections returned to the user, who copies these values into Azure
+type TAzureManagedIdentityConnectionWithFederatedCredential = TAzureManagedIdentityConnection & {
+  credentials: { federatedCredential: ReturnType<typeof getAzureConnectionFederatedCredential> };
+};
+
+type TGcpWorkloadIdentityFederationConnection = Extract<
+  TAppConnection,
+  { app: AppConnection.GCP; method: GcpConnectionMethod.WorkloadIdentityFederation }
+>;
+
+// Only for connections returned to the user, who copies these values into the cloud provider
 export const addAppConnectionFederatedCredential = (
   appConnection: TAppConnection
 ):
-  | Exclude<TAppConnection, TAzureKeyVaultManagedIdentityConnection>
-  | (TAzureKeyVaultManagedIdentityConnection & {
-      credentials: { federatedCredential: TAzureKeyVaultConnectionFederatedCredential };
+  | Exclude<TAppConnection, TAzureManagedIdentityConnection | TGcpWorkloadIdentityFederationConnection>
+  | TAzureManagedIdentityConnectionWithFederatedCredential
+  | (TGcpWorkloadIdentityFederationConnection & {
+      credentials: { federatedCredential: TGcpConnectionFederatedCredential };
     }) => {
   if (
-    appConnection.app !== AppConnection.AzureKeyVault ||
-    appConnection.method !== AzureKeyVaultConnectionMethod.ManagedIdentity
+    appConnection.app === AppConnection.GCP &&
+    appConnection.method === GcpConnectionMethod.WorkloadIdentityFederation
   ) {
-    return appConnection;
+    return {
+      ...appConnection,
+      credentials: {
+        ...appConnection.credentials,
+        federatedCredential: getGcpConnectionFederatedCredential({
+          id: appConnection.id,
+          orgId: appConnection.orgId,
+          workloadIdentityProvider: appConnection.credentials.workloadIdentityProvider
+        })
+      }
+    };
   }
 
-  return {
-    ...appConnection,
-    credentials: {
-      ...appConnection.credentials,
-      federatedCredential: getAzureKeyVaultConnectionFederatedCredential(appConnection)
-    }
-  };
+  switch (appConnection.method) {
+    case AzureKeyVaultConnectionMethod.ManagedIdentity:
+    case AzureAppConfigurationConnectionMethod.ManagedIdentity:
+    case AzureClientSecretsConnectionMethod.ManagedIdentity:
+    case AzureDevOpsConnectionMethod.ManagedIdentity:
+    case AzureDnsConnectionMethod.ManagedIdentity:
+    case AzureEntraIdConnectionMethod.ManagedIdentity:
+      // TS cannot tie the spread credentials back to each connection's method, so the result is asserted
+      return {
+        ...appConnection,
+        credentials: {
+          ...appConnection.credentials,
+          federatedCredential: getAzureConnectionFederatedCredential(appConnection)
+        }
+      } as TAzureManagedIdentityConnectionWithFederatedCredential;
+    default:
+      return appConnection as Exclude<
+        TAppConnection,
+        TAzureManagedIdentityConnection | TGcpWorkloadIdentityFederationConnection
+      >;
+  }
 };
 
 const platformManagedCredentialsNotSupported: TAppConnectionTransitionCredentialsToPlatform = ({ app }) => {
@@ -1097,6 +1258,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Convex]: platformManagedCredentialsNotSupported,
   [AppConnection.Rundeck]: platformManagedCredentialsNotSupported,
   [AppConnection.Portainer]: platformManagedCredentialsNotSupported,
+  [AppConnection.Jenkins]: platformManagedCredentialsNotSupported,
+  [AppConnection.Coolify]: platformManagedCredentialsNotSupported,
   [AppConnection.Qovery]: platformManagedCredentialsNotSupported,
   [AppConnection.LiteLLM]: platformManagedCredentialsNotSupported,
   [AppConnection.Fireworks]: platformManagedCredentialsNotSupported,
@@ -1110,18 +1273,20 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.ServiceNow]: platformManagedCredentialsNotSupported,
   [AppConnection.S3Compatible]: platformManagedCredentialsNotSupported,
   [AppConnection.Jira]: platformManagedCredentialsNotSupported,
-  [AppConnection.ClickHouse]: platformManagedCredentialsNotSupported
+  [AppConnection.ClickHouse]: platformManagedCredentialsNotSupported,
+  [AppConnection.IncidentIo]: platformManagedCredentialsNotSupported,
+  [AppConnection.Rfc2136]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
+  licenseService: TLicenseService,
   appConnection: AppConnection,
   orgId: string,
   errorMessage: string
 ) => {
   if (APP_CONNECTION_PLAN_MAP[appConnection] === AppConnectionPlanType.Enterprise) {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.enterpriseAppConnections)
+    if (!plan.has(PlanFeature.EnterpriseAppConnections))
       throw new BadRequestError({
         message: errorMessage
       });

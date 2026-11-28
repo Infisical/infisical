@@ -80,6 +80,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Convex]: "Convex",
   [AppConnection.Rundeck]: "Rundeck",
   [AppConnection.Portainer]: "Portainer",
+  [AppConnection.Jenkins]: "Jenkins",
+  [AppConnection.Coolify]: "Coolify",
   [AppConnection.HasuraCloud]: "Hasura Cloud",
   [AppConnection.Qovery]: "Qovery",
   [AppConnection.Cloud66]: "Cloud 66",
@@ -96,7 +98,9 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.ServiceNow]: "ServiceNow",
   [AppConnection.S3Compatible]: "S3-Compatible Storage",
   [AppConnection.Jira]: "Jira",
-  [AppConnection.ClickHouse]: "ClickHouse"
+  [AppConnection.ClickHouse]: "ClickHouse",
+  [AppConnection.IncidentIo]: "incident.io",
+  [AppConnection.Rfc2136]: "DNS Server (RFC 2136)"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -179,6 +183,8 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Convex]: AppConnectionPlanType.Regular,
   [AppConnection.Rundeck]: AppConnectionPlanType.Regular,
   [AppConnection.Portainer]: AppConnectionPlanType.Regular,
+  [AppConnection.Jenkins]: AppConnectionPlanType.Regular,
+  [AppConnection.Coolify]: AppConnectionPlanType.Regular,
   [AppConnection.HasuraCloud]: AppConnectionPlanType.Regular,
   [AppConnection.Qovery]: AppConnectionPlanType.Regular,
   [AppConnection.Cloud66]: AppConnectionPlanType.Regular,
@@ -195,5 +201,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.ServiceNow]: AppConnectionPlanType.Enterprise,
   [AppConnection.S3Compatible]: AppConnectionPlanType.Regular,
   [AppConnection.Jira]: AppConnectionPlanType.Regular,
-  [AppConnection.ClickHouse]: AppConnectionPlanType.Regular
+  [AppConnection.ClickHouse]: AppConnectionPlanType.Regular,
+  [AppConnection.IncidentIo]: AppConnectionPlanType.Regular,
+  [AppConnection.Rfc2136]: AppConnectionPlanType.Regular
 };

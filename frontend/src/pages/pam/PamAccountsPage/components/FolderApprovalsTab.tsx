@@ -29,6 +29,10 @@ import {
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
   IconButton,
   Pagination,
   Table,
@@ -37,6 +41,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -48,11 +53,13 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
+import { useListWorkspaceGroups } from "@app/hooks/api";
 import { AlertChannelType, AlertResourceType } from "@app/hooks/api/alerts";
 import {
   approvalPolicyQuery,
   ApprovalPolicyScope,
-  ApprovalPolicyType
+  ApprovalPolicyType,
+  ApproverType
 } from "@app/hooks/api/approvalPolicies";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
@@ -80,10 +87,13 @@ import {
   serializeAutoApprovalDraft,
   TAutoApprovalDraft,
   toAutoApprovalConfig,
-  toAutoApprovalDraft
+  toAutoApprovalDraft,
+  toRequesterCheckValue,
+  TRequesterCheckOptions
 } from "../../components/auto-approval/autoApprovalDraft";
 import { getRequesterSubtitle } from "../../components/requesterDisplay";
 import { usePamProductUsers } from "../../components/usePamProductUsers";
+import { ApprovalRequestDetailSheet } from "../../PamApprovalRequestsPage/components/ApprovalRequestDetailSheet";
 import { FolderNotificationsSection } from "./FolderNotificationsSection";
 
 type ApproverEntry = { type: PamApproverType; id: string };
@@ -128,6 +138,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   const { users: productUsers, userMap: productUserMap } = usePamProductUsers();
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
   const { data: folderMembers } = useListFolderMembers(folderId);
+  const { data: productGroups } = useListWorkspaceGroups(currentProject.id, currentProject.type);
   const setConfig = useSetPamApprovalConfig();
 
   const [requestsPage, setRequestsPage] = useState(1);
@@ -151,6 +162,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   );
   const revokeMutation = useRevokePamAccessRequest();
   const [requestToRevoke, setRequestToRevoke] = useState<TPamAccessRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<TPamAccessRequest | null>(null);
 
   const confirmRevoke = async () => {
     if (!requestToRevoke) return;
@@ -166,6 +178,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   const [autoApprovalDraft, setAutoApprovalDraft] =
     useState<TAutoApprovalDraft>(EMPTY_AUTO_APPROVAL_DRAFT);
   const [showAutoApprovalErrors, setShowAutoApprovalErrors] = useState(false);
+  const savedEmailApprovers = config?.emailApproversOnRequest ?? true;
+  const [emailApprovers, setEmailApprovers] = useState(savedEmailApprovers);
 
   const autoApprovalScope = {
     policyType: ApprovalPolicyType.PamAccess,
@@ -221,6 +235,10 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   }, [savedNotificationConfigs]);
 
   useEffect(() => {
+    setEmailApprovers(savedEmailApprovers);
+  }, [savedEmailApprovers]);
+
+  useEffect(() => {
     setAutoApprovalDraft(savedAutoApprovalDraft);
     setShowAutoApprovalErrors(false);
   }, [savedAutoApprovalDraft]);
@@ -239,7 +257,9 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
       serializeAutoApprovalDraft(savedAutoApprovalDraft),
     [autoApprovalDraft, savedAutoApprovalDraft]
   );
-  const isAnyDirty = isDirty || isNotifDirty || isBreakGlassDirty || isAutoApprovalDirty;
+  const isEmailApproversDirty = emailApprovers !== savedEmailApprovers;
+  const isAnyDirty =
+    isDirty || isNotifDirty || isBreakGlassDirty || isAutoApprovalDirty || isEmailApproversDirty;
 
   useEffect(() => {
     onDirtyChange?.(isAnyDirty);
@@ -300,6 +320,26 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     return [...groups, ...users];
   }, [orgGroups, productUsers, selectedBreakGlassIds, memberUserIds, memberGroupIds]);
 
+  // Unlike approvers, requester checks can name any of the product's users and groups, not only folder
+  // members: a requester can reach the folder through a group the rule doesn't name
+  const requesterOptions = useMemo<TRequesterCheckOptions>(
+    () => [
+      ...(productGroups ?? []).map(({ group }) => ({
+        value: toRequesterCheckValue(ApproverType.Group, group.id),
+        label: group.name,
+        subtitle: "Group",
+        kind: ApproverType.Group
+      })),
+      ...productUsers.map((u) => ({
+        value: toRequesterCheckValue(ApproverType.User, u.id),
+        label: u.name,
+        subtitle: u.email,
+        kind: ApproverType.User
+      }))
+    ],
+    [productUsers, productGroups]
+  );
+
   const addApprover = (opt: ApproverOption | null) => {
     if (!opt) return;
     setApprovers((prev) => [...prev, { type: opt.kind, id: opt.value }]);
@@ -346,15 +386,13 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         breakGlassUsers,
         // Legacy Slack configs can only be removed, so they're sent only when one was.
         notificationConfigs: isNotifDirty ? notificationConfigs : undefined,
-        autoApproval: isAutoApprovalDirty ? toAutoApprovalConfig(autoApprovalDraft) : undefined
+        autoApproval: isAutoApprovalDirty ? toAutoApprovalConfig(autoApprovalDraft) : undefined,
+        emailApproversOnRequest: isEmailApproversDirty ? emailApprovers : undefined
       },
       {
         onSuccess: () => {
           createNotification({ type: "success", text: "Approval configuration saved" });
           setIsDirty(false);
-        },
-        onError: () => {
-          createNotification({ type: "error", text: "Failed to save approval configuration" });
         }
       }
     );
@@ -366,6 +404,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     setNotificationConfigs(savedNotificationConfigs);
     setAutoApprovalDraft(savedAutoApprovalDraft);
     setShowAutoApprovalErrors(false);
+    setEmailApprovers(savedEmailApprovers);
     setIsDirty(false);
   };
 
@@ -386,6 +425,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         onChange={setAutoApprovalDraft}
         showErrors={showAutoApprovalErrors}
         hasApprovers={approvers.length > 0}
+        requesterOptions={requesterOptions}
       />
 
       <Card>
@@ -400,6 +440,22 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          <Field orientation="horizontal">
+            <FieldContent>
+              <FieldLabel htmlFor="email-approvers-on-request">Email Approvers</FieldLabel>
+              <FieldDescription id="email-approvers-on-request-description">
+                Approvers get an email for each new access request, in addition to the in-app
+                notification.
+              </FieldDescription>
+            </FieldContent>
+            <Toggle
+              id="email-approvers-on-request"
+              variant="pam"
+              aria-describedby="email-approvers-on-request-description"
+              checked={emailApprovers}
+              onCheckedChange={setEmailApprovers}
+            />
+          </Field>
           <Combobox
             isClearable={false}
             value={null}
@@ -577,6 +633,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                   ? undefined
                   : {
                       lockedChannelTypes: [
+                        AlertChannelType.SlackApp,
                         AlertChannelType.Slack,
                         AlertChannelType.Webhook,
                         AlertChannelType.PagerDuty
@@ -662,8 +719,13 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                 <TableBody>
                   {folderRequests.map((request) => {
                     const status = getRequestStatusInfo(request);
+                    const isApproved = request.status === PamAccessRequestStatus.Approved;
                     return (
-                      <TableRow key={request.id}>
+                      <TableRow
+                        key={request.id}
+                        className={isApproved ? "cursor-pointer" : undefined}
+                        onClick={isApproved ? () => setSelectedRequest(request) : undefined}
+                      >
                         <TableCell className="h-[50px]">
                           <div className="flex flex-col">
                             <span className="text-sm font-medium">{request.requesterName}</span>
@@ -766,6 +828,12 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         </CardContent>
       </Card>
 
+      <ApprovalRequestDetailSheet
+        request={selectedRequest}
+        isOpen={!!selectedRequest}
+        onOpenChange={(open) => !open && setSelectedRequest(null)}
+        canRevokeGrants={canRevoke}
+      />
       <ConfirmationAlertDialog
         isOpen={!!requestToRevoke}
         onOpenChange={(open) => {

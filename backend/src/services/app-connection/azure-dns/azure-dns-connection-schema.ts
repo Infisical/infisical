@@ -10,6 +10,8 @@ import {
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
+import { refineCredentialRotationMethod } from "../credential-rotation/app-connection-credential-rotation-schemas";
+import { AzureConnectionFederatedCredentialSchema } from "../shared/azure/azure-managed-identity-schemas";
 import { AzureDnsConnectionMethod } from "./azure-dns-connection-enums";
 
 const AZURE_GUID_REGEX = new RE2("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", "i");
@@ -37,20 +39,41 @@ export const AzureDnsConnectionClientSecretCredentialsSchema = z.object({
     )
 });
 
+export const AzureDnsConnectionManagedIdentityCredentialsSchema = z.object({
+  tenantId: azureGuidSchema.describe("Tenant ID must be a valid GUID"),
+  clientId: azureGuidSchema.describe("Client ID must be a valid GUID"),
+  subscriptionId: azureGuidSchema.describe("Subscription ID must be a valid GUID")
+});
+
 const BaseAzureDnsConnectionSchema = BaseAppConnectionSchema.extend({
   app: z.literal(AppConnection.AzureDNS)
 });
 
-export const AzureDnsConnectionSchema = BaseAzureDnsConnectionSchema.extend({
-  method: z.literal(AzureDnsConnectionMethod.ClientSecret),
-  credentials: AzureDnsConnectionClientSecretCredentialsSchema
-});
+export const AzureDnsConnectionSchema = z.intersection(
+  BaseAzureDnsConnectionSchema,
+  z.discriminatedUnion("method", [
+    z.object({
+      method: z.literal(AzureDnsConnectionMethod.ClientSecret),
+      credentials: AzureDnsConnectionClientSecretCredentialsSchema
+    }),
+    z.object({
+      method: z.literal(AzureDnsConnectionMethod.ManagedIdentity),
+      credentials: AzureDnsConnectionManagedIdentityCredentialsSchema
+    })
+  ])
+);
 
 export const SanitizedAzureDnsConnectionSchema = z.discriminatedUnion("method", [
   BaseAzureDnsConnectionSchema.extend({
     method: z.literal(AzureDnsConnectionMethod.ClientSecret),
     credentials: AzureDnsConnectionClientSecretCredentialsSchema.pick({ tenantId: true, subscriptionId: true })
-  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureDNS]} (Client Secret)` }))
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureDNS]} (Client Secret)` })),
+  BaseAzureDnsConnectionSchema.extend({
+    method: z.literal(AzureDnsConnectionMethod.ManagedIdentity),
+    credentials: AzureDnsConnectionManagedIdentityCredentialsSchema.extend({
+      federatedCredential: AzureConnectionFederatedCredentialSchema
+    })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureDNS]} (Managed Identity)` }))
 ]);
 
 export const ValidateAzureDnsConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -61,6 +84,14 @@ export const ValidateAzureDnsConnectionCredentialsSchema = z.discriminatedUnion(
     credentials: AzureDnsConnectionClientSecretCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.AzureDNS).credentials
     )
+  }),
+  z.object({
+    method: z
+      .literal(AzureDnsConnectionMethod.ManagedIdentity)
+      .describe(AppConnections.CREATE(AppConnection.AzureDNS).method),
+    credentials: AzureDnsConnectionManagedIdentityCredentialsSchema.describe(
+      AppConnections.CREATE(AppConnection.AzureDNS).credentials
+    )
   })
 ]);
 
@@ -68,13 +99,14 @@ export const CreateAzureDnsConnectionSchema = ValidateAzureDnsConnectionCredenti
   GenericCreateAppConnectionFieldsSchema(AppConnection.AzureDNS, {
     supportsCredentialRotation: true
   })
-);
+).superRefine(refineCredentialRotationMethod(AzureDnsConnectionMethod.ClientSecret));
 
 export const UpdateAzureDnsConnectionSchema = z
   .object({
-    credentials: AzureDnsConnectionClientSecretCredentialsSchema.optional().describe(
-      AppConnections.UPDATE(AppConnection.AzureDNS).credentials
-    )
+    credentials: z
+      .union([AzureDnsConnectionClientSecretCredentialsSchema, AzureDnsConnectionManagedIdentityCredentialsSchema])
+      .optional()
+      .describe(AppConnections.UPDATE(AppConnection.AzureDNS).credentials)
   })
   .and(
     GenericUpdateAppConnectionFieldsSchema(AppConnection.AzureDNS, {

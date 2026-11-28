@@ -8,10 +8,18 @@ import {
   useState
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { BellIcon, CodeXmlIcon, MessageSquareIcon, PencilLineIcon, TagsIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { ResolvedReferenceTooltipContent } from "@app/components/secrets/SecretReferenceDetails";
 import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  IconButton,
   InfisicalSecretInput,
   Input,
   SecretInputActions,
@@ -22,16 +30,24 @@ import {
   TooltipTrigger,
   useSecretInputActionShortcuts
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
   secretKeyExistsQueryOptions,
   useGetSecretKeyExistingEnvironments
 } from "@app/hooks/api/dashboard/queries";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 
 import { overviewCountBucket, useOverviewTelemetry } from "../../OverviewTelemetry";
+import type { EnvironmentSecretAction } from "../SecretTableRow/SecretEditTableRow";
 import { TABLE_ROW_ACTIVE_FILTER_CLASS_NAME } from "../tableRowActionStyles";
 import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
+import { TUnsavedChange, useUnsavedEdit } from "../UnsavedEditsBar";
 
 type TParsedEnv = Record<string, { value: string; comments: string[] }>;
 
@@ -70,12 +86,12 @@ type Props = {
   environments: string[];
   existingSecretKeys: string[];
   onCreateSecret: (
-    environment: string,
+    environments: string[],
     key: string,
     value: string,
-    comment?: string,
-    isDirectSave?: boolean
-  ) => Promise<void>;
+    comment: string,
+    isDirectSave: boolean
+  ) => Promise<PromiseSettledResult<unknown>[]>;
   onPasteSecrets: (env: TParsedEnv) => void;
   onQueuedSecretConflict?: (draft: { key: string; value: string; comment: string }) => boolean;
   renderResourceTypeTrigger: (isDisabled: boolean) => ReactNode;
@@ -83,6 +99,7 @@ type Props = {
   secretPath: string;
   activityId: TableRowActivityId;
   onActivityChange: TableRowActivityChangeHandler;
+  onAnnotate?: (key: string, action: EnvironmentSecretAction) => void;
 };
 
 export const QuickAddSecretRow = ({
@@ -96,10 +113,12 @@ export const QuickAddSecretRow = ({
   saveLabel,
   secretPath,
   activityId,
-  onActivityChange
+  onActivityChange,
+  onAnnotate
 }: Props) => {
   const telemetry = useOverviewTelemetry();
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
   const rowRef = useRef<HTMLTableRowElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const keyInputRef = useRef<HTMLInputElement>(null);
@@ -110,6 +129,10 @@ export const QuickAddSecretRow = ({
   const [error, setError] = useState<string>();
   const [isActive, setIsActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAnnotateOpen, setIsAnnotateOpen] = useState(false);
+  const annotateOpenRef = useRef(false);
+  const resumeInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const pendingAnnotationRef = useRef<EnvironmentSecretAction | null>(null);
   const [valueEditorStyle, setValueEditorStyle] = useState<CSSProperties>();
   const isMultiEnvironmentView = environments.length > 1;
   const queryClient = useQueryClient();
@@ -180,8 +203,9 @@ export const QuickAddSecretRow = ({
 
   const submitDraft = async ({
     refocus = true,
-    isDirectSave = true
-  }: { refocus?: boolean; isDirectSave?: boolean } = {}) => {
+    isDirectSave = true,
+    annotation
+  }: { refocus?: boolean; isDirectSave?: boolean; annotation?: EnvironmentSecretAction } = {}) => {
     const normalizedKey = key.trim();
 
     if (!normalizedKey) {
@@ -216,11 +240,33 @@ export const QuickAddSecretRow = ({
         }
       }
 
-      await Promise.all(
-        environments.map((environment) =>
-          onCreateSecret(environment, normalizedKey, value, comment, isDirectSave)
-        )
+      const results = await onCreateSecret(
+        environments,
+        normalizedKey,
+        value,
+        comment,
+        isDirectSave
       );
+      const failures = environments.flatMap((environment, index) => {
+        const result = results[index];
+        if (result.status === "fulfilled") return [];
+        return [
+          {
+            error: result.reason as unknown,
+            field: "key" as const,
+            environmentName: isMultiEnvironmentView
+              ? (currentProject.environments.find((env) => env.slug === environment)?.name ??
+                environment)
+              : undefined
+          }
+        ];
+      });
+      if (failures.length) {
+        showSecretWriteErrors(failures, (_, message) => setError(message));
+        if (refocus) setTimeout(() => keyInputRef.current?.focus(), 0);
+        return;
+      }
+      if (annotation) onAnnotate?.(normalizedKey, annotation);
       if (!isDirectSave && !isKeyConfirmedFree) {
         const queuedDraft = { key: normalizedKey, value, comment };
         queryClient
@@ -269,11 +315,25 @@ export const QuickAddSecretRow = ({
     submitDraft().catch(() => undefined);
   };
 
-  const resetDraft = () => {
+  const clearDraft = () => {
     setKey("");
     setValue("");
     setComment("");
     setError(undefined);
+  };
+
+  const draftPathRef = useRef(secretPath);
+  useEffect(() => {
+    if (draftPathRef.current === secretPath) return;
+    draftPathRef.current = secretPath;
+    setKey("");
+    setValue("");
+    setComment("");
+    setError(undefined);
+  }, [secretPath]);
+
+  const resetDraft = () => {
+    clearDraft();
     setTimeout(() => keyInputRef.current?.focus(), 0);
   };
 
@@ -312,6 +372,50 @@ export const QuickAddSecretRow = ({
   };
 
   const isDraftActive = Boolean(key || value || comment);
+  const pendingKey = key.trim();
+  const getPendingChanges = (): TUnsavedChange[] =>
+    environments.map((environment) => ({
+      environment,
+      environmentName:
+        currentProject.environments.find((env) => env.slug === environment)?.name ?? environment,
+      secretPath,
+      secretKey: pendingKey,
+      secretValue: value,
+      originalValue: null,
+      secretValueHidden: false,
+      isCreate: true,
+      isReferenced: false,
+      secretComment: comment || undefined
+    }));
+  const { isCommitting: isCommittingEdits, holdDrafts } = useUnsavedEdit(
+    "quick-add",
+    isMultiEnvironmentView && Boolean(pendingKey) && !duplicateError && !isSubmitting,
+    {
+      getChanges: getPendingChanges,
+      settle: (committed) => {
+        holdDrafts(
+          getPendingChanges().filter(
+            (change) => !committed.some(({ environment }) => environment === change.environment)
+          )
+        );
+        clearDraft();
+      },
+      discard: clearDraft,
+      restore: (draft) => {
+        if (
+          draft.length !== environments.length ||
+          draft.some(({ environment }) => !environments.includes(environment))
+        ) {
+          holdDrafts(draft);
+          return;
+        }
+        setKey(draft[0].secretKey);
+        setValue(draft[0].secretValue);
+        setComment(draft[0].secretComment ?? "");
+      }
+    },
+    environments.length
+  );
   const requestSave = () => formRef.current?.requestSubmit();
   const handleActionShortcut = useSecretInputActionShortcuts({
     isActive: isDraftActive,
@@ -329,6 +433,7 @@ export const QuickAddSecretRow = ({
           event.preventDefault();
       }}
       onBlurCapture={(event) => {
+        if (annotateOpenRef.current) return;
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
           setIsActive(false);
         }
@@ -374,7 +479,7 @@ export const QuickAddSecretRow = ({
               aria-label="New secret name"
               autoComplete="off"
               className="h-auto w-full rounded-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:border-transparent focus-visible:ring-0"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isCommittingEdits}
               isError={Boolean(displayedError)}
               placeholder="Add a secret name or paste a .env"
               spellCheck={false}
@@ -395,11 +500,100 @@ export const QuickAddSecretRow = ({
                 }
               }}
             />
+            {onAnnotate && trimmedKey && (
+              <DropdownMenu
+                open={isAnnotateOpen}
+                onOpenChange={(open) => {
+                  if (open) {
+                    annotateOpenRef.current = true;
+                    resumeInputRef.current =
+                      document.activeElement === valueInputRef.current
+                        ? valueInputRef.current
+                        : keyInputRef.current;
+                  }
+                  setIsAnnotateOpen(open);
+                }}
+              >
+                <Tooltip open={isAnnotateOpen ? false : undefined}>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <IconButton
+                        aria-label="Annotate secret"
+                        tabIndex={-1}
+                        className="-mr-1"
+                        variant="ghost-muted"
+                        size="2xs"
+                        isDisabled={isSubmitting || isCommittingEdits}
+                      >
+                        <PencilLineIcon />
+                      </IconButton>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>Annotate</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent
+                  align="start"
+                  onCloseAutoFocus={(event) => {
+                    event.preventDefault();
+                    const annotation = pendingAnnotationRef.current;
+                    pendingAnnotationRef.current = null;
+                    if (annotation) {
+                      submitDraft({ isDirectSave: false, annotation })
+                        .catch(() => keyInputRef.current?.focus())
+                        .finally(() => {
+                          annotateOpenRef.current = false;
+                        });
+                    } else {
+                      resumeInputRef.current?.focus();
+                      annotateOpenRef.current = false;
+                    }
+                  }}
+                >
+                  <DropdownMenuLabel>Annotate</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      pendingAnnotationRef.current = "comment";
+                    }}
+                  >
+                    <MessageSquareIcon />
+                    {comment ? "Edit Comment" : "Add Comment"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    isDisabled={
+                      !permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags)
+                    }
+                    onClick={() => {
+                      pendingAnnotationRef.current = "tags";
+                    }}
+                  >
+                    <TagsIcon />
+                    Add Tags
+                  </DropdownMenuItem>
+                  <Tooltip>
+                    <TooltipTrigger className="block w-full">
+                      <DropdownMenuItem isDisabled>
+                        <BellIcon />
+                        Add Reminder
+                      </DropdownMenuItem>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Create Secret to Add Reminder</TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      pendingAnnotationRef.current = "metadata";
+                    }}
+                  >
+                    <CodeXmlIcon />
+                    Add Metadata
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
           {displayedError && (
             <span
               id="quick-add-secret-error"
-              className="block text-2xs break-words whitespace-normal text-danger"
+              className="block text-2xs break-words whitespace-pre-line text-danger"
             >
               {!error && duplicateEnvironments ? (
                 <DuplicateEnvironmentsMessage environments={duplicateEnvironments} />
@@ -429,7 +623,7 @@ export const QuickAddSecretRow = ({
               aria-label="New secret value"
               environment={environments[0]}
               form="quick-add-secret-form"
-              isDisabled={isSubmitting}
+              isDisabled={isSubmitting || isCommittingEdits}
               placeholder={
                 isMultiEnvironmentView
                   ? "Add a secret value (applies to all)"
@@ -440,15 +634,26 @@ export const QuickAddSecretRow = ({
               variant="plain"
               onChange={setValue}
               onKeyDown={handleActionShortcut}
+              renderReferenceTooltip={
+                isMultiEnvironmentView
+                  ? undefined
+                  : (reference) => (
+                      <ResolvedReferenceTooltipContent
+                        environment={environments[0]}
+                        secretPath={secretPath}
+                        reference={reference}
+                      />
+                    )
+              }
             />
           </div>
           {isDraftActive && (
             <SecretInputActions
               className={
-                isMultiEnvironmentView ? "absolute top-1.5 right-0" : "absolute top-0 right-0"
+                isMultiEnvironmentView ? "absolute top-1.5 right-2" : "absolute top-0 -right-1.5"
               }
-              isSaveDisabled={isSubmitting || Boolean(duplicateError)}
-              isUndoDisabled={isSubmitting}
+              isSaveDisabled={isSubmitting || isCommittingEdits || Boolean(duplicateError)}
+              isUndoDisabled={isSubmitting || isCommittingEdits}
               saveLabel={saveLabel}
               onSave={requestSave}
               onUndo={resetDraft}

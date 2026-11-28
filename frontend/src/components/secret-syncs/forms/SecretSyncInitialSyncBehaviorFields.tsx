@@ -346,7 +346,7 @@ export const SecretSyncInitialSyncBehaviorFields = () => {
   const currentInitialBehavior = watch("syncOptions.initialSyncBehavior");
   const disableSecretDeletion = watch("syncOptions.disableSecretDeletion");
   const keySchema = watch("syncOptions.keySchema");
-  const includeAllSubFolders = Boolean(watch("syncOptions.includeAllSubFolders"));
+  const includeAllSubFolders = Boolean(watch("includeAllSubFolders"));
 
   // Vercel "sensitive" secrets cannot be read back, so importing destination secrets is impossible.
   // Force the initial sync behavior to OverwriteDestination whenever sensitive is enabled.

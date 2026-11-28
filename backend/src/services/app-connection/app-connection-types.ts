@@ -142,6 +142,12 @@ import {
   TValidateConvexConnectionCredentialsSchema
 } from "./convex";
 import {
+  TCoolifyConnection,
+  TCoolifyConnectionConfig,
+  TCoolifyConnectionInput,
+  TValidateCoolifyConnectionCredentialsSchema
+} from "./coolify";
+import {
   TDatabricksConnection,
   TDatabricksConnectionConfig,
   TDatabricksConnectionInput,
@@ -285,6 +291,18 @@ import {
   TImpervaConnectionInput,
   TValidateImpervaConnectionCredentialsSchema
 } from "./imperva";
+import {
+  TIncidentIoConnection,
+  TIncidentIoConnectionConfig,
+  TIncidentIoConnectionInput,
+  TValidateIncidentIoConnectionCredentialsSchema
+} from "./incident-io";
+import {
+  TJenkinsConnection,
+  TJenkinsConnectionConfig,
+  TJenkinsConnectionInput,
+  TValidateJenkinsConnectionCredentialsSchema
+} from "./jenkins";
 import {
   TJiraConnection,
   TJiraConnectionConfig,
@@ -442,6 +460,12 @@ import {
   TRenderConnectionInput,
   TValidateRenderConnectionCredentialsSchema
 } from "./render/render-connection-types";
+import {
+  TRfc2136Connection,
+  TRfc2136ConnectionConfig,
+  TRfc2136ConnectionInput,
+  TValidateRfc2136ConnectionCredentialsSchema
+} from "./rfc2136";
 import {
   TRundeckConnection,
   TRundeckConnectionConfig,
@@ -653,6 +677,8 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TConvexConnection
   | TRundeckConnection
   | TPortainerConnection
+  | TJenkinsConnection
+  | TCoolifyConnection
   | THasuraCloudConnection
   | TQoveryConnection
   | TLiteLLMConnection
@@ -668,6 +694,8 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TS3CompatibleConnection
   | TJiraConnection
   | TClickHouseConnection
+  | TIncidentIoConnection
+  | TRfc2136Connection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -760,6 +788,8 @@ export type TAppConnectionInput = { id: string } & (
   | TConvexConnectionInput
   | TRundeckConnectionInput
   | TPortainerConnectionInput
+  | TJenkinsConnectionInput
+  | TCoolifyConnectionInput
   | THasuraCloudConnectionInput
   | TQoveryConnectionInput
   | TLiteLLMConnectionInput
@@ -775,6 +805,8 @@ export type TAppConnectionInput = { id: string } & (
   | TS3CompatibleConnectionInput
   | TJiraConnectionInput
   | TClickHouseConnectionInput
+  | TIncidentIoConnectionInput
+  | TRfc2136ConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -901,6 +933,8 @@ export type TAppConnectionConfig =
   | TConvexConnectionConfig
   | TRundeckConnectionConfig
   | TPortainerConnectionConfig
+  | TJenkinsConnectionConfig
+  | TCoolifyConnectionConfig
   | THasuraCloudConnectionConfig
   | TQoveryConnectionConfig
   | TLiteLLMConnectionConfig
@@ -915,7 +949,9 @@ export type TAppConnectionConfig =
   | TServiceNowConnectionConfig
   | TS3CompatibleConnectionConfig
   | TJiraConnectionConfig
-  | TClickHouseConnectionConfig;
+  | TClickHouseConnectionConfig
+  | TIncidentIoConnectionConfig
+  | TRfc2136ConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -999,6 +1035,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateConvexConnectionCredentialsSchema
   | TValidateRundeckConnectionCredentialsSchema
   | TValidatePortainerConnectionCredentialsSchema
+  | TValidateJenkinsConnectionCredentialsSchema
+  | TValidateCoolifyConnectionCredentialsSchema
   | TValidateHasuraCloudConnectionCredentialsSchema
   | TValidateQoveryConnectionCredentialsSchema
   | TValidateLiteLLMConnectionCredentialsSchema
@@ -1013,7 +1051,9 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateServiceNowConnectionCredentialsSchema
   | TValidateS3CompatibleConnectionCredentialsSchema
   | TValidateJiraConnectionCredentialsSchema
-  | TValidateClickHouseConnectionCredentialsSchema;
+  | TValidateClickHouseConnectionCredentialsSchema
+  | TValidateIncidentIoConnectionCredentialsSchema
+  | TValidateRfc2136ConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

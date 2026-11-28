@@ -3,23 +3,24 @@ import path from "path";
 import RE2 from "re2";
 
 import {
-  ActionProjectType,
+  ProjectVersion,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretType,
   TableName,
+  TProjects,
   TSecretBlindIndexes,
   TSecrets
 } from "@app/db/schemas";
-import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionSecretActions } from "@app/domains/platform/projects/ce/module";
+import { SecretReadAccess, TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName } from "@app/lib/crypto";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError, throwIfClientDisconnected } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
+import { TActorInput } from "@app/lib/types";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import {
   buildHierarchy,
@@ -28,14 +29,11 @@ import {
   generatePaths
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { KmsDataKey } from "../kms/kms-types";
 import { getBotKeyFnFactory } from "../project-bot/project-bot-fns";
-import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
-import { createSecretBlindIndexer } from "../secret-v2-bridge/secret-blind-index-fns";
+import { prepareSecretWriteCiphers } from "../secret-v2-bridge/secret-write-cipher-fns";
 import { TSecretDALFactory } from "./secret-dal";
 import {
   TCreateManySecretsRawFn,
@@ -67,7 +65,7 @@ export const generateSecretBlindIndexBySalt = async (secretName: string, secretB
 };
 
 type TRecursivelyFetchSecretsFromFoldersArg = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsPermissionService: TSecretsPermissionService;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
 };
@@ -76,21 +74,14 @@ type TGetPathsDTO = {
   projectId: string;
   environment: string;
   currentPath: string;
-
-  auth: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string | undefined;
-  };
-};
+} & TActorInput;
 
 export const recursivelyGetSecretPaths = ({
   folderDAL,
   projectEnvDAL,
-  permissionService
+  secretsPermissionService
 }: TRecursivelyFetchSecretsFromFoldersArg) => {
-  const getPaths = async ({ projectId, environment, currentPath, auth }: TGetPathsDTO) => {
+  const getPaths = async ({ projectId, environment, currentPath, actor }: TGetPathsDTO) => {
     const env = await projectEnvDAL.findOne({
       projectId,
       slug: environment
@@ -117,19 +108,12 @@ export const recursivelyGetSecretPaths = ({
       folderId: p.folderId
     }));
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: auth.actor,
-      actorId: auth.actorId,
-      projectId,
-      actorAuthMethod: auth.actorAuthMethod,
-      actorOrgId: auth.actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     // Filter out paths that the user does not have permission to access, and paths that are not in the current path
     const allowedPaths = paths.filter(
       (folder) =>
-        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+        SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
           environment,
           secretPath: folder.path
         }) && folder.path.startsWith(currentPath === "/" ? "" : currentPath)
@@ -735,7 +719,7 @@ export const createManySecretsRawFnFactory = ({
   secretVersionTagV2BridgeDAL,
   folderCommitService,
   eventEmitter,
-  kmsService,
+  kmsDataKeyService,
   resourceMetadataDAL
 }: TCreateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
@@ -755,11 +739,12 @@ export const createManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
+      const { secretManager: projectCipher, blindIndexer } = await prepareSecretWriteCiphers({
+        kmsDataKeyService,
+        projectId,
+        orgId: project.orgId
       });
-      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService });
+      const { encryptor: secretManagerEncryptor } = projectCipher;
 
       const secretsStoredInDB = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -929,7 +914,7 @@ export const updateManySecretsRawFnFactory = ({
   resourceMetadataDAL,
   folderCommitService,
   eventEmitter,
-  kmsService
+  kmsDataKeyService
 }: TUpdateManySecretsRawFnFactory) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
   const updateManySecretsRawFn = async ({
@@ -949,11 +934,12 @@ export const updateManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
+      const { secretManager: projectCipher, blindIndexer } = await prepareSecretWriteCiphers({
+        kmsDataKeyService,
+        projectId,
+        orgId: project.orgId
       });
-      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService });
+      const { encryptor: secretManagerEncryptor } = projectCipher;
 
       const secretsToUpdate = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -1200,16 +1186,16 @@ export const decryptSecretWithBot = (
 type TFnDeleteProjectSecretReminders = {
   secretDAL: Pick<TSecretDALFactory, "find">;
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
-  projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
 };
 
+// Decides by project version alone: a legacy project whose bot can no longer be created must not
+// block deleting it or its org.
 export const fnDeleteProjectSecretReminders = async (
-  projectId: string,
-  { secretDAL, reminderService, projectBotService, folderDAL }: TFnDeleteProjectSecretReminders
+  { id: projectId, version }: Pick<TProjects, "id" | "version">,
+  { secretDAL, reminderService, folderDAL }: TFnDeleteProjectSecretReminders
 ) => {
-  const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId, false);
-  if (shouldUseSecretV2Bridge) return;
+  if (version === ProjectVersion.V3) return;
 
   const projectFolders = await folderDAL.findByProjectId(projectId);
   const projectSecrets = await secretDAL.find({

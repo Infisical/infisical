@@ -45,6 +45,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { actorIdsPayload } from "@app/helpers/agentVaultMembers";
 import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
@@ -122,6 +123,7 @@ const ManageAccessContent = ({
   accessBundle: TAccessBundle;
   isOpen: boolean;
 }) => {
+  const { projectId } = useProject();
   const [memberToRemove, setMemberToRemove] = useState<TAgentVaultMember | null>(null);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
@@ -139,7 +141,7 @@ const ManageAccessContent = ({
     isPlaceholderData: isMembersPlaceholder,
     isError: isMembersError,
     isFetching: isMembersFetching
-  } = useListAgentVaultAccessBundleMembers(accessBundle.id, {
+  } = useListAgentVaultAccessBundleMembers(projectId, accessBundle.id, {
     actorType,
     search: searchParam,
     limit: PER_PAGE,
@@ -152,12 +154,13 @@ const ManageAccessContent = ({
     isError: isAvailableError,
     isFetching: isAvailableFetching
   } = useListAvailableAgentVaultAccessBundleMembers(
+    projectId,
     accessBundle.id,
     { actorType, search: searchParam, limit: AVAILABLE_PREVIEW_LIMIT },
     isOpen
   );
-  const addMembers = useAddAgentVaultAccessBundleMembers();
-  const revokeMembers = useRevokeAgentVaultAccessBundleMembers();
+  const addMembers = useAddAgentVaultAccessBundleMembers(projectId);
+  const revokeMembers = useRevokeAgentVaultAccessBundleMembers(projectId);
 
   // Both lists keep the previous result while a new filter loads, so rows of the previous type are hidden
   // here. Only a list whose rows that hid entirely reads as loading: an empty previous result keeps
@@ -204,13 +207,13 @@ const ManageAccessContent = ({
         title: "No one has access yet",
         description: canGrantSomeone
           ? "Grant access from the No Access section to let members create sessions with this bundle."
-          : "Add members to Agent Vault first, then grant them this bundle."
+          : "Add members to this project first, then grant them this bundle."
       };
 
   const noCandidatesText = (() => {
     if (searchParam) return `No ${typeLabel ?? "members"} without access match your search.`;
     if (typeLabel) return `No ${typeLabel} without access.`;
-    return "Everyone in Agent Vault already has this bundle.";
+    return "Everyone in this project already has this bundle.";
   })();
 
   const changeFilter = (next: AgentVaultMemberType | null) => {

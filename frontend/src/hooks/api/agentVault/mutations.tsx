@@ -5,6 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 
 import { ApiErrorTypes } from "../types";
+import { AgentVaultSessionErrorCode } from "./enums";
 import { agentVaultKeys } from "./queries";
 import {
   TAddAgentVaultMembersDTO,
@@ -23,22 +24,27 @@ import {
   TAgentVaultPersonalValues,
   TAgentVaultProxy,
   TAgentVaultProxyWithToken,
-  TAgentVaultService,
+  TAgentVaultProjectService,
   TAgentVaultSession,
   TAgentVaultSessionLogSettingsState,
+  TAgentVaultHook,
   TAgentVaultSkillSummary,
   TAgentVaultSkillVersion,
+  TAgentVaultSkippedBundleItem,
   TAgentVaultVariable,
   TAgentVaultWrittenMember,
   TChangeAgentVaultDelegationSubjectsDTO,
   TCompleteAgentVaultOauthAuthorizationDTO,
+  TConnectAgentVaultPersonalOauthDTO,
   TCreateAgentVaultAccessBundleDTO,
   TCreateAgentVaultOauthAuthorizationDTO,
   TCreateAgentVaultOauthAuthorizationResponse,
   TCreateAgentVaultProxyDTO,
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
+  TCreateAgentVaultHookDTO,
   TCreateAgentVaultSkillDTO,
+  TAgentVaultOauthVariableSignInStart,
   TCreateAgentVaultVariableDTO,
   TDeleteAgentVaultPersonalValuesDTO,
   TListAgentVaultMcpToolsDTO,
@@ -48,9 +54,11 @@ import {
   TUpdateAgentVaultMemberRolesDTO,
   TUpdateAgentVaultProxyDTO,
   TUpdateAgentVaultServiceDTO,
-  TUpdateAgentVaultSessionLabelDTO,
+  TUpdateAgentVaultSessionDTO,
   TUpdateAgentVaultSessionLogSettingsDTO,
+  TUpdateAgentVaultHookDTO,
   TUpdateAgentVaultSkillDTO,
+  TStartAgentVaultOauthVariableSignInDTO,
   TUpdateAgentVaultVariableDTO
 } from "./types";
 
@@ -58,26 +66,31 @@ import {
 // reads a replica which may not have the write yet. A read already in flight is cancelled first, or
 // it could land after this and put the old list back. The candidates are refetched, since they
 // depend on who is in the delegation.
-const useWriteDelegationResult = () => {
+const useWriteDelegationResult = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return async (machineIdentityId: string, delegation: TAgentVaultDelegationDetail | null) => {
-    const queryKey = agentVaultKeys.delegation(currentOrg.id, machineIdentityId);
+    const queryKey = agentVaultKeys.delegation(currentOrg.id, projectId, machineIdentityId);
     await queryClient.cancelQueries({ queryKey, exact: true });
     queryClient.setQueryData(queryKey, delegation);
     await queryClient.invalidateQueries({
-      queryKey: agentVaultKeys.availableDelegationSubjects(currentOrg.id, machineIdentityId)
+      queryKey: agentVaultKeys.availableDelegationSubjects(
+        currentOrg.id,
+        projectId,
+        machineIdentityId
+      )
     });
   };
 };
 
-export const useSetAgentVaultDelegation = () => {
-  const writeResult = useWriteDelegationResult();
+export const useSetAgentVaultDelegation = (projectId: string) => {
+  const writeResult = useWriteDelegationResult(projectId);
   return useMutation({
     mutationFn: async ({ machineIdentityId, ...body }: TSetAgentVaultDelegationDTO) => {
       const { data } = await apiRequest.put<{ delegation: TAgentVaultDelegationDetail }>(
         `/api/v1/agent-vault/delegations/${machineIdentityId}`,
-        body
+        body,
+        { params: { projectId } }
       );
       return data.delegation;
     },
@@ -85,12 +98,13 @@ export const useSetAgentVaultDelegation = () => {
   });
 };
 
-export const useDeleteAgentVaultDelegation = () => {
-  const writeResult = useWriteDelegationResult();
+export const useDeleteAgentVaultDelegation = (projectId: string) => {
+  const writeResult = useWriteDelegationResult(projectId);
   return useMutation({
     mutationFn: async ({ machineIdentityId }: { machineIdentityId: string }) => {
       const { data } = await apiRequest.delete<{ delegation: TAgentVaultDelegation }>(
-        `/api/v1/agent-vault/delegations/${machineIdentityId}`
+        `/api/v1/agent-vault/delegations/${machineIdentityId}`,
+        { params: { projectId } }
       );
       return data.delegation;
     },
@@ -99,13 +113,14 @@ export const useDeleteAgentVaultDelegation = () => {
 };
 
 // Adds to the delegation without resending who is already in it, so it can't undo another change.
-export const useAddAgentVaultDelegationSubjects = () => {
-  const writeResult = useWriteDelegationResult();
+export const useAddAgentVaultDelegationSubjects = (projectId: string) => {
+  const writeResult = useWriteDelegationResult(projectId);
   return useMutation({
     mutationFn: async ({ machineIdentityId, ...body }: TChangeAgentVaultDelegationSubjectsDTO) => {
       const { data } = await apiRequest.post<{ delegation: TAgentVaultDelegationDetail }>(
         `/api/v1/agent-vault/delegations/${machineIdentityId}/subjects`,
-        body
+        body,
+        { params: { projectId } }
       );
       return data.delegation;
     },
@@ -114,13 +129,13 @@ export const useAddAgentVaultDelegationSubjects = () => {
 };
 
 // null once the delegation names no one, which reads as no delegation.
-export const useRemoveAgentVaultDelegationSubjects = () => {
-  const writeResult = useWriteDelegationResult();
+export const useRemoveAgentVaultDelegationSubjects = (projectId: string) => {
+  const writeResult = useWriteDelegationResult(projectId);
   return useMutation({
     mutationFn: async ({ machineIdentityId, ...body }: TChangeAgentVaultDelegationSubjectsDTO) => {
       const { data } = await apiRequest.delete<{ delegation: TAgentVaultDelegationDetail | null }>(
         `/api/v1/agent-vault/delegations/${machineIdentityId}/subjects`,
-        { data: body }
+        { data: body, params: { projectId } }
       );
       return data.delegation;
     },
@@ -128,24 +143,26 @@ export const useRemoveAgentVaultDelegationSubjects = () => {
   });
 };
 
-export const useCreateAgentVaultAccessBundle = () => {
+export const useCreateAgentVaultAccessBundle = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (params: TCreateAgentVaultAccessBundleDTO) => {
       const { data } = await apiRequest.post<{ accessBundle: TAgentVaultAccessBundle }>(
         "/api/v1/agent-vault/access-bundles",
-        params
+        { ...params, projectId }
       );
       return data.accessBundle;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(currentOrg.id) });
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.accessBundles(currentOrg.id, projectId)
+      });
     }
   });
 };
 
-export const useUpdateAgentVaultAccessBundle = () => {
+export const useUpdateAgentVaultAccessBundle = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
@@ -157,19 +174,26 @@ export const useUpdateAgentVaultAccessBundle = () => {
       return data.accessBundle;
     },
     onSuccess: (_, { accessBundleId }) => {
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(currentOrg.id) });
       queryClient.invalidateQueries({
-        queryKey: agentVaultKeys.accessBundle(currentOrg.id, accessBundleId)
+        queryKey: agentVaultKeys.accessBundles(currentOrg.id, projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.accessBundle(currentOrg.id, projectId, accessBundleId)
       });
       // A variable's usedByServices names each service's bundle.
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(currentOrg.id) });
-      // A skill lists the bundles it is in by name.
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.skills(currentOrg.id) });
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.variables(currentOrg.id, projectId)
+      });
+      // A skill lists the bundles it is in by name, and so does a service.
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.skills(currentOrg.id, projectId) });
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.services(currentOrg.id, projectId)
+      });
     }
   });
 };
 
-export const useDeleteAgentVaultAccessBundle = () => {
+export const useDeleteAgentVaultAccessBundle = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
@@ -180,10 +204,20 @@ export const useDeleteAgentVaultAccessBundle = () => {
       return data.accessBundle;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(currentOrg.id) });
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(currentOrg.id) });
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(currentOrg.id) });
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.skills(currentOrg.id) });
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.accessBundles(currentOrg.id, projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.sessions(currentOrg.id, projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.variables(currentOrg.id, projectId)
+      });
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.skills(currentOrg.id, projectId) });
+      // The services it held list it, and the sidebar's setup count covers it.
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.services(currentOrg.id, projectId)
+      });
     }
   });
 };
@@ -196,51 +230,98 @@ export const SERVICE_SAVE_HANDLED_ERROR_CODES: string[] = [
   ApiErrorTypes.NotFoundError
 ];
 
-export const useCreateAgentVaultService = () => {
+// A service can be in any number of bundles, so a change to one refreshes every bundle, the service lists and the
+// variables whose Used By names it.
+const invalidateServices = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string,
+  projectId: string
+) =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.services(orgId, projectId) }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(orgId, projectId) }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(orgId, projectId) })
+  ]);
+
+// Writing a service can also change its hook, or the name a hook's Used By shows for it.
+const invalidateServiceWrite = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string,
+  projectId: string
+) =>
+  Promise.all([
+    invalidateServices(queryClient, orgId, projectId),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.hooks(orgId, projectId) })
+  ]);
+
+export const useCreateAgentVaultService = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
     meta: { skipValidationToast: true, handledErrorCodes: SERVICE_SAVE_HANDLED_ERROR_CODES },
-    mutationFn: async ({ accessBundleId, ...params }: TCreateAgentVaultServiceDTO) => {
-      const { data } = await apiRequest.post<{ service: TAgentVaultService }>(
-        `/api/v1/agent-vault/access-bundles/${accessBundleId}/services`,
-        params
+    mutationFn: async (params: TCreateAgentVaultServiceDTO) => {
+      const { data } = await apiRequest.post<{ service: TAgentVaultProjectService }>(
+        "/api/v1/agent-vault/services",
+        { ...params, projectId }
       );
       return data;
     },
-    onSuccess: (_, { accessBundleId }) => {
-      queryClient.invalidateQueries({
-        queryKey: agentVaultKeys.accessBundle(currentOrg.id, accessBundleId)
-      });
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(currentOrg.id) });
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(currentOrg.id) });
-    }
+    onSuccess: () => invalidateServiceWrite(queryClient, currentOrg.id, projectId)
   });
 };
 
-export const useUpdateAgentVaultService = () => {
+export const useUpdateAgentVaultService = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
     meta: { skipValidationToast: true, handledErrorCodes: SERVICE_SAVE_HANDLED_ERROR_CODES },
-    mutationFn: async ({ accessBundleId, serviceId, ...params }: TUpdateAgentVaultServiceDTO) => {
-      const { data } = await apiRequest.patch<{ service: TAgentVaultService }>(
-        `/api/v1/agent-vault/access-bundles/${accessBundleId}/services/${serviceId}`,
+    mutationFn: async ({ serviceId, ...params }: TUpdateAgentVaultServiceDTO) => {
+      const { data } = await apiRequest.patch<{ service: TAgentVaultProjectService }>(
+        `/api/v1/agent-vault/services/${serviceId}`,
         params
       );
       return data;
     },
-    onSuccess: (_, { accessBundleId }) => {
-      queryClient.invalidateQueries({
-        queryKey: agentVaultKeys.accessBundle(currentOrg.id, accessBundleId)
-      });
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(currentOrg.id) });
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(currentOrg.id) });
-    }
+    onSuccess: () => invalidateServiceWrite(queryClient, currentOrg.id, projectId)
   });
 };
 
-export const useDeleteAgentVaultService = () => {
+export const useDeleteAgentVaultService = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ serviceId }: { serviceId: string }) => {
+      const { data } = await apiRequest.delete<{ service: TAgentVaultProjectService }>(
+        `/api/v1/agent-vault/services/${serviceId}`
+      );
+      return data.service;
+    },
+    onSuccess: () => invalidateServiceWrite(queryClient, currentOrg.id, projectId)
+  });
+};
+
+export const useAddAgentVaultAccessBundleService = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      accessBundleId,
+      serviceIds
+    }: {
+      accessBundleId: string;
+      serviceIds: string[];
+    }) => {
+      const { data } = await apiRequest.post<{
+        services: TAgentVaultProjectService[];
+        skipped: TAgentVaultSkippedBundleItem[];
+      }>(`/api/v1/agent-vault/access-bundles/${accessBundleId}/services`, { serviceIds });
+      return data;
+    },
+    onSuccess: () => invalidateServices(queryClient, currentOrg.id, projectId)
+  });
+};
+
+export const useRemoveAgentVaultAccessBundleService = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
@@ -251,22 +332,16 @@ export const useDeleteAgentVaultService = () => {
       accessBundleId: string;
       serviceId: string;
     }) => {
-      const { data } = await apiRequest.delete<{ service: { id: string; name: string } }>(
+      const { data } = await apiRequest.delete<{ service: TAgentVaultProjectService }>(
         `/api/v1/agent-vault/access-bundles/${accessBundleId}/services/${serviceId}`
       );
       return data.service;
     },
-    onSuccess: (_, { accessBundleId }) => {
-      queryClient.invalidateQueries({
-        queryKey: agentVaultKeys.accessBundle(currentOrg.id, accessBundleId)
-      });
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(currentOrg.id) });
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(currentOrg.id) });
-    }
+    onSuccess: () => invalidateServices(queryClient, currentOrg.id, projectId)
   });
 };
 
-export const useAddAgentVaultAccessBundleMembers = () => {
+export const useAddAgentVaultAccessBundleMembers = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
@@ -276,16 +351,21 @@ export const useAddAgentVaultAccessBundleMembers = () => {
       >(`/api/v1/agent-vault/access-bundles/${accessBundleId}/members`, params);
       return data;
     },
-    onSuccess: (_, { accessBundleId }) => {
+    // accessBundles() prefixes accessBundle(), so it covers the bundle's members too. Invalidating
+    // both would refetch them twice, since the member check can't be cancelled midway.
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: agentVaultKeys.accessBundle(currentOrg.id, accessBundleId)
+        queryKey: agentVaultKeys.accessBundles(currentOrg.id, projectId)
       });
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(currentOrg.id) });
+      // A grant changes which services the caller reaches and the bundles listed beside each one.
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.services(currentOrg.id, projectId)
+      });
     }
   });
 };
 
-export const useRevokeAgentVaultAccessBundleMembers = () => {
+export const useRevokeAgentVaultAccessBundleMembers = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
@@ -296,50 +376,66 @@ export const useRevokeAgentVaultAccessBundleMembers = () => {
       );
       return data;
     },
-    onSuccess: (_, { accessBundleId }) => {
+    // accessBundles() prefixes accessBundle(), so it covers the bundle's members too. Invalidating
+    // both would refetch them twice, since the member check can't be cancelled midway.
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: agentVaultKeys.accessBundle(currentOrg.id, accessBundleId)
+        queryKey: agentVaultKeys.accessBundles(currentOrg.id, projectId)
       });
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(currentOrg.id) });
+      // A grant changes which services the caller reaches and the bundles listed beside each one.
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.services(currentOrg.id, projectId)
+      });
     }
   });
 };
 
-export const useCreateAgentVaultSession = () => {
+// The create session form shows a refused service or skill under its field, and toasts any other 400 itself.
+export const CREATE_SESSION_HANDLED_ERROR_CODES: string[] = [
+  ApiErrorTypes.BadRequestError,
+  ...Object.values(AgentVaultSessionErrorCode)
+];
+
+export const useCreateAgentVaultSession = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { handledErrorCodes: CREATE_SESSION_HANDLED_ERROR_CODES },
     mutationFn: async (params: TCreateAgentVaultSessionDTO) => {
       const { data } = await apiRequest.post<{ session: TAgentVaultMintedSession }>(
         "/api/v1/agent-vault/sessions",
-        params
+        { ...params, projectId }
       );
       return data.session;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(currentOrg.id) });
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.sessions(currentOrg.id, projectId)
+      });
     }
   });
 };
 
-export const useUpdateAgentVaultSessionLabel = () => {
+export const useUpdateAgentVaultSession = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ sessionId, label }: TUpdateAgentVaultSessionLabelDTO) => {
+    mutationFn: async ({ sessionId, label, metadata }: TUpdateAgentVaultSessionDTO) => {
       const { data } = await apiRequest.patch<{ session: TAgentVaultSession }>(
         `/api/v1/agent-vault/sessions/${sessionId}`,
-        { label }
+        { label, metadata }
       );
       return data.session;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(currentOrg.id) });
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.sessions(currentOrg.id, projectId)
+      });
     }
   });
 };
 
-export const useRevokeAgentVaultSession = () => {
+export const useRevokeAgentVaultSession = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
@@ -350,29 +446,31 @@ export const useRevokeAgentVaultSession = () => {
       return data.session;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(currentOrg.id) });
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.sessions(currentOrg.id, projectId)
+      });
     }
   });
 };
 
-export const useCreateAgentVaultProxy = () => {
+export const useCreateAgentVaultProxy = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (params: TCreateAgentVaultProxyDTO) => {
       const { data } = await apiRequest.post<TAgentVaultProxyWithToken>(
         "/api/v1/agent-vault/proxies",
-        params
+        { ...params, projectId }
       );
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.proxies(currentOrg.id) });
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.proxies(currentOrg.id, projectId) });
     }
   });
 };
 
-export const useUpdateAgentVaultProxy = () => {
+export const useUpdateAgentVaultProxy = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
@@ -384,12 +482,12 @@ export const useUpdateAgentVaultProxy = () => {
       return data.proxy;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.proxies(currentOrg.id) });
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.proxies(currentOrg.id, projectId) });
     }
   });
 };
 
-export const useDeleteAgentVaultProxy = () => {
+export const useDeleteAgentVaultProxy = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
@@ -400,12 +498,12 @@ export const useDeleteAgentVaultProxy = () => {
       return data.proxy;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.proxies(currentOrg.id) });
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.proxies(currentOrg.id, projectId) });
     }
   });
 };
 
-export const useRotateAgentVaultProxyToken = () => {
+export const useRotateAgentVaultProxyToken = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
@@ -416,12 +514,12 @@ export const useRotateAgentVaultProxyToken = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.proxies(currentOrg.id) });
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.proxies(currentOrg.id, projectId) });
     }
   });
 };
 
-export const useRevokeAgentVaultProxyAccess = () => {
+export const useRevokeAgentVaultProxyAccess = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
@@ -432,18 +530,22 @@ export const useRevokeAgentVaultProxyAccess = () => {
       return data.proxy;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.proxies(currentOrg.id) });
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.proxies(currentOrg.id, projectId) });
     }
   });
 };
 
 // Removing a product member strips their bundle grants, so the bundle queries go too.
-const invalidateMembers = (queryClient: ReturnType<typeof useQueryClient>, orgId: string) => {
-  queryClient.invalidateQueries({ queryKey: agentVaultKeys.members(orgId) });
-  queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(orgId) });
+const invalidateMembers = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string,
+  projectId: string
+) => {
+  queryClient.invalidateQueries({ queryKey: agentVaultKeys.members(orgId, projectId) });
+  queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(orgId, projectId) });
 };
 
-export const useAddAgentVaultMembers = () => {
+export const useAddAgentVaultMembers = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
@@ -453,43 +555,43 @@ export const useAddAgentVaultMembers = () => {
           TAgentVaultWrittenMember,
           TAgentVaultActorRef & { identifier: string }
         >
-      >("/api/v1/agent-vault/members", dto);
+      >("/api/v1/agent-vault/members", { ...dto, projectId });
       return data;
     },
-    onSuccess: () => invalidateMembers(queryClient, currentOrg.id)
+    onSuccess: () => invalidateMembers(queryClient, currentOrg.id, projectId)
   });
 };
 
-export const useUpdateAgentVaultMemberRoles = () => {
+export const useUpdateAgentVaultMemberRoles = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (dto: TUpdateAgentVaultMemberRolesDTO) => {
       const { data } = await apiRequest.patch<
         TAgentVaultMemberWriteResult<TAgentVaultWrittenMember>
-      >("/api/v1/agent-vault/members", dto);
+      >("/api/v1/agent-vault/members", { ...dto, projectId });
       return data;
     },
-    onSuccess: () => invalidateMembers(queryClient, currentOrg.id)
+    onSuccess: () => invalidateMembers(queryClient, currentOrg.id, projectId)
   });
 };
 
-export const useRevokeAgentVaultMembers = () => {
+export const useRevokeAgentVaultMembers = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (dto: TAgentVaultActorIdsDTO) => {
       const { data } = await apiRequest.delete<TAgentVaultMemberWriteResult<TAgentVaultActorRef>>(
         "/api/v1/agent-vault/members",
-        { data: dto }
+        { data: { ...dto, projectId } }
       );
       return data;
     },
-    onSuccess: () => invalidateMembers(queryClient, currentOrg.id)
+    onSuccess: () => invalidateMembers(queryClient, currentOrg.id, projectId)
   });
 };
 
-export const useUpdateAgentVaultSessionLogSettings = () => {
+export const useUpdateAgentVaultSessionLogSettings = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
 
@@ -497,48 +599,51 @@ export const useUpdateAgentVaultSessionLogSettings = () => {
     mutationFn: async (params: TUpdateAgentVaultSessionLogSettingsDTO) => {
       const { data } = await apiRequest.patch<TAgentVaultSessionLogSettingsState>(
         "/api/v1/agent-vault/settings/session-logs",
-        params
+        params,
+        { params: { projectId } }
       );
       return data;
     },
     onSuccess: (state) => {
-      queryClient.setQueryData(agentVaultKeys.sessionLogSettings(currentOrg.id), state);
+      queryClient.setQueryData(agentVaultKeys.sessionLogSettings(currentOrg.id, projectId), state);
       // Reset, not invalidate: the cached result may be for the previous bucket.
       queryClient.resetQueries({
-        queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id)
+        queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id, projectId)
       });
       queryClient.invalidateQueries({
-        queryKey: agentVaultKeys.sessionLogHealth(currentOrg.id)
+        queryKey: agentVaultKeys.sessionLogHealth(currentOrg.id, projectId)
       });
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(currentOrg.id) });
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.sessions(currentOrg.id, projectId)
+      });
     }
   });
 };
 
 // A rename changes the keys each service's variableReferences, and each personal value's, reports, so those refresh
 // too.
-const invalidateVariables = (queryClient: ReturnType<typeof useQueryClient>, orgId: string) =>
-  Promise.all([
-    queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(orgId) }),
-    queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(orgId) })
-  ]);
+const invalidateVariables = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string,
+  projectId: string
+) => invalidateServices(queryClient, orgId, projectId);
 
-export const useCreateAgentVaultVariable = () => {
+export const useCreateAgentVaultVariable = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (params: TCreateAgentVaultVariableDTO) => {
       const { data } = await apiRequest.post<{ variable: TAgentVaultVariable }>(
         "/api/v1/agent-vault/variables",
-        params
+        { ...params, projectId }
       );
       return data.variable;
     },
-    onSuccess: () => invalidateVariables(queryClient, currentOrg.id)
+    onSuccess: () => invalidateVariables(queryClient, currentOrg.id, projectId)
   });
 };
 
-export const useUpdateAgentVaultVariable = () => {
+export const useUpdateAgentVaultVariable = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
@@ -549,11 +654,11 @@ export const useUpdateAgentVaultVariable = () => {
       );
       return data.variable;
     },
-    onSuccess: () => invalidateVariables(queryClient, currentOrg.id)
+    onSuccess: () => invalidateVariables(queryClient, currentOrg.id, projectId)
   });
 };
 
-export const useDeleteAgentVaultVariable = () => {
+export const useDeleteAgentVaultVariable = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
@@ -563,8 +668,29 @@ export const useDeleteAgentVaultVariable = () => {
       );
       return data.variable;
     },
-    onSuccess: () => invalidateVariables(queryClient, currentOrg.id)
+    onSuccess: () => invalidateVariables(queryClient, currentOrg.id, projectId)
   });
+};
+
+// The sign-in itself is written into the variable when the callback page completes it, so the variables and the
+// services that use them are refreshed once the poll sees it finish, with useRefreshAgentVaultVariables.
+export const useStartAgentVaultOauthVariableSignIn = () =>
+  useMutation({
+    // The variable dialog shows every failure in place, discovery and registration ones naming the server.
+    meta: { skipErrorToast: true },
+    mutationFn: async ({ variableId, ...params }: TStartAgentVaultOauthVariableSignInDTO) => {
+      const { data } = await apiRequest.post<TAgentVaultOauthVariableSignInStart>(
+        `/api/v1/agent-vault/variables/${variableId}/authorizations`,
+        params
+      );
+      return data;
+    }
+  });
+
+export const useRefreshAgentVaultVariables = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return () => invalidateVariables(queryClient, currentOrg.id, projectId);
 };
 
 // A mutation rather than a query, so a revealed value never enters the query cache.
@@ -612,90 +738,113 @@ export const useListAgentVaultMcpTools = () =>
   useMutation({
     // The Tools step shows the server's failure in place.
     meta: { skipErrorToast: true },
-    mutationFn: async ({ accessBundleId, ...params }: TListAgentVaultMcpToolsDTO) => {
+    mutationFn: async (params: TListAgentVaultMcpToolsDTO) => {
       const { data } = await apiRequest.post<{ tools: TAgentVaultMcpTool[] }>(
-        `/api/v1/agent-vault/access-bundles/${accessBundleId}/mcp-tools/list`,
+        "/api/v1/agent-vault/services/mcp-tools/list",
         params
       );
       return data.tools;
     }
   });
 
-// The status shows on the bundle read and the bundle list, and Used By on personal variables follows the references.
+// The status shows on bundle and service reads and the bundle list, and Used By on personal variables follows the
+// references.
 const invalidatePersonalValues = (
   queryClient: ReturnType<typeof useQueryClient>,
   orgId: string,
-  accessBundleId: string
-) =>
-  Promise.all([
-    queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundle(orgId, accessBundleId) }),
-    queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(orgId) }),
-    queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(orgId) })
-  ]);
+  projectId: string
+) => invalidateServices(queryClient, orgId, projectId);
 
-export const useSetAgentVaultPersonalValues = () => {
+// The service changed under the dialog, so its copy is stale: reload it before the member saves again.
+const reloadPersonalValuesOnConflict = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string,
+  projectId: string,
+  error: unknown
+) => {
+  if (axios.isAxiosError(error) && error.response?.status === 409) {
+    invalidatePersonalValues(queryClient, orgId, projectId).catch(() => undefined);
+  }
+};
+
+export const useSetAgentVaultPersonalValues = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      accessBundleId,
-      serviceId,
-      ...params
-    }: TSetAgentVaultPersonalValuesDTO) => {
+    mutationFn: async ({ serviceId, ...params }: TSetAgentVaultPersonalValuesDTO) => {
       const { data } = await apiRequest.patch<{ personalValues: TAgentVaultPersonalValues }>(
-        `/api/v1/agent-vault/access-bundles/${accessBundleId}/services/${serviceId}/personal-values`,
+        `/api/v1/agent-vault/services/${serviceId}/personal-values`,
         params
       );
       return data.personalValues;
     },
-    onSuccess: (_, { accessBundleId }) =>
-      invalidatePersonalValues(queryClient, currentOrg.id, accessBundleId),
-    // The service changed under the dialog, so its copy is stale: reload it before the member saves again.
-    onError: (error, { accessBundleId }) => {
-      if (axios.isAxiosError(error) && error.response?.status === 409) {
-        invalidatePersonalValues(queryClient, currentOrg.id, accessBundleId).catch(() => undefined);
-      }
-    }
+    onSuccess: () => invalidatePersonalValues(queryClient, currentOrg.id, projectId),
+    onError: (error) => reloadPersonalValuesOnConflict(queryClient, currentOrg.id, projectId, error)
   });
 };
 
-export const useDeleteAgentVaultPersonalValues = () => {
+export const useConnectAgentVaultPersonalOauth = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ accessBundleId, serviceId }: TDeleteAgentVaultPersonalValuesDTO) => {
-      const { data } = await apiRequest.delete<{ personalValues: TAgentVaultPersonalValues }>(
-        `/api/v1/agent-vault/access-bundles/${accessBundleId}/services/${serviceId}/personal-values`
+    mutationFn: async ({ serviceId, ...params }: TConnectAgentVaultPersonalOauthDTO) => {
+      const { data } = await apiRequest.post<{ personalValues: TAgentVaultPersonalValues }>(
+        `/api/v1/agent-vault/services/${serviceId}/personal-values/oauth-connection`,
+        params
       );
       return data.personalValues;
     },
-    onSuccess: (_, { accessBundleId }) =>
-      invalidatePersonalValues(queryClient, currentOrg.id, accessBundleId)
+    onSuccess: () => invalidatePersonalValues(queryClient, currentOrg.id, projectId),
+    onError: (error) => reloadPersonalValuesOnConflict(queryClient, currentOrg.id, projectId, error)
+  });
+};
+
+export const useDeleteAgentVaultPersonalValues = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ serviceId }: TDeleteAgentVaultPersonalValuesDTO) => {
+      const { data } = await apiRequest.delete<{ personalValues: TAgentVaultPersonalValues }>(
+        `/api/v1/agent-vault/services/${serviceId}/personal-values`
+      );
+      return data.personalValues;
+    },
+    onSuccess: () => invalidatePersonalValues(queryClient, currentOrg.id, projectId)
   });
 };
 
 // Matches every access bundle's skill list, whose rows show each skill's latest version.
-const isAccessBundleSkillsKey = (orgId: string) => (query: { queryKey: readonly unknown[] }) => {
-  const [, keyOrgId, scope, , leaf] = query.queryKey;
-  return keyOrgId === orgId && scope === "access-bundles" && leaf === "skills";
-};
+const isAccessBundleSkillsKey =
+  (orgId: string, projectId: string) => (query: { queryKey: readonly unknown[] }) => {
+    const [, keyOrgId, keyProjectId, scope, , leaf] = query.queryKey;
+    return (
+      keyOrgId === orgId &&
+      keyProjectId === projectId &&
+      scope === "access-bundles" &&
+      leaf === "skills"
+    );
+  };
 
 const invalidateSkillVersionChange = (
   queryClient: ReturnType<typeof useQueryClient>,
   orgId: string,
+  projectId: string,
   skillId: string
 ) =>
   Promise.all([
-    queryClient.invalidateQueries({ queryKey: agentVaultKeys.skill(orgId, skillId), exact: true }),
     queryClient.invalidateQueries({
-      queryKey: agentVaultKeys.skillVersions(orgId, skillId),
+      queryKey: agentVaultKeys.skill(orgId, projectId, skillId),
       exact: true
     }),
-    queryClient.invalidateQueries({ queryKey: agentVaultKeys.skillLists(orgId) }),
-    queryClient.invalidateQueries({ predicate: isAccessBundleSkillsKey(orgId) })
+    queryClient.invalidateQueries({
+      queryKey: agentVaultKeys.skillVersions(orgId, projectId, skillId),
+      exact: true
+    }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.skillLists(orgId, projectId) }),
+    queryClient.invalidateQueries({ predicate: isAccessBundleSkillsKey(orgId, projectId) })
   ]);
 
-export const useCreateAgentVaultSkill = () => {
+export const useCreateAgentVaultSkill = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
@@ -703,11 +852,13 @@ export const useCreateAgentVaultSkill = () => {
       const { data } = await apiRequest.post<{
         skill: TAgentVaultSkillSummary;
         version: TAgentVaultSkillVersion;
-      }>("/api/v1/agent-vault/skills", params);
+      }>("/api/v1/agent-vault/skills", { ...params, projectId });
       return data;
     },
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.skillLists(currentOrg.id) })
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.skillLists(currentOrg.id, projectId)
+      })
   });
 };
 
@@ -723,7 +874,7 @@ export class SkillVersionConflictError extends Error {
 
 const STALE_BASE_VERSION_RE = /^Version (\d+) was published after you opened this skill\./;
 
-export const useUpdateAgentVaultSkill = () => {
+export const useUpdateAgentVaultSkill = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
@@ -748,16 +899,18 @@ export const useUpdateAgentVaultSkill = () => {
       }
     },
     onSuccess: (_, { skillId }) =>
-      invalidateSkillVersionChange(queryClient, currentOrg.id, skillId),
+      invalidateSkillVersionChange(queryClient, currentOrg.id, projectId, skillId),
     onError: (error, { skillId }) => {
       if (error instanceof SkillVersionConflictError) {
-        invalidateSkillVersionChange(queryClient, currentOrg.id, skillId).catch(() => undefined);
+        invalidateSkillVersionChange(queryClient, currentOrg.id, projectId, skillId).catch(
+          () => undefined
+        );
       }
     }
   });
 };
 
-export const useRestoreAgentVaultSkillVersion = () => {
+export const useRestoreAgentVaultSkillVersion = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
@@ -768,11 +921,12 @@ export const useRestoreAgentVaultSkillVersion = () => {
       }>(`/api/v1/agent-vault/skills/${skillId}/versions/${version}/restore`);
       return data;
     },
-    onSuccess: (_, { skillId }) => invalidateSkillVersionChange(queryClient, currentOrg.id, skillId)
+    onSuccess: (_, { skillId }) =>
+      invalidateSkillVersionChange(queryClient, currentOrg.id, projectId, skillId)
   });
 };
 
-export const useDeleteAgentVaultSkill = () => {
+export const useDeleteAgentVaultSkill = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
@@ -786,12 +940,16 @@ export const useDeleteAgentVaultSkill = () => {
     // still showing the skill drops its queries once it has navigated away.
     onSuccess: (_, skillId) => {
       queryClient.removeQueries({
-        queryKey: agentVaultKeys.skill(currentOrg.id, skillId),
+        queryKey: agentVaultKeys.skill(currentOrg.id, projectId, skillId),
         type: "inactive"
       });
       return Promise.all([
-        queryClient.invalidateQueries({ queryKey: agentVaultKeys.skillLists(currentOrg.id) }),
-        queryClient.invalidateQueries({ predicate: isAccessBundleSkillsKey(currentOrg.id) })
+        queryClient.invalidateQueries({
+          queryKey: agentVaultKeys.skillLists(currentOrg.id, projectId)
+        }),
+        queryClient.invalidateQueries({
+          predicate: isAccessBundleSkillsKey(currentOrg.id, projectId)
+        })
       ]);
     }
   });
@@ -800,38 +958,45 @@ export const useDeleteAgentVaultSkill = () => {
 const invalidateBundleSkillChange = (
   queryClient: ReturnType<typeof useQueryClient>,
   orgId: string,
-  { accessBundleId, skillId }: { accessBundleId: string; skillId: string }
+  projectId: string,
+  { accessBundleId, skillIds }: { accessBundleId: string; skillIds: string[] }
 ) =>
   Promise.all([
     queryClient.invalidateQueries({
-      queryKey: agentVaultKeys.accessBundleSkills(orgId, accessBundleId)
+      queryKey: agentVaultKeys.accessBundleSkills(orgId, projectId, accessBundleId)
     }),
-    queryClient.invalidateQueries({ queryKey: agentVaultKeys.skill(orgId, skillId), exact: true }),
-    queryClient.invalidateQueries({ queryKey: agentVaultKeys.skillLists(orgId) })
+    ...skillIds.map((skillId) =>
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.skill(orgId, projectId, skillId),
+        exact: true
+      })
+    ),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.skillLists(orgId, projectId) })
   ]);
 
-export const useAddAgentVaultAccessBundleSkill = () => {
+export const useAddAgentVaultAccessBundleSkill = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       accessBundleId,
-      skillId
+      skillIds
     }: {
       accessBundleId: string;
-      skillId: string;
+      skillIds: string[];
     }) => {
-      const { data } = await apiRequest.post<{ skill: TAgentVaultBundleSkill }>(
-        `/api/v1/agent-vault/access-bundles/${accessBundleId}/skills`,
-        { skillId }
-      );
-      return data.skill;
+      const { data } = await apiRequest.post<{
+        skills: TAgentVaultBundleSkill[];
+        skipped: TAgentVaultSkippedBundleItem[];
+      }>(`/api/v1/agent-vault/access-bundles/${accessBundleId}/skills`, { skillIds });
+      return data;
     },
-    onSuccess: (_, params) => invalidateBundleSkillChange(queryClient, currentOrg.id, params)
+    onSuccess: (_, params) =>
+      invalidateBundleSkillChange(queryClient, currentOrg.id, projectId, params)
   });
 };
 
-export const useRemoveAgentVaultAccessBundleSkill = () => {
+export const useRemoveAgentVaultAccessBundleSkill = (projectId: string) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
@@ -847,6 +1012,73 @@ export const useRemoveAgentVaultAccessBundleSkill = () => {
       );
       return data.skill;
     },
-    onSuccess: (_, params) => invalidateBundleSkillChange(queryClient, currentOrg.id, params)
+    onSuccess: (_, { accessBundleId, skillId }) =>
+      invalidateBundleSkillChange(queryClient, currentOrg.id, projectId, {
+        accessBundleId,
+        skillIds: [skillId]
+      })
+  });
+};
+
+// Services are refetched too, and the bundles that list them, since a service's read names its hook.
+const invalidateHookChange = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string,
+  projectId: string
+) =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.hooks(orgId, projectId) }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.services(orgId, projectId) }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(orgId, projectId) })
+  ]);
+
+export const useCreateAgentVaultHook = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: TCreateAgentVaultHookDTO) => {
+      const { data } = await apiRequest.post<{ hook: TAgentVaultHook }>(
+        "/api/v1/agent-vault/hooks",
+        { ...params, projectId }
+      );
+      return data.hook;
+    },
+    onSuccess: () => invalidateHookChange(queryClient, currentOrg.id, projectId)
+  });
+};
+
+export const useUpdateAgentVaultHook = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ hookId, ...params }: TUpdateAgentVaultHookDTO) => {
+      const { data } = await apiRequest.patch<{ hook: TAgentVaultHook }>(
+        `/api/v1/agent-vault/hooks/${hookId}`,
+        params
+      );
+      return data.hook;
+    },
+    onSuccess: () => invalidateHookChange(queryClient, currentOrg.id, projectId)
+  });
+};
+
+export const useDeleteAgentVaultHook = (projectId: string) => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (hookId: string) => {
+      const { data } = await apiRequest.delete<{ hook: TAgentVaultHook }>(
+        `/api/v1/agent-vault/hooks/${hookId}`
+      );
+      return data.hook;
+    },
+    // Dropped rather than invalidated, which would refetch it only to get a 404.
+    onSuccess: (_, hookId) => {
+      queryClient.removeQueries({
+        queryKey: agentVaultKeys.hook(currentOrg.id, projectId, hookId),
+        type: "inactive"
+      });
+      return invalidateHookChange(queryClient, currentOrg.id, projectId);
+    }
   });
 };

@@ -3,11 +3,12 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { ms } from "@app/lib/ms";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -32,17 +33,20 @@ import {
   CertStatus,
   TAltNameType
 } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { TPkiSubscriberProperties } from "@app/services/pki-subscriber/pki-subscriber-types";
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
 import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-utils";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
+import {
+  caAppConnectionNotFoundError,
+  caNotFoundError,
+  duplicateCaNameError,
+  externalCaNotSavedError
+} from "../certificate-authority-errors";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import {
@@ -116,14 +120,11 @@ type TAzureAdCsCertificateAuthorityFnsDeps = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
-  >;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
 };
 
@@ -651,8 +652,8 @@ export const AzureAdCsCertificateAuthorityFns = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  kmsService,
-  projectDAL,
+  kmsDataKeyService,
+  kmsKeyService,
   pkiSubscriberDAL,
   pkiSyncDAL,
   pkiSyncQueue,
@@ -669,13 +670,13 @@ export const AzureAdCsCertificateAuthorityFns = ({
     name: string;
     projectId: string;
     configuration: TCreateAzureAdCsCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
     const { azureAdcsConnectionId } = configuration;
     const appConnection = await appConnectionDAL.findById(azureAdcsConnectionId);
 
     if (!appConnection) {
-      throw new NotFoundError({ message: `App connection with ID '${azureAdcsConnectionId}' not found` });
+      throw caAppConnectionNotFoundError(azureAdcsConnectionId, AppConnection.AzureADCS);
     }
 
     if (appConnection.app !== AppConnection.AzureADCS) {
@@ -716,16 +717,14 @@ export const AzureAdCsCertificateAuthorityFns = ({
       } catch (error) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
         if ((error as any)?.error?.code === "23505") {
-          throw new BadRequestError({
-            message: "Certificate authority with the same name already exists in your project"
-          });
+          throw duplicateCaNameError(name);
         }
         throw error;
       }
     });
 
     if (!caEntity.externalCa?.id) {
-      throw new BadRequestError({ message: "Failed to create external certificate authority" });
+      throw externalCaNotSavedError(name);
     }
 
     return castDbEntryToAzureAdCsCertificateAuthority(caEntity);
@@ -741,36 +740,40 @@ export const AzureAdCsCertificateAuthorityFns = ({
     id: string;
     status?: CaStatus;
     configuration: TUpdateAzureAdCsCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
     name?: string;
   }) => {
+    // Validated before the transaction: the connection check decrypts through KMS Core, which takes its own connection.
+    if (configuration) {
+      const { azureAdcsConnectionId } = configuration;
+      const appConnection = await appConnectionDAL.findById(azureAdcsConnectionId);
+
+      if (!appConnection) {
+        throw caAppConnectionNotFoundError(azureAdcsConnectionId, AppConnection.AzureADCS);
+      }
+
+      if (appConnection.app !== AppConnection.AzureADCS) {
+        throw new BadRequestError({
+          message: `App connection with ID '${azureAdcsConnectionId}' is not an Azure ADCS connection`
+        });
+      }
+
+      const ca = await certificateAuthorityDAL.findById(id);
+
+      if (!ca) {
+        throw caNotFoundError(id);
+      }
+
+      await appConnectionService.validateAppConnectionUsageById(
+        appConnection.app as AppConnection,
+        { connectionId: azureAdcsConnectionId, projectId: ca.projectId },
+        actor
+      );
+    }
+
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
         const { azureAdcsConnectionId } = configuration;
-        const appConnection = await appConnectionDAL.findById(azureAdcsConnectionId);
-
-        if (!appConnection) {
-          throw new NotFoundError({ message: `App connection with ID '${azureAdcsConnectionId}' not found` });
-        }
-
-        if (appConnection.app !== AppConnection.AzureADCS) {
-          throw new BadRequestError({
-            message: `App connection with ID '${azureAdcsConnectionId}' is not an Azure ADCS connection`
-          });
-        }
-
-        const ca = await certificateAuthorityDAL.findById(id);
-
-        if (!ca) {
-          throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
-        }
-
-        await appConnectionService.validateAppConnectionUsageById(
-          appConnection.app as AppConnection,
-          { connectionId: azureAdcsConnectionId, projectId: ca.projectId },
-          actor
-        );
-
         await externalCertificateAuthorityDAL.update(
           {
             caId: id,
@@ -840,13 +843,9 @@ export const AzureAdCsCertificateAuthorityFns = ({
       throw new BadRequestError({ message: "CA is disabled" });
     }
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -855,7 +854,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
       await getAzureADCSConnectionCredentials(
         azureCa.configuration.azureAdcsConnectionId,
         appConnectionDAL,
-        kmsService
+        kmsDataKeyService
       );
 
     const credentials: {
@@ -1144,13 +1143,9 @@ export const AzureAdCsCertificateAuthorityFns = ({
       throw new BadRequestError({ message: "CA is disabled" });
     }
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -1158,7 +1153,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
       await getAzureADCSConnectionCredentials(
         azureCa.configuration.azureAdcsConnectionId,
         appConnectionDAL,
-        kmsService
+        kmsDataKeyService
       );
 
     const credentials: {
@@ -1509,7 +1504,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
 
     // Get credentials from the Azure ADCS connection
     const { username, password, adcsUrl, sslRejectUnauthorized, sslCertificate } =
-      await getAzureADCSConnectionCredentials(azureAdcsConnectionId, appConnectionDAL, kmsService);
+      await getAzureADCSConnectionCredentials(azureAdcsConnectionId, appConnectionDAL, kmsDataKeyService);
 
     const credentials: {
       username: string;

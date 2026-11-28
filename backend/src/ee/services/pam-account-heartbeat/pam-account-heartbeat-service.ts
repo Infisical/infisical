@@ -1,14 +1,14 @@
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PamResourcePermissionActions, TPamPermissionService } from "@app/domains/pam/pam/ce/module";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { testBuiltConnectionWithGateway } from "@app/ee/services/gateway-v2/gateway-v2-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { NotFoundError } from "@app/lib/errors";
 import { GatewayFailureKind } from "@app/lib/gateway-v2/test-connection-rpc";
 import { logger } from "@app/lib/logger";
 import { createSshCert, createSshKeyPair, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { isWindowsRotatableType, redactRotationError, TRotatableType } from "../pam-account-rotation/pam-rotation-fns";
@@ -29,7 +29,7 @@ import {
   validateCredentials
 } from "../pam-account/pam-account-schemas";
 import { PamAccountType, PamHeartbeatStatus, PamSshAuthMethod } from "../pam/pam-enums";
-import { checkAccountAccess, TActorContext } from "../pam/pam-permission";
+import { checkAccountAccess } from "../pam/pam-permission";
 import { TCheckAccountHeartbeatDTO, TPamHeartbeatResult } from "./pam-account-heartbeat-types";
 import {
   classifyCloudProbeError,
@@ -48,8 +48,9 @@ type TPamAccountHeartbeatServiceFactoryDep = {
   pamAccountDAL: TPamAccountDALFactory;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  permissionService: TPermissionServiceFactory;
+  kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
+  pamPermissionService: TPamPermissionService;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   rotationHandlers?: typeof PAM_ROTATION_FACTORY_MAP;
 };
@@ -60,13 +61,14 @@ export const pamAccountHeartbeatServiceFactory = ({
   pamAccountDAL,
   gatewayV2Service,
   gatewayPoolService,
-  kmsService,
-  permissionService,
+  kmsDataKeyService,
+  instanceConfigService,
+  pamPermissionService,
   projectDAL,
   rotationHandlers = PAM_ROTATION_FACTORY_MAP
 }: TPamAccountHeartbeatServiceFactoryDep) => {
   const withCipher = async (projectId: string) =>
-    kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
     const { decryptor } = await withCipher(projectId);
@@ -152,7 +154,7 @@ export const pamAccountHeartbeatServiceFactory = ({
     const validateCloud = CLOUD_CONNECTION_VALIDATORS[accountType];
     if (validateCloud) {
       try {
-        await validateCloud({ connectionDetails, credentials, orgId });
+        await validateCloud({ connectionDetails, credentials, orgId, instanceConfigService });
         return { status: PamHeartbeatStatus.Healthy };
       } catch (err) {
         const status = classifyCloudProbeError(err);
@@ -339,11 +341,11 @@ export const pamAccountHeartbeatServiceFactory = ({
 
     // ViewCredentials, not EditAccounts: this sends the credential wherever the account currently points.
     await checkAccountAccess(
-      permissionService,
+      pamPermissionService,
       account.id,
       account.folderId,
       projectId,
-      ResourcePermissionPamResourceActions.ViewCredentials,
+      PamResourcePermissionActions.ViewCredentials,
       ctx
     );
 
@@ -357,11 +359,11 @@ export const pamAccountHeartbeatServiceFactory = ({
     }
 
     await checkAccountAccess(
-      permissionService,
+      pamPermissionService,
       account.id,
       account.folderId,
       projectId,
-      ResourcePermissionPamResourceActions.ReadAccounts,
+      PamResourcePermissionActions.ReadAccounts,
       ctx
     );
 

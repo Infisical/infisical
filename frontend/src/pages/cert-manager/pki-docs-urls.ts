@@ -46,7 +46,8 @@ export const PkiDocsUrls = {
       api: `${PKI_DOCS_BASE_URL}/applications/enrollment-methods/api`,
       acme: `${PKI_DOCS_BASE_URL}/applications/enrollment-methods/acme`,
       est: `${PKI_DOCS_BASE_URL}/applications/enrollment-methods/est`,
-      scep: `${PKI_DOCS_BASE_URL}/applications/enrollment-methods/scep`
+      scep: `${PKI_DOCS_BASE_URL}/applications/enrollment-methods/scep`,
+      microsoftAutoenrollment: `${PKI_DOCS_BASE_URL}/applications/enrollment-methods/microsoft-autoenrollment`
     },
     alerting: {
       overview: `${PKI_DOCS_BASE_URL}/applications/alerting/overview`,

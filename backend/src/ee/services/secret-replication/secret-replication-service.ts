@@ -1,20 +1,19 @@
 import path from "node:path";
 
 import { SecretType, TSecrets, TSecretsV2 } from "@app/db/schemas";
-import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
-import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
-import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";
+import { EventModificationType } from "@app/domains/platform/events/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { shouldApplyPolicy } from "@app/ee/services/secret-change-policy/secret-change-policy-fns";
+import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
+import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
-import { EventModificationType } from "@app/services/event-outbox/event-definition";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
@@ -25,7 +24,6 @@ import { FolderModifiedEventV1 } from "@app/services/secret-folder/secret-folder
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { fnSecretsFromImports, fnSecretsV2FromImports } from "@app/services/secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
-import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { emitSecretsModified } from "@app/services/secret-v2-bridge/secret-events";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
@@ -35,6 +33,7 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { prepareSecretWriteCiphers } from "@app/services/secret-v2-bridge/secret-write-cipher-fns";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { fnSecretBulkInsert, fnSecretBulkUpdate } from "@app/services/secret/secret-fns";
 import { TSecretQueueFactory, uniqueSecretQueueKey } from "@app/services/secret/secret-queue";
@@ -80,7 +79,7 @@ type TSecretReplicationServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
   queueService: Pick<TQueueServiceFactory, "start" | "listen" | "queue" | "stopJobById">;
-  secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
+  secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicy">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   secretTagDAL: Pick<
     TSecretTagDALFactory,
@@ -91,13 +90,10 @@ type TSecretReplicationServiceFactoryDep = {
     | "saveTagsToSecretV2"
     | "deleteTagsToSecretV2"
   >;
-  secretApprovalRequestCreationFns: Pick<
-    TSecretApprovalRequestCreationFnsFactory,
-    "createSecretApprovalRequestV2Bridge" | "createSecretApprovalRequest"
-  >;
+  secretChangeRequestService: Pick<TSecretChangeRequestServiceFactory, "createSecretApprovalRequestV2Bridge">;
 
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   eventEmitter: TEventEmitter;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
@@ -138,14 +134,14 @@ export const secretReplicationServiceFactory = ({
   secretVersionTagDAL,
   secretTagDAL,
   folderDAL,
-  secretApprovalPolicyService,
-  secretApprovalRequestCreationFns,
+  secretChangePolicyService,
+  secretChangeRequestService,
   secretQueueService,
   projectBotService,
   secretVersionV2TagBridgeDAL,
   secretVersionV2BridgeDAL,
   secretV2BridgeDAL,
-  kmsService,
+  kmsDataKeyService,
   folderCommitService,
   eventEmitter,
   projectFolderGrantDAL,
@@ -166,7 +162,7 @@ export const secretReplicationServiceFactory = ({
         return { ...el, secretKey: decryptedSecret.key, secretValue: decryptedSecret.value };
       });
 
-    for (let i = importedSecrets.length - 1; i >= 0; i = -1) {
+    for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
       importedSecrets[i].secrets.forEach((el) => {
         const decryptedSecret = getDecryptedKeyValue(botKey, el);
         if (deDupe.has(decryptedSecret.key) || !el.secretBlindIndex) {
@@ -197,7 +193,7 @@ export const secretReplicationServiceFactory = ({
     const deDupe = new Set<string>(localSecrets.map(({ key }) => key));
     const secrets = [...localSecrets];
 
-    for (let i = importedSecrets.length - 1; i >= 0; i = -1) {
+    for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
       importedSecrets[i].secrets.forEach((el) => {
         if (deDupe.has(el.key)) {
           return;
@@ -234,7 +230,7 @@ export const secretReplicationServiceFactory = ({
 
     // the the replicated imports made to the source. These are the destinations
     const destinationSecretImports = await secretImportDAL.find({
-      importPath: secretPath,
+      importPath: folder.path,
       importEnv: folder.envId
     });
 
@@ -286,11 +282,12 @@ export const secretReplicationServiceFactory = ({
     if (!destinationReplicatedSecretImports.length) return;
 
     if (shouldUseSecretV2Bridge) {
-      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
+      const { secretManager: projectCipher, blindIndexer } = await prepareSecretWriteCiphers({
+        kmsDataKeyService,
+        projectId,
+        orgId
       });
-      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId, kmsService });
+      const { decryptor: secretManagerDecryptor } = projectCipher;
 
       // these are the secrets to be added in replicated folders
       const sourceLocalSecrets = await secretV2BridgeDAL.find({ folderId: folder.id, type: SecretType.Shared });
@@ -307,7 +304,7 @@ export const secretReplicationServiceFactory = ({
         projectFolderGrantDAL,
         actorOrgId: orgId,
         orgDAL,
-        kmsService
+        kmsDataKeyService
       });
       // secrets that gets replicated across imports
       const sourceDecryptedLocalSecrets = sourceLocalSecrets.map((el) => ({
@@ -343,7 +340,7 @@ export const secretReplicationServiceFactory = ({
       );
 
       const lock = await keyStore.acquireLock(
-        [getReplicationKeyLockPrefix(projectId, environmentSlug, secretPath)],
+        [getReplicationKeyLockPrefix(projectId, environmentSlug, folder.path)],
         5000
       );
 
@@ -382,15 +379,16 @@ export const secretReplicationServiceFactory = ({
               destinationSecretImportId: destinationSecretImport.id,
               destinationFolder,
               onCreate: (createdFolder, tx) =>
-                FolderModifiedEventV1.emit(
-                  eventEmitter,
-                  {
-                    folderId: createdFolder.id,
-                    projectId,
-                    environment: destinationFolder.environmentSlug,
-                    secretPath: destinationReplicationFolderPath,
-                    modificationType: EventModificationType.Created
-                  },
+                eventEmitter.emit(
+                  [
+                    FolderModifiedEventV1.build({
+                      folderId: createdFolder.id,
+                      projectId,
+                      environment: destinationFolder.environmentSlug,
+                      secretPath: destinationReplicationFolderPath,
+                      modificationType: EventModificationType.Created
+                    })
+                  ],
                   tx
                 )
             });
@@ -471,7 +469,7 @@ export const secretReplicationServiceFactory = ({
             // eslint-disable-next-line
             if (isEmtpy) continue;
 
-            const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(
+            const policy = await secretChangePolicyService.getSecretApprovalPolicy(
               projectId,
               destinationFolder.environmentSlug,
               destinationFolder.path
@@ -510,7 +508,7 @@ export const secretReplicationServiceFactory = ({
                       : {})
                   };
                 });
-              await secretApprovalRequestCreationFns.createSecretApprovalRequestV2Bridge({
+              await secretChangeRequestService.createSecretApprovalRequestV2Bridge({
                 policy,
                 folderId: destinationReplicationFolderId,
                 actor,
@@ -674,7 +672,7 @@ export const secretReplicationServiceFactory = ({
     const sourceSecretsGroupByBlindIndex = groupBy(sourceSecrets, (i) => i.secretBlindIndex as string);
 
     const lock = await keyStore.acquireLock(
-      [getReplicationKeyLockPrefix(projectId, environmentSlug, secretPath)],
+      [getReplicationKeyLockPrefix(projectId, environmentSlug, folder.path)],
       5000
     );
 
@@ -759,67 +757,53 @@ export const secretReplicationServiceFactory = ({
           // eslint-disable-next-line
           if (isEmtpy) continue;
 
-          const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(
-            projectId,
-            destinationFolder.environmentSlug,
-            destinationFolder.path
-          );
-          // this means it should be a approval request rather than direct replication
-          if (shouldApplyPolicy(policy, actor)) {
-            const localSecretsLatestVersions = destinationLocalSecrets.map(({ id }) => id);
-            const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(
-              destinationReplicationFolderId,
-              localSecretsLatestVersions
-            );
-            const commits = locallyCreatedSecrets
-              .concat(locallyUpdatedSecrets)
-              .concat(locallyDeletedSecrets)
-              .map((doc) => {
-                const { operation } = doc;
-                const localSecret = destinationLocalSecretsGroupedByBlindIndex[doc.secretBlindIndex as string]?.[0];
-
-                return {
-                  op: operation,
-                  keyEncoding: doc.keyEncoding,
-                  algorithm: doc.algorithm,
-                  metadata: doc.metadata,
-                  secretKeyIV: doc.secretKeyIV,
-                  secretKeyTag: doc.secretKeyTag,
-                  secretKeyCiphertext: doc.secretKeyCiphertext,
-                  secretValueIV: doc.secretValueIV,
-                  secretValueTag: doc.secretValueTag,
-                  secretValueCiphertext: doc.secretValueCiphertext,
-                  secretBlindIndex: doc.secretBlindIndex,
-                  secretCommentIV: doc.secretCommentIV,
-                  secretCommentTag: doc.secretCommentTag,
-                  secretCommentCiphertext: doc.secretCommentCiphertext,
-                  skipMultilineEncoding: doc.skipMultilineEncoding,
-                  // except create operation other two needs the secret id and version id
-                  ...(operation !== SecretOperations.Create
-                    ? { secretId: localSecret.id, secretVersion: latestSecretVersions[localSecret.id].id }
-                    : {})
-                };
+          await secretDAL.transaction(async (tx) => {
+            if (locallyCreatedSecrets.length) {
+              await fnSecretBulkInsert({
+                folderId: destinationReplicationFolderId,
+                secretVersionDAL,
+                secretDAL,
+                tx,
+                secretTagDAL,
+                secretVersionTagDAL,
+                inputSecrets: locallyCreatedSecrets.map((doc) => {
+                  return {
+                    keyEncoding: doc.keyEncoding,
+                    algorithm: doc.algorithm,
+                    type: doc.type,
+                    metadata: doc.metadata,
+                    secretKeyIV: doc.secretKeyIV,
+                    secretKeyTag: doc.secretKeyTag,
+                    secretKeyCiphertext: doc.secretKeyCiphertext,
+                    secretValueIV: doc.secretValueIV,
+                    secretValueTag: doc.secretValueTag,
+                    secretValueCiphertext: doc.secretValueCiphertext,
+                    secretBlindIndex: doc.secretBlindIndex,
+                    secretCommentIV: doc.secretCommentIV,
+                    secretCommentTag: doc.secretCommentTag,
+                    secretCommentCiphertext: doc.secretCommentCiphertext,
+                    skipMultilineEncoding: doc.skipMultilineEncoding,
+                    references: getAllSecretReferences(doc.secretValue).nestedReferences
+                  };
+                })
               });
-            await secretApprovalRequestCreationFns.createSecretApprovalRequest({
-              policy,
-              folderId: destinationReplicationFolderId,
-              actor,
-              actorId,
-              isReplicated: true,
-              commits
-            });
-          } else {
-            await secretDAL.transaction(async (tx) => {
-              if (locallyCreatedSecrets.length) {
-                await fnSecretBulkInsert({
-                  folderId: destinationReplicationFolderId,
-                  secretVersionDAL,
-                  secretDAL,
-                  tx,
-                  secretTagDAL,
-                  secretVersionTagDAL,
-                  inputSecrets: locallyCreatedSecrets.map((doc) => {
-                    return {
+            }
+            if (locallyUpdatedSecrets.length) {
+              await fnSecretBulkUpdate({
+                projectId,
+                folderId: destinationReplicationFolderId,
+                secretVersionDAL,
+                secretDAL,
+                tx,
+                secretTagDAL,
+                secretVersionTagDAL,
+                inputSecrets: locallyUpdatedSecrets.map((doc) => {
+                  return {
+                    filter: {
+                      folderId: destinationReplicationFolderId,
+                      id: destinationLocalSecretsGroupedByBlindIndex[doc.secretBlindIndex as string][0].id
+                    },
+                    data: {
                       keyEncoding: doc.keyEncoding,
                       algorithm: doc.algorithm,
                       type: doc.type,
@@ -836,73 +820,36 @@ export const secretReplicationServiceFactory = ({
                       secretCommentCiphertext: doc.secretCommentCiphertext,
                       skipMultilineEncoding: doc.skipMultilineEncoding,
                       references: getAllSecretReferences(doc.secretValue).nestedReferences
-                    };
-                  })
-                });
-              }
-              if (locallyUpdatedSecrets.length) {
-                await fnSecretBulkUpdate({
-                  projectId,
-                  folderId: destinationReplicationFolderId,
-                  secretVersionDAL,
-                  secretDAL,
-                  tx,
-                  secretTagDAL,
-                  secretVersionTagDAL,
-                  inputSecrets: locallyUpdatedSecrets.map((doc) => {
-                    return {
-                      filter: {
-                        folderId: destinationReplicationFolderId,
-                        id: destinationLocalSecretsGroupedByBlindIndex[doc.secretBlindIndex as string][0].id
-                      },
-                      data: {
-                        keyEncoding: doc.keyEncoding,
-                        algorithm: doc.algorithm,
-                        type: doc.type,
-                        metadata: doc.metadata,
-                        secretKeyIV: doc.secretKeyIV,
-                        secretKeyTag: doc.secretKeyTag,
-                        secretKeyCiphertext: doc.secretKeyCiphertext,
-                        secretValueIV: doc.secretValueIV,
-                        secretValueTag: doc.secretValueTag,
-                        secretValueCiphertext: doc.secretValueCiphertext,
-                        secretBlindIndex: doc.secretBlindIndex,
-                        secretCommentIV: doc.secretCommentIV,
-                        secretCommentTag: doc.secretCommentTag,
-                        secretCommentCiphertext: doc.secretCommentCiphertext,
-                        skipMultilineEncoding: doc.skipMultilineEncoding,
-                        references: getAllSecretReferences(doc.secretValue).nestedReferences
-                      }
-                    };
-                  })
-                });
-              }
-              if (locallyDeletedSecrets.length) {
-                await secretDAL.delete(
-                  {
-                    $in: {
-                      id: locallyDeletedSecrets.map(({ id }) => id)
-                    },
-                    folderId: destinationReplicationFolderId
+                    }
+                  };
+                })
+              });
+            }
+            if (locallyDeletedSecrets.length) {
+              await secretDAL.delete(
+                {
+                  $in: {
+                    id: locallyDeletedSecrets.map(({ id }) => id)
                   },
-                  tx
-                );
-              }
-            });
+                  folderId: destinationReplicationFolderId
+                },
+                tx
+              );
+            }
+          });
 
-            await secretQueueService.syncSecrets({
-              projectId,
-              orgId,
-              secretPath: destinationFolder.path,
-              environmentSlug: destinationFolder.environmentSlug,
-              environmentName: destinationFolder.environmentName,
-              actorId,
-              actor,
-              _depth: depth + 1,
-              _deDupeReplicationQueue: deDupeReplicationQueue,
-              _deDupeQueue: deDupeQueue
-            });
-          }
+          await secretQueueService.syncSecrets({
+            projectId,
+            orgId,
+            secretPath: destinationFolder.path,
+            environmentSlug: destinationFolder.environmentSlug,
+            environmentName: destinationFolder.environmentName,
+            actorId,
+            actor,
+            _depth: depth + 1,
+            _deDupeReplicationQueue: deDupeReplicationQueue,
+            _deDupeQueue: deDupeQueue
+          });
 
           // this is used to avoid multiple times generating secret approval by failed one
           await keyStore.setItemWithExpiry(

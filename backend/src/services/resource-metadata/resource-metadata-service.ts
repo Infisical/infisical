@@ -1,12 +1,9 @@
 import { TDbClient } from "@app/db";
-import { ActionProjectType } from "@app/db/schemas";
-import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { ProjectPermissionSecretActions } from "@app/domains/platform/projects/ce/module";
+import { SecretReadAccess, TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
@@ -20,10 +17,10 @@ type TResourceMetadataServiceFactoryDep = {
     TResourceMetadataDALFactory,
     "searchSecretMetadata" | "searchSecretMetadataWithEncryptedValues" | "transaction"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsPermissionService: TSecretsPermissionService;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds" | "findBySecretPathMultiEnv" | "findByEnvsDeep">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 export type TResourceMetadataServiceFactory = ReturnType<typeof resourceMetadataServiceFactory>;
@@ -41,14 +38,14 @@ type TMatchedSecret = {
 export const resourceMetadataServiceFactory = ({
   db,
   resourceMetadataDAL,
-  permissionService,
+  secretsPermissionService,
   folderDAL,
   projectEnvDAL,
-  kmsService
+  kmsDataKeyService
 }: TResourceMetadataServiceFactoryDep) => {
   // Project-scoped secret metadata search. The base query matches on org + project + key/value; the
   // results are then filtered so the requester actually has DescribeSecret permission on each returned
-  // secret (path/tag aware). Requesting a project the actor cannot access throws (via getProjectPermission).
+  // secret (path/tag aware). Requesting a project the actor cannot access throws (via getSecretsPermission).
   const searchSecretMetadata = async ({
     projectId,
     filters,
@@ -62,14 +59,8 @@ export const resourceMetadataServiceFactory = ({
       throw new BadRequestError({ message: "At least one metadata filter is required" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
+    const orgId = actor.org.id;
 
     const searchLimit = MAX_SECRET_METADATA_SEARCH_SECRETS;
     let scopedFolderIds: string[] | undefined;
@@ -88,11 +79,11 @@ export const resourceMetadataServiceFactory = ({
     // ciphertext), so their candidates are fetched by key and matched in-app after decryption below.
     const { plaintextMatched, encryptedCandidates } = await resourceMetadataDAL.transaction(async (tx) => {
       const plaintext = await resourceMetadataDAL.searchSecretMetadata(
-        { orgId: actor.orgId, projectId, filters, operator, tagSlugs, folderIds: scopedFolderIds, environments },
+        { orgId, projectId, filters, operator, tagSlugs, folderIds: scopedFolderIds, environments },
         tx
       );
       const encrypted = await resourceMetadataDAL.searchSecretMetadataWithEncryptedValues(
-        { orgId: actor.orgId, projectId, filters, operator, tagSlugs, folderIds: scopedFolderIds, environments },
+        { orgId, projectId, filters, operator, tagSlugs, folderIds: scopedFolderIds, environments },
         tx
       );
       return { plaintextMatched: plaintext, encryptedCandidates: encrypted };
@@ -122,7 +113,7 @@ export const resourceMetadataServiceFactory = ({
 
     // decrypt encrypted candidates once per project (data key is resolved lazily), then match in-app
     if (encryptedCandidates.length) {
-      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -168,16 +159,12 @@ export const resourceMetadataServiceFactory = ({
       const folder = folderPathById[secret.folderId];
       if (!folder) return [];
 
-      const canDescribe = hasSecretReadValueOrDescribePermission(
-        permission,
-        ProjectPermissionSecretActions.DescribeSecret,
-        {
-          environment: folder.environmentSlug,
-          secretPath: folder.path,
-          secretName: secret.secretKey,
-          secretTags: secret.tags.map((tag) => tag.slug)
-        }
-      );
+      const canDescribe = SecretReadAccess.can(permission, ProjectPermissionSecretActions.DescribeSecret, {
+        environment: folder.environmentSlug,
+        secretPath: folder.path,
+        secretName: secret.secretKey,
+        secretTags: secret.tags.map((tag) => tag.slug)
+      });
 
       if (!canDescribe) return [];
 
@@ -188,16 +175,12 @@ export const resourceMetadataServiceFactory = ({
           environment: folder.environmentSlug,
           secretPath: folder.path,
           tags: secret.tags,
-          secretValueHidden: !hasSecretReadValueOrDescribePermission(
-            permission,
-            ProjectPermissionSecretActions.ReadValue,
-            {
-              environment: folder.environmentSlug,
-              secretPath: folder.path,
-              secretName: secret.secretKey,
-              secretTags: secret.tags.map((tag) => tag.slug)
-            }
-          ),
+          secretValueHidden: !SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
+            environment: folder.environmentSlug,
+            secretPath: folder.path,
+            secretName: secret.secretKey,
+            secretTags: secret.tags.map((tag) => tag.slug)
+          }),
           metadata: dedupeMetadata(secret.metadata)
         }
       ];

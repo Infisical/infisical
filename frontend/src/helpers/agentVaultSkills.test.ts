@@ -1,10 +1,11 @@
 import { strToU8, unzipSync, zipSync } from "fflate";
 import { describe, expect, test } from "vitest";
 
+import { bytesToBase64 } from "@app/helpers/string";
+
 import {
   buildDiffRows,
   buildSkillZip,
-  bytesToBase64,
   carrySkillFileModes,
   countLineChanges,
   decodeSkillFile,
@@ -242,6 +243,14 @@ describe("isReservedSkillName", () => {
     );
     expect(getReservedSkillNameMessage("aux")).toBe(
       "'aux' is a reserved name and can't be used as a skill name."
+    );
+  });
+
+  test("refuses the built-in skill's name with the API's message", () => {
+    expect(isReservedSkillName("infisical-agent-vault")).toBe(true);
+    expect(isReservedSkillName("infisical-agent-vault-notes")).toBe(false);
+    expect(getReservedSkillNameMessage("infisical-agent-vault")).toBe(
+      "'infisical-agent-vault' is reserved for the skill Agent Vault gives every agent. Choose another name in SKILL.md."
     );
   });
 });

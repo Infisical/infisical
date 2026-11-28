@@ -1,8 +1,17 @@
 import { S3ServiceException } from "@aws-sdk/client-s3";
-import { createMongoAbility } from "@casl/ability";
 import { v7 as uuidv7 } from "uuid";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { TPermissionRule, Permission } from "@app/domains/platform/access-control/ce/module";
+import { TPlanFeatures as TLicensePlan } from "@app/domains/platform/license/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/domains/platform/projects/ce/module";
 import { BadRequestError, DailyQuotaExceededError, InternalServerError } from "@app/lib/errors";
 import { ObjectStorageError, toObjectStorageError } from "@app/services/object-storage/object-storage-errors";
 import { ObjectStorageErrorReason, ObjectStorageType } from "@app/services/object-storage/object-storage-types";
@@ -25,6 +34,17 @@ import { buildSessionLogObjectName, toRev } from "./agent-vault-session-log-fns"
 import { unwrapSessionLogKey } from "./agent-vault-session-log-secrets";
 import { agentVaultSessionLogServiceFactory } from "./agent-vault-session-log-service";
 import { TCreateChunkUploadUrlDTO, TUpdateSessionLogSettingsDTO } from "./agent-vault-session-log-types";
+
+// Agent Vault's real role rules are EE-only, so these stub just what the service reads: any member reads its own
+// sessions; admin reads every session and the project settings.
+const agentVaultMemberRules: TPermissionRule<ProjectPermissionSet>[] = [
+  { action: [ProjectPermissionAgentVaultSessionActions.Read], subject: ProjectPermissionSub.AgentVaultSessions }
+];
+const agentVaultAdminRules: TPermissionRule<ProjectPermissionSet>[] = [
+  ...agentVaultMemberRules,
+  { action: [ProjectPermissionAgentVaultSessionActions.ReadAny], subject: ProjectPermissionSub.AgentVaultSessions },
+  { action: [ProjectPermissionActions.Read, ProjectPermissionActions.Edit], subject: ProjectPermissionSub.Settings }
+];
 
 const PROJECT_ID = "c4a1e0d2-5b7f-4c1e-9a3d-2f6b8e0c7a11";
 const SESSION_ID = "5d2e9b41-0c3a-4f8e-b7d2-91a4c6e8f035";
@@ -124,7 +144,7 @@ const objectFor = (lastRecordAtMs: number, proxyId = PROXY_ID) => {
 };
 
 type TFeedEntry = [string, string[]];
-type TPlan = { hasExternal?: boolean; hasDefault?: boolean; retentionDays?: number | null };
+type TPlanFeatures = { hasExternal?: boolean; hasDefault?: boolean; retentionDays?: number | null };
 
 type TOverrides = {
   proxy?: unknown;
@@ -134,16 +154,17 @@ type TOverrides = {
   feedAddFails?: boolean;
   feedAddHangs?: boolean;
   isAdmin?: boolean;
-  plan?: TPlan;
-  planFallback?: boolean;
-  lastKnownPlan?: { plan: TPlan; ageMs: number } | null;
+  plan?: TPlanFeatures;
+  statsFail?: boolean;
 };
 
-const toPlan = ({ hasExternal = true, hasDefault = true, retentionDays = null }: TPlan = {}) => ({
-  agentVaultByoS3: hasExternal,
-  agentVaultManagedStorage: hasDefault,
-  agentVaultSessionLogRetentionDays: retentionDays
-});
+const toPlan = ({ hasExternal = true, hasDefault = true, retentionDays = null }: TPlanFeatures = {}) =>
+  ({
+    ...testFeatures(),
+    agentVaultByoS3: hasExternal,
+    agentVaultManagedStorage: hasDefault,
+    agentVaultSessionLogRetentionDays: retentionDays
+  }) as TLicensePlan;
 
 const build = (overrides: TOverrides = {}) => {
   const validateConnection = vi.fn(async () => ({ name: "prod-logs" }));
@@ -155,6 +176,10 @@ const build = (overrides: TOverrides = {}) => {
   });
   const findSession = vi.fn(async () => ("session" in overrides ? overrides.session : liveSession()));
   const streamRange = vi.fn(async () => overrides.feed ?? []);
+  const licenseService = new FakeLicenseService().setPlan("org-1", toPlan(overrides.plan));
+  const addChunkCounts = vi.fn(async () => {
+    if (overrides.statsFail) throw new Error("db is down");
+  });
 
   const service = agentVaultSessionLogServiceFactory({
     agentVaultSessionLogConfigDAL: {
@@ -163,32 +188,26 @@ const build = (overrides: TOverrides = {}) => {
       upsert: upsertConfig
     } as never,
     agentVaultSessionDAL: { findOne: findSession } as never,
+    agentVaultSessionStatsDAL: { addChunkCounts } as never,
     agentVaultProxyDAL: {
       findByIdWithOrg: vi.fn(async () => ("proxy" in overrides ? overrides.proxy : PROXY))
     } as never,
     appConnectionDAL: { findById: vi.fn(async () => ({ name: "prod-logs" })) } as never,
     appConnectionService: { validateAppConnectionUsageById: validateConnection } as never,
-    permissionService: {
-      getProjectPermission: vi.fn(async () => ({
-        permission: createMongoAbility([{ action: "read", subject: "agent-vault-sessions" }]),
-        hasRole: () => overrides.isAdmin ?? true
+    accessBundlePermissionService: {
+      getAgentVaultPermission: vi.fn(async () => ({
+        permission: Permission.fromRules({
+          rules: (overrides.isAdmin ?? true) ? agentVaultAdminRules : agentVaultMemberRules
+        })
       }))
     } as never,
-    kmsService: {} as never,
-    licenseService: {
-      getPlan: vi.fn(async () => toPlan(overrides.plan)),
-      isServingFallbackPlan: vi.fn(async () => overrides.planFallback ?? false),
-      getLastKnownPlan: vi.fn(async () =>
-        overrides.lastKnownPlan
-          ? { plan: toPlan(overrides.lastKnownPlan.plan), fetchedAt: Date.now() - overrides.lastKnownPlan.ageMs }
-          : null
-      )
-    } as never,
+    kmsDataKeyService: {} as never,
+    licenseService,
     keyStore: { streamAdd, streamRange } as never,
     objectStorage: { at } as never
   });
 
-  return { service, validateConnection, upsertConfig, streamAdd, streamRange, findSession };
+  return { service, validateConnection, upsertConfig, streamAdd, streamRange, findSession, addChunkCounts };
 };
 
 const record = (
@@ -196,8 +215,7 @@ const record = (
   chunk: TCreateChunkUploadUrlDTO["chunk"] = validChunk()
 ) => service.createChunkUploadUrl({ proxyId: PROXY_ID, sessionId: SESSION_ID, chunk });
 
-const ctx = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never;
-const actor = { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never;
+const ctx = { principal: { type: "user", id: "user-1" }, org: { id: "org-1" } } as never;
 const scope = { projectId: PROJECT_ID, ctx, sessionId: SESSION_ID };
 
 // The route's schema already shapes the body, so tests pass plain objects.
@@ -205,7 +223,6 @@ const save = (service: ReturnType<typeof build>["service"], patch: Record<string
   service.updateSessionLogSettings({
     projectId: PROJECT_ID,
     ctx,
-    actor,
     ...patch
   } as unknown as TUpdateSessionLogSettingsDTO);
 
@@ -426,6 +443,51 @@ describe("createChunkUploadUrl: the live feed", () => {
   });
 });
 
+describe("createChunkUploadUrl: the session's request counts", () => {
+  const counted = (decisionCounts?: { brokered: number; passthrough: number; blocked: number; error: number }) => ({
+    ...validChunk(),
+    recordCount: 10,
+    ...(decisionCounts && { decisionCounts })
+  });
+
+  test("adds the chunk's total and brokered count to the session", async () => {
+    const { service, addChunkCounts } = build();
+    await record(service, counted({ brokered: 7, passthrough: 2, blocked: 1, error: 0 }));
+    expect(addChunkCounts).toHaveBeenCalledWith(SESSION_ID, { requests: 10, brokered: 7 });
+  });
+
+  test("a chunk without the split counts its total and leaves brokered unknown", async () => {
+    const { service, addChunkCounts } = build();
+    await record(service, counted());
+    expect(addChunkCounts).toHaveBeenCalledWith(SESSION_ID, { requests: 10, brokered: null });
+  });
+
+  test("a split that doesn't add up to the total leaves brokered unknown", async () => {
+    const { service, addChunkCounts } = build();
+    await record(service, counted({ brokered: 7, passthrough: 0, blocked: 0, error: 0 }));
+    expect(addChunkCounts).toHaveBeenCalledWith(SESSION_ID, { requests: 10, brokered: null });
+  });
+
+  test("a chunk without a total counts nothing", async () => {
+    const { service, addChunkCounts } = build();
+    await record(service);
+    expect(addChunkCounts).not.toHaveBeenCalled();
+  });
+
+  test("a chunk that is refused counts nothing", async () => {
+    const { service, addChunkCounts } = build({ plan: { hasExternal: false } });
+    await expect(record(service, counted())).rejects.toThrow();
+    expect(addChunkCounts).not.toHaveBeenCalled();
+  });
+
+  test("counts that can't be saved still hand out the upload url", async () => {
+    const { service } = build({ statsFail: true });
+    await expect(record(service, counted())).resolves.toMatchObject({
+      uploadUrl: "https://bucket.s3.amazonaws.com/signed-put"
+    });
+  });
+});
+
 describe("createChunkUploadUrl: when storage can't be used", () => {
   test("an unusable connection is a retryable 500 without the connection's details", async () => {
     forOrg.mockRejectedValueOnce(connectionUnusable);
@@ -472,37 +534,6 @@ describe("createChunkUploadUrl: the plan for the storage in use", () => {
       name: AgentVaultSessionLogErrorName.Disabled,
       message: AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_NOT_ON_PLAN
     });
-  });
-
-  test("while the License Server is down, a chunk from a paid org is accepted on its last known plan", async () => {
-    const { service } = build({
-      plan: { hasExternal: false },
-      planFallback: true,
-      lastKnownPlan: { plan: { hasExternal: true }, ageMs: 10 * 60_000 }
-    });
-    await record(service);
-    expect(presignPut).toHaveBeenCalledTimes(1);
-  });
-
-  test("while the License Server is down, default storage keeps the retention of the last real plan", async () => {
-    defaultStorage.configured = true;
-    const { service } = build({
-      config: undefined,
-      planFallback: true,
-      lastKnownPlan: { plan: { retentionDays: 365 }, ageMs: 10 * 60_000 }
-    });
-    await record(service);
-    expect(presignPut).toHaveBeenCalledWith(expect.objectContaining({ retentionDays: 365 }));
-  });
-
-  test("a chunk is held, not refused, when there is no recent real answer", async () => {
-    const { service } = build({
-      plan: { hasExternal: false },
-      planFallback: true,
-      lastKnownPlan: { plan: { hasExternal: true }, ageMs: 2 * 60 * 60_000 }
-    });
-    await expect(record(service)).rejects.toMatchObject({ name: "InternalServerError" });
-    expect(presignPut).not.toHaveBeenCalled();
   });
 });
 
@@ -613,13 +644,6 @@ describe("reading logs that are off or not on the plan", () => {
     expect(page.chunks).toEqual([]);
     expect(page.sessionLogs).toMatchObject({ enabled: false, disabledReason: "not-on-plan" });
     expect(forOrg).not.toHaveBeenCalled();
-  });
-
-  test("while the License Server is down with no recent answer, logs can still be read", async () => {
-    const { service } = build({ plan: { hasExternal: false }, planFallback: true });
-    const page = await service.listSessionLogs(scope);
-    expect(page.sessionLogs).toMatchObject({ enabled: true, disabledReason: null });
-    expect(list).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -1015,18 +1039,6 @@ describe("updateSessionLogSettings: the plan", () => {
     expect(settings?.enabled).toBe(false);
     expect(upsertConfig).toHaveBeenCalledTimes(1);
   });
-
-  test("a save that needs the plan says when it couldn't be confirmed", async () => {
-    const { service, upsertConfig } = build({
-      plan: { hasExternal: false },
-      planFallback: true,
-      config: { ...enabledConfig(), enabled: false }
-    });
-    await expect(save(service, { enabled: true, storage: externalStorage() })).rejects.toThrow(
-      "Infisical couldn't confirm your plan right now. Try again in a few minutes."
-    );
-    expect(upsertConfig).not.toHaveBeenCalled();
-  });
 });
 
 describe("updateSessionLogSettings: turning off", () => {
@@ -1134,12 +1146,6 @@ describe("getSessionLogHealth", () => {
     const { health } = await service.getSessionLogHealth({ projectId: PROJECT_ID, ctx });
     expect(health.connectionError).toBeNull();
     expect(listAccess).not.toHaveBeenCalled();
-  });
-
-  test("still checks while the plan can't be confirmed", async () => {
-    const { service } = build({ plan: { hasExternal: false }, planFallback: true });
-    await service.getSessionLogHealth({ projectId: PROJECT_ID, ctx });
-    expect(listAccess).toHaveBeenCalledTimes(1);
   });
 
   test("a failure that isn't from storage still answers, so health never becomes a 500", async () => {

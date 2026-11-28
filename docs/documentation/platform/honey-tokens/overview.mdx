@@ -6,40 +6,30 @@ description: "Detect unauthorized access to your secrets by planting decoy AWS c
 
 Honey tokens are decoy credentials that act as tripwires. When an attacker gains access to your secrets and attempts to use a honey token, Infisical detects the activity and immediately alerts you and your team.
 
-Each honey token is planted alongside your real secrets so it appears genuine. Any attempt to use these credentials triggers an alert and notifies organization admins.
+Each honey token is planted alongside your real secrets so it appears genuine. Any attempt to use these credentials triggers an alert, which notifies the people and channels you [choose for that honey token](/documentation/platform/honey-tokens/usage#get-alerted-when-a-honey-token-is-triggered).
 
-At this time, we only support [AWS IAM](/documentation/platform/honey-tokens/aws/usage) credentials as honey tokens, but we're planning to support more providers in the near future.
+At this time, we only support [AWS IAM](/documentation/platform/honey-tokens/usage) credentials as honey tokens, but we're planning to support more providers in the near future.
 
-The short video below walks through how honey tokens work in Infisical and how to use them to catch unauthorized access to your secrets.
+<Tip>
+  Visual learner? Watch an [introduction to honey tokens in Infisical](https://www.youtube.com/watch?v=ifgwwuQ_C30).
+</Tip>
 
-<br />
+## Get started
 
+On Infisical Cloud, you can create honey tokens right away, with no setup. If you self-host Infisical, an organization admin first connects your own AWS account.
 
-<div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", maxWidth: "100%" }}>
-  <iframe
-    src="https://www.youtube.com/embed/ifgwwuQ_C30"
-    title="YouTube video player"
-    style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }}
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-    allowfullscreen
-  ></iframe>
-</div>
-
-<br />
+<CardGroup cols={2}>
+  <Card title="Usage" icon="bell-ring" href="/documentation/platform/honey-tokens/usage">
+    Create and manage honey tokens in your projects.
+  </Card>
+  <Card title="Your own AWS account" icon="cloud" href="/documentation/platform/honey-tokens/own-aws-account">
+    Keep honey token decoy credentials in an AWS account that your organization owns.
+  </Card>
+</CardGroup>
 
 ## Permissions
 
-Honey tokens use two levels of permissions: **organization-level** permissions for the one-time setup, and **project-level** permissions for day-to-day usage.
-
-### Organization permissions (setup)
-
-| Action | Description |
-| --- | --- |
-| **Setup** | Configure honey token settings in Organization Settings (AWS connection, CloudFormation stack, etc.) |
-
-Only organization **Admins** have the `Setup` permission by default. This is required to connect, manage, and verify the honey token configuration.
-
-### Project permissions (usage)
+These project permissions control who can create and manage honey tokens. Connecting [your own AWS account](/documentation/platform/honey-tokens/own-aws-account) needs a separate organization permission.
 
 | Action | Description | Admin | Member | Viewer |
 | --- | --- | --- | --- | --- |
@@ -50,25 +40,6 @@ Only organization **Admins** have the `Setup` permission by default. This is req
 | **Reset** | Reset a triggered honey token back to active status | Yes | No | No |
 | **Revoke** | Permanently deactivate and remove a honey token | Yes | No | No |
 
-<Note>
-  By default, only project **Admins** have full honey token permissions. **Members** and **Viewers** can only view honey tokens. To grant additional honey token permissions to non-admin roles, create a [custom role](/documentation/platform/access-controls/role-based-access-controls) with the desired actions.
-</Note>
+To give a role other than Admin more of these actions, create a [custom role](/documentation/platform/access-controls/role-based-access-controls) with the actions it needs.
 
-<Note>
-  Honey token credentials are stored as regular secrets in your project. Users also need the appropriate **Secrets** permissions (`Read`) for the relevant environment and secret path to view the planted decoy secrets in the secrets dashboard.
-</Note>
-
-## Getting started
-
-<Steps>
-  <Step title="One-Time Setup">
-    An organization admin goes through a one-time setup process to configure AWS Honey Tokens. This needs to be done once per organization, and this setup process dictates which AWS account and region the honey tokens will be planted in.
-
-    Follow the [Setup Guide](/documentation/platform/honey-tokens/aws/setup) to get started with honey tokens.
-  </Step>
-  <Step title="Create and Manage Tokens">
-    Once setup is complete, any project member with the appropriate permissions can create, monitor, and manage honey tokens across projects.
-
-    Follow the [Usage Guide](/documentation/platform/honey-tokens/aws/usage) to get started with using honey tokens.
-  </Step>
-</Steps>
+Infisical stores the decoy credentials as regular secrets in your project. To see them in the secrets dashboard, a user also needs permission to read secrets in the honey token's environment and path.

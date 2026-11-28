@@ -12,8 +12,9 @@ import {
   ConfirmationAlertDialog
 } from "@app/components/v3";
 import { useOrganization, useOrgPermission } from "@app/context";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { OrgMembershipRole } from "@app/helpers/roles";
-import { useDeleteOrgById } from "@app/hooks/api";
+import { useDeleteOrgById, useGetBillingOverview } from "@app/hooks/api";
 import { clearSession } from "@app/hooks/api/users/queries";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -21,7 +22,7 @@ const CONFIRM_KEYWORD = "confirm";
 
 export const OrgDeleteSection = () => {
   const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const { hasOrgRole } = useOrgPermission();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["deleteOrg"] as const);
@@ -29,6 +30,12 @@ export const OrgDeleteSection = () => {
   const { mutateAsync, isPending } = useDeleteOrgById();
 
   const isAdmin = hasOrgRole(OrgMembershipRole.Admin);
+  // Only cloud root orgs have their own subscription.
+  const overview = useGetBillingOverview(currentOrg?.id ?? "", {
+    enabled: isAdmin && !isSubOrganization
+  });
+  const cancelsSubscription =
+    !isSubOrganization && (overview.data ? overview.data.isCloud : isInfisicalCloud());
 
   const handleDeleteOrgSubmit = async () => {
     if (!currentOrg?.id) return;
@@ -51,7 +58,8 @@ export const OrgDeleteSection = () => {
       <CardHeader className="p-6">
         <CardTitle>Danger Zone</CardTitle>
         <CardDescription>
-          Permanently delete this organization and all of its data. This action cannot be undone.
+          Permanently delete this organization and all of its data
+          {cancelsSubscription && ", and cancel its subscription"}. This action cannot be undone.
         </CardDescription>
       </CardHeader>
       <CardFooter className="min-h-8 justify-end border-t border-danger/15 bg-danger/5 p-4">
@@ -70,7 +78,11 @@ export const OrgDeleteSection = () => {
         isOpen={popUp.deleteOrg.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteOrg", isOpen)}
         title={`Delete "${currentOrg?.name}"`}
-        description="This permanently deletes the organization and all of its data. This cannot be undone."
+        description={`This permanently deletes the organization and all of its data.${
+          cancelsSubscription
+            ? " Its subscription is canceled immediately, and any remaining prepaid commitment is forfeited without a refund."
+            : ""
+        } This cannot be undone.`}
         confirmKey={CONFIRM_KEYWORD}
         confirmLabel="Delete Organization"
         isPending={isPending}

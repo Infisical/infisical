@@ -1,19 +1,30 @@
+import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { SecretApprovalRequestsReviewersSchema, SecretApprovalRequestsSchema } from "@app/db/schemas";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   ApprovalStatus,
   RequestState,
   SecretApprovalRequestOrderBy
-} from "@app/ee/services/secret-approval-request/secret-approval-request-types";
+} from "@app/ee/services/secret-change-request/secret-change-request-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenRequestError,
+  NotFoundError,
+  PolicyViolationError
+} from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { OrderByDirection } from "@app/lib/types";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { bulkWriteLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { toHttpError } from "@app/server/lib/domain-errors";
 import { auditSafeText } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedTagSchema, SanitizedUserSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -26,7 +37,138 @@ const approvalRequestUser = z.object({ userId: z.string().nullable().optional() 
   })
 );
 
+const MAX_BATCH_REQUESTS = 50;
+
+const batchFailureSchema = z.object({
+  approvalRequestId: z.string().uuid(),
+  message: z.string()
+});
+
+const getBatchFailureMessage = (error: unknown, approvalRequestId: string, action: "review" | "merge") => {
+  if (error instanceof PermissionDeniedError && error.denial)
+    return `You don't have permission to ${action} this change request.`;
+  const httpError = error instanceof Error ? toHttpError(error) : error;
+  if (
+    httpError instanceof BadRequestError ||
+    httpError instanceof NotFoundError ||
+    httpError instanceof ConflictError ||
+    httpError instanceof ForbiddenRequestError ||
+    httpError instanceof PolicyViolationError
+  )
+    return httpError.message;
+  logger.error(error, `Batch ${action} of change request failed [approvalRequestId=${approvalRequestId}]`);
+  return `Something went wrong. Open this change request to ${action} it on its own.`;
+};
+
 export const registerSecretApprovalRequestRouter = async (server: FastifyZodProvider) => {
+  const mergeRequest = async (
+    req: FastifyRequest,
+    approvalId: string,
+    { bypassReason, requireApprovals }: { bypassReason?: string; requireApprovals?: boolean }
+  ) =>
+    server.services.secretChangeRequest.mergeSecretApprovalRequest({
+      actor: req.actor,
+      approvalId,
+      bypassReason,
+      requireApprovals
+    });
+
+  const recordMerge = async (
+    req: FastifyRequest,
+    {
+      approval,
+      projectId,
+      secretMutationEvents,
+      isMergedViaBypass,
+      requestedByActor
+    }: Awaited<ReturnType<typeof mergeRequest>>
+  ) => {
+    await server.services.auditLog.createAuditLog({
+      ...req.auditLogInfo,
+      orgId: req.actor.orgId,
+      projectId,
+      event: {
+        type: EventType.SECRET_APPROVAL_MERGED,
+        metadata: {
+          mergedBy: req.actor.id,
+          secretApprovalRequestSlug: approval.slug,
+          secretApprovalRequestId: approval.id,
+          isMergedViaBypass,
+          bypassReason: approval.bypassReason ?? undefined
+        }
+      }
+    });
+
+    for await (const event of secretMutationEvents) {
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        actor: requestedByActor ?? req.auditLogInfo.actor,
+        orgId: req.actor.orgId,
+        projectId,
+        event
+      });
+    }
+
+    const timeToMergeSeconds = Math.round((Date.now() - new Date(approval.createdAt).getTime()) / 1000);
+    void server.services.telemetry
+      .sendPostHogEvents({
+        event: PostHogEventTypes.SecretApprovalRequestMerged,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.actor.orgId,
+        properties: {
+          requestId: approval.id,
+          projectId,
+          requestSlug: approval.slug,
+          timeToMergeSeconds,
+          ...req.auditLogInfo
+        }
+      })
+      .catch(() => {});
+  };
+
+  const reviewRequest = async (
+    req: FastifyRequest,
+    approvalId: string,
+    { status, comment }: { status: ApprovalStatus.APPROVED | ApprovalStatus.REJECTED; comment?: string }
+  ) =>
+    server.services.secretChangeRequest.reviewApproval({
+      actor: req.actor,
+      approvalId,
+      status,
+      comment
+    });
+
+  const recordReview = async (req: FastifyRequest, review: Awaited<ReturnType<typeof reviewRequest>>) => {
+    await server.services.auditLog.createAuditLog({
+      ...req.auditLogInfo,
+      orgId: req.actor.orgId,
+      projectId: review.projectId,
+      event: {
+        type: EventType.SECRET_APPROVAL_REQUEST_REVIEW,
+        metadata: {
+          secretApprovalRequestId: review.requestId,
+          reviewedBy: review.reviewerUserId,
+          status: review.status as ApprovalStatus,
+          comment: review.comment || ""
+        }
+      }
+    });
+
+    void server.services.telemetry
+      .sendPostHogEvents({
+        event: PostHogEventTypes.SecretApprovalRequestReviewed,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.actor.orgId,
+        properties: {
+          requestId: review.requestId,
+          projectId: review.projectId,
+          reviewStatus: review.status,
+          ...req.auditLogInfo
+        }
+      })
+      .catch(() => {});
+  };
+
   server.route({
     method: "GET",
     url: "/",
@@ -39,7 +181,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         projectId: z.string().trim(),
         environment: z.string().trim().optional(),
         committer: z.string().trim().optional(),
-        search: z.string().trim().optional(),
+        search: z.string().trim().max(255).optional(),
         status: z.nativeEnum(RequestState).optional(),
         limit: z.coerce.number().default(20),
         offset: z.coerce.number().default(0),
@@ -92,11 +234,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { approvals, totalCount } = await server.services.secretApprovalRequest.getSecretApprovals({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+      const { approvals, totalCount } = await server.services.secretChangeRequest.getSecretApprovals({
+        actor: req.actor,
         ...req.query,
         projectId: req.query.projectId
       });
@@ -127,15 +266,103 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const approvals = await server.services.secretApprovalRequest.requestCount({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+      const approvals = await server.services.secretChangeRequest.requestCount({
+        actor: req.actor,
         projectId: req.query.projectId,
         policyId: req.query.policyId
       });
       return { approvals };
+    }
+  });
+
+  // Batch routes deviate from per-resource REST on purpose: bulk review sends up to
+  // MAX_BATCH_REQUESTS reviews or merges, and one call per request would exhaust writeLimit.
+  // They return 200 with per-request failures in `failures`, like the Agent Vault membership routes.
+  // Each request still goes through the single-request service path, with its own permission
+  // check, transaction and audit events, so one failure doesn't stop the others. Audit and
+  // telemetry run outside the try, because once the write commits the request can't be retried.
+  server.route({
+    method: "POST",
+    url: "/batch/review",
+    config: {
+      rateLimit: bulkWriteLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "batchReviewSecretApprovalRequests",
+      body: z.object({
+        approvalRequestIds: z.string().uuid().array().min(1).max(MAX_BATCH_REQUESTS),
+        status: z.enum([ApprovalStatus.APPROVED, ApprovalStatus.REJECTED]),
+        comment: auditSafeText(z.string().max(1000), { allowMultiline: true }).optional()
+      }),
+      response: {
+        200: z.object({
+          reviews: SecretApprovalRequestsReviewersSchema.array(),
+          failures: batchFailureSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const reviews: Awaited<ReturnType<typeof reviewRequest>>[] = [];
+      const failures: z.infer<typeof batchFailureSchema>[] = [];
+      for await (const approvalRequestId of new Set(req.body.approvalRequestIds)) {
+        let review: Awaited<ReturnType<typeof reviewRequest>>;
+        try {
+          review = await reviewRequest(req, approvalRequestId, { status: req.body.status, comment: req.body.comment });
+        } catch (error) {
+          failures.push({ approvalRequestId, message: getBatchFailureMessage(error, approvalRequestId, "review") });
+          continue;
+        }
+        reviews.push(review);
+        await recordReview(req, review).catch((error) =>
+          logger.error(
+            error,
+            `Failed to record batch review of change request [approvalRequestId=${approvalRequestId}]`
+          )
+        );
+      }
+      return { reviews, failures };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/batch/merge",
+    config: {
+      rateLimit: bulkWriteLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "batchMergeSecretApprovalRequests",
+      body: z.object({
+        approvalRequestIds: z.string().uuid().array().min(1).max(MAX_BATCH_REQUESTS)
+      }),
+      response: {
+        200: z.object({
+          approvals: SecretApprovalRequestsSchema.array(),
+          failures: batchFailureSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const approvals: Awaited<ReturnType<typeof mergeRequest>>["approval"][] = [];
+      const failures: z.infer<typeof batchFailureSchema>[] = [];
+      for await (const approvalRequestId of new Set(req.body.approvalRequestIds)) {
+        let merge: Awaited<ReturnType<typeof mergeRequest>>;
+        try {
+          merge = await mergeRequest(req, approvalRequestId, { requireApprovals: true });
+        } catch (error) {
+          failures.push({ approvalRequestId, message: getBatchFailureMessage(error, approvalRequestId, "merge") });
+          continue;
+        }
+        approvals.push(merge.approval);
+        await recordMerge(req, merge).catch((error) =>
+          logger.error(error, `Failed to record batch merge of change request [approvalRequestId=${approvalRequestId}]`)
+        );
+      }
+      return { approvals, failures };
     }
   });
 
@@ -167,60 +394,12 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { approval, projectId, secretMutationEvents, isMergedViaBypass, requestedByActor } =
-        await server.services.secretApprovalRequest.mergeSecretApprovalRequest({
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
-          approvalId: req.params.id,
-          bypassReason: req.body.bypassReason,
-          requireApprovals: req.body.requireApprovals
-        });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId,
-        event: {
-          type: EventType.SECRET_APPROVAL_MERGED,
-          metadata: {
-            mergedBy: req.permission.id,
-            secretApprovalRequestSlug: approval.slug,
-            secretApprovalRequestId: approval.id,
-            isMergedViaBypass,
-            bypassReason: approval.bypassReason ?? undefined
-          }
-        }
+      const merge = await mergeRequest(req, req.params.id, {
+        bypassReason: req.body.bypassReason,
+        requireApprovals: req.body.requireApprovals
       });
-
-      for await (const event of secretMutationEvents) {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          actor: requestedByActor ?? req.auditLogInfo.actor,
-          orgId: req.permission.orgId,
-          projectId,
-          event
-        });
-      }
-
-      const timeToMergeSeconds = Math.round((Date.now() - new Date(approval.createdAt).getTime()) / 1000);
-      void server.services.telemetry
-        .sendPostHogEvents({
-          event: PostHogEventTypes.SecretApprovalRequestMerged,
-          distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: {
-            requestId: approval.id,
-            projectId,
-            requestSlug: approval.slug,
-            timeToMergeSeconds,
-            ...req.auditLogInfo
-          }
-        })
-        .catch(() => {});
-
-      return { approval };
+      await recordMerge(req, merge);
+      return { approval: merge.approval };
     }
   });
 
@@ -247,45 +426,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const review = await server.services.secretApprovalRequest.reviewApproval({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        approvalId: req.params.id,
-        status: req.body.status,
-        comment: req.body.comment
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: review.projectId,
-        event: {
-          type: EventType.SECRET_APPROVAL_REQUEST_REVIEW,
-          metadata: {
-            secretApprovalRequestId: review.requestId,
-            reviewedBy: review.reviewerUserId,
-            status: review.status as ApprovalStatus,
-            comment: review.comment || ""
-          }
-        }
-      });
-
-      void server.services.telemetry
-        .sendPostHogEvents({
-          event: PostHogEventTypes.SecretApprovalRequestReviewed,
-          distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: {
-            requestId: review.requestId,
-            projectId: review.projectId,
-            reviewStatus: req.body.status,
-            ...req.auditLogInfo
-          }
-        })
-        .catch(() => {});
-
+      const review = await reviewRequest(req, req.params.id, req.body);
+      await recordReview(req, review);
       return { review };
     }
   });
@@ -312,11 +454,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const approval = await server.services.secretApprovalRequest.updateApprovalStatus({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+      const approval = await server.services.secretChangeRequest.updateApprovalStatus({
+        actor: req.actor,
         approvalId: req.params.id,
         status: req.body.status
       });
@@ -342,7 +481,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretApprovalRequestStatusChanged,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             requestId: approval.id,
             projectId: approval.projectId,
@@ -455,11 +594,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const approval = await server.services.secretApprovalRequest.getSecretApprovalDetails({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+      const approval = await server.services.secretChangeRequest.getSecretApprovalDetails({
+        actor: req.actor,
         id: req.params.id
       });
       return { approval };

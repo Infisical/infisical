@@ -17,12 +17,12 @@ import {
   TSecretScanningFactoryGetScanReport,
   TSecretScanningFactoryInitialize,
   TSecretScanningFactoryListRawResources,
+  TSecretScanningFactoryParams,
   TSecretScanningFactoryPostInitialization,
   TSecretScanningFactorySetupWebhook,
   TSecretScanningFactoryTeardown,
   TSecretScanningFactoryValidateConfigUpdate
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
-import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { BasicRepositoryRegex } from "@app/lib/regex";
 import { listGitHubRadarRepositories, TGitHubRadarConnection } from "@app/services/app-connection/github-radar";
@@ -43,7 +43,7 @@ import {
   TQueueGitHubResourceDiffScan
 } from "./github-secret-scanning-types";
 
-export const GitHubSecretScanningFactory = () => {
+export const GitHubSecretScanningFactory = ({ instanceConfigService }: TSecretScanningFactoryParams) => {
   const initialize: TSecretScanningFactoryInitialize<TGitHubDataSourceInput, TGitHubRadarConnection> = async (
     { connection, secretScanningV2DAL },
     callback
@@ -89,7 +89,7 @@ export const GitHubSecretScanningFactory = () => {
   const listRawResources: TSecretScanningFactoryListRawResources<TGitHubDataSourceWithConnection> = async (
     dataSource
   ) => {
-    const repos = await listGitHubRadarRepositories(dataSource.connection);
+    const repos = await listGitHubRadarRepositories(dataSource.connection, instanceConfigService);
 
     return repos.map(({ id, full_name }) => ({
       name: full_name,
@@ -102,7 +102,8 @@ export const GitHubSecretScanningFactory = () => {
     resourceName,
     tempFolder
   }) => {
-    const appCfg = getConfig();
+    const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID, INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY } =
+      await instanceConfigService.getOverridableEnv();
     const {
       connection: {
         credentials: { installationId }
@@ -111,8 +112,8 @@ export const GitHubSecretScanningFactory = () => {
 
     const octokit = new ProbotOctokit({
       auth: {
-        appId: appCfg.INF_APP_CONNECTION_GITHUB_RADAR_APP_ID,
-        privateKey: appCfg.INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY,
+        appId: INF_APP_CONNECTION_GITHUB_RADAR_APP_ID,
+        privateKey: INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY,
         installationId
       }
     });
@@ -160,13 +161,16 @@ export const GitHubSecretScanningFactory = () => {
     TQueueGitHubResourceDiffScan["payload"]
   > = async ({ dataSource, payload, resourceName, configPath }) => {
     if (isGitHubPullRequestScanPayload(payload)) {
-      return scanGitHubPullRequest({ payload, resourceName, configPath });
+      return scanGitHubPullRequest({ payload, resourceName, configPath, instanceConfigService });
     }
 
     const { commits, repository } = payload;
 
-    const findings = await scanGitHubCommitsAndGetFindings({
-      octokit: getGitHubRadarInstallationOctokit(dataSource.connection.credentials.installationId),
+    const { findings } = await scanGitHubCommitsAndGetFindings({
+      octokit: await getGitHubRadarInstallationOctokit(
+        dataSource.connection.credentials.installationId,
+        instanceConfigService
+      ),
       repositoryFullName: repository.full_name,
       resourceName,
       commits: commits.map((commit) => ({
@@ -192,7 +196,8 @@ export const GitHubSecretScanningFactory = () => {
       installationId: payload.installationId,
       repositoryFullName: payload.repository.full_name,
       metadata: getPullRequestScanMetadata(payload),
-      findingsUrl: payload.findingsUrl
+      findingsUrl: payload.findingsUrl,
+      instanceConfigService
     });
   };
 
@@ -206,7 +211,8 @@ export const GitHubSecretScanningFactory = () => {
       // A GitHub data source's external ID is its installation ID.
       installationId: dataSource.externalId,
       repositoryFullName: resourceName,
-      metadata: metadata.data
+      metadata: metadata.data,
+      instanceConfigService
     });
   };
 

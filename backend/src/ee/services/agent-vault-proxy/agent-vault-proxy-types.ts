@@ -1,4 +1,4 @@
-import { TGenericPermission } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 
 import {
   AgentVaultCredentialType,
@@ -6,7 +6,7 @@ import {
   AgentVaultTrafficPolicy
 } from "../agent-vault/agent-vault-enums";
 
-export type TAgentVaultProxyScoped = { projectId: string; ctx: TGenericPermission };
+export type TAgentVaultProxyScoped = { projectId: string; ctx: TActorContext };
 
 export type TAgentVaultProxyConfig = {
   // The name proxies understand; the admin API calls bundle-hosts service-hosts.
@@ -42,6 +42,8 @@ export type TUpdateProxyDTO = TAgentVaultProxyScoped & {
 
 export type TProxyByIdDTO = TAgentVaultProxyScoped & { proxyId: string };
 
+export type TRevokeProxyAccessDTO = TProxyByIdDTO;
+
 export type TBootstrapProxyDTO = {
   proxyId: string;
   tokenVersion: number;
@@ -55,6 +57,7 @@ export type TProxyRootCa = {
 
 export type THeartbeatDTO = {
   proxyId: string;
+  tokenVersion: number;
 };
 
 export type TAuthorizeSessionDTO = {
@@ -64,6 +67,21 @@ export type TAuthorizeSessionDTO = {
 };
 
 export type TGetSessionSkillsDTO = {
+  sessionToken: string;
+};
+
+export type TGetSessionProxyCaFingerprintsDTO = {
+  sessionToken: string;
+};
+
+export type TGetSessionServicesDTO = {
+  sessionToken: string;
+  // Set by a proxy that forwarded the request, naming itself and its version.
+  proxyId?: string;
+  proxyVersion?: string;
+};
+
+export type TRevokeSessionByTokenDTO = {
   sessionToken: string;
 };
 
@@ -85,13 +103,23 @@ export type TReportMissingScopesDTO = TRefreshCredentialDTO & {
   requiredScopes: string[];
 };
 
+export type TResolvedNativeTarget = {
+  host: string;
+  port: number;
+  database: string | null;
+  tls: { enabled: boolean; verify: boolean; ca: string | null } | null;
+};
+
 export type TResolvedService = {
   id: string;
   name: string;
-  // Null for a service sent inline with the session, which belongs to no bundle.
+  // Null for a service sent inline with the session and for a service the session lists by name, neither of which comes
+  // from a bundle. A null name alone doesn't say the service was sent with the session.
   accessBundleName: string | null;
   type: AgentVaultServiceType;
-  hostPattern: string;
+  // Null for a database or SSH service, whose server is in `native` instead.
+  hostPattern: string | null;
+  native: TResolvedNativeTarget | null;
   allowedMethods: string[] | null;
   allowedPathPrefixes: string[] | null;
   allowedTools: string[] | null;
@@ -106,10 +134,34 @@ export type TResolvedService = {
         expiresAt?: string | null;
       }
     | { type: AgentVaultCredentialType.Basic; username: string; password: string }
+    | { type: AgentVaultCredentialType.SshKey; username: string; privateKey: string; certificate?: string }
     | { type: AgentVaultCredentialType.Passthrough };
   customHeaders: { name: string; prefix: string; value: string }[];
   substitutions: { placeholder: string; surfaces: string[]; value: string }[];
   // The service takes part of its credential from each member and the member whose values the session uses (its owner,
   // or the user it acts for) hasn't set them, so the proxy refuses its requests rather than sending them without one.
   personalValuesMissing: boolean;
+  // The OAuth variable a session's own service used was deleted. Sent with personalValuesMissing, so a proxy that
+  // predates this flag refuses the service too.
+  credentialRemoved?: boolean;
+  // The OAuth variable the service sends isn't signed in. Sent with personalValuesMissing, so a proxy that predates
+  // this flag refuses the service too.
+  credentialNotConnected?: boolean;
+  // Some of the credential is each member's own, so a rejection is theirs to fix, not the admin's.
+  memberProvided: boolean;
+  // The bundle the service came from. Null for a service sent inline with the session and for one it lists by name.
+  accessBundleId: string | null;
+  // Asked before the requests its narrowing picks, or all of them without one (each connection for a database or SSH
+  // service). Proxies from before narrowing ignore methods, paths and tools and ask about every request.
+  hook: TResolvedServiceHook | null;
+};
+
+export type TResolvedServiceHook = {
+  id: string;
+  name: string;
+  url: string;
+  secret: string;
+  methods?: string[];
+  paths?: string[];
+  tools?: string[];
 };

@@ -1,26 +1,25 @@
-import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { ActionProjectType, TCertificateAuthorityCrossSignedCerts } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TCertificateAuthorityCrossSignedCerts, ProjectType } from "@app/db/schemas";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionCertificateAuthorityActions,
-  ProjectPermissionSet,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+  ProjectPermissionSub,
+  ProjectPermission,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { caNotFoundError } from "@app/services/certificate-authority/certificate-authority-errors";
 import {
   expandInternalCa,
   getCaCertChain,
   getPublicKeyFingerprint
 } from "@app/services/certificate-authority/certificate-authority-fns";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "./certificate-authority-cross-signed-cert-dal";
 import { validateCrossSignedCertificate } from "./certificate-authority-cross-signed-cert-fns";
@@ -40,10 +39,11 @@ type TCertificateAuthorityCrossSignedCertServiceFactoryDep = {
     TCertificateAuthorityCrossSignedCertDALFactory,
     "findOne" | "findByCaIdForUpdate" | "upsert" | "delete" | "transaction"
   >;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
+  projectPermissionService: TProjectPermissionService;
+  licenseService: TLicenseService;
 };
 
 export type TCertificateAuthorityCrossSignedCertServiceFactory = ReturnType<
@@ -55,8 +55,9 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
   certificateAuthorityCertDAL,
   certificateAuthorityCrossSignedCertDAL,
   projectDAL,
-  kmsService,
-  permissionService,
+  kmsDataKeyService,
+  kmsKeyService,
+  projectPermissionService,
   licenseService
 }: TCertificateAuthorityCrossSignedCertServiceFactoryDep) => {
   const $toCrossSignedCertMetadata = (crossSignedCert: TCertificateAuthorityCrossSignedCerts) => ({
@@ -71,12 +72,8 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
     projectId: string,
     crossSignedCert: TCertificateAuthorityCrossSignedCerts
   ) => {
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -94,44 +91,43 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     const project = ca.internalCa?.id ? await projectDAL.findById(ca.projectId) : undefined;
     if (!ca.internalCa?.id || project?.orgId !== actorOrgId) {
-      throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+      throw caNotFoundError(caId);
     }
     return { ...ca, internalCa: ca.internalCa };
   };
 
-  const $assertCanManageCrossSignedCert = (permission: MongoAbility<ProjectPermissionSet>, caName: string) => {
-    const caSubject = subject(ProjectPermissionSub.CertificateAuthorities, { name: caName });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
-      caSubject
-    );
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateAuthorityActions.Edit, caSubject);
+  const $assertCanManageCrossSignedCert = (permission: ProjectPermission, caName: string) => {
+    const caSubject = { name: caName };
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: caSubject
+    });
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Edit,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: caSubject
+    });
   };
 
   const importCaCrossSignedCert = async ({
     caId,
     certificate,
     certificateChain,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TImportCaCrossSignedCertDTO) => {
-    const ca = await $getInternalCaInActorOrg(caId, actorOrgId);
+    const ca = await $getInternalCaInActorOrg(caId, actor.org.id);
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     $assertCanManageCrossSignedCert(permission, ca.name);
 
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.pkiCrossSignedCa) {
+    const plan = await licenseService.getPlan(actor.org.id);
+    if (!plan.has(PlanFeature.PkiCrossSignedCa)) {
       throw new BadRequestError({
         message:
           "Failed to import a cross-signed certificate due to plan restriction. Upgrade plan to use cross-signed CA certificates."
@@ -148,8 +144,8 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
       caCertId: ca.internalCa.activeCaCertId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
-      projectDAL,
-      kmsService
+      kmsDataKeyService,
+      kmsKeyService
     });
 
     const subCaDepth = await certificateAuthorityDAL.findMaxSubCaDepth(ca.id);
@@ -162,12 +158,8 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
       certificateChain
     });
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -225,28 +217,20 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
     };
   };
 
-  const getCaCrossSignedCert = async ({
-    caId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetCaCrossSignedCertDTO) => {
-    const ca = await $getInternalCaInActorOrg(caId, actorOrgId);
+  const getCaCrossSignedCert = async ({ caId, actor }: TGetCaCrossSignedCertDTO) => {
+    const ca = await $getInternalCaInActorOrg(caId, actor.org.id);
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Read,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Read,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: ca.name }
+    });
 
     const crossSignedCert = await certificateAuthorityCrossSignedCertDAL.findOne({ caId: ca.id });
 
@@ -256,22 +240,13 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
     };
   };
 
-  const deleteCaCrossSignedCert = async ({
-    caId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TDeleteCaCrossSignedCertDTO) => {
-    const ca = await $getInternalCaInActorOrg(caId, actorOrgId);
+  const deleteCaCrossSignedCert = async ({ caId, actor }: TDeleteCaCrossSignedCertDTO) => {
+    const ca = await $getInternalCaInActorOrg(caId, actor.org.id);
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     $assertCanManageCrossSignedCert(permission, ca.name);

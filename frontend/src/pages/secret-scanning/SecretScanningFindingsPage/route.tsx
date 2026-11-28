@@ -13,6 +13,7 @@ export const Route = createFileRoute(
     z.object({
       dataSourceId: z.string().uuid().optional().catch(undefined),
       resourceId: z.string().uuid().optional().catch(undefined),
+      scanId: z.string().uuid().optional().catch(undefined),
       status: z
         .union([z.nativeEnum(SecretScanningFindingStatus), z.literal("all")])
         .optional()

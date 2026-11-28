@@ -11,7 +11,8 @@ import { getAuthToken, queryClient as qc } from "@app/hooks/api/reactQuery";
 import { authKeys } from "../auth/queries";
 import { MfaMethod } from "../auth/types";
 import { TGroupWithProjectMemberships } from "../groups/types";
-import { setAuthToken } from "../reactQuery";
+import { TListActorProjectMembershipsParams } from "../projects/types";
+import { setAuthToken, setMfaTempToken } from "../reactQuery";
 import { subscriptionQueryKeys } from "../subscriptions/queries";
 import { webAuthnKeys } from "../webauthn/queries";
 import { userKeys } from "./query-keys";
@@ -24,6 +25,7 @@ import {
   RenameUserDTO,
   TokenVersion,
   TOrgUserAccess,
+  TUserDeletionEligibility,
   TWorkspaceUser,
   UpdateOrgMembershipDTO,
   User,
@@ -73,14 +75,35 @@ export const useGetMyDuplicateAccount = () =>
     })
   });
 
+export const useGetMyDeletionEligibility = ({ enabled = true }: { enabled?: boolean } = {}) => {
+  return useQuery({
+    queryKey: userKeys.myDeletionEligibility,
+    queryFn: async () => {
+      const {
+        data: { deletionEligibility }
+      } = await apiRequest.get<{ deletionEligibility: TUserDeletionEligibility }>(
+        "/api/v2/users/me/deletion-eligibility"
+      );
+      return deletionEligibility;
+    },
+    enabled
+  });
+};
+
 export const useDeleteMe = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({
+      lastMemberOrganizationIds = []
+    }: { lastMemberOrganizationIds?: string[] } = {}) => {
       const {
         data: { user }
-      } = await apiRequest.delete<{ user: User }>("/api/v2/users/me");
+      } = await apiRequest.delete<{ user: User }>("/api/v2/users/me", {
+        params: lastMemberOrganizationIds.length
+          ? { lastMemberOrganizationIds: lastMemberOrganizationIds.join(",") }
+          : undefined
+      });
       return user;
     },
     onSuccess: () => {
@@ -206,7 +229,6 @@ export const useAddUsersToOrg = () => {
       grantFailures?: {
         projectIds: string[];
         pamAccess: boolean;
-        agentVaultAccess: boolean;
       };
     };
   };
@@ -243,20 +265,22 @@ export const useGetOrgMembership = (organizationId: string, orgMembershipId: str
 
 export const useGetOrgMembershipProjectMemberships = (
   organizationId: string,
-  orgMembershipId: string
+  orgMembershipId: string,
+  params: TListActorProjectMembershipsParams = {},
+  options: { enabled?: boolean } = {}
 ) => {
   return useQuery({
-    queryKey: userKeys.forOrgMembershipProjectMemberships(organizationId, orgMembershipId),
+    queryKey: userKeys.forOrgMembershipProjectMemberships(organizationId, orgMembershipId, params),
     queryFn: async () => {
-      const {
-        data: { memberships }
-      } = await apiRequest.get<{ memberships: TWorkspaceUser[] }>(
-        `/api/v2/organizations/${organizationId}/memberships/${orgMembershipId}/project-memberships`
+      const { data } = await apiRequest.get<{ memberships: TWorkspaceUser[]; totalCount: number }>(
+        `/api/v2/organizations/${organizationId}/memberships/${orgMembershipId}/project-memberships`,
+        { params }
       );
 
-      return memberships;
+      return data;
     },
-    enabled: Boolean(organizationId) && Boolean(orgMembershipId)
+    enabled: Boolean(organizationId) && Boolean(orgMembershipId) && (options.enabled ?? true),
+    placeholderData: (prev) => prev
   });
 };
 
@@ -369,6 +393,8 @@ export const useLogoutUser = () => {
         logoutTimer = null;
       }
       setAuthToken("");
+      // A pending MFA token would otherwise be sent as the bearer and, once expired, fail the logout.
+      setMfaTempToken("");
       // Remove the login check cache immediately so the restrict-login-signup
       // middleware doesn't find stale auth data and redirect to select-organization.
       qc.removeQueries({ queryKey: authKeys.getAuthToken });

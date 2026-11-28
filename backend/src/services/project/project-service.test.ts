@@ -1,8 +1,12 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { OrgMembershipStatus, ProjectType } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 
 import { projectServiceFactory } from "./project-service";
 
@@ -28,18 +32,18 @@ const setup = () => {
     find: vi.fn().mockResolvedValue([]),
     transaction: vi.fn(<T>(cb: (trx: unknown) => Promise<T>) => cb(tx))
   };
-  const permissionService = {
-    getOrgPermission: vi.fn().mockResolvedValue({ permission: { cannot: () => false } })
+  const orgPermissionService = {
+    getOrgPermission: vi.fn().mockResolvedValue({ cannot: () => false })
   };
-  const licenseService = { getPlan: vi.fn().mockResolvedValue({ workspaceLimit: null }) };
+  const licenseService = new FakeLicenseService();
   const service = projectServiceFactory({
     orgDAL,
     projectDAL,
-    permissionService,
+    orgPermissionService,
     licenseService
   } as unknown as Parameters<typeof projectServiceFactory>[0]);
 
-  return { service, orgDAL, projectDAL, permissionService, licenseService, memberships, tx };
+  return { service, orgDAL, projectDAL, orgPermissionService, licenseService, memberships, tx };
 };
 
 describe("project navigation across sub-organizations", () => {
@@ -147,10 +151,7 @@ describe("project navigation across sub-organizations", () => {
 describe("secret scanning project uniqueness", () => {
   const createSecretScanningProject = (service: ReturnType<typeof setup>["service"]) =>
     service.createProject({
-      actor: ActorType.USER,
-      actorId: "user",
-      actorOrgId: "root",
-      actorAuthMethod: null,
+      actor: { principal: { type: ActorType.USER, id: "user" }, org: { id: "root" } } as TActorContext,
       projectName: "Scanning",
       type: ProjectType.SecretScanning
     });
@@ -179,20 +180,78 @@ describe("secret scanning project uniqueness", () => {
 });
 
 describe("org-scoped product projects", () => {
-  test.each([ProjectType.PAM, ProjectType.AgentVault])("rejects creating %s projects directly", async (type) => {
+  test("rejects creating PAM projects directly", async () => {
     const { service, projectDAL } = setup();
 
     await expect(
       service.createProject({
-        actor: ActorType.USER,
-        actorId: "user",
-        actorOrgId: "root",
-        actorAuthMethod: null,
+        actor: { principal: { type: ActorType.USER, id: "user" }, org: { id: "root" } } as TActorContext,
         projectName: "Managed",
-        type
+        type: ProjectType.PAM
       })
     ).rejects.toThrow(BadRequestError);
 
     expect(projectDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("rejects a project template on an Agent Vault project", async () => {
+    const { service, projectDAL } = setup();
+
+    await expect(
+      service.createProject({
+        actor: { principal: { type: ActorType.USER, id: "user" }, org: { id: "root" } } as TActorContext,
+        projectName: "Apollo",
+        type: ProjectType.AgentVault,
+        template: "my-template"
+      })
+    ).rejects.toThrow("Agent Vault projects don't use project templates");
+
+    expect(projectDAL.transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe("certificate search with current status", () => {
+  test("derives each status and reads rows and count at the same instant", async () => {
+    const past = new Date(Date.now() - 86_400_000);
+    const future = new Date(Date.now() + 86_400_000);
+    const certificateDAL = {
+      findWithPrivateKeyInfo: vi.fn().mockResolvedValue([
+        { id: "expired", status: CertStatus.ACTIVE, notAfter: past, deletedAt: null },
+        { id: "active", status: CertStatus.ACTIVE, notAfter: future, deletedAt: null },
+        { id: "deleted", status: CertStatus.ACTIVE, notAfter: future, deletedAt: past }
+      ]),
+      countCertificatesInProject: vi.fn().mockResolvedValue(3)
+    };
+    const service = projectServiceFactory({
+      projectDAL: { findProjectByFilter: vi.fn().mockResolvedValue({ id: "project" }) },
+      projectPermissionService: {
+        getProjectPermission: vi
+          .fn()
+          .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }))
+      },
+      certificateDAL,
+      licenseService: new FakeLicenseService()
+    } as unknown as Parameters<typeof projectServiceFactory>[0]);
+
+    const result = await service.searchCertificatesWithCurrentStatus({
+      filter: { type: "id", projectId: "project" },
+      actor: { principal: { type: ActorType.USER, id: "user" }, org: { id: "org" } },
+      sortBy: "status"
+    } as unknown as Parameters<typeof service.searchCertificatesWithCurrentStatus>[0]);
+
+    expect(result.certificates.map(({ id, status }) => ({ id, status }))).toEqual([
+      { id: "expired", status: CertStatus.EXPIRED },
+      { id: "active", status: CertStatus.ACTIVE },
+      { id: "deleted", status: CertStatus.DELETED }
+    ]);
+    expect(result.totalCount).toBe(3);
+
+    const [, listOptions] = certificateDAL.findWithPrivateKeyInfo.mock.calls[0] as [
+      unknown,
+      { sortByCurrentStatus?: boolean; statusAt?: Date }
+    ];
+    expect(listOptions.sortByCurrentStatus).toBe(true);
+    expect(listOptions.statusAt).toBeInstanceOf(Date);
+    expect(certificateDAL.countCertificatesInProject.mock.calls[0][2]).toBe(listOptions.statusAt);
   });
 });

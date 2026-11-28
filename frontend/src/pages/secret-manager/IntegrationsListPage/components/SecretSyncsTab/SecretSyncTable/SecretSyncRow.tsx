@@ -110,7 +110,7 @@ export const SecretSyncRow = ({
     syncStatus,
     isAutoSyncEnabled,
     projectId,
-    syncOptions
+    includeAllSubFolders
   } = secretSync;
 
   const { currentOrg } = useOrganization();
@@ -183,7 +183,7 @@ export const SecretSyncRow = ({
         <SecretSyncDestinationSourceCell
           folderPath={folder.path}
           environmentName={environment.name}
-          includeAllSubFolders={Boolean(syncOptions.includeAllSubFolders)}
+          includeAllSubFolders={includeAllSubFolders}
         />
       ) : (
         <TableCell>

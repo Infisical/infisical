@@ -203,8 +203,8 @@ func TestOrganization_Update(t *testing.T) {
 		sso.NewOIDC(t, tn)
 
 		// Action
-		res, err := tn.Admin.API.UpdateOrganizationWithResponse(t.Context(), tn.OrgID.String(),
-			api.UpdateOrganizationJSONRequestBody{AuthEnforced: new(true)})
+		res, err := tn.Admin.API.UpdateOrganizationSsoSettingsWithResponse(t.Context(),
+			api.UpdateOrganizationSsoSettingsJSONRequestBody{AuthEnforced: new(true)})
 
 		// Assert
 		require.NoError(t, err)
@@ -220,8 +220,8 @@ func TestOrganization_Update(t *testing.T) {
 		tn := h.NewTenant(t)
 
 		// Action
-		res, err := tn.Admin.API.UpdateOrganizationWithResponse(t.Context(), tn.OrgID.String(),
-			api.UpdateOrganizationJSONRequestBody{AuthEnforced: new(true), GoogleSsoAuthEnforced: new(true)})
+		res, err := tn.Admin.API.UpdateOrganizationSsoSettingsWithResponse(t.Context(),
+			api.UpdateOrganizationSsoSettingsJSONRequestBody{AuthEnforced: new(true), GoogleSsoAuthEnforced: new(true)})
 
 		// Assert
 		require.NoError(t, err)
@@ -252,6 +252,23 @@ func TestOrganization_Delete(t *testing.T) {
 		require.NoError(t, err)
 		requireStatus(t, http.StatusForbidden, res.StatusCode(), res.Body)
 		require.Equal(t, tn.OrgSlug, orgOf(t, tn).Slug)
+		require.False(t, fixture.LicenseOrgDeleted(t, fixture.LicenseServer(t, tn, tn.OrgID), tn.OrgID))
+	})
+
+	t.Run("should tell the license server the org is gone so its subscription is canceled", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		licenseServer := fixture.LicenseServer(t, tn, tn.OrgID)
+
+		// Action
+		res, err := tn.Admin.API.DeleteOrganizationWithResponse(t.Context(), tn.OrgID.String())
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		fixture.RequireLicenseOrgDeleted(t, licenseServer, tn.OrgID)
 	})
 
 	t.Run("should delete the org and refuse its members' tokens on its routes", func(t *testing.T) {

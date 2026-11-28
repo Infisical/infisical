@@ -2,6 +2,7 @@ import { diffLines } from "diff";
 import { strFromU8, unzipSync, zipSync } from "fflate";
 import { JSON_SCHEMA, load, YAMLException } from "js-yaml";
 
+import { bytesToBase64 } from "@app/helpers/string";
 import { TAgentVaultSkillFile, TAgentVaultSkillFileMode } from "@app/hooks/api/agentVault/types";
 
 export const SKILL_NAME_MAX_LENGTH = 64;
@@ -27,14 +28,6 @@ export const formatSkillBytes = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
-
-export const bytesToBase64 = (bytes: Uint8Array) => {
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 8192) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
-  }
-  return btoa(binary);
 };
 
 export const base64ToBytes = (value: string) =>
@@ -261,10 +254,16 @@ const LONE_SURROGATE_RE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF
 const WINDOWS_INVALID_CHARS_RE = /[:<>"|?*]/;
 const WINDOWS_DEVICE_NAME_RE = /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?$/i;
 
-export const isReservedSkillName = (name: string) => WINDOWS_DEVICE_NAME_RE.test(name);
+// Agents get Agent Vault's built-in skill under this name, so the API refuses it for a library skill.
+const BUILTIN_SKILL_NAME = "infisical-agent-vault";
+
+export const isReservedSkillName = (name: string) =>
+  name === BUILTIN_SKILL_NAME || WINDOWS_DEVICE_NAME_RE.test(name);
 
 export const getReservedSkillNameMessage = (name: string) =>
-  `'${name}' is a reserved name and can't be used as a skill name.`;
+  name === BUILTIN_SKILL_NAME
+    ? `'${BUILTIN_SKILL_NAME}' is reserved for the skill Agent Vault gives every agent. Choose another name in SKILL.md.`
+    : `'${name}' is a reserved name and can't be used as a skill name.`;
 
 /** Why the server would refuse a file path, or null. Mirrors assertValidPath in the backend's agent-vault-skill-fns.ts. */
 export const getSkillPathError = (path: string): string | null => {

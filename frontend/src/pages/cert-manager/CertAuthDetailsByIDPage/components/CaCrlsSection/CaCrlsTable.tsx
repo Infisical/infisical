@@ -1,7 +1,9 @@
+import { format } from "date-fns";
 import FileSaver from "file-saver";
 import { ClipboardListIcon, DownloadIcon, EllipsisIcon } from "lucide-react";
 
 import {
+  CopyButton,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -16,15 +18,21 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useGetCaCrls } from "@app/hooks/api";
 
 type Props = {
   caId: string;
+  caName: string;
 };
 
-export const CaCrlsTable = ({ caId }: Props) => {
+const formatFullTimestamp = (date: string) => format(new Date(date), "MMM dd, yyyy HH:mm:ss zzz");
+
+export const CaCrlsTable = ({ caId, caName }: Props) => {
   const { data: caCrls, isPending } = useGetCaCrls(caId);
 
   const downloadTxtFile = (filename: string, content: string) => {
@@ -55,14 +63,49 @@ export const CaCrlsTable = ({ caId }: Props) => {
       <TableHeader>
         <TableRow>
           <TableHead>Distribution Point URL</TableHead>
+          <TableHead className="w-px">CRL Number</TableHead>
+          <TableHead className="w-px">Last Updated</TableHead>
+          <TableHead className="w-px">Next Update</TableHead>
           <TableHead className="w-5" />
         </TableRow>
       </TableHeader>
       <TableBody>
-        {caCrls.map(({ id, crl }) => {
+        {caCrls.map(({ id, crl, crlNumber, thisUpdate, nextUpdate }) => {
+          const crlUrl = `${window.origin}/api/v1/cert-manager/crl/${id}/der`;
           return (
-            <TableRow key={`ca-crl-${id}`}>
-              <TableCell>{`${window.origin}/api/v1/cert-manager/crl/${id}`}</TableCell>
+            <TableRow key={`ca-crl-${id}`} className="group">
+              <TableCell className="max-w-0">
+                <div className="flex items-center gap-1">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="truncate">{crlUrl}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>{crlUrl}</TooltipContent>
+                  </Tooltip>
+                  <CopyButton
+                    value={crlUrl}
+                    ariaLabel="Copy distribution point URL"
+                    className="shrink-0 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100"
+                  />
+                </div>
+              </TableCell>
+              <TableCell>{crlNumber ?? "-"}</TableCell>
+              <TableCell>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <time dateTime={thisUpdate}>{format(new Date(thisUpdate), "yyyy-MM-dd")}</time>
+                  </TooltipTrigger>
+                  <TooltipContent>{formatFullTimestamp(thisUpdate)}</TooltipContent>
+                </Tooltip>
+              </TableCell>
+              <TableCell>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <time dateTime={nextUpdate}>{format(new Date(nextUpdate), "yyyy-MM-dd")}</time>
+                  </TooltipTrigger>
+                  <TooltipContent>{formatFullTimestamp(nextUpdate)}</TooltipContent>
+                </Tooltip>
+              </TableCell>
               <TableCell>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -74,9 +117,7 @@ export const CaCrlsTable = ({ caId }: Props) => {
                     <DropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigator.clipboard.writeText(
-                          `${window.origin}/api/v1/cert-manager/crl/${id}`
-                        );
+                        navigator.clipboard.writeText(crlUrl);
                       }}
                     >
                       <ClipboardListIcon />
@@ -85,7 +126,12 @@ export const CaCrlsTable = ({ caId }: Props) => {
                     <DropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation();
-                        downloadTxtFile("crl.pem", crl);
+                        downloadTxtFile(
+                          crlNumber === null
+                            ? `${caName}-crl.pem`
+                            : `${caName}-crl-${crlNumber}.pem`,
+                          crl
+                        );
                       }}
                     >
                       <DownloadIcon />

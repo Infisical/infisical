@@ -30,12 +30,12 @@ type TOutcome =
 const failureMessage = (error: unknown) => {
   if (axios.isAxiosError<{ message?: unknown }>(error)) {
     if (error.response?.status === 404) {
-      return "This authorization expired or was started by another user. Close this window and select Authorize again.";
+      return "This authorization expired or was started by another user. Close this window and try again.";
     }
     const message = error.response?.data?.message;
     if (typeof message === "string") return message;
   }
-  return "Couldn't finish the authorization. Close this window and select Authorize again.";
+  return "Couldn't finish the authorization. Close this window and try again.";
 };
 
 export const AgentVaultOAuthCallbackPage = () => {
@@ -54,8 +54,7 @@ export const AgentVaultOAuthCallbackPage = () => {
     if (!state || !authorizationId) {
       setOutcome({
         status: "failed",
-        message:
-          "This page is missing the authorization details. Close this window and select Authorize again."
+        message: "This page is missing the authorization details. Close this window and try again."
       });
       return;
     }

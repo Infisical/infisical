@@ -1,33 +1,43 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
+import { Knex } from "knex";
 
-import { ActionProjectType, ResourceType } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectType } from "@app/db/schemas";
+import {
+  ApplicationCertificatePermissionActions,
+  ApplicationPermissionActions,
+  ApplicationPermissionSub,
+  TApplicationPermissionService
+} from "@app/domains/certificates/cert-manager/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateProfileActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
 import {
-  ResourcePermissionApplicationActions,
-  ResourcePermissionCertificateActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
+  assertProfileCaSupportsMicrosoftAutoenrollment,
+  describeApplicationList,
+  loadTemplateSigningCa
+} from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-fns";
+import { findTemplatePolicyProblem } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-template-fns";
 import { buildUrl } from "@app/ee/services/pki-acme/pki-acme-fns";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { TScepDynamicChallengeDALFactory } from "@app/ee/services/pki-scep/pki-scep-dynamic-challenge-dal";
 import { generateAndEncryptScepRaCertificate, resolveScepRaSigning } from "@app/ee/services/pki-scep/pki-scep-fns";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import type { TCaKeySourceServiceFactory } from "../certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaCapability, CaType } from "../certificate-authority/certificate-authority-enums";
+import { caNotFoundError } from "../certificate-authority/certificate-authority-errors";
 import {
   caSupportsCapability,
   CERTIFICATE_AUTHORITIES_TYPE_MAP
@@ -46,12 +56,16 @@ import {
 } from "../certificate-common/certificate-extension-fns";
 import { isSignatureAlgorithmCompatibleWithCaKey } from "../certificate-common/certificate-issuance-utils";
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
+import {
+  certificatePolicyNotFoundError,
+  describeUnsupportedCommonNameDefaultSans
+} from "../certificate-policy/certificate-policy-fns";
 import { TCertificatePolicyServiceFactory } from "../certificate-policy/certificate-policy-service";
-import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
+import { TCertificatePolicy, TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { getCertificateCredentials, isCertChainValid } from "../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { CertStatus } from "../certificate/certificate-types";
+import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "../certificate/certificate-types";
 import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import {
@@ -62,12 +76,14 @@ import {
 } from "../enrollment-config/enrollment-config-types";
 import { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
 import { TScepEnrollmentConfigDALFactory } from "../enrollment-config/scep-enrollment-config-dal";
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
-import { TProjectDALFactory } from "../project/project-dal";
-import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TCertificateProfileDALFactory } from "./certificate-profile-dal";
+import {
+  certificateProfileNotFoundError,
+  enrollmentTypeMismatchError,
+  profileDefaultsViolationError
+} from "./certificate-profile-errors";
 import {
   EnrollmentType,
   IssuerType,
@@ -85,10 +101,13 @@ const validateIssuerTypeConstraints = (
   caId: string | null,
   existingCaId?: string | null
 ) => {
+  const isUpdate = existingCaId !== undefined;
   if (issuerType === IssuerType.CA) {
     if (!caId && !existingCaId) {
       throw new ForbiddenRequestError({
-        message: "CA issuer type requires a Certificate Authority to be selected"
+        message: isUpdate
+          ? "Issuer type 'ca' requires a certificate authority, and this profile has none. A certificate authority can't be added on update, so keep issuer type 'self-signed', or create a new profile with issuer type 'ca'."
+          : "Issuer type 'ca' requires a certificate authority. Set caId to one of your organization's certificate authorities, or use issuer type 'self-signed'."
       });
     }
   }
@@ -96,12 +115,14 @@ const validateIssuerTypeConstraints = (
   if (issuerType === IssuerType.SELF_SIGNED) {
     if (caId) {
       throw new ForbiddenRequestError({
-        message: "Self-signed issuer type cannot have a Certificate Authority"
+        message: isUpdate
+          ? "Issuer type 'self-signed' cannot have a certificate authority, and this profile has one. A certificate authority can't be removed on update, so keep issuer type 'ca', or create a new profile with issuer type 'self-signed'."
+          : "Issuer type 'self-signed' cannot have a certificate authority. Remove caId, or use issuer type 'ca'."
       });
     }
     if (enrollmentType !== EnrollmentType.API) {
       throw new ForbiddenRequestError({
-        message: "Self-signed issuer type only supports API enrollment"
+        message: `Issuer type 'self-signed' only supports API enrollment, but the profile uses '${enrollmentType}' enrollment. Use API enrollment, or issuer type 'ca'.`
       });
     }
   }
@@ -125,7 +146,7 @@ const validateDefaultSignatureAlgorithmAgainstCa = async (
 
   if (!isSignatureAlgorithmCompatibleWithCaKey(signatureAlgorithm, caKeyAlgorithm)) {
     throw new BadRequestError({
-      message: `Default signature algorithm ${signatureAlgorithm} is not compatible with the certificate authority's ${caKeyAlgorithm} key`
+      message: `Default signature algorithm '${signatureAlgorithm}' is not compatible with the certificate authority's ${caKeyAlgorithm} key. Choose a signature algorithm for a ${caKeyAlgorithm} key, or remove the default.`
     });
   }
 };
@@ -140,7 +161,8 @@ const validateTemplateByExternalCaType = (
     case CaType.AZURE_AD_CS:
       if (!externalConfigs?.template || typeof externalConfigs.template !== "string") {
         throw new ForbiddenRequestError({
-          message: "Azure ADCS Certificate Authority requires a template to be specified in external configs"
+          message:
+            "Azure AD CS certificate authorities require an AD CS certificate template. Set externalConfigs.template to the template name on the Azure AD CS server."
         });
       }
       break;
@@ -148,7 +170,7 @@ const validateTemplateByExternalCaType = (
       if (!externalConfigs?.template || typeof externalConfigs.template !== "string") {
         throw new ForbiddenRequestError({
           message:
-            "Active Directory Certificate Service Certificate Authority requires a template to be specified in external configs"
+            "Active Directory Certificate Services certificate authorities require an AD CS certificate template. Set externalConfigs.template to the template name on the AD CS server."
         });
       }
       break;
@@ -166,7 +188,7 @@ const validateAcmEnrollmentType = async (
   const externalCa = await externalCertificateAuthorityDAL.findOne({ caId });
   if (externalCa?.type === CaType.AWS_ACM_PUBLIC_CA && enrollmentType !== EnrollmentType.API) {
     throw new ForbiddenRequestError({
-      message: "AWS Certificate Manager only supports API enrollment"
+      message: `AWS Certificate Manager certificate authorities only support API enrollment, but the profile uses '${enrollmentType}' enrollment. Use API enrollment.`
     });
   }
 };
@@ -178,13 +200,8 @@ const validateCaProjectMatch = async (
 ) => {
   if (!caId) return;
   const ca = await certificateAuthorityDAL.findById(caId);
-  if (!ca) {
-    throw new NotFoundError({ message: "Certificate Authority not found" });
-  }
-  if (ca.projectId !== projectId) {
-    throw new ForbiddenRequestError({
-      message: "Invalid Certificate Authority"
-    });
+  if (!ca || ca.projectId !== projectId) {
+    throw caNotFoundError(caId);
   }
 };
 
@@ -192,26 +209,30 @@ const validateExternalConfigs = async (
   externalConfigs: Record<string, unknown> | null | undefined,
   caId: string | null,
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">,
-  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "findOne">
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "findOne">,
+  isUpdate = false
 ) => {
   if (!externalConfigs) return;
 
   if (!caId) {
     throw new ForbiddenRequestError({
-      message: "External configs can only be specified when a Certificate Authority is selected"
+      message: isUpdate
+        ? "externalConfigs can only be set when the profile has a certificate authority, and this profile has none. Remove externalConfigs."
+        : "externalConfigs can only be set when the profile has a certificate authority. Set caId, or remove externalConfigs."
     });
   }
 
   const ca = await certificateAuthorityDAL.findById(caId);
   if (!ca) {
-    throw new NotFoundError({ message: "Certificate Authority not found" });
+    throw caNotFoundError(caId);
   }
 
   const externalCa = await externalCertificateAuthorityDAL.findOne({ caId });
 
   if (!externalCa) {
     throw new ForbiddenRequestError({
-      message: "External configs can only be specified for external Certificate Authorities"
+      message:
+        "externalConfigs can only be set for external certificate authorities, and this profile uses an internal one. Remove externalConfigs."
     });
   }
 
@@ -220,17 +241,13 @@ const validateExternalConfigs = async (
 
 export const generateAndEncryptAcmeEabSecret = async (
   projectId: string,
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey">,
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">
+  kmsDataKeyService: TKmsDataKeyService,
+  kmsKeyService: TKmsKeyService
 ) => {
   try {
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -251,8 +268,8 @@ export const generateAndEncryptAcmeEabSecret = async (
 export const validateAndEncryptPemCaChain = async (
   caChain: string,
   projectId: string,
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey">,
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">
+  kmsDataKeyService: TKmsDataKeyService,
+  kmsKeyService: TKmsKeyService
 ) => {
   try {
     const certificates = extractX509CertFromChain(caChain)?.map((cert) => new x509.X509Certificate(cert));
@@ -265,13 +282,9 @@ export const validateAndEncryptPemCaChain = async (
       throw new BadRequestError({ message: "Invalid certificate chain" });
     }
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
 
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -288,17 +301,13 @@ export const validateAndEncryptPemCaChain = async (
 export const decryptCaChain = async (
   encryptedCaChain: Buffer,
   projectId: string,
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "decryptWithKmsKey">,
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">
+  kmsDataKeyService: TKmsDataKeyService,
+  kmsKeyService: TKmsKeyService
 ): Promise<string> => {
   try {
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(projectId);
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
 
@@ -339,13 +348,14 @@ type TCertificateProfileServiceFactoryDep = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "findById" | "findOne">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
-  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
+  projectPermissionService: TProjectPermissionService;
+  applicationPermissionService: TApplicationPermissionService;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiApplicationProfileDAL?: Pick<
     TPkiApplicationProfileDALFactory,
-    "findOneByApplicationAndProfile" | "findByApplicationId" | "findAllByProfileId"
+    "findOneByApplicationAndProfile" | "findByApplicationId" | "findAllByProfileId" | "primaryNode"
   >;
 };
 
@@ -403,9 +413,10 @@ export const certificateProfileServiceFactory = ({
   certificateAuthorityCertDAL,
   caKeySourceService,
   externalCertificateAuthorityDAL,
-  permissionService,
-  kmsService,
-  projectDAL,
+  projectPermissionService,
+  applicationPermissionService,
+  kmsDataKeyService,
+  kmsKeyService,
   resourceMetadataDAL,
   pkiApplicationProfileDAL
 }: TCertificateProfileServiceFactoryDep) => {
@@ -468,58 +479,59 @@ export const certificateProfileServiceFactory = ({
     }
   };
 
+  const validateProfileDefaultSanReferences = ({
+    policy,
+    defaults
+  }: {
+    policy?: TCertificatePolicy | null;
+    defaults?: TCertificateProfileDefaults | null;
+  }) => {
+    if (!policy) return;
+
+    const error = describeUnsupportedCommonNameDefaultSans(policy, defaults?.subjectAltNames ?? []);
+    if (error) {
+      throw new BadRequestError({ message: error });
+    }
+  };
+
   const createProfile = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId,
     data
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     projectId: string;
     data: Omit<TCertificateProfileCreateData, "projectId">;
   }): Promise<TCertificateProfile> => {
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateProfileActions.Create,
-      subject(ProjectPermissionSub.CertificateProfiles, {
+    permission.assert({
+      action: ProjectPermissionCertificateProfileActions.Create,
+      subject: ProjectPermissionSub.CertificateProfiles,
+      fields: {
         slug: data.slug
-      })
-    );
+      }
+    });
 
     if (requiresIssueCertForEnrollmentConfig(data)) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateProfileActions.IssueCert,
-        subject(ProjectPermissionSub.CertificateProfiles, {
+      permission.assert({
+        action: ProjectPermissionCertificateProfileActions.IssueCert,
+        subject: ProjectPermissionSub.CertificateProfiles,
+        fields: {
           slug: data.slug
-        })
-      );
+        }
+      });
     }
 
     const enrollmentType = data.enrollmentType ?? EnrollmentType.API;
 
     // Validate that certificate policy exists and belongs to the same project
-    if (data.certificatePolicyId) {
-      const policy = await certificatePolicyDAL.findById(data.certificatePolicyId);
-      if (!policy) {
-        throw new NotFoundError({ message: "Certificate policy not found" });
-      }
-      if (policy.projectId !== projectId) {
-        throw new ForbiddenRequestError({
-          message: "Certificate policy must belong to the same project"
-        });
-      }
+    const policy = data.certificatePolicyId ? await certificatePolicyDAL.findById(data.certificatePolicyId) : undefined;
+    if (data.certificatePolicyId && (!policy || policy.projectId !== projectId)) {
+      throw certificatePolicyNotFoundError(data.certificatePolicyId);
     }
 
     await validateCaProjectMatch(data.caId, projectId, certificateAuthorityDAL);
@@ -538,7 +550,6 @@ export const certificateProfileServiceFactory = ({
 
     // Validate defaults against policy constraints
     if (data.defaults && data.certificatePolicyId) {
-      const policy = await certificatePolicyDAL.findById(data.certificatePolicyId);
       if (policy) {
         const request: TCertificateRequest = {
           commonName: data.defaults.commonName,
@@ -557,7 +568,7 @@ export const certificateProfileServiceFactory = ({
         };
         const result = certificatePolicyService.validateRequestAgainstPolicy(policy, request, { skipRequired: true });
         if (!result.isValid) {
-          throw new BadRequestError({ message: `Profile defaults violate policy: ${result.errors.join("; ")}` });
+          throw profileDefaultsViolationError(result.errors, result.ttlExceedsMax);
         }
       }
     }
@@ -567,6 +578,8 @@ export const certificateProfileServiceFactory = ({
       caId: data.caId,
       defaults: data.defaults
     });
+
+    validateProfileDefaultSanReferences({ policy, defaults: data.defaults });
 
     await validateDefaultSignatureAlgorithmAgainstCa(
       data.defaults?.signatureAlgorithm,
@@ -629,8 +642,8 @@ export const certificateProfileServiceFactory = ({
           certificateAuthorityDAL,
           certificateAuthoritySecretDAL,
           certificateAuthorityCertDAL,
-          projectDAL,
-          kmsService,
+          kmsDataKeyService,
+          kmsKeyService,
           caKeySourceService
         }
       });
@@ -661,6 +674,26 @@ export const certificateProfileServiceFactory = ({
       };
     }
 
+    let precomputedEstConfig: { hashedPassphrase: string; encryptedCaChain: Buffer | null } | undefined;
+    if (enrollmentType === EnrollmentType.EST && data.estConfig) {
+      const hashedPassphrase = await crypto.hashing().createHash(data.estConfig.passphrase, getConfig().SALT_ROUNDS);
+      let encryptedCaChain: Buffer | null = null;
+      if (!data.estConfig.disableBootstrapCaValidation && data.estConfig.caChain) {
+        ({ encryptedCaChain } = await validateAndEncryptPemCaChain(
+          data.estConfig.caChain,
+          projectId,
+          kmsDataKeyService,
+          kmsKeyService
+        ));
+      }
+      precomputedEstConfig = { hashedPassphrase, encryptedCaChain };
+    }
+
+    const precomputedAcmeEabSecret =
+      enrollmentType === EnrollmentType.ACME && data.acmeConfig
+        ? (await generateAndEncryptAcmeEabSecret(projectId, kmsDataKeyService, kmsKeyService)).encryptedEabSecret
+        : undefined;
+
     // Create enrollment configs and profile
     const profile = await certificateProfileDAL.transaction(async (tx) => {
       let estConfigId: string | null = null;
@@ -668,27 +701,12 @@ export const certificateProfileServiceFactory = ({
       let acmeConfigId: string | null = null;
       let scepConfigId: string | null = null;
 
-      if (enrollmentType === EnrollmentType.EST && data.estConfig) {
-        const appCfg = getConfig();
-        // Hash the passphrase
-        const hashedPassphrase = await crypto.hashing().createHash(data.estConfig.passphrase, appCfg.SALT_ROUNDS);
-
-        let encryptedCaChainBuffer: Buffer | null = null;
-        if (!data.estConfig.disableBootstrapCaValidation && data.estConfig.caChain) {
-          const { encryptedCaChain } = await validateAndEncryptPemCaChain(
-            data.estConfig.caChain,
-            projectId,
-            kmsService,
-            projectDAL
-          );
-          encryptedCaChainBuffer = encryptedCaChain;
-        }
-
+      if (enrollmentType === EnrollmentType.EST && data.estConfig && precomputedEstConfig) {
         const estConfig = await estEnrollmentConfigDAL.create(
           {
             disableBootstrapCaValidation: data.estConfig.disableBootstrapCaValidation,
-            hashedPassphrase,
-            encryptedCaChain: encryptedCaChainBuffer
+            hashedPassphrase: precomputedEstConfig.hashedPassphrase,
+            encryptedCaChain: precomputedEstConfig.encryptedCaChain
           },
           tx
         );
@@ -702,13 +720,12 @@ export const certificateProfileServiceFactory = ({
           tx
         );
         apiConfigId = apiConfig.id;
-      } else if (enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
-        const { encryptedEabSecret } = await generateAndEncryptAcmeEabSecret(projectId, kmsService, projectDAL);
+      } else if (enrollmentType === EnrollmentType.ACME && data.acmeConfig && precomputedAcmeEabSecret) {
         const acmeConfig = await acmeEnrollmentConfigDAL.create(
           {
             skipDnsOwnershipVerification: data.acmeConfig.skipDnsOwnershipVerification ?? false,
             skipEabBinding: data.acmeConfig.skipEabBinding ?? false,
-            encryptedEabSecret
+            encryptedEabSecret: precomputedAcmeEabSecret
           },
           tx
         );
@@ -754,60 +771,98 @@ export const certificateProfileServiceFactory = ({
     return convertDalToService(profile);
   };
 
+  const $assertMicrosoftAutoenrollmentStillWorks = async (
+    {
+      profileId,
+      profileSlug,
+      certificatePolicyId,
+      caId,
+      keyAlgorithm,
+      signatureAlgorithm
+    }: {
+      profileId: string;
+      profileSlug: string;
+      certificatePolicyId: string;
+      caId?: string | null;
+      keyAlgorithm?: CertKeyAlgorithm;
+      signatureAlgorithm?: CertSignatureAlgorithm;
+    },
+    tx?: Knex
+  ) => {
+    if (!pkiApplicationProfileDAL) return;
+    const enabledInApplicationNames = (
+      await pkiApplicationProfileDAL.findAllByProfileId(profileId, tx ?? pkiApplicationProfileDAL.primaryNode())
+    )
+      .filter((attachment) => attachment.microsoftAutoenrollmentConfigId)
+      .map((attachment) => attachment.applicationName);
+    if (!enabledInApplicationNames.length) return;
+    await assertProfileCaSupportsMicrosoftAutoenrollment(
+      { profileSlug, caId, keyAlgorithm, enabledInApplicationNames },
+      certificateAuthorityDAL,
+      tx
+    );
+    const policy = await certificatePolicyDAL.findById(certificatePolicyId, tx);
+    const signingCa = await loadTemplateSigningCa(caId, { certificateAuthorityDAL, certificateAuthoritySecretDAL }, tx);
+    const keyProblem =
+      policy &&
+      findTemplatePolicyProblem(
+        { slug: profileSlug, defaults: { keyAlgorithm, signatureAlgorithm } },
+        signingCa,
+        (request) =>
+          certificatePolicyService.validateRequestAgainstPolicy(policy, request, { skipRequired: true }).isValid
+      );
+    if (keyProblem) {
+      throw new BadRequestError({
+        message: `Microsoft Autoenrollment is on for profile '${profileSlug}' in ${describeApplicationList(enabledInApplicationNames)}. This change would stop it working: ${keyProblem} You can also turn Microsoft Autoenrollment off there first.`
+      });
+    }
+  };
+
   const updateProfile = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     profileId,
     data
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     profileId: string;
     data: TCertificateProfileUpdate;
   }): Promise<TCertificateProfile> => {
-    const existingProfile = await certificateProfileDAL.findById(profileId);
-    if (!existingProfile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+    const existingProfile = await certificateProfileDAL.findByIdWithOwnerOrgId(profileId);
+    if (!existingProfile || existingProfile.ownerOrgId !== actor.org.id) {
+      throw certificateProfileNotFoundError(profileId);
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: existingProfile.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateProfileActions.Edit,
-      subject(ProjectPermissionSub.CertificateProfiles, {
+    permission.assert({
+      action: ProjectPermissionCertificateProfileActions.Edit,
+      subject: ProjectPermissionSub.CertificateProfiles,
+      fields: {
         slug: existingProfile.slug
-      })
-    );
+      }
+    });
 
     if (requiresIssueCertForEnrollmentConfig(data)) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateProfileActions.IssueCert,
-        subject(ProjectPermissionSub.CertificateProfiles, {
+      permission.assert({
+        action: ProjectPermissionCertificateProfileActions.IssueCert,
+        subject: ProjectPermissionSub.CertificateProfiles,
+        fields: {
           slug: existingProfile.slug
-        })
-      );
+        }
+      });
     }
 
-    if (data.certificatePolicyId) {
-      const policy = await certificatePolicyDAL.findById(data.certificatePolicyId);
-      if (!policy) {
-        throw new NotFoundError({ message: "Certificate policy not found" });
-      }
-      if (policy.projectId !== existingProfile.projectId) {
-        throw new ForbiddenRequestError({
-          message: "Certificate policy must belong to the same project"
-        });
-      }
+    const finalCertificatePolicyId =
+      data.certificatePolicyId !== undefined ? data.certificatePolicyId : existingProfile.certificatePolicyId;
+    const finalCertificatePolicy = await certificatePolicyDAL.findById(finalCertificatePolicyId);
+    if (
+      data.certificatePolicyId &&
+      (!finalCertificatePolicy || finalCertificatePolicy.projectId !== existingProfile.projectId)
+    ) {
+      throw certificatePolicyNotFoundError(data.certificatePolicyId);
     }
 
     if (data.slug && data.slug !== existingProfile.slug) {
@@ -834,13 +889,30 @@ export const certificateProfileServiceFactory = ({
 
     await validateAcmEnrollmentType(finalCaId, finalEnrollmentType, externalCertificateAuthorityDAL);
 
+    const existingKeyAlgorithm = (existingProfile.defaults as TCertificateProfileDefaults | null)?.keyAlgorithm;
+    const finalKeyAlgorithm = data.defaults !== undefined ? data.defaults?.keyAlgorithm : existingKeyAlgorithm;
+    const isWindowsTemplateChange =
+      Boolean(pkiApplicationProfileDAL) && (finalCaId !== existingProfile.caId || data.defaults !== undefined);
+    const windowsTemplate = {
+      profileId,
+      profileSlug: data.slug ?? existingProfile.slug,
+      certificatePolicyId: existingProfile.certificatePolicyId,
+      caId: finalCaId,
+      keyAlgorithm: finalKeyAlgorithm,
+      signatureAlgorithm:
+        data.defaults !== undefined
+          ? data.defaults?.signatureAlgorithm
+          : (existingProfile.defaults as TCertificateProfileDefaults | null)?.signatureAlgorithm
+    };
+    if (isWindowsTemplateChange) await $assertMicrosoftAutoenrollmentStillWorks(windowsTemplate);
     // Validate external configs only if they are provided in the update
     if (data.externalConfigs !== undefined) {
       await validateExternalConfigs(
         data.externalConfigs,
         finalCaId ?? null,
         certificateAuthorityDAL,
-        externalCertificateAuthorityDAL
+        externalCertificateAuthorityDAL,
+        true
       );
     }
 
@@ -860,8 +932,7 @@ export const certificateProfileServiceFactory = ({
     }
     // Validate defaults against policy constraints if provided
     if (data.defaults) {
-      const policyId = data.certificatePolicyId || existingProfile.certificatePolicyId;
-      const policy = await certificatePolicyDAL.findById(policyId);
+      const policy = finalCertificatePolicy;
       if (policy) {
         const request: TCertificateRequest = {
           commonName: data.defaults.commonName,
@@ -880,18 +951,21 @@ export const certificateProfileServiceFactory = ({
         };
         const result = certificatePolicyService.validateRequestAgainstPolicy(policy, request, { skipRequired: true });
         if (!result.isValid) {
-          throw new BadRequestError({ message: `Profile defaults violate policy: ${result.errors.join("; ")}` });
+          throw profileDefaultsViolationError(result.errors, result.ttlExceedsMax);
         }
       }
     }
 
+    const finalDefaults =
+      data.defaults !== undefined ? data.defaults : (existingProfile.defaults as TCertificateProfileDefaults | null);
+
     await validateProfileCustomExtensions({
-      certificatePolicyId:
-        data.certificatePolicyId !== undefined ? data.certificatePolicyId : existingProfile.certificatePolicyId,
+      certificatePolicyId: finalCertificatePolicyId,
       caId: data.caId !== undefined ? data.caId : existingProfile.caId,
-      defaults:
-        data.defaults !== undefined ? data.defaults : (existingProfile.defaults as TCertificateProfileDefaults | null)
+      defaults: finalDefaults
     });
+
+    validateProfileDefaultSanReferences({ policy: finalCertificatePolicy, defaults: finalDefaults });
 
     await validateDefaultSignatureAlgorithmAgainstCa(
       data.defaults?.signatureAlgorithm,
@@ -904,33 +978,30 @@ export const certificateProfileServiceFactory = ({
 
     const { estConfig, apiConfig, acmeConfig, scepConfig, ...profileUpdateData } = updatedData;
 
+    let estUpdateData:
+      | { disableBootstrapCaValidation: boolean; hashedPassphrase?: string; encryptedCaChain?: Buffer }
+      | undefined;
+    if (estConfig && existingProfile.estConfigId) {
+      estUpdateData = { disableBootstrapCaValidation: estConfig.disableBootstrapCaValidation ?? false };
+      if (estConfig.passphrase) {
+        estUpdateData.hashedPassphrase = await crypto
+          .hashing()
+          .createHash(estConfig.passphrase, getConfig().SALT_ROUNDS);
+      }
+      if (estConfig.caChain) {
+        const { encryptedCaChain } = await validateAndEncryptPemCaChain(
+          estConfig.caChain,
+          existingProfile.projectId,
+          kmsDataKeyService,
+          kmsKeyService
+        );
+        estUpdateData.encryptedCaChain = encryptedCaChain;
+      }
+    }
+
     const updatedProfile = await certificateProfileDAL.transaction(async (tx) => {
-      if (estConfig && existingProfile.estConfigId) {
-        const updateData: {
-          disableBootstrapCaValidation: boolean;
-          hashedPassphrase?: string;
-          encryptedCaChain?: Buffer;
-        } = {
-          disableBootstrapCaValidation: estConfig.disableBootstrapCaValidation ?? false
-        };
-
-        if (estConfig.passphrase) {
-          updateData.hashedPassphrase = await crypto
-            .hashing()
-            .createHash(estConfig.passphrase, getConfig().SALT_ROUNDS);
-        }
-
-        if (estConfig.caChain) {
-          const { encryptedCaChain } = await validateAndEncryptPemCaChain(
-            estConfig.caChain,
-            existingProfile.projectId,
-            kmsService,
-            projectDAL
-          );
-          updateData.encryptedCaChain = encryptedCaChain;
-        }
-
-        await estEnrollmentConfigDAL.updateById(existingProfile.estConfigId, updateData, tx);
+      if (estUpdateData && existingProfile.estConfigId) {
+        await estEnrollmentConfigDAL.updateById(existingProfile.estConfigId, estUpdateData, tx);
       }
 
       if (apiConfig && existingProfile.apiConfigId) {
@@ -1011,6 +1082,10 @@ export const certificateProfileServiceFactory = ({
         }
       }
 
+      if (isWindowsTemplateChange) {
+        await certificatePolicyDAL.lockById(existingProfile.certificatePolicyId, tx);
+        await $assertMicrosoftAutoenrollmentStillWorks(windowsTemplate, tx);
+      }
       const profileResult = await certificateProfileDAL.updateById(profileId, profileUpdateData, tx);
       return profileResult;
     });
@@ -1021,25 +1096,21 @@ export const certificateProfileServiceFactory = ({
   const $isMemberOfAnyAttachedApplication = async (
     profileId: string,
     projectId: string,
-    actor: ActorType,
-    actorId: string,
-    actorAuthMethod: ActorAuthMethod,
-    actorOrgId: string
+    actor: TActorContext
   ): Promise<boolean> => {
     if (!pkiApplicationProfileDAL) return false;
     const attachments = await pkiApplicationProfileDAL.findAllByProfileId(profileId);
     const reads = await Promise.all(
       attachments.map(async (attachment) => {
-        const { permission: resourcePermission } = await permissionService.getResourcePermission({
+        const resourcePermission = await applicationPermissionService.getApplicationPermission({
           actor,
-          actorId,
           projectId,
-          resourceType: ResourceType.CertificateApplication,
-          resourceId: attachment.applicationId,
-          actorAuthMethod,
-          actorOrgId
+          applicationId: attachment.applicationId
         });
-        return resourcePermission.can(ResourcePermissionApplicationActions.Read, ResourcePermissionSub.Application);
+        return resourcePermission.can({
+          action: ApplicationPermissionActions.Read,
+          subject: ApplicationPermissionSub.Application
+        });
       })
     );
     return reads.some(Boolean);
@@ -1047,43 +1118,38 @@ export const certificateProfileServiceFactory = ({
 
   const getProfileById = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     profileId
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     profileId: string;
   }): Promise<TCertificateProfile> => {
-    const profile = await certificateProfileDAL.findById(profileId);
-    if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+    const profile = await certificateProfileDAL.findByIdWithOwnerOrgId(profileId);
+    // A profile in another organization answers like a missing one, so the ID's existence is not confirmed.
+    if (!profile || profile.ownerOrgId !== actor.org.id) {
+      throw certificateProfileNotFoundError(profileId);
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: profile.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    const profileSubject = subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug });
-    if (!permission.can(ProjectPermissionCertificateProfileActions.Read, profileSubject)) {
-      const allowedByApplication = await $isMemberOfAnyAttachedApplication(
-        profileId,
-        profile.projectId,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId
-      );
+    const profileSubject = { slug: profile.slug };
+    if (
+      !permission.can({
+        action: ProjectPermissionCertificateProfileActions.Read,
+        subject: ProjectPermissionSub.CertificateProfiles,
+        fields: profileSubject
+      })
+    ) {
+      const allowedByApplication = await $isMemberOfAnyAttachedApplication(profileId, profile.projectId, actor);
       if (!allowedByApplication) {
-        ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateProfileActions.Read, profileSubject);
+        permission.assert({
+          action: ProjectPermissionCertificateProfileActions.Read,
+          subject: ProjectPermissionSub.CertificateProfiles,
+          fields: profileSubject
+        });
       }
     }
 
@@ -1094,48 +1160,40 @@ export const certificateProfileServiceFactory = ({
 
   const getProfileByIdWithConfigs = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     profileId
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     profileId: string;
   }): Promise<TCertificateProfileWithConfigs> => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
-    if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+    // A profile in another organization answers like a missing one, so the ID's existence is not confirmed.
+    if (!profile || profile.project?.orgId !== actor.org.id) {
+      throw certificateProfileNotFoundError(profileId);
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: profile.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    const profileWithConfigsSubject = subject(ProjectPermissionSub.CertificateProfiles, {
+    const profileWithConfigsSubject = {
       slug: profile.slug
-    });
-    if (!permission.can(ProjectPermissionCertificateProfileActions.Read, profileWithConfigsSubject)) {
-      const allowedByApplication = await $isMemberOfAnyAttachedApplication(
-        profileId,
-        profile.projectId,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId
-      );
+    };
+    if (
+      !permission.can({
+        action: ProjectPermissionCertificateProfileActions.Read,
+        subject: ProjectPermissionSub.CertificateProfiles,
+        fields: profileWithConfigsSubject
+      })
+    ) {
+      const allowedByApplication = await $isMemberOfAnyAttachedApplication(profileId, profile.projectId, actor);
       if (!allowedByApplication) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionCertificateProfileActions.Read,
-          profileWithConfigsSubject
-        );
+        permission.assert({
+          action: ProjectPermissionCertificateProfileActions.Read,
+          subject: ProjectPermissionSub.CertificateProfiles,
+          fields: profileWithConfigsSubject
+        });
       }
     }
 
@@ -1146,8 +1204,8 @@ export const certificateProfileServiceFactory = ({
           const decryptedCaChain = await decryptCaChain(
             estConfig.encryptedCaChain,
             profile.projectId,
-            kmsService,
-            projectDAL
+            kmsDataKeyService,
+            kmsKeyService
           );
           profile.estConfig.caChain = decryptedCaChain;
         } else {
@@ -1200,48 +1258,41 @@ export const certificateProfileServiceFactory = ({
 
   const getProfileBySlug = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId,
     slug
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     projectId: string;
     slug: string;
   }): Promise<TCertificateProfile> => {
     const profile = await certificateProfileDAL.findBySlugAndProjectId(slug, projectId);
     if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+      throw new NotFoundError({
+        message: `Certificate profile named '${slug}' not found in this organization. List your organization's certificate profiles with GET /api/v1/cert-manager/certificate-profiles to find the right name.`
+      });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    const profileSlugSubject = subject(ProjectPermissionSub.CertificateProfiles, { slug });
-    if (!permission.can(ProjectPermissionCertificateProfileActions.Read, profileSlugSubject)) {
-      const allowedByApplication = await $isMemberOfAnyAttachedApplication(
-        profile.id,
-        projectId,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId
-      );
+    const profileSlugSubject = { slug };
+    if (
+      !permission.can({
+        action: ProjectPermissionCertificateProfileActions.Read,
+        subject: ProjectPermissionSub.CertificateProfiles,
+        fields: profileSlugSubject
+      })
+    ) {
+      const allowedByApplication = await $isMemberOfAnyAttachedApplication(profile.id, projectId, actor);
       if (!allowedByApplication) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionCertificateProfileActions.Read,
-          profileSlugSubject
-        );
+        permission.assert({
+          action: ProjectPermissionCertificateProfileActions.Read,
+          subject: ProjectPermissionSub.CertificateProfiles,
+          fields: profileSlugSubject
+        });
       }
     }
 
@@ -1250,9 +1301,6 @@ export const certificateProfileServiceFactory = ({
 
   const listProfiles = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId,
     offset = 0,
     limit = 20,
@@ -1262,10 +1310,7 @@ export const certificateProfileServiceFactory = ({
     caId,
     applicationId
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     projectId: string;
     offset?: number;
     limit?: number;
@@ -1280,38 +1325,35 @@ export const certificateProfileServiceFactory = ({
   }> => {
     let processedRules: ReturnType<typeof getProcessedPermissionRules> | undefined;
     let attachedProfileIds: string[] | undefined;
-    if (applicationId && pkiApplicationProfileDAL && (actor === ActorType.USER || actor === ActorType.IDENTITY)) {
-      const { permission } = await permissionService.getResourcePermission({
+    if (
+      applicationId &&
+      pkiApplicationProfileDAL &&
+      (actor.principal.type === ActorType.USER || actor.principal.type === ActorType.IDENTITY)
+    ) {
+      const permission = await applicationPermissionService.getApplicationPermission({
         actor,
-        actorId,
         projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: applicationId,
-        actorAuthMethod,
-        actorOrgId
+        applicationId
       });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ResourcePermissionApplicationActions.Read,
-        ResourcePermissionSub.Application
-      );
+      permission.assert({
+        action: ApplicationPermissionActions.Read,
+        subject: ApplicationPermissionSub.Application
+      });
       const attached = await pkiApplicationProfileDAL.findByApplicationId(applicationId);
       attachedProfileIds = attached.map((p) => p.profileId);
     } else {
-      const { permission } = await permissionService.getProjectPermission({
+      const permission = await projectPermissionService.getProjectPermission({
         actor,
-        actorId,
         projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateProfileActions.Read,
-        ProjectPermissionSub.CertificateProfiles
-      );
+      permission.assert({
+        action: ProjectPermissionCertificateProfileActions.Read,
+        subject: ProjectPermissionSub.CertificateProfiles
+      });
 
       processedRules = getProcessedPermissionRules(
-        permission,
+        permission.toAbility(),
         ProjectPermissionCertificateProfileActions.Read,
         ProjectPermissionSub.CertificateProfiles
       );
@@ -1359,8 +1401,8 @@ export const certificateProfileServiceFactory = ({
               const decryptedCaChain = await decryptCaChain(
                 estConfig.encryptedCaChain,
                 projectId,
-                kmsService,
-                projectDAL
+                kmsDataKeyService,
+                kmsKeyService
               );
               decryptedEstConfig = {
                 ...decryptedEstConfig,
@@ -1418,36 +1460,28 @@ export const certificateProfileServiceFactory = ({
 
   const deleteProfile = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     profileId
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     profileId: string;
   }): Promise<TCertificateProfile> => {
-    const profile = await certificateProfileDAL.findById(profileId);
-    if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+    const profile = await certificateProfileDAL.findByIdWithOwnerOrgId(profileId);
+    if (!profile || profile.ownerOrgId !== actor.org.id) {
+      throw certificateProfileNotFoundError(profileId);
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: profile.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateProfileActions.Delete,
-      subject(ProjectPermissionSub.CertificateProfiles, {
+    permission.assert({
+      action: ProjectPermissionCertificateProfileActions.Delete,
+      subject: ProjectPermissionSub.CertificateProfiles,
+      fields: {
         slug: profile.slug
-      })
-    );
+      }
+    });
 
     if (pkiApplicationProfileDAL) {
       const attachments = await pkiApplicationProfileDAL.findAllByProfileId(profileId);
@@ -1473,44 +1507,36 @@ export const certificateProfileServiceFactory = ({
 
   const getProfileCertificates = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     profileId,
     offset = 0,
     limit = 20,
     status,
     search
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     profileId: string;
     offset?: number;
     limit?: number;
     status?: CertStatus;
     search?: string;
   }): Promise<TCertificateProfileCertificate[]> => {
-    const profile = await certificateProfileDAL.findById(profileId);
-    if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+    const profile = await certificateProfileDAL.findByIdWithOwnerOrgId(profileId);
+    if (!profile || profile.ownerOrgId !== actor.org.id) {
+      throw certificateProfileNotFoundError(profileId);
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: profile.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateProfileActions.Read,
-      subject(ProjectPermissionSub.CertificateProfiles, {
+    permission.assert({
+      action: ProjectPermissionCertificateProfileActions.Read,
+      subject: ProjectPermissionSub.CertificateProfiles,
+      fields: {
         slug: profile.slug
-      })
-    );
+      }
+    });
 
     const certificates = await certificateProfileDAL.getCertificatesByProfile(profileId, {
       offset,
@@ -1524,36 +1550,28 @@ export const certificateProfileServiceFactory = ({
 
   const getLatestActiveCertificateBundle = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     profileId
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     profileId: string;
   }) => {
-    const profile = await certificateProfileDAL.findById(profileId);
-    if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+    const profile = await certificateProfileDAL.findByIdWithOwnerOrgId(profileId);
+    if (!profile || profile.ownerOrgId !== actor.org.id) {
+      throw certificateProfileNotFoundError(profileId);
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: profile.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateProfileActions.Read,
-      subject(ProjectPermissionSub.CertificateProfiles, {
+    permission.assert({
+      action: ProjectPermissionCertificateProfileActions.Read,
+      subject: ProjectPermissionSub.CertificateProfiles,
+      fields: {
         slug: profile.slug
-      })
-    );
+      }
+    });
 
     const cert = await certificateProfileDAL.getLatestActiveCertificateForProfile(profileId);
 
@@ -1564,46 +1582,46 @@ export const certificateProfileServiceFactory = ({
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    const certSubject = subject(ProjectPermissionSub.Certificates, {
+    const certSubject = {
       commonName: cert.commonName,
       altNames: cert.altNames?.split(",").map((s) => s.trim()),
       serialNumber: cert.serialNumber,
       metadata: certMetadata
+    };
+    permission.assert({
+      action: ProjectPermissionCertificateActions.Read,
+      subject: ProjectPermissionSub.Certificates,
+      fields: certSubject
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.Read, certSubject);
 
     if (cert.applicationId) {
-      const { permission: resourcePermission } = await permissionService.getResourcePermission({
+      const resourcePermission = await applicationPermissionService.getApplicationPermission({
         actor,
-        actorId,
         projectId: cert.projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: cert.applicationId,
-        actorAuthMethod,
-        actorOrgId
+        applicationId: cert.applicationId
       });
-      const allowedByApplication = resourcePermission.can(
-        ResourcePermissionCertificateActions.ReadPrivateKey,
-        ResourcePermissionSub.Certificates
-      );
+      const allowedByApplication = resourcePermission.can({
+        action: ApplicationCertificatePermissionActions.ReadPrivateKey,
+        subject: ApplicationPermissionSub.Certificates
+      });
       if (!allowedByApplication) {
         throw new ForbiddenRequestError({
           message: "You don't have permission to read this certificate's private key"
         });
       }
     } else {
-      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject);
+      permission.assert({
+        action: ProjectPermissionCertificateActions.ReadPrivateKey,
+        subject: ProjectPermissionSub.Certificates,
+        fields: certSubject
+      });
     }
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
 
-    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
-      projectId: cert.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKeyId = await kmsDataKeyService.getProjectCertificateKmsKeyId(cert.projectId);
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKeyId
     });
     const decryptedCert = await kmsDecryptor({
@@ -1623,8 +1641,8 @@ export const certificateProfileServiceFactory = ({
         certId: cert.id,
         projectId: cert.projectId,
         certificateSecretDAL,
-        projectDAL,
-        kmsService
+        kmsDataKeyService,
+        kmsKeyService
       });
       privateKey = certPrivateKey;
     } catch (error) {
@@ -1654,10 +1672,7 @@ export const certificateProfileServiceFactory = ({
           isInternal: true;
         }
       | {
-          actor: ActorType;
-          actorId: string;
-          actorAuthMethod: ActorAuthMethod;
-          actorOrgId: string | undefined;
+          actor: TActorContext;
           profileId: string;
           applicationId?: string;
           isInternal?: false;
@@ -1666,38 +1681,34 @@ export const certificateProfileServiceFactory = ({
     const { profileId, applicationId, isInternal = false } = params;
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+      throw certificateProfileNotFoundError(profileId);
     }
 
     if (!isInternal) {
-      const { actor, actorId, actorAuthMethod, actorOrgId } = params as {
-        actor: ActorType;
-        actorId: string;
-        actorAuthMethod: ActorAuthMethod;
-        actorOrgId: string | undefined;
+      const { actor } = params as {
+        actor: TActorContext;
       };
+      if (profile.project?.orgId !== actor.org.id) {
+        throw certificateProfileNotFoundError(profileId);
+      }
 
-      const { permission } = await permissionService.getProjectPermission({
+      const permission = await projectPermissionService.getProjectPermission({
         actor,
-        actorId,
         projectId: profile.projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateProfileActions.Read,
-        subject(ProjectPermissionSub.CertificateProfiles, {
+      permission.assert({
+        action: ProjectPermissionCertificateProfileActions.Read,
+        subject: ProjectPermissionSub.CertificateProfiles,
+        fields: {
           slug: profile.slug
-        })
-      );
+        }
+      });
     }
 
     if (!applicationId && profile.enrollmentType !== EnrollmentType.EST) {
-      throw new ForbiddenRequestError({
-        message: "Profile is not configured for EST enrollment"
-      });
+      throw enrollmentTypeMismatchError(profile.enrollmentType, EnrollmentType.EST);
     }
 
     if (applicationId && pkiApplicationProfileDAL) {
@@ -1738,55 +1749,35 @@ export const certificateProfileServiceFactory = ({
     };
   };
 
-  const revealAcmeEabSecret = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    profileId
-  }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
-    profileId: string;
-  }) => {
+  const revealAcmeEabSecret = async ({ actor, profileId }: { actor: TActorContext; profileId: string }) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
-    if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+    if (!profile || profile.project?.orgId !== actor.org.id) {
+      throw certificateProfileNotFoundError(profileId);
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: profile.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret,
-      subject(ProjectPermissionSub.CertificateProfiles, {
+    permission.assert({
+      action: ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret,
+      subject: ProjectPermissionSub.CertificateProfiles,
+      fields: {
         slug: profile.slug
-      })
-    );
+      }
+    });
 
     if (profile.enrollmentType !== EnrollmentType.ACME) {
-      throw new ForbiddenRequestError({
-        message: "Profile is not configured for ACME enrollment"
-      });
+      throw enrollmentTypeMismatchError(profile.enrollmentType, EnrollmentType.ACME);
     }
     if (!profile.acmeConfig) {
       throw new NotFoundError({ message: "ACME configuration not found for this profile" });
     }
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: profile.projectId,
-      projectDAL,
-      kmsService
-    });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(profile.projectId);
 
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
     const eabSecret = await kmsDecryptor({ cipherTextBlob: profile.acmeConfig.encryptedEabSecret! });

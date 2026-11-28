@@ -10,13 +10,13 @@ import {
 } from "@app/db/schemas";
 import { EventType, SecretFolderAccessEventMetadata } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, FOLDER_ACCESS, PROJECT_USERS } from "@app/lib/api-docs";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { temporaryPermissionTypeSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedFolderAccessSchema, SanitizedFolderAccessUserSchema } from "../sanitizedSchema/folder-access";
@@ -73,6 +73,7 @@ const toSecretFolderAccessAuditMetadata = (
   environment: folderAccess.environment,
   secretPath: folderAccess.secretPath,
   permission: folderAccess.permission,
+  isPermissionRecursive: folderAccess.isPermissionRecursive,
   ...actor,
   isTemporary: folderAccess.isTemporary,
   ...(folderAccess.isTemporary
@@ -122,10 +123,10 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { data: memberships } = await server.services.membershipUser.listMemberships({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         data: {}
@@ -170,13 +171,13 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       const { userId } = await server.services.convertor.userMembershipIdToUserId(
         req.params.membershipId,
         AccessScope.Project,
-        req.permission.orgId
+        req.actor.orgId
       );
       const membership = await server.services.membershipUser.getMembershipByUserId({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         selector: {
@@ -222,10 +223,10 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const membership = await server.services.membershipUser.getMembershipByUserId({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         selector: {
@@ -283,14 +284,11 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       const { userId } = await server.services.convertor.userMembershipIdToUserId(
         req.params.membershipId,
         AccessScope.Project,
-        req.permission.orgId
+        req.actor.orgId
       );
 
-      const { sources } = await server.services.permission.getMembershipPermissionAudit({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+      const { sources } = await server.services.memberPermissionAudit.getMembershipPermissionAudit({
+        actor: req.actor,
         projectId: req.params.projectId,
         targetUserId: userId,
         includeFolderPermissions: req.query.includeFolderPermissions
@@ -343,10 +341,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const membership = await server.services.projectMembership.getProjectMembershipByUsername({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.params.projectId,
         username: req.body.username
       });
@@ -382,10 +377,10 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { users } = await server.services.membershipUser.listAvailableUsers({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         data: {}
@@ -440,10 +435,10 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       const usernamesAndEmails = [...req.body.emails, ...req.body.usernames];
 
       await server.services.membershipUser.createMembership({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Organization,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         data: {
           roles: [],
@@ -453,10 +448,10 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       });
 
       const { memberships } = await server.services.membershipUser.createMembership({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         data: {
@@ -483,7 +478,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.ProjectMembershipCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           projectId: req.params.projectId,
           userIds: memberships.map((m) => m.actorUserId).filter((id): id is string => Boolean(id)),
@@ -553,14 +548,14 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       const { userId } = await server.services.convertor.userMembershipIdToUserId(
         req.params.membershipId,
         AccessScope.Project,
-        req.permission.orgId
+        req.actor.orgId
       );
 
       const { membership } = await server.services.membershipUser.updateMembership({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         selector: {
@@ -574,7 +569,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.ProjectMembershipRoleUpdated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           projectId: req.params.projectId,
           userId,
@@ -629,10 +624,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const memberships = await server.services.projectMembership.deleteProjectMemberships({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.params.projectId,
         emails: req.body.emails,
         usernames: req.body.usernames
@@ -656,7 +648,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.ProjectMembershipDeleted,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           projectId: req.params.projectId,
           userIds: memberships.map((m) => m.actorUserId).filter((id): id is string => Boolean(id))
@@ -702,14 +694,14 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       const { userId } = await server.services.convertor.userMembershipIdToUserId(
         req.params.membershipId,
         AccessScope.Project,
-        req.permission.orgId
+        req.actor.orgId
       );
 
       const { membership } = await server.services.membershipUser.deleteMembership({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         selector: {
@@ -732,7 +724,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.ProjectMembershipDeleted,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           projectId: req.params.projectId,
           userIds: [userId]
@@ -770,15 +762,14 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.projectMembership.leaveProject({
-        actorId: req.permission.id,
-        actor: req.permission.type,
+        actor: req.actor,
         projectId: req.params.projectId
       });
 
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.ProjectMembershipDeleted,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           projectId: req.params.projectId,
           userIds: [membership.actorUserId as string]
@@ -815,7 +806,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       body: z.object({
         ...folderAccessFolderFields(FOLDER_ACCESS.CREATE),
         permission: z.nativeEnum(SecretFolderRole).describe(FOLDER_ACCESS.CREATE.permission),
-        type: folderAccessCreateTypeSchema.optional()
+        type: folderAccessCreateTypeSchema.optional(),
+        isPermissionRecursive: z.boolean().optional().describe(FOLDER_ACCESS.CREATE.isPermissionRecursive)
       }),
       response: {
         200: z.object({
@@ -826,13 +818,14 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { folderAccess } = await server.services.folderPermission.createFolderGrant({
-        permission: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId,
         environmentSlug: req.body.environmentSlug,
         secretPath: req.body.secretPath,
         target: { actorId: req.params.userId, actorType: ActorType.USER },
         role: req.body.permission,
-        type: req.body.type
+        type: req.body.type,
+        isPermissionRecursive: req.body.isPermissionRecursive
       });
 
       await server.services.auditLog.createAuditLog({
@@ -847,12 +840,13 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.FolderAccessGrantCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           projectId: req.params.projectId,
           actorType: ActorType.USER,
           permission: folderAccess.permission,
-          isTemporary: folderAccess.isTemporary
+          isTemporary: folderAccess.isTemporary,
+          isPermissionRecursive: folderAccess.isPermissionRecursive
         }
       });
 
@@ -881,11 +875,13 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         .object({
           ...folderAccessFolderFields(FOLDER_ACCESS.UPDATE),
           permission: z.nativeEnum(SecretFolderRole).optional().describe(FOLDER_ACCESS.UPDATE.permission),
-          type: folderAccessUpdateTypeSchema.optional()
+          type: folderAccessUpdateTypeSchema.optional(),
+          isPermissionRecursive: z.boolean().optional().describe(FOLDER_ACCESS.UPDATE.isPermissionRecursive)
         })
         .refine(
-          (body) => body.permission !== undefined || body.type !== undefined,
-          "Provide at least one of 'permission' or 'type' to update"
+          (body) =>
+            body.permission !== undefined || body.type !== undefined || body.isPermissionRecursive !== undefined,
+          "Provide at least one of 'permission', 'type' or 'isPermissionRecursive' to update"
         ),
       response: {
         200: z.object({
@@ -896,13 +892,14 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { folderAccess } = await server.services.folderPermission.updateFolderGrant({
-        permission: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId,
         environmentSlug: req.body.environmentSlug,
         secretPath: req.body.secretPath,
         target: { actorId: req.params.userId, actorType: ActorType.USER },
         role: req.body.permission,
-        type: req.body.type
+        type: req.body.type,
+        isPermissionRecursive: req.body.isPermissionRecursive
       });
 
       await server.services.auditLog.createAuditLog({
@@ -917,12 +914,13 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.FolderAccessGrantUpdated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           projectId: req.params.projectId,
           actorType: ActorType.USER,
           permission: folderAccess.permission,
-          isTemporary: folderAccess.isTemporary
+          isTemporary: folderAccess.isTemporary,
+          isPermissionRecursive: folderAccess.isPermissionRecursive
         }
       });
 
@@ -959,7 +957,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { folderAccess } = await server.services.folderPermission.deleteFolderGrant({
-        permission: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId,
         environmentSlug: req.body.environmentSlug,
         secretPath: req.body.secretPath,
@@ -978,12 +976,13 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.FolderAccessGrantDeleted,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           projectId: req.params.projectId,
           actorType: ActorType.USER,
           permission: folderAccess.permission,
-          isTemporary: folderAccess.isTemporary
+          isTemporary: folderAccess.isTemporary,
+          isPermissionRecursive: folderAccess.isPermissionRecursive
         }
       });
 
@@ -1020,7 +1019,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { folderAccess } = await server.services.folderPermission.listActorFolderGrants({
-        permission: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId,
         target: { actorId: req.params.userId, actorType: ActorType.USER }
       });
@@ -1068,7 +1067,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) =>
       server.services.folderPermission.listFolderAccessUsers({
-        permission: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId,
         environmentSlug: req.query.environmentSlug,
         secretPath: req.query.secretPath,

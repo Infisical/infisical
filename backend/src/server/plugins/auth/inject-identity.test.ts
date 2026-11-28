@@ -2,8 +2,8 @@ import type { FastifyRequest } from "fastify";
 import jwt from "jsonwebtoken";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 
+import { AuthMethod, AuthMode, AuthTokenType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto";
-import { AuthMethod, AuthMode, AuthTokenType } from "@app/services/auth/auth-type";
 
 import { extractAuth } from "./inject-identity";
 
@@ -40,7 +40,7 @@ const makeReq = (authorization?: string, apiKey?: string) =>
 describe("extractAuth — OAuth access token classification", () => {
   beforeAll(async () => {
     process.env.FIPS_ENABLED = "false";
-    await crypto.initialize({} as never, {} as never, {} as never);
+    await crypto.initialize(async () => null);
   });
 
   afterAll(() => {
@@ -85,7 +85,7 @@ describe("extractAuth — OAuth access token classification", () => {
 describe("extractAuth — token from another instance", () => {
   beforeAll(async () => {
     process.env.FIPS_ENABLED = "false";
-    await crypto.initialize({} as never, {} as never, {} as never);
+    await crypto.initialize(async () => null);
   });
 
   afterAll(() => {

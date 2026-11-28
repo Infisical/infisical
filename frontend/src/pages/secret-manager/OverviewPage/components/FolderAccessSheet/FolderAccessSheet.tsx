@@ -1,13 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ChevronRightIcon,
-  FolderIcon,
-  LayersIcon,
-  SearchIcon,
-  UsersIcon,
-  XIcon
-} from "lucide-react";
+import { BotIcon, SearchIcon, UserIcon, UsersIcon, XIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -15,6 +8,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
+  Badge,
   DocumentationLinkBadge,
   Empty,
   EmptyDescription,
@@ -26,13 +20,16 @@ import {
   InputGroupButton,
   InputGroupInput,
   Pagination,
-  Separator,
   Sheet,
   SheetContent,
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  Skeleton
+  Skeleton,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionIdentityActions,
@@ -40,7 +37,8 @@ import {
   ProjectPermissionSub,
   useOrganization,
   useProject,
-  useProjectPermission
+  useProjectPermission,
+  useUser
 } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
@@ -63,7 +61,9 @@ import {
   useUpdateUserFolderAccess
 } from "@app/hooks/api/folderAccess";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { analytics, AnalyticsEvent, FolderAccessSheetSource } from "@app/lib/analytics";
 
+import { ChangeOwnFolderAccessDialog, TOwnFolderAccessChange } from "./ChangeOwnFolderAccessDialog";
 import { FOLDER_ROLE_TIER_LABELS } from "./folder-access.const";
 import {
   byAdminThenName,
@@ -81,18 +81,32 @@ import {
   TFolderAccessFilter
 } from "./FolderAccessFilter";
 import { FolderAccessGrantRow, FolderAccessRow } from "./FolderAccessRow";
+import { FolderPathBreadcrumb } from "./FolderPathBreadcrumb";
 import { RemoveFolderAccessDialog } from "./RemoveFolderAccessDialog";
 
 // users and identities come from two separately paginated endpoints that share this page
 const PER_PAGE = 20;
-// organization members outside the project are not paged, so each kind is capped and search narrows it
+// organization members outside the project are not paged, so each tab is capped and search narrows it
 const ORG_PREVIEW_LIMIT = 10;
 const NO_ACCESS_SECTION = "no-access";
 
-const SectionLabel = ({ title, count }: { title: string; count: number }) => (
-  <div className="flex items-center gap-1.5 text-xs font-medium text-accent">
-    {title}
-    <span className="font-normal text-muted tabular-nums">{count}</span>
+const ACTOR_TYPES: TFolderAccessActor["type"][] = ["user", "identity"];
+
+const SectionLabel = ({
+  title,
+  count,
+  description
+}: {
+  title: string;
+  count: number;
+  description?: string;
+}) => (
+  <div className="pb-1">
+    <div className="flex items-center gap-1.5 text-xs font-medium text-accent">
+      {title}
+      <span className="font-normal text-muted tabular-nums">{count}</span>
+    </div>
+    {description && <p className="text-xs text-muted">{description}</p>}
   </div>
 );
 
@@ -103,6 +117,8 @@ type Props = {
   environmentSlug: string;
   folderPath: string;
   environmentName: string;
+  onManageInheritedAccess?: (secretPath: string) => void;
+  source: FolderAccessSheetSource;
 };
 
 export const FolderAccessSheet = ({
@@ -111,17 +127,22 @@ export const FolderAccessSheet = ({
   projectId,
   environmentSlug,
   folderPath,
-  environmentName
+  environmentName,
+  onManageInheritedAccess,
+  source
 }: Props) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 300);
   const [page, setPage] = useState(1);
   const [removalActor, setRemovalActor] = useState<TFolderAccessActor | null>(null);
+  const [ownAccessChange, setOwnAccessChange] = useState<TOwnFolderAccessChange | null>(null);
   const [filter, setFilter] = useState<TFolderAccessFilter>(EMPTY_FOLDER_ACCESS_FILTER);
   const [noAccessSection, setNoAccessSection] = useState("");
+  const [noAccessTab, setNoAccessTab] = useState<TFolderAccessActor["type"]>("user");
   const isFiltering = Boolean(filter.types.length || filter.kinds.length);
 
   const queryClient = useQueryClient();
+  const { user: currentUser } = useUser();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission: projectPermission } = useProjectPermission();
@@ -220,7 +241,11 @@ export const FolderAccessSheet = ({
 
   const orgCandidates = useMemo(() => {
     if (!showsOrgMembers)
-      return { actors: [], usernames: new Map<string, string>(), hasMore: false };
+      return {
+        actors: { user: [], identity: [] },
+        totals: { user: 0, identity: 0 },
+        usernames: new Map<string, string>()
+      };
     const query = debouncedSearch.trim().toLowerCase();
     const matchesQuery = (values: (string | undefined)[]) =>
       !query || values.some((value) => value?.toLowerCase().includes(query));
@@ -245,13 +270,15 @@ export const FolderAccessSheet = ({
       : [];
 
     return {
-      actors: [
-        ...matchingUsers.slice(0, ORG_PREVIEW_LIMIT).map(toOrgUserActor),
-        ...matchingIdentities.slice(0, ORG_PREVIEW_LIMIT).map(toOrgIdentityActor)
-      ].sort(byName),
-      usernames: new Map(matchingUsers.map(({ user }) => [user.id, user.username])),
-      hasMore:
-        matchingUsers.length > ORG_PREVIEW_LIMIT || matchingIdentities.length > ORG_PREVIEW_LIMIT
+      actors: {
+        user: matchingUsers.map(toOrgUserActor).sort(byName).slice(0, ORG_PREVIEW_LIMIT),
+        identity: matchingIdentities
+          .map(toOrgIdentityActor)
+          .sort(byName)
+          .slice(0, ORG_PREVIEW_LIMIT)
+      },
+      totals: { user: matchingUsers.length, identity: matchingIdentities.length },
+      usernames: new Map(matchingUsers.map(({ user }) => [user.id, user.username]))
     };
   }, [
     showsOrgMembers,
@@ -265,11 +292,25 @@ export const FolderAccessSheet = ({
     orgIdentities
   ]);
 
+  const noAccessCounts = {
+    user: candidates.filter((actor) => actor.type === "user").length + orgCandidates.totals.user,
+    identity:
+      candidates.filter((actor) => actor.type === "identity").length + orgCandidates.totals.identity
+  };
+
   const isLoading = isUsersPending || isIdentitiesPending;
   const isOrgLoading =
     showsNoAccess &&
     ((canAddUsers && (isOrgUsersPending || isProjectUsersPending)) ||
       (canAddIdentities && isOrgIdentitiesPending));
+  const isOrgTypeLoading = {
+    user: canAddUsers && (isOrgUsersPending || isProjectUsersPending),
+    identity: canAddIdentities && isOrgIdentitiesPending
+  };
+  // a type filter can exclude the tab the user last picked, so fall back to the one still shown
+  const activeNoAccessTab = wantsType(noAccessTab)
+    ? noAccessTab
+    : (ACTOR_TYPES.find(wantsType) ?? noAccessTab);
   const isOrgError =
     showsNoAccess &&
     ((canAddUsers && (isOrgUsersError || isProjectUsersError)) ||
@@ -283,6 +324,8 @@ export const FolderAccessSheet = ({
     createIdentityAccess.isPending ||
     isUsersFetching ||
     isIdentitiesFetching;
+  const isAccessLocked =
+    isGrantLocked || updateUserAccess.isPending || updateIdentityAccess.isPending;
   // the endpoints page the project roster and only then split each page into the actors that do and
   // do not have access here, so this count pages members and not the rows below it
   const rosterCount = Math.max(users?.totalCount ?? 0, identities?.totalCount ?? 0);
@@ -313,45 +356,113 @@ export const FolderAccessSheet = ({
   // failures are already surfaced by the global MutationCache.onError toast, which carries the
   // server's own message, so only the success side is announced here
   const notifySuccess = (text: string) => createNotification({ text, type: "success" });
+  const trackChange = (actor: TFolderAccessActor, action: "added" | "updated" | "removed") =>
+    analytics.captureForOrganization(AnalyticsEvent.FolderAccessChanged, currentOrg.id, {
+      source,
+      action,
+      actorType: actor.type,
+      projectId
+    });
 
-  const setTier = (actor: TFolderAccessActor, permission: SecretFolderRole) => {
+  const setTier = (
+    actor: TFolderAccessActor,
+    permission: SecretFolderRole,
+    isPermissionRecursive = false
+  ) => {
     const target = { projectId, environmentSlug, secretPath: folderPath };
     const tierLabel = FOLDER_ROLE_TIER_LABELS[permission];
-    const onSuccess = () =>
+    const appliesToSubfolders = actor.access
+      ? actor.access.isPermissionRecursive
+      : isPermissionRecursive;
+    const scope = appliesToSubfolders ? "this folder and its subfolders" : "this folder";
+    const onSuccess = () => {
       notifySuccess(
         actor.access
-          ? `Updated ${actor.name} to ${tierLabel} on this folder`
-          : `Granted ${actor.name} ${tierLabel} access to this folder`
+          ? `Updated ${actor.name} to ${tierLabel} on ${scope}`
+          : `Granted ${actor.name} ${tierLabel} access to ${scope}`
       );
+      trackChange(actor, actor.access ? "updated" : "added");
+    };
+    const recursion = isPermissionRecursive ? { isPermissionRecursive } : {};
 
     if (actor.type === "user") {
-      const dto = { ...target, userId: actor.id, permission };
-      if (actor.access) updateUserAccess.mutate(dto, { onSuccess });
-      else createUserAccess.mutate(dto, { onSuccess });
+      if (actor.access)
+        updateUserAccess
+          .mutateAsync({ ...target, userId: actor.id, permission })
+          .then(onSuccess)
+          .catch(() => undefined);
+      else
+        createUserAccess
+          .mutateAsync({ ...target, userId: actor.id, permission, ...recursion })
+          .then(onSuccess)
+          .catch(() => undefined);
       return;
     }
-    const dto = { ...target, identityId: actor.id, permission };
-    if (actor.access) updateIdentityAccess.mutate(dto, { onSuccess });
-    else createIdentityAccess.mutate(dto, { onSuccess });
+    if (actor.access)
+      updateIdentityAccess
+        .mutateAsync({ ...target, identityId: actor.id, permission })
+        .then(onSuccess)
+        .catch(() => undefined);
+    else
+      createIdentityAccess
+        .mutateAsync({ ...target, identityId: actor.id, permission, ...recursion })
+        .then(onSuccess)
+        .catch(() => undefined);
+  };
+
+  const setRecursive = (actor: TFolderAccessActor, isPermissionRecursive: boolean) => {
+    const target = { projectId, environmentSlug, secretPath: folderPath };
+    const onSuccess = () => {
+      notifySuccess(
+        isPermissionRecursive
+          ? `${actor.name}'s access now applies to ${folderPath} and all of its subfolders`
+          : `${actor.name}'s access now applies to ${folderPath} only`
+      );
+      trackChange(actor, "updated");
+    };
+
+    if (actor.type === "user")
+      updateUserAccess
+        .mutateAsync({ ...target, userId: actor.id, isPermissionRecursive })
+        .then(onSuccess)
+        .catch(() => undefined);
+    else
+      updateIdentityAccess
+        .mutateAsync({ ...target, identityId: actor.id, isPermissionRecursive })
+        .then(onSuccess)
+        .catch(() => undefined);
   };
 
   const setAccessType = (actor: TFolderAccessActor, type: TFolderGrantType) => {
     const target = { projectId, environmentSlug, secretPath: folderPath };
-    const onSuccess = () =>
+    const onSuccess = () => {
       notifySuccess(
         type.isTemporary
           ? `${actor.name}'s folder access now expires in ${type.temporaryRange}`
           : `Removed the expiration on ${actor.name}'s folder access`
       );
+      trackChange(actor, "updated");
+    };
 
     if (actor.type === "user")
-      updateUserAccess.mutate({ ...target, userId: actor.id, type }, { onSuccess });
-    else updateIdentityAccess.mutate({ ...target, identityId: actor.id, type }, { onSuccess });
+      updateUserAccess
+        .mutateAsync({ ...target, userId: actor.id, type })
+        .then(onSuccess)
+        .catch(() => undefined);
+    else
+      updateIdentityAccess
+        .mutateAsync({ ...target, identityId: actor.id, type })
+        .then(onSuccess)
+        .catch(() => undefined);
   };
 
   // folder access only applies to project members, so an organization member joins the project with
   // the No Access role first and reaches nothing beyond the folders granted to them
-  const addToProjectAndGrant = async (actor: TFolderAccessActor, tier: SecretFolderRole) => {
+  const addToProjectAndGrant = async (
+    actor: TFolderAccessActor,
+    tier: SecretFolderRole,
+    isRecursive: boolean
+  ) => {
     try {
       if (actor.type === "user") {
         await addUserToProject.mutateAsync({
@@ -374,7 +485,7 @@ export const FolderAccessSheet = ({
       // the global MutationCache.onError toast already reports the failure
       return;
     }
-    setTier(actor, tier);
+    setTier(actor, tier, isRecursive);
     queryClient.invalidateQueries({
       predicate: ({ queryKey }) =>
         (queryKey[0] as { projectId?: string })?.projectId === projectId &&
@@ -384,16 +495,61 @@ export const FolderAccessSheet = ({
     });
   };
 
+  const isSelf = (actor: TFolderAccessActor) =>
+    actor.type === "user" && actor.id === currentUser.id;
+
+  const confirmIfSelf = (actor: TFolderAccessActor, summary: string, apply: () => void) => {
+    if (isSelf(actor)) setOwnAccessChange({ summary, apply });
+    else apply();
+  };
+
+  const changeTier = (
+    actor: TFolderAccessActor,
+    permission: SecretFolderRole,
+    isPermissionRecursive: boolean
+  ) => {
+    const apply = () => setTier(actor, permission, isPermissionRecursive);
+    if (actor.access?.permission === permission) {
+      apply();
+      return;
+    }
+    const tierLabel = FOLDER_ROLE_TIER_LABELS[permission];
+    confirmIfSelf(
+      actor,
+      actor.access
+        ? `Your access will change from ${FOLDER_ROLE_TIER_LABELS[actor.access.permission]} to ${tierLabel}.`
+        : `You will get ${tierLabel} on this folder, replacing the access you have here now.`,
+      apply
+    );
+  };
+
+  const changeRecursive = (actor: TFolderAccessActor, isPermissionRecursive: boolean) =>
+    confirmIfSelf(
+      actor,
+      isPermissionRecursive
+        ? "Your access will also apply to every subfolder."
+        : "Your access will apply to this folder only, not its subfolders.",
+      () => setRecursive(actor, isPermissionRecursive)
+    );
+
   const removeAccess = (actor: TFolderAccessActor) => {
     const target = { projectId, environmentSlug, secretPath: folderPath };
     const onSuccess = () => {
       notifySuccess(`Removed ${actor.name}'s folder access`);
+      trackChange(actor, "removed");
       setRemovalActor(null);
     };
 
     if (actor.type === "user")
-      deleteUserAccess.mutate({ ...target, userId: actor.id }, { onSuccess });
-    else deleteIdentityAccess.mutate({ ...target, identityId: actor.id }, { onSuccess });
+      deleteUserAccess
+        .mutateAsync({ ...target, userId: actor.id })
+        .then(onSuccess)
+        .catch(() => undefined);
+    else
+      deleteIdentityAccess
+        .mutateAsync({ ...target, identityId: actor.id })
+        .then(onSuccess)
+        .catch(() => undefined);
   };
 
   return (
@@ -405,13 +561,7 @@ export const FolderAccessSheet = ({
               Manage Permissions
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/folder-rbac" />
             </SheetTitle>
-            <div className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-neutral/5 px-3 py-2 text-xs">
-              <LayersIcon className="size-3.5 shrink-0 text-muted" />
-              <span className="shrink-0 text-foreground">{environmentName}</span>
-              <ChevronRightIcon className="size-3.5 shrink-0 text-muted" />
-              <FolderIcon className="size-3.5 shrink-0 text-folder" />
-              <span className="truncate font-mono text-foreground">{folderPath}</span>
-            </div>
+            <FolderPathBreadcrumb environmentName={environmentName} folderPath={folderPath} />
           </SheetHeader>
 
           <div className="thin-scrollbar flex-1 space-y-4 overflow-y-auto p-4">
@@ -470,7 +620,8 @@ export const FolderAccessSheet = ({
               isSearching &&
               !actors.length &&
               !candidates.length &&
-              !orgCandidates.actors.length &&
+              !orgCandidates.totals.user &&
+              !orgCandidates.totals.identity &&
               !isOrgLoading &&
               !isOrgError && (
                 <p className="text-sm text-muted">No members match your search and filters.</p>
@@ -484,23 +635,37 @@ export const FolderAccessSheet = ({
 
             {!isLoading && Boolean(actors.length) && (
               <section className="flex flex-col">
-                {actors.map((actor) => (
-                  <FolderAccessRow
-                    key={`${actor.type}-${actor.id}`}
-                    actor={actor}
-                    onSetTier={(tier) => setTier(actor, tier)}
-                    onSetTemporaryRange={(range) =>
-                      setAccessType(actor, {
-                        isTemporary: true,
-                        temporaryMode: "relative",
-                        temporaryRange: range,
-                        temporaryAccessStartTime: new Date().toISOString()
-                      })
-                    }
-                    onMakePermanent={() => setAccessType(actor, { isTemporary: false })}
-                    onRemove={() => setRemovalActor(actor)}
-                  />
-                ))}
+                <SectionLabel title="Access" count={actors.length} />
+                <div className="divide-y divide-border">
+                  {actors.map((actor) => (
+                    <FolderAccessRow
+                      key={`${actor.type}-${actor.id}`}
+                      actor={actor}
+                      isSelf={isSelf(actor)}
+                      isPending={isAccessLocked}
+                      folderPath={folderPath}
+                      onSetTier={(tier, isRecursive) => changeTier(actor, tier, isRecursive)}
+                      onSetRecursive={(isRecursive) => changeRecursive(actor, isRecursive)}
+                      onSetTemporaryRange={(range) =>
+                        confirmIfSelf(actor, `Your access will expire in ${range}.`, () =>
+                          setAccessType(actor, {
+                            isTemporary: true,
+                            temporaryMode: "relative",
+                            temporaryRange: range,
+                            temporaryAccessStartTime: new Date().toISOString()
+                          })
+                        )
+                      }
+                      onMakePermanent={() =>
+                        confirmIfSelf(actor, "Your access will no longer expire.", () =>
+                          setAccessType(actor, { isTemporary: false })
+                        )
+                      }
+                      onRemove={() => setRemovalActor(actor)}
+                      onManageInheritedAccess={onManageInheritedAccess}
+                    />
+                  ))}
+                </div>
               </section>
             )}
 
@@ -508,54 +673,120 @@ export const FolderAccessSheet = ({
               <Accordion
                 type="single"
                 collapsible
-                variant="ghost"
                 value={noAccessSection}
                 onValueChange={setNoAccessSection}
               >
                 <AccordionItem value={NO_ACCESS_SECTION}>
                   <AccordionTrigger>
-                    <span className="shrink-0">No Access</span>
-                    <span className="flex-1">
-                      <Separator />
+                    <span className="flex-1">No Access</span>
+                    <span className="flex items-center gap-3 text-xs font-normal text-muted tabular-nums">
+                      <span className="flex items-center gap-1" title="Users">
+                        <UserIcon className="size-3.5" />
+                        {noAccessCounts.user}
+                      </span>
+                      <span className="flex items-center gap-1" title="Machine identities">
+                        <BotIcon className="size-3.5" />
+                        {noAccessCounts.identity}
+                      </span>
                     </span>
                   </AccordionTrigger>
-                  <AccordionContent className="space-y-4">
-                    {Boolean(candidates.length) && (
-                      <section className="flex flex-col">
-                        <SectionLabel title="In Project" count={candidates.length} />
-                        {candidates.map((actor) => (
-                          <FolderAccessGrantRow
-                            key={`${actor.type}-${actor.id}`}
-                            actor={actor}
-                            isDisabled={isGrantLocked}
-                            onSetTier={(tier) => setTier(actor, tier)}
-                          />
-                        ))}
-                      </section>
-                    )}
-                    {showsOrgMembers && Boolean(orgCandidates.actors.length) && (
-                      <section className="flex flex-col">
-                        <SectionLabel
-                          title="In Organization, Not in Project"
-                          count={orgCandidates.actors.length}
-                        />
-                        {orgCandidates.actors.map((actor) => (
-                          <FolderAccessGrantRow
-                            key={`${actor.type}-${actor.id}`}
-                            actor={actor}
-                            isDisabled={isGrantLocked}
-                            footerNote={`Also adds ${actor.name.split(" ")[0]} to this project with the No Access role.`}
-                            onSetTier={(tier) => addToProjectAndGrant(actor, tier)}
-                          />
-                        ))}
-                        {orgCandidates.hasMore && (
-                          <p className="py-2.5 text-xs text-muted">
-                            Showing the first {ORG_PREVIEW_LIMIT} of each. Search to find someone
-                            else.
-                          </p>
+                  <AccordionContent className="p-4">
+                    <Tabs
+                      value={activeNoAccessTab}
+                      onValueChange={(value) => setNoAccessTab(value as TFolderAccessActor["type"])}
+                    >
+                      <TabsList className="w-full">
+                        {wantsType("user") && (
+                          <TabsTrigger value="user">
+                            <UserIcon className="hidden sm:block" />
+                            Users
+                            <Badge variant="neutral">{noAccessCounts.user}</Badge>
+                          </TabsTrigger>
                         )}
-                      </section>
-                    )}
+                        {wantsType("identity") && (
+                          <TabsTrigger value="identity">
+                            <BotIcon className="hidden sm:block" />
+                            <span className="sm:hidden">Identities</span>
+                            <span className="hidden sm:inline">Machine Identities</span>
+                            <Badge variant="neutral">{noAccessCounts.identity}</Badge>
+                          </TabsTrigger>
+                        )}
+                      </TabsList>
+                      {ACTOR_TYPES.map((type) => {
+                        const projectCandidates = candidates.filter((actor) => actor.type === type);
+                        const orgTypeCandidates = orgCandidates.actors[type];
+                        const kindLabel = type === "user" ? "users" : "machine identities";
+                        return (
+                          <TabsContent key={type} value={type} className="space-y-4">
+                            {!projectCandidates.length &&
+                              !orgTypeCandidates.length &&
+                              isOrgTypeLoading[type] && <Skeleton className="h-12 w-full" />}
+                            {!projectCandidates.length &&
+                              !orgTypeCandidates.length &&
+                              !isOrgTypeLoading[type] && (
+                                <p className="py-2 text-xs text-muted">
+                                  No {kindLabel} without access
+                                  {isSearching ? " match your search" : ""}.
+                                </p>
+                              )}
+                            {Boolean(projectCandidates.length) && (
+                              <section className="flex flex-col">
+                                <SectionLabel
+                                  title="In Project"
+                                  count={projectCandidates.length}
+                                  description="Their project role gives no access to this folder."
+                                />
+                                <div className="divide-y divide-border">
+                                  {projectCandidates.map((actor) => (
+                                    <FolderAccessGrantRow
+                                      key={`${actor.type}-${actor.id}`}
+                                      actor={actor}
+                                      isSelf={isSelf(actor)}
+                                      isDisabled={isGrantLocked}
+                                      isPending={isGrantLocked}
+                                      folderPath={folderPath}
+                                      onSetTier={(tier, isRecursive) =>
+                                        changeTier(actor, tier, isRecursive)
+                                      }
+                                    />
+                                  ))}
+                                </div>
+                              </section>
+                            )}
+                            {Boolean(orgTypeCandidates.length) && (
+                              <section className="flex flex-col">
+                                <SectionLabel
+                                  title="In Organization, Not in Project"
+                                  count={orgCandidates.totals[type]}
+                                  description="Granting access also adds them to the project."
+                                />
+                                <div className="divide-y divide-border">
+                                  {orgTypeCandidates.map((actor) => (
+                                    <FolderAccessGrantRow
+                                      key={`${actor.type}-${actor.id}`}
+                                      actor={actor}
+                                      isDisabled={isGrantLocked}
+                                      isPending={isGrantLocked}
+                                      folderPath={folderPath}
+                                      footerNote={`Also adds ${actor.name.split(" ")[0]} to this project with the No Access role.`}
+                                      onSetTier={(tier, isRecursive) =>
+                                        addToProjectAndGrant(actor, tier, isRecursive)
+                                      }
+                                    />
+                                  ))}
+                                </div>
+                                {orgCandidates.totals[type] > ORG_PREVIEW_LIMIT && (
+                                  <p className="py-2.5 text-xs text-muted">
+                                    Showing the first {ORG_PREVIEW_LIMIT} of{" "}
+                                    {orgCandidates.totals[type]}. Search to find someone else.
+                                  </p>
+                                )}
+                              </section>
+                            )}
+                          </TabsContent>
+                        );
+                      })}
+                    </Tabs>
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
@@ -587,6 +818,19 @@ export const FolderAccessSheet = ({
         }}
         onConfirm={removeAccess}
         isPending={deleteUserAccess.isPending || deleteIdentityAccess.isPending}
+        folderPath={folderPath}
+        environmentName={environmentName}
+        isSelf={removalActor ? isSelf(removalActor) : false}
+      />
+      <ChangeOwnFolderAccessDialog
+        change={ownAccessChange}
+        onOpenChange={(open) => {
+          if (!open) setOwnAccessChange(null);
+        }}
+        onConfirm={(change) => {
+          change.apply();
+          setOwnAccessChange(null);
+        }}
         folderPath={folderPath}
         environmentName={environmentName}
       />

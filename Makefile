@@ -77,6 +77,10 @@ test-api-unit: build-test-suite-image
 test-api-e2e: build-test-suite-image
 	$(TEST_SUITE_COMPOSE) run --rm api-tests npm run test:e2e -- $(SPEC)
 
+# Runs on the host, not the FIPS image, since Testcontainers needs Docker. Narrow with SPEC=<pattern>.
+test-api-integration:
+	cd backend && npm run test:integration -- $(SPEC)
+
 test-api: test-api-unit test-api-e2e
 
 lint-docs:
@@ -139,11 +143,6 @@ seed-dev-saml:
 	# users into Infisical via SCIM. Needs the stack up (`make up-dev-saml`).
 	docker compose -f docker-compose.dev.yml exec -T backend npx tsx ./src/db/seed-saml.ts
 
-
-# Golang commands
-go-generate:
-	cd backend-go && \
-	goa gen github.com/infisical/api/internal/server/design -o ./internal/server/
 
 validate-upgrade-impact:
 	cd upgrade-impact && \

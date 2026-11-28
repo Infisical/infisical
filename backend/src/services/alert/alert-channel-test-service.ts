@@ -1,7 +1,7 @@
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { getChannelDefinition, mergeChannelConfigWithStored, parseChannelConfig } from "./alert-channel-config-fns";
@@ -15,16 +15,20 @@ import { getAlertResourceName, resolveAlertProjectId, TAlertProviderRegistry } f
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
 import { TTestAlertChannelDTO, TTestAlertChannelResponse, TTestAlertChannelResult } from "./alert-service-types";
 import { buildTestAlertPayload } from "./alert-test-payload-fns";
-import { AlertPermissionAction, IResourceAlertProvider, TAlertRecipientScope, toAlertActor } from "./alert-types";
+import { AlertPermissionAction, IResourceAlertProvider, TAlertRecipientScope } from "./alert-types";
 
 export type TAlertChannelTestServiceFactoryDep = {
   alertChannelDAL: Pick<TAlertChannelDALFactory, "findById">;
   alertDAL: Pick<TAlertDALFactory, "findByChannelId" | "findActiveById">;
   alertRecipientResolver: Pick<TAlertRecipientResolver, "resolveMany">;
-  alertChannelService: Pick<TAlertChannelServiceFactory, "validateRecipients" | "assertRecipientTypesAllowed">;
+  alertChannelService: Pick<
+    TAlertChannelServiceFactory,
+    "validateRecipients" | "assertRecipientTypesAllowed" | "assertActorMayUseConfig"
+  >;
   alertProviderRegistry: TAlertProviderRegistry;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   smtpService: Pick<TSmtpService, "sendMail">;
+  slackIntegrationDAL: TAlertChannelDeps["slackIntegrationDAL"];
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "ttl">;
 };
 
@@ -40,8 +44,9 @@ export const alertChannelTestServiceFactory = ({
   alertRecipientResolver,
   alertChannelService,
   alertProviderRegistry,
-  kmsService,
+  kmsDataKeyService,
   smtpService,
+  slackIntegrationDAL,
   keyStore
 }: TAlertChannelTestServiceFactoryDep) => {
   const $assertCooldown = async (orgId: string, actorId: string, channelType: string) => {
@@ -63,7 +68,7 @@ export const alertChannelTestServiceFactory = ({
     }
 
     for (const owner of owners) {
-      if (owner.orgId !== dto.actorOrgId) {
+      if (owner.orgId !== dto.actor.org.id) {
         throw new NotFoundError({ message: `Channel with ID '${channelId}' was not found in this scope` });
       }
 
@@ -80,7 +85,7 @@ export const alertChannelTestServiceFactory = ({
         orgId: owner.orgId,
         projectId: owner.projectId,
         resourceId: owner.resourceId,
-        actor: toAlertActor(dto)
+        actor: dto.actor
       });
     }
   };
@@ -90,11 +95,17 @@ export const alertChannelTestServiceFactory = ({
     const incoming = dto.config ?? {};
 
     if (!dto.channelId) {
-      return parseChannelConfig(definition, dto.channelType, incoming);
+      const config = parseChannelConfig(definition, dto.channelType, incoming);
+      await alertChannelService.assertActorMayUseConfig({
+        actor: dto.actor,
+        channelType: dto.channelType,
+        config
+      });
+      return config;
     }
 
     const channel = await alertChannelDAL.findById(dto.channelId);
-    if (!channel || channel.orgId !== dto.actorOrgId || (channel.projectId ?? null) !== projectId) {
+    if (!channel || channel.orgId !== dto.actor.org.id || (channel.projectId ?? null) !== projectId) {
       throw new NotFoundError({ message: `Channel with ID '${dto.channelId}' was not found in this scope` });
     }
     if (channel.channelType !== dto.channelType) {
@@ -105,14 +116,21 @@ export const alertChannelTestServiceFactory = ({
 
     await $assertChannelOwnersPermit(channel.id, dto);
 
-    const { decryptor } = await getAlertChannelCipher(kmsService, {
+    const { decryptor } = await getAlertChannelCipher(kmsDataKeyService, {
       orgId: channel.orgId,
       projectId: channel.projectId
     });
     const stored = decryptChannelConfig<Record<string, unknown>>(channel.encryptedConfig, decryptor);
 
     const merged = mergeChannelConfigWithStored(dto.channelType, incoming, stored);
-    return parseChannelConfig(definition, dto.channelType, merged);
+    const config = parseChannelConfig(definition, dto.channelType, merged);
+    await alertChannelService.assertActorMayUseConfig({
+      actor: dto.actor,
+      channelType: dto.channelType,
+      config,
+      existingConfig: stored
+    });
+    return config;
   };
 
   const $resolveRecipients = async (
@@ -123,13 +141,13 @@ export const alertChannelTestServiceFactory = ({
     if (rows.length === 0) return [];
 
     if (scope.allowEmailAddresses) {
-      await alertChannelService.validateRecipients(dto.actorOrgId, scope, rows);
+      await alertChannelService.validateRecipients(dto.actor.org.id, scope, rows);
     } else {
       alertChannelService.assertRecipientTypesAllowed(scope, rows);
     }
 
     const resolved = await alertRecipientResolver.resolveMany(new Map([[TEST_CHANNEL_ID, rows]]), {
-      orgId: dto.actorOrgId,
+      orgId: dto.actor.org.id,
       projectId: scope.projectId
     });
     return (resolved.get(TEST_CHANNEL_ID) ?? []).slice(0, MAX_TEST_RECIPIENTS);
@@ -153,11 +171,11 @@ export const alertChannelTestServiceFactory = ({
     }
 
     // Last, so a rejected config or an unresolvable recipient doesn't spend the window.
-    await $assertCooldown(dto.actorOrgId, dto.actorId, dto.channelType);
+    await $assertCooldown(dto.actor.org.id, dto.actor.principal.id, dto.channelType);
 
-    const deps: TAlertChannelDeps = { smtpService };
+    const deps: TAlertChannelDeps = { smtpService, kmsDataKeyService, slackIntegrationDAL };
     const payload = buildTestAlertPayload({
-      orgId: dto.actorOrgId,
+      orgId: dto.actor.org.id,
       projectId,
       ...(provider.getWebhookSource
         ? { alertId: dto.alertId, resourceId: dto.resourceId, getWebhookSource: provider.getWebhookSource }
@@ -168,7 +186,7 @@ export const alertChannelTestServiceFactory = ({
       if (!definition.directed) {
         const result = await definition.send({ channelId: TEST_CHANNEL_ID, config, payload, deps });
         if (!result.success) return { success: false, error: result.error ?? "Delivery failed" };
-        return { success: true, deliveredTo: 1 };
+        return { success: true, deliveredTo: 1, ...(result.error ? { error: result.error } : {}) };
       }
 
       const results = await Promise.all(
@@ -183,7 +201,7 @@ export const alertChannelTestServiceFactory = ({
       const error = $toError(err);
       logger.info(
         { channelType: dto.channelType, error },
-        `Alert channel test delivery failed [channelType=${dto.channelType}] [orgId=${dto.actorOrgId}]`
+        `Alert channel test delivery failed [channelType=${dto.channelType}] [orgId=${dto.actor.org.id}]`
       );
       return { success: false, error };
     }
@@ -198,7 +216,7 @@ export const alertChannelTestServiceFactory = ({
     }
 
     const projectId = await resolveAlertProjectId(provider, {
-      orgId: dto.actorOrgId,
+      orgId: dto.actor.org.id,
       projectId: dto.projectId,
       resourceId: dto.resourceId
     });
@@ -207,7 +225,7 @@ export const alertChannelTestServiceFactory = ({
       const alert = await alertDAL.findActiveById(dto.alertId);
       if (
         !alert ||
-        alert.orgId !== dto.actorOrgId ||
+        alert.orgId !== dto.actor.org.id ||
         alert.resourceType !== dto.resourceType ||
         (alert.resourceId ?? null) !== (dto.resourceId ?? null) ||
         (alert.projectId ?? null) !== projectId
@@ -218,19 +236,19 @@ export const alertChannelTestServiceFactory = ({
 
     await provider.assertPermission({
       action: dto.alertId ? AlertPermissionAction.Edit : AlertPermissionAction.Create,
-      orgId: dto.actorOrgId,
+      orgId: dto.actor.org.id,
       projectId,
       resourceId: dto.resourceId,
-      actor: toAlertActor(dto)
+      actor: dto.actor
     });
-    await provider.assertResourceInScope({ orgId: dto.actorOrgId, projectId, resourceId: dto.resourceId });
+    await provider.assertResourceInScope({ orgId: dto.actor.org.id, projectId, resourceId: dto.resourceId });
 
     if (!dto.channelId) {
-      await provider.assertChannelTypesAllowed?.({ orgId: dto.actorOrgId, channelTypes: [dto.channelType] });
+      await provider.assertChannelTypesAllowed?.({ orgId: dto.actor.org.id, channelTypes: [dto.channelType] });
     }
 
     const config = await $resolveConfig(dto, projectId);
-    const resourceName = await getAlertResourceName(provider, dto.actorOrgId, dto.resourceId);
+    const resourceName = await getAlertResourceName(provider, dto.actor.org.id, dto.resourceId);
     const result = await $sendTest(dto, projectId, provider, config);
     return { ...result, projectId, resourceName };
   };

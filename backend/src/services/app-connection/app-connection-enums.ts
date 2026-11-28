@@ -94,7 +94,11 @@ export enum AppConnection {
   ServiceNow = "servicenow",
   S3Compatible = "s3-compatible",
   Jira = "jira",
-  ClickHouse = "clickhouse"
+  ClickHouse = "clickhouse",
+  IncidentIo = "incident-io",
+  Jenkins = "jenkins",
+  Coolify = "coolify",
+  Rfc2136 = "rfc2136"
 }
 
 export enum AWSRegion {

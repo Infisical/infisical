@@ -1,18 +1,22 @@
 import { Knex } from "knex";
 
 import { RESOURCE_SCOPE, ResourceType, TApprovalRequestGrants } from "@app/db/schemas";
+import { ApplicationApprovalPolicyPermissionActions } from "@app/domains/certificates/cert-manager/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import {
+  PamResourcePermissionActions,
+  PamResourcePermissionSub,
+  TPamPermissionService
+} from "@app/domains/pam/pam/ce/module";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ResourcePermissionApprovalPolicyActions,
-  ResourcePermissionPamResourceActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { formatDuration, ms } from "@app/lib/ms";
+import { formatDuration, formatDurationSeconds, ms, toExactDurationString } from "@app/lib/ms";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import {
@@ -25,13 +29,20 @@ import {
   ApprovalRequestStatus,
   ApproverType
 } from "@app/services/approval-policy/approval-policy-enums";
-import { PolicyBypasser, TApprovalActor, TApprovalResource } from "@app/services/approval-policy/approval-policy-types";
+import {
+  PolicyBypasser,
+  TApprovalActor,
+  TApprovalResource,
+  TApprovalActorContext
+} from "@app/services/approval-policy/approval-policy-types";
 import {
   TApprovalRequestDALFactory,
   TApprovalRequestGrantsDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
 import { getAutoApprovalSummary } from "@app/services/approval-policy/auto-approval/auto-approval-fns";
 import {
+  effectivePamAccessDurationMs,
+  exceedsPamMaxAccessDuration,
   matchesPamAccessSubject,
   matchPamAccessGrants,
   PAM_DEFAULT_ACCESS_TYPE,
@@ -41,9 +52,6 @@ import {
   TPamAccessPolicy,
   TPamAccessPolicyInputs
 } from "@app/services/approval-policy/pam-access/pam-access-policy-types";
-import { ActorType } from "@app/services/auth/auth-type";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { NotificationType } from "@app/services/notification/notification-types";
@@ -68,12 +76,7 @@ import {
   PamProductRole,
   PamSessionStatus
 } from "../pam/pam-enums";
-import {
-  checkAccountAccess,
-  checkFolderPermission,
-  TActorContext,
-  verifyProductMembership
-} from "../pam/pam-permission";
+import { checkAccountAccess, checkFolderPermission, verifyProductMembership } from "../pam/pam-permission";
 import { resolveAccessControls } from "../pam/pam-policies";
 import { buildPamAccessRequestEvent } from "./pam-access-request-events";
 import { escapeMarkdown, getSlackSendTargets } from "./pam-access-request-fns";
@@ -94,10 +97,11 @@ type TPamAccessApprovalResourceDep = {
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectPermissionService: TProjectPermissionService;
+  pamPermissionService: TPamPermissionService;
   userDAL: Pick<TUserDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   pamFolderNotificationConfigDAL: Pick<TPamFolderNotificationConfigDALFactory, "findByFolderIdWithIntegration">;
 };
 
@@ -106,6 +110,7 @@ type TPamRequestDecoration = {
   accountType: string | null;
   folderName: string | null;
   accessType: PamAccessType;
+  maxAccessDurationSeconds: number | null;
 };
 
 export type TPamAccessApprovalResource = TApprovalResource<
@@ -127,12 +132,9 @@ export type TPamAccessApprovalResource = TApprovalResource<
   ) => Promise<{ revoked: TApprovalRequestGrants; sendCancellationSignals: () => void }>;
 };
 
-const toActorContext = (actor: TApprovalActor): TActorContext => ({
-  actorId: actor.id,
-  actor: actor.type,
-  actorOrgId: actor.orgId,
-  actorAuthMethod: actor.authMethod
-});
+// Safe cast: the approval service passes back the caller's actor, which is always a request actor context
+// (req.actor, or one built with toApprovalActorContext).
+const toActorContext = (actor: TApprovalActor): TActorContext => actor as TApprovalActorContext;
 
 type TBreakGlassSubject = {
   projectId: string;
@@ -157,10 +159,11 @@ export const pamAccessApprovalResourceFactory = ({
   pamSessionDAL,
   membershipDAL,
   membershipRoleDAL,
-  permissionService,
+  projectPermissionService,
+  pamPermissionService,
   userDAL,
   gatewayV2Service,
-  kmsService,
+  kmsDataKeyService,
   pamFolderNotificationConfigDAL
 }: TPamAccessApprovalResourceDep): TPamAccessApprovalResource => {
   const $assertFolderInProject = async (folderId: string, projectId: string) => {
@@ -281,7 +284,9 @@ export const pamAccessApprovalResourceFactory = ({
     breakGlass
   ) => {
     const inputs = request.requestData.requestData as TPamAccessRequestData;
-    const durationMs = parsePamAccessDuration(inputs.duration);
+    const account = await pamAccountDAL.findByIdWithDetails(inputs.accountId, tx);
+    const { maxAccessDurationSeconds } = resolveAccessControls(account?.templatePolicies);
+    const durationMs = effectivePamAccessDurationMs(inputs.duration, maxAccessDurationSeconds);
 
     const grant = await approvalRequestGrantsDAL.create(
       {
@@ -326,22 +331,22 @@ export const pamAccessApprovalResourceFactory = ({
     }
 
     const ctx = toActorContext(actor);
-    await verifyProductMembership(permissionService, projectId, ctx);
+    await verifyProductMembership(projectPermissionService, projectId, ctx);
     await $assertFolderInProject(scopeId, projectId);
 
-    const { permission } = await checkFolderPermission(permissionService, scopeId, projectId, ctx);
-    const canManage = permission.can(
-      ResourcePermissionPamResourceActions.ManagePolicies,
-      ResourcePermissionSub.PamResource
-    );
+    const permission = await checkFolderPermission(pamPermissionService, scopeId, projectId, ctx);
+    const canManage = permission.can({
+      action: PamResourcePermissionActions.ManagePolicies,
+      subject: PamResourcePermissionSub.PamResource
+    });
 
     if (canManage) return;
 
-    const isRead = action === ResourcePermissionApprovalPolicyActions.Read;
-    const canAudit = permission.can(
-      ResourcePermissionPamResourceActions.ViewAuditLogs,
-      ResourcePermissionSub.PamResource
-    );
+    const isRead = action === ApplicationApprovalPolicyPermissionActions.Read;
+    const canAudit = permission.can({
+      action: PamResourcePermissionActions.ViewAuditLogs,
+      subject: PamResourcePermissionSub.PamResource
+    });
     if (isRead && canAudit) return;
 
     throw new ForbiddenRequestError({
@@ -359,10 +364,16 @@ export const pamAccessApprovalResourceFactory = ({
     if (!scopeId) return false;
 
     try {
-      const { permission } = await checkFolderPermission(permissionService, scopeId, projectId, toActorContext(actor));
+      const permission = await checkFolderPermission(pamPermissionService, scopeId, projectId, toActorContext(actor));
       return (
-        permission.can(ResourcePermissionPamResourceActions.ManagePolicies, ResourcePermissionSub.PamResource) ||
-        permission.can(ResourcePermissionPamResourceActions.ViewAuditLogs, ResourcePermissionSub.PamResource)
+        permission.can({
+          action: PamResourcePermissionActions.ManagePolicies,
+          subject: PamResourcePermissionSub.PamResource
+        }) ||
+        permission.can({
+          action: PamResourcePermissionActions.ViewAuditLogs,
+          subject: PamResourcePermissionSub.PamResource
+        })
       );
     } catch {
       return false;
@@ -404,7 +415,7 @@ export const pamAccessApprovalResourceFactory = ({
     const ctx = toActorContext(actor);
     const isCredentialRequest = inputs.accessType === PamAccessType.Credential;
 
-    await verifyProductMembership(permissionService, projectId, ctx);
+    await verifyProductMembership(projectPermissionService, projectId, ctx);
 
     const account = await pamAccountDAL.findByIdWithDetails(inputs.accountId);
     if (!account || account.projectId !== projectId || account.folderId !== inputs.folderId) {
@@ -414,13 +425,11 @@ export const pamAccessApprovalResourceFactory = ({
     // Approval is a layer on top of standing access: only users who already hold the underlying
     // permission may request the temporary grant that unlocks it.
     await checkAccountAccess(
-      permissionService,
+      pamPermissionService,
       account.id,
       account.folderId,
       projectId,
-      isCredentialRequest
-        ? ResourcePermissionPamResourceActions.ViewCredentials
-        : ResourcePermissionPamResourceActions.LaunchSessions,
+      isCredentialRequest ? PamResourcePermissionActions.ViewCredentials : PamResourcePermissionActions.LaunchSessions,
       ctx
     );
 
@@ -434,7 +443,7 @@ export const pamAccessApprovalResourceFactory = ({
     }
 
     if (isCredentialRequest) {
-      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
@@ -448,6 +457,16 @@ export const pamAccessApprovalResourceFactory = ({
       if (!hasRevealableCredential(account.accountType as PamAccountType, credentials)) {
         throw new BadRequestError({ message: noRevealableCredentialMessage(account.name) });
       }
+    }
+
+    if (
+      accessControls.maxAccessDurationSeconds !== null &&
+      exceedsPamMaxAccessDuration(inputs.duration, accessControls.maxAccessDurationSeconds)
+    ) {
+      throw new BadRequestError({
+        name: "PAM_ACCESS_DURATION_EXCEEDED",
+        message: `Access duration must be at most ${formatDurationSeconds(accessControls.maxAccessDurationSeconds)}, the maximum set on this account's template`
+      });
     }
 
     if (accessControls.requireReason && !inputs.reason) {
@@ -599,13 +618,13 @@ export const pamAccessApprovalResourceFactory = ({
 
     try {
       await checkAccountAccess(
-        permissionService,
+        pamPermissionService,
         account.id,
         folderId,
         projectId,
         accessType === PamAccessType.Credential
-          ? ResourcePermissionPamResourceActions.ViewCredentials
-          : ResourcePermissionPamResourceActions.LaunchSessions,
+          ? PamResourcePermissionActions.ViewCredentials
+          : PamResourcePermissionActions.LaunchSessions,
         toActorContext(actor)
       );
     } catch (err) {
@@ -668,24 +687,24 @@ export const pamAccessApprovalResourceFactory = ({
     actor
   }) => {
     const ctx = toActorContext(actor);
-    const { hasRole } = await verifyProductMembership(permissionService, grant.projectId, ctx);
+    const productPermission = await verifyProductMembership(projectPermissionService, grant.projectId, ctx);
 
     const accountId = request ? requestDataOf(request)?.accountId : undefined;
     const account = accountId ? await pamAccountDAL.findByIdWithDetails(accountId) : null;
 
     if (account && account.projectId === grant.projectId) {
       await checkAccountAccess(
-        permissionService,
+        pamPermissionService,
         account.id,
         account.folderId,
         grant.projectId,
-        ResourcePermissionPamResourceActions.RevokeGrants,
+        PamResourcePermissionActions.RevokeGrants,
         ctx
       );
       return;
     }
 
-    if (!hasRole(PamProductRole.Admin)) {
+    if (!productPermission.hasRole({ slug: PamProductRole.Admin })) {
       throw new ForbiddenRequestError({ message: "You are not authorized to revoke this approval" });
     }
   };
@@ -737,6 +756,25 @@ export const pamAccessApprovalResourceFactory = ({
     return getSlackSendTargets(configs, event);
   };
 
+  const $grantedDurationMs = (duration: string, templatePolicies: unknown) =>
+    effectivePamAccessDurationMs(duration, resolveAccessControls(templatePolicies).maxAccessDurationSeconds);
+
+  const $exactDurationLabel = (durationMs: number | null, fallback: string) =>
+    durationMs !== null && durationMs % 1000 === 0
+      ? formatDurationSeconds(durationMs / 1000)
+      : formatDuration(fallback);
+
+  const $requestedDurationLabel = (duration: string) => $exactDurationLabel(parsePamAccessDuration(duration), duration);
+
+  const $grantedDurationString = (duration: string | undefined, templatePolicies: unknown) => {
+    if (!duration) return "";
+    const grantedMs = $grantedDurationMs(duration, templatePolicies);
+    return grantedMs && grantedMs % 1000 === 0 ? toExactDurationString(grantedMs / 1000) : duration;
+  };
+
+  const $grantedDurationLabel = (duration: string, templatePolicies: unknown) =>
+    $exactDurationLabel($grantedDurationMs(duration, templatePolicies), duration);
+
   const buildNotification: NonNullable<TPamAccessApprovalResource["buildNotification"]> = async ({
     event,
     request,
@@ -770,21 +808,26 @@ export const pamAccessApprovalResourceFactory = ({
           body: `**${requesterName}** requested ${accessTypeLabel} to **${accountName}**.`,
           link: approvalUrl
         },
-        email: {
-          subjectLine:
-            inputs.accessType === PamAccessType.Credential ? "PAM Credential Access Request" : "PAM Access Request",
-          template: SmtpTemplates.AccessPamRequest,
-          substitutions: {
-            requesterFullName: requesterName,
-            requesterEmail,
-            accountName,
-            folderName: folder?.name ?? undefined,
-            accessDuration: formatDuration(inputs.duration),
-            accessTypeLabel,
-            reason: inputs.reason,
-            approvalUrl
-          }
-        },
+        email:
+          folder?.emailApproversOnRequest === false
+            ? undefined
+            : {
+                subjectLine:
+                  inputs.accessType === PamAccessType.Credential
+                    ? "PAM Credential Access Request"
+                    : "PAM Access Request",
+                template: SmtpTemplates.AccessPamRequest,
+                substitutions: {
+                  requesterFullName: requesterName,
+                  requesterEmail,
+                  accountName,
+                  folderName: folder?.name ?? undefined,
+                  accessDuration: $requestedDurationLabel(inputs.duration),
+                  accessTypeLabel,
+                  reason: inputs.reason,
+                  approvalUrl
+                }
+              },
         chat: (await $chatDeliveries(PamNotificationEvent.AccessRequested, inputs.folderId)).map((target) => ({
           ...target,
           notification: {
@@ -794,7 +837,7 @@ export const pamAccessApprovalResourceFactory = ({
               requesterEmail,
               accountName,
               folderName,
-              accessDuration: formatDuration(inputs.duration),
+              accessDuration: $requestedDurationLabel(inputs.duration),
               accessTypeLabel,
               reason: inputs.reason,
               approvalUrl
@@ -820,7 +863,7 @@ export const pamAccessApprovalResourceFactory = ({
             requesterEmail: request.requesterEmail ?? "",
             resourceName: folder?.name ?? undefined,
             accountName,
-            accessDuration: formatDuration(inputs.duration),
+            accessDuration: $grantedDurationLabel(inputs.duration, account?.templatePolicies),
             bypassReason
           }
         },
@@ -833,7 +876,7 @@ export const pamAccessApprovalResourceFactory = ({
               requesterEmail: request.requesterEmail ?? "",
               accountName,
               folderName,
-              accessDuration: formatDuration(inputs.duration),
+              accessDuration: $grantedDurationLabel(inputs.duration, account?.templatePolicies),
               bypassReason: bypassReason ?? ""
             }
           }
@@ -862,7 +905,7 @@ export const pamAccessApprovalResourceFactory = ({
             requesterEmail,
             folderName: folder?.name ?? undefined,
             accountName,
-            accessDuration: formatDuration(inputs.duration),
+            accessDuration: $requestedDurationLabel(inputs.duration),
             accessTypeLabel,
             ruleName,
             linkedRecords: linkedRecords || undefined,
@@ -959,17 +1002,19 @@ export const pamAccessApprovalResourceFactory = ({
 
     const templateIds = [...new Set(accounts.map((a) => a.templateId).filter(Boolean))];
     const templates = templateIds.length > 0 ? await pamAccountTemplateDAL.find({ $in: { id: templateIds } }) : [];
-    const templateTypeById = new Map(templates.map((t) => [t.id, t.type]));
+    const templateById = new Map(templates.map((t) => [t.id, t]));
 
     return requests.map((request, i) => {
       const account = inputs[i]?.accountId ? accountById.get(inputs[i]!.accountId) : null;
       const folder = inputs[i]?.folderId ? folderById.get(inputs[i]!.folderId) : null;
+      const template = account?.templateId ? templateById.get(account.templateId) : undefined;
       return {
         ...request,
         accountName: account?.name ?? null,
-        accountType: account?.templateId ? (templateTypeById.get(account.templateId) ?? null) : null,
+        accountType: template?.type ?? null,
         folderName: folder?.name ?? null,
-        accessType: inputs[i]?.accessType ?? PamAccessType.Session
+        accessType: inputs[i]?.accessType ?? PamAccessType.Session,
+        maxAccessDurationSeconds: resolveAccessControls(template?.policies).maxAccessDurationSeconds
       };
     });
   };
@@ -1107,7 +1152,7 @@ export const pamAccessApprovalResourceFactory = ({
         granteeEmail: request.requesterEmail ?? undefined,
         ...scope,
         resourceName: folder?.name,
-        accessDuration: inputs?.duration ?? "",
+        accessDuration: $grantedDurationString(inputs?.duration, account?.templatePolicies),
         bypassReason: bypassReason ?? "",
         approverCount: new Set(steps.flatMap((step) => step.approvers.map((a) => `${a.type}:${a.id}`))).size
       }

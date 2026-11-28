@@ -3,13 +3,13 @@ title: "MCP servers"
 description: "Remote MCP servers that an AI agent can use during a session without holding their credentials."
 ---
 
-An MCP service lets an agent use a remote [MCP server](https://modelcontextprotocol.io/), such as Linear's or Notion's, during a [session](/documentation/platform/agent-vault/sessions). It's one of the two types of [service](/documentation/platform/agent-vault/services) you can add to an access bundle. The other type, an HTTP service, covers a web API that the agent calls directly.
+An MCP service lets an agent use a remote [MCP server](https://modelcontextprotocol.io/) during a [session](/documentation/platform/agent-vault/sessions).
 
 You add the MCP server to your agent with its real URL and no credentials. When the agent connects to the server, the [proxy](/documentation/platform/agent-vault/proxies) attaches the service's credential, so the agent can call the server's tools without ever holding the credential.
 
 ## Prerequisites
 
-- The [Admin role](/documentation/platform/agent-vault/access-control) in Agent Vault
+- The [Admin role](/documentation/platform/agent-vault/access-control#product-membership) in your Agent Vault project
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) to add the MCP server to
 - A running [proxy](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it) that your agent can reach
 - An account with the MCP server's provider, or a token the server accepts
@@ -18,22 +18,45 @@ You add the MCP server to your agent with its real URL and no credentials. When 
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Access Bundles**. Select your access bundle, then select **Add Service**.
+    In your Agent Vault project, go to **Access Bundles**. Select your access bundle, then select **Add Service**. In the **Services** list, select **Create New Service**.
   </Step>
   <Step>
     On the **Choose a template** panel, pick a template under **MCP Servers**, or select **Custom MCP Server** to connect any other remote MCP server.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/mcp-template-picker.png" alt="The Choose a template panel filtered to MCP Servers, showing Custom MCP Server, GitHub MCP, Linear MCP, Notion MCP, and Sentry MCP" />
+    </Frame>
   </Step>
   <Step>
     On the **Details** step, enter a **Name**, and check the [**Transport** and **Server URL**](#server-url-and-transport). A template fills in the transport and server URL for you. Select **Continue**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/mcp-service-details.png" alt="The Details step of the notion MCP service, with Streamable HTTP as the transport and https://mcp.notion.com/mcp as the server URL" />
+    </Frame>
   </Step>
   <Step>
     On the **Credential** step, pick a **Credential Type** and set up the [credential](#credential-types). Select **Continue**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/mcp-service-credential.png" alt="The Credential step of the notion MCP service, with Bearer Token as the credential type, a token that uses the NOTION_TOKEN variable, and the Member provided toggle off" />
+    </Frame>
   </Step>
   <Step>
     On the **Tools** step, choose which of the server's [tools agents can call](#allowed-tools). Select **Continue**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/mcp-service-tools.png" alt="The Tools step of the notion MCP service, with All Tools turned on" />
+    </Frame>
+  </Step>
+  <Step>
+    Optionally, on the **Hook** step, pick the [hook](/documentation/platform/agent-vault/hooks#attach-a-hook-to-a-service) that checks this service's calls, and the tools it checks. Select **Continue**.
   </Step>
   <Step>
     On the **Review** step, select **Add Service**. The service appears in the bundle's list with the type **MCP Server**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/access-bundle-mcp-services.png" alt="The support-triage access bundle in the Customer Support project, listing slack and zendesk as HTTP APIs and linear and notion as MCP servers, with a Needs Reauthorization badge on linear" />
+    </Frame>
   </Step>
 </Steps>
 
@@ -48,29 +71,65 @@ The service covers every request to the server URL's host, whatever the path. If
 
 ## Credential types
 
+An MCP service signs in to the server with [OAuth](#oauth), an [OAuth variable](#oauth-variable), or a [Bearer token](#bearer-token). OAuth and a Bearer token can be your own or [each member's](#member-provided-credentials).
+
 ### OAuth
 
-With OAuth, you sign in to the provider from Infisical, and Infisical stores the tokens the provider returns. If the provider also returns a refresh token, Infisical renews the access token before the token expires. If the provider doesn't return one, [reauthorize the service](#troubleshooting) when the access token expires or the server rejects it. The proxy only receives the access token, and the agent never receives any token.
+With OAuth, you sign in to the provider from Infisical, and Infisical stores the tokens the provider returns. The proxy only receives the access token, and the agent never receives any token. 
+
+<Note>
+If the provider also returns a refresh token, Infisical renews the access token before the token expires. If the provider doesn't return one, [reauthorize the service](#troubleshooting) when the access token expires or the server rejects it.
+</Note>
 
 <Steps>
   <Step>
     Under **Credential Type**, select **OAuth**, then select **Authorize**.
 
+    <Frame>
+      <img src="/images/platform/agent-vault/mcp-oauth-authorize.png" alt="The Credential step of a new Linear MCP service, with OAuth as the credential type, an Authorize button, and the Member provided toggle off" />
+    </Frame>
+
     <Note>
-      Some servers, such as GitHub's, don't let Infisical register itself as an OAuth client. For these servers, Infisical asks for an OAuth app of your own instead. Create an OAuth app with the provider, and set its redirect URI to the **Redirect URI** that Infisical shows. Then enter the app's **Client ID** and **Client Secret** (leave **Client Secret** empty for a public client), and authorize again.
+      Some servers, such as GitHub's, don't let Infisical register itself as an OAuth client. For these servers, [use your own OAuth app](#use-your-own-oauth-app), then authorize again.
     </Note>
   </Step>
   <Step>
     In the pop-up window, sign in to the provider and approve access.
   </Step>
   <Step>
-    When Infisical shows **Authorized** and the scopes the provider granted, select **Continue**. **Continue** stays disabled until the authorization succeeds.
+    When Infisical shows **Authorized** and the scopes the provider granted, select **Continue**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/mcp-oauth-authorized.png" alt="The Credential step of the linear MCP service, showing Authorized with the read and write scopes and a Reauthorize button" />
+    </Frame>
   </Step>
 </Steps>
 
 <Warning>
-  Every session that uses the access bundle calls tools as the account you signed in with. Sign in with an account that has only the access your agents need.
+  Every session that uses the access bundle calls tools as the account you signed in with. Sign in with an account that has only the access your agents need, or [leave the sign-in to each member](#member-provided-credentials).
 </Warning>
+
+### Use your own OAuth app
+
+Some servers, such as GitHub's, don't let Infisical register itself as an OAuth client. For these servers, the **Credential** step shows the fields for an OAuth app of your own. To use your own app with any other server, select **Custom** under **OAuth App**.
+
+<Steps>
+  <Step>
+    Create an OAuth app with the provider, and set its redirect URI to the **Redirect URI** that Infisical shows.
+  </Step>
+  <Step>
+    Enter the app's **Client ID** and **Client Secret**. For a public client, leave **Client Secret** empty.
+  </Step>
+  <Step>
+    Select **Authorize**. If the credential is [member provided](#member-provided-credentials), continue to the **Review** step instead, and select **Add Service**, or **Save** if you're editing the service.
+  </Step>
+</Steps>
+
+### OAuth variable
+
+If several services share one sign-in, or you already signed in to the provider in an [OAuth variable](/documentation/platform/agent-vault/oauth-variables), the service can use the variable's sign-in instead of its own. Under **Credential Type**, select **OAuth**, then select **Use an OAuth Variable** and pick the variable. To create one without leaving the service, select **Create OAuth Variable** at the end of the list.
+
+To renew the sign-in, [reauthorize the variable](/documentation/platform/agent-vault/oauth-variables#reauthorize-a-variable) on the **Variables** page instead of the service.
 
 ### Bearer token
 
@@ -78,9 +137,26 @@ With a Bearer token, you paste a token the MCP server accepts into **Token**, su
 
 To send the token in a different header or with a different prefix, expand **Advanced Options** and change **Header Name** or **Prefix**. To use a token that several services share, type `{{` in **Token** and select a [variable](/documentation/platform/agent-vault/variables).
 
+## Member-provided credentials
+
+By default, every session calls the server's tools as the same account. To have each member use their own account instead, turn on **Member provided** next to **Token** or **Authorization** on the **Credential** step. You don't sign in or enter a token yourself. Each member then [sets up their personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for the service:
+
+- **Bearer token:** Each member enters their own token
+- **OAuth:** Each member connects their own account to the provider
+
+If the server doesn't let Infisical register as an OAuth client, saving the service fails until you [add your own OAuth app](#use-your-own-oauth-app). Every member then signs in with that app.
+
+### Session credentials
+
+A session uses the credential of the member who created it. If a machine identity creates the session [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users), the session uses that user's credential. Until a member sets up the service, the proxy refuses their sessions' requests to it.
+
+<Note>
+  A machine identity can't connect an OAuth account. This means that if a machine identity creates a session for itself, that session can't use any OAuth services that need member-provided credentials.
+</Note>
+
 ## Custom headers
 
-If the MCP server needs another header besides the credential, such as an organization ID, add it as a custom header. The proxy adds custom headers to every request to the server, whichever auth method the service uses.
+If the MCP server needs another header besides the credential, such as an organization ID, add it as a custom header. The proxy adds custom headers to every request to the server, whatever the service's credential type.
 
 <Steps>
   <Step>
@@ -97,12 +173,18 @@ Infisical won't save a custom header with the same name as the credential's head
 
 By default, agents can call every tool the MCP server offers. To keep agents away from tools they shouldn't use, such as tools that delete data, allow only the tools you select. The list applies to every session that uses the service.
 
+<Tip>
+To allow or refuse each call with your own rules, such as rules based on the tool's arguments, attach a [hook](/documentation/platform/agent-vault/hooks) to the service.
+</Tip>
+
 <Steps>
   <Step>
     On the **Tools** step, turn off **All Tools**.
   </Step>
   <Step>
     Infisical loads the server's list of tools with the service's credential. In **Allowed Tools**, select the tools that agents can call.
+
+    If the credential is [member provided](#member-provided-credentials), Infisical has no credential of its own to load the list with. Select **Load Tools** next to **Allowed Tools**, then enter your own token, or for OAuth, sign in with your own account. Infisical uses it only to load the list and doesn't save it.
   </Step>
   <Step>
     To allow a tool that the list doesn't include, type the tool's exact name in **Allowed Tools**, then select the option to add it. A tool name can contain only letters, numbers, underscores, hyphens, and dots, so the list leaves out any server tool with other characters in its name.
@@ -117,18 +199,22 @@ The proxy picks up a changed list within its [poll interval](/documentation/plat
 
 <Steps>
   <Step>
-    [Create a session](/documentation/platform/agent-vault/sessions#create-a-session) for the access bundle, and copy the `infisical agent-vault run` command it gives you.
+    [Create a session](/documentation/platform/agent-vault/create-a-session) for the access bundle, and copy the `infisical agent-vault run` command it gives you.
   </Step>
   <Step>
     Add the MCP server to your agent by its server URL. Don't add a token, and don't sign in to the server from the agent.
 
     <Tabs>
       <Tab title="Claude Code">
+        If you start Claude Code with [`infisical agent-vault run`](/cli/reference#agent-vault-run), skip this step. The CLI passes the session's MCP servers to Claude Code with `--mcp-config`, and skips any MCP server that's still waiting for [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values). To leave out every MCP server, pass [`--no-mcp-servers`](/cli/reference#agent-vault-run--flag-no-mcp-servers).
+
+        Otherwise, add the server:
+
         ```bash
         claude mcp add --transport http linear https://mcp.linear.app/mcp
         ```
 
-        If the service uses the SSE transport, use `--transport sse` instead.
+        If the service uses the SSE transport, use `--transport sse` instead. If your code starts Claude Code, you can [build its MCP configuration from code](#mcp-configuration-from-code) instead.
       </Tab>
       <Tab title="Codex">
         In `~/.codex/config.toml`, add the server by its URL:
@@ -172,6 +258,44 @@ The proxy picks up a changed list within its [poll interval](/documentation/plat
   </Step>
 </Steps>
 
+### MCP configuration from code
+
+Most MCP clients load their servers only when they start, so an agent can't add an MCP server partway through a session. If your code starts Claude Code without `infisical agent-vault run`, such as in an [E2B sandbox](/documentation/platform/agent-vault/guides/e2b), build Claude Code's `--mcp-config` from the [List session services](/api-reference/endpoints/agent-vault-sessions/list-session-services) endpoint before the agent starts. Build one server for each service whose `type` is `mcp` and whose `status` is `ready`:
+
+- Add the server at the service's `url`, with its `transport`
+- Put a placeholder in the header the proxy sets, `credential.header`, so the agent's MCP client doesn't try to sign in (the proxy replaces it with the real credential)
+- Leave out a service if its URL or header contains `$` (Claude Code fills in `${VAR}` from the agent's environment, so the server could receive a variable such as the proxy URL, which holds the session token)
+
+This example builds the value of Claude Code's `--mcp-config` from a session's token. If you use EU Cloud or self-host Infisical, replace `https://app.infisical.com` with the URL of your instance:
+
+```python
+import json
+
+import requests
+
+services = requests.get(
+    "https://app.infisical.com/api/v1/agent-vault/session/services",
+    headers={"Authorization": f"Bearer {session_token}"},
+    timeout=30,
+).json()["services"]
+
+mcp_servers = {}
+for service in services:
+    if service["type"] != "mcp" or service["status"] != "ready":
+        continue
+    if "$" in service["url"] or "$" in (service["credential"].get("header") or ""):
+        continue
+    server = {"type": "sse" if service.get("transport") == "sse" else "http", "url": service["url"]}
+    header = service["credential"].get("header")
+    if service["credential"]["addedByProxy"] and header:
+        server["headers"] = {header: "Bearer agent-vault"}
+    mcp_servers[service["name"]] = server
+
+mcp_config = json.dumps({"mcpServers": mcp_servers})
+```
+
+Then start Claude Code with `--mcp-config` set to `mcp_config`.
+
 ## Limitations
 
 - **Remote servers only:** An MCP service covers MCP servers that the agent reaches over HTTPS. A local MCP server that the agent starts as a process isn't an MCP service, but you can add [HTTP services](/documentation/platform/agent-vault/http-apis) for the APIs that the local server calls
@@ -185,9 +309,22 @@ The proxy picks up a changed list within its [poll interval](/documentation/plat
   <Accordion title="The agent gets a 502 response from the MCP server">
     If the server rejects an OAuth service's token, the proxy gets a fresh token from Infisical and sends the request again. If that doesn't work, or if the server rejects a Bearer token, the proxy returns a `502` response to the agent. Its message says what to do:
 
-    - **The service needs to be reauthorized:** The provider no longer accepts the service's login, or the server asked for scopes the authorization lacks. The access bundle's **Services** table shows **Needs Reauthorization** or **Missing Scopes** for the service. Open the service's menu, select **Edit**, and continue to the **Credential** step. Select **Reauthorize**, sign in to the provider again, then continue and select **Save**.
-    - **Try again in a moment:** The proxy couldn't get a valid token from Infisical this time. Try the tool call again.
-    - **The service's credential was rejected:** The server rejected the service's Bearer token. Edit the service and paste a new token.
+    **The sign-in used by the service has expired, or is missing a permission it needs, and has to be connected again:** The message names the service. The provider no longer accepts the service's login, or the server asked for scopes the authorization lacks. The access bundle's **Services** table shows **Needs Reauthorization** or **Missing Scopes** for the service. Open the service's menu, select **Edit**, and continue to the **Credential** step. Select **Reauthorize**, sign in to the provider again, then continue and select **Save**. If the service uses an [OAuth variable](#oauth-variable), [reauthorize the variable](/documentation/platform/agent-vault/oauth-variables#reauthorize-a-variable) instead.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/access-bundle-mcp-services.png" alt="The support-triage access bundle in the Customer Support project, listing slack and zendesk as HTTP APIs and linear and notion as MCP servers, with a Needs Reauthorization badge on linear" />
+    </Frame>
+
+    **Try again in a moment:** The proxy couldn't get a valid token from Infisical this time. Try the tool call again.
+
+    **The service's credential was rejected:** The server rejected the service's Bearer token. Edit the service and paste a new token.
+
+    **The service rejected your credential:** The server rejected the token you set for a [member-provided](#member-provided-credentials) service. [Update your personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for the service.
+
+    **Reconnect your account:** The service is [member provided](#member-provided-credentials), and the provider no longer accepts your login, or the server asked for scopes your connection doesn't grant. On the **Services** page, select **Requires Setup** or **Missing Scopes** next to the service, then select **Reconnect**. If the message under your connection says the provider refused the service's OAuth app, reconnecting won't help. Ask a project admin to update the service's OAuth app.
+  </Accordion>
+  <Accordion title="The agent gets a 403 response that says the sign-in isn't connected">
+    The proxy refuses requests to the service with a `403` response and the `policy_blocked` error code, and the message says the sign-in used by the service isn't connected in Infisical Agent Vault. The service uses an [OAuth variable](#oauth-variable) that nobody has authorized yet, or an edit disconnected it. [Authorize the variable](/documentation/platform/agent-vault/oauth-variables#create-an-oauth-variable).
   </Accordion>
   <Accordion title="Authorize fails on a self-hosted instance">
     The redirect URI that Infisical gives the provider is your instance's `SITE_URL` followed by `/agent-vault/oauth/callback`. Check that:
@@ -201,7 +338,10 @@ The proxy picks up a changed list within its [poll interval](/documentation/plat
     Infisical can't load the list in these cases:
 
     - The MCP server is on a private network (if you self-host Infisical on that network, set [`ALLOW_INTERNAL_IP_CONNECTIONS`](/self-hosting/configuration/envars#param-allow-internal-ip-connections) to `true`)
-    - Each member sets the service's token, so Infisical has no token to load the list with
+    - The service's credential is [member provided](#member-provided-credentials) and you haven't loaded the tools with your own token or sign-in on the **Tools** step
+  </Accordion>
+  <Accordion title="A tool call fails with a message from your organization's hook">
+    The service has a [hook](/documentation/platform/agent-vault/hooks), and the hook server refused the call or didn't give a usable answer. See [Refused requests](/documentation/platform/agent-vault/hooks#refused-requests) and the [hook troubleshooting](/documentation/platform/agent-vault/hooks#troubleshooting).
   </Accordion>
   <Accordion title="The agent asks you to sign in to the MCP server">
     The request reached the server without a credential. Check that:

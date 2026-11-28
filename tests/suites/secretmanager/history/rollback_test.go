@@ -1,6 +1,7 @@
 package history_test
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -129,5 +130,41 @@ func TestFolderCommit_Rollback(t *testing.T) {
 		require.NoError(t, err)
 		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
 		require.Equal(t, map[string]string{"ROOT": "original"}, valuesAt(t, proj, "/"))
+	})
+	t.Run("should keep folder changes in commit changes, compare and rollback across a checkpoint", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateSecret(t, proj, "dev", "APP_TOKEN", "v0")
+		target := headCommit(t, proj, "dev", "/")
+		secretmanager.CreateFolder(t, proj, "dev", "/app")
+		folderCreated := headCommit(t, proj, "dev", "/")
+		for i := range checkpointWindow {
+			secretmanager.UpdateSecret(t, proj, "dev", "APP_TOKEN", fmt.Sprintf("v%d", i+1))
+		}
+		root := folderID(t, proj, "dev", "/")
+
+		// Action
+		changes, err := tn.Admin.API.GetFolderCommitChangesWithResponse(t.Context(), folderCreated.ID, &api.GetFolderCommitChangesParams{ProjectId: proj.ID})
+		require.NoError(t, err)
+		compare, err := tn.Admin.API.CompareFolderCommitWithResponse(t.Context(), target.ID, &api.CompareFolderCommitParams{ProjectId: proj.ID, FolderId: root})
+		require.NoError(t, err)
+		res, err := rollback(t, tn.Admin, proj, "dev", root, target.ID, false)
+		require.NoError(t, err)
+
+		// Assert
+		requireStatus(t, http.StatusOK, changes.StatusCode(), changes.Body)
+		require.Contains(t, string(changes.Body), `"folderName":"app"`)
+		requireStatus(t, http.StatusOK, compare.StatusCode(), compare.Body)
+		require.Contains(t, string(compare.Body), `"folderName":"app"`)
+		require.NotNilf(t, res.JSON200, "rollback returned %d: %s", res.StatusCode(), res.Body)
+		require.Equal(t, new(float32(1)), res.JSON200.FolderChangesCount)
+		folders, err := tn.Admin.API.ListSecretFoldersWithResponse(t.Context(), &api.ListSecretFoldersParams{ProjectId: proj.ID, Environment: "dev", Path: "/"})
+		require.NoError(t, err)
+		require.NotNilf(t, folders.JSON200, "listing folders returned %d: %s", folders.StatusCode(), folders.Body)
+		require.Empty(t, folders.JSON200.Folders)
+		require.Equal(t, map[string]string{"APP_TOKEN": "v0"}, valuesAt(t, proj, "/"))
 	})
 }

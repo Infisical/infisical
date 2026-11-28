@@ -1,5 +1,7 @@
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import {
@@ -10,19 +12,19 @@ import {
 
 import { TAppConnectionDALFactory } from "../../app-connection/app-connection-dal";
 import { getAzureEntraIdConnectionAccessToken } from "../../app-connection/azure-entra-id/azure-entra-id-connection-fns";
-import { TKmsServiceFactory } from "../../kms/kms-service";
 import { TAzureEntraIdScimSyncWithCredentials } from "./azure-entra-id-scim-sync-types";
 
 type TAzureEntraIdScimSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 export const AzureEntraIdScimSyncFns = {
   syncSecrets: async (
     secretSync: TAzureEntraIdScimSyncWithCredentials,
     payload: TSecretSyncPayload,
-    { appConnectionDAL, kmsService }: TAzureEntraIdScimSyncFactoryDeps
+    { appConnectionDAL, kmsDataKeyService, oidcIssuerService }: TAzureEntraIdScimSyncFactoryDeps
   ): Promise<void> => {
     const secretMap = payload.flatten();
     const { servicePrincipalId } = secretSync.destinationConfig;
@@ -49,7 +51,8 @@ export const AzureEntraIdScimSyncFns = {
     const accessToken = await getAzureEntraIdConnectionAccessToken(
       secretSync.connection.id,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService,
+      oidcIssuerService
     );
 
     await request.put(
@@ -113,7 +116,7 @@ export const azureEntraIdScimPreSaveTransformSyncOptions: TPreSaveTransformSyncO
 // Fetches service principal display name from Azure Graph API and stores it in destinationConfig
 export const azureEntraIdScimPreSaveTransformDestinationConfig: TPreSaveTransformDestinationConfigFn = async (
   { destinationConfig, connectionId },
-  { appConnectionDAL, kmsService }
+  { appConnectionDAL, kmsDataKeyService, oidcIssuerService }
 ) => {
   if (!destinationConfig) return destinationConfig;
 
@@ -121,7 +124,12 @@ export const azureEntraIdScimPreSaveTransformDestinationConfig: TPreSaveTransfor
   if (!servicePrincipalId) return destinationConfig;
 
   try {
-    const accessToken = await getAzureEntraIdConnectionAccessToken(connectionId, appConnectionDAL, kmsService);
+    const accessToken = await getAzureEntraIdConnectionAccessToken(
+      connectionId,
+      appConnectionDAL,
+      kmsDataKeyService,
+      oidcIssuerService
+    );
 
     const { data } = await request.get<{ displayName?: string }>(
       `https://graph.microsoft.com/v1.0/servicePrincipals/${servicePrincipalId as string}`,

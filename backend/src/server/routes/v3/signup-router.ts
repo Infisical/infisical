@@ -1,9 +1,11 @@
 import { z } from "zod";
 
+import { SignUpRefusal } from "@app/domains/platform/instance-config-core/ce/module";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { matchesAllowedEmailDomain, normalizeEmail } from "@app/lib/validator";
+import { normalizeEmail } from "@app/lib/validator";
 import { PasswordPolicySchema } from "@app/lib/validator/password-policy";
 import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
@@ -11,8 +13,6 @@ import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { CompleteAccountType } from "@app/services/auth/auth-signup-type";
-import { AuthMode } from "@app/services/auth/auth-type";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { PostHogEventTypes, SignupAttributionType, SignupSource } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../sanitizedSchemas";
@@ -45,20 +45,17 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { email } = req.body;
 
-      const serverCfg = await getServerCfg();
-      if (!serverCfg.allowSignUp) {
+      const signUpPolicy = await server.services.instanceConfigService.getSignUpPolicy();
+      const signUpRefusal = signUpPolicy.refusalFor(email);
+      if (signUpRefusal === SignUpRefusal.Closed) {
         throw new ForbiddenRequestError({
           message: "Signup's are disabled"
         });
       }
-
-      if (serverCfg?.allowedSignUpDomain) {
-        const domain = email.split("@")[1];
-        if (!matchesAllowedEmailDomain(email, serverCfg.allowedSignUpDomain)) {
-          throw new ForbiddenRequestError({
-            message: `Email with a domain (@${domain}) is not supported`
-          });
-        }
+      if (signUpRefusal === SignUpRefusal.DomainNotAllowed) {
+        throw new ForbiddenRequestError({
+          message: `Email with a domain (@${email.split("@")[1]}) is not supported`
+        });
       }
       const { cooldownSeconds } = await server.services.signup.beginEmailSignupProcess({
         email,
@@ -95,8 +92,8 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const serverCfg = await getServerCfg();
-      if (!serverCfg.allowSignUp) {
+      const signUpPolicy = await server.services.instanceConfigService.getSignUpPolicy();
+      if (!signUpPolicy.isOpen()) {
         throw new ForbiddenRequestError({
           message: "Signup's are disabled"
         });
@@ -270,14 +267,14 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const distinctId = getTelemetryDistinctId(req);
-      const organizationId = req.permission.orgId;
+      const organizationId = req.actor.orgId;
 
       // Persisted for SQL analytics alongside the PostHog events; a DB failure must not
       // take the telemetry down with it.
       if (organizationId) {
         try {
           await server.services.signup.recordOnboardingResponse({
-            userId: req.permission.id,
+            userId: req.actor.id,
             orgId: organizationId,
             selectedProducts: req.body.selectedProducts,
             launchDestination: req.body.launchDestination,

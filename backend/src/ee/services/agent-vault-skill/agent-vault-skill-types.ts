@@ -1,4 +1,4 @@
-import { TGenericPermission } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 
 export enum AgentVaultSkillFileMode {
   Regular = "0644",
@@ -7,13 +7,15 @@ export enum AgentVaultSkillFileMode {
 
 export type TAgentVaultSkillFile = { path: string; mode: AgentVaultSkillFileMode; contentBase64: string };
 
-export type TAgentVaultSkillScoped = { projectId: string; ctx: TGenericPermission };
+export type TAgentVaultSkillScoped = { projectId: string; ctx: TActorContext };
 
 export type TCreateSkillDTO = TAgentVaultSkillScoped & { files: TAgentVaultSkillFile[] };
 
 export type TListSkillsDTO = TAgentVaultSkillScoped & {
   search?: string;
   name?: string;
+  // The skills a session on this user's behalf could name. Exactly one of the two names the user.
+  onBehalfOf?: { userId?: string; userEmail?: string };
   limit: number;
   offset: number;
 };
@@ -27,6 +29,8 @@ export type TSkillVersionDTO = TSkillByIdDTO & { version: number };
 export type TBundleSkillsDTO = TAgentVaultSkillScoped & { accessBundleId: string };
 
 export type TBundleSkillDTO = TBundleSkillsDTO & { skillId: string };
+
+export type TAddBundleSkillsDTO = TBundleSkillsDTO & { skillIds: string[] };
 
 export type TAgentVaultSkill = {
   id: string;

@@ -13,9 +13,12 @@ import {
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
+  ProjectPermissionActions,
+  ProjectPermissionSub,
   useOrganization,
   useOrgPermission,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import {
   hasIntermediateProjectsView,
@@ -33,6 +36,7 @@ import { PamNav } from "./PamNav";
 import { SecretManagerNav } from "./SecretManagerNav";
 import { SecretScanningNav } from "./SecretScanningNav";
 import {
+  AGENT_VAULT_SETTINGS_SUBMENU,
   CERT_APPROVALS_SUBMENU,
   CERT_CERTIFICATES_SUBMENU,
   CERT_INTEGRATIONS_SUBMENU,
@@ -64,6 +68,7 @@ export const ProjectNav = () => {
   const { pathname, search: locationSearch } = useLocation();
   const navigate = useNavigate();
   const { permission } = useOrgPermission();
+  const { permission: projectPermission } = useProjectPermission();
   const isLegacyView = (locationSearch as { legacy?: string })?.legacy === "true";
   const hasApplicationContext = Boolean(
     (locationSearch as { applicationName?: string })?.applicationName
@@ -111,6 +116,12 @@ export const ProjectNav = () => {
     if (isOnIntegrations && isCertManager) return CERT_INTEGRATIONS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretManager)
       return SM_SETTINGS_SUBMENU;
+    if (
+      isOnProjectSettings &&
+      currentProject.type === ProjectType.AgentVault &&
+      projectPermission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings)
+    )
+      return AGENT_VAULT_SETTINGS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretScanning)
       return getSecretScanningSettingsSubmenu(hasMultipleSecretScanningProjects);
     if (isOnCertPolicies) return CERT_CERTIFICATES_SUBMENU;

@@ -5,6 +5,7 @@ import { join } from "path";
 import { ProbotOctokit } from "probot";
 import { z } from "zod";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   SecretScanningDataSource,
@@ -32,15 +33,16 @@ import {
 } from "@app/ee/services/secret-scanning/secret-scanning-exec";
 import { scanContentsAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { chunkArray } from "@app/lib/fn/array";
 import { logger } from "@app/lib/logger";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { GitHubPullRequestEvent } from "./github-secret-scanning-enums";
 import { GitHubPullRequestScanMetadataSchema } from "./github-secret-scanning-schemas";
 import {
+  TGitHubOversizedFile,
   TGitHubPullRequestScanMetadata,
   TGitHubPullRequestScanPayload,
   TQueueGitHubPullRequestEvent
@@ -55,6 +57,8 @@ const COMMIT_FILES_PER_PAGE = 100;
 const COMMIT_MAX_LISTED_FILES = 3000;
 // A file whose patch GitHub leaves out is fetched whole to rebuild it, so its size is capped.
 const MISSING_PATCH_MAX_FILE_BYTES = 10 * 1024 * 1024;
+const MISSING_PATCH_MAX_FILE_MB = MISSING_PATCH_MAX_FILE_BYTES / 1024 / 1024;
+const CHECK_RUN_MAX_LISTED_OVERSIZED_FILES = 10;
 // Files are scanned in batches as they are fetched, so a large scan never holds every patch in memory at once.
 const SCAN_BATCH_MAX_FILES = 50;
 // GitHub rejects a check run update carrying more than 50 annotations; more are sent as further updates.
@@ -80,6 +84,7 @@ type TPullRequestCheckRunTarget = {
   installationId: string;
   repositoryFullName: string;
   checkRunId: number;
+  instanceConfigService: TInstanceConfigService;
 };
 
 // The statuses a pull request check can be skipped with; each is offered as a button on a failing check, and its
@@ -102,21 +107,28 @@ export const isPullRequestCheckSkipStatus = (
 ): status is TPullRequestCheckSkipStatus =>
   Boolean(status) && Object.keys(PULL_REQUEST_CHECK_SKIP_ACTIONS).includes(status as string);
 
+type TCheckRunFinding = Pick<TFindingsPayload[number], "details" | "rule">;
+
 export type TPullRequestCheckRunResult = {
   conclusion: "success" | "failure" | "neutral" | "cancelled" | "timed_out";
   title: string;
   summary: string;
-  findings?: TFindingsPayload;
+  findings?: TCheckRunFinding[];
+  oversizedFiles?: TGitHubOversizedFile[];
   offerSkipActions?: boolean;
 };
 
-export const getGitHubRadarInstallationOctokit = (installationId: string) => {
-  const appCfg = getConfig();
+export const getGitHubRadarInstallationOctokit = async (
+  installationId: string,
+  instanceConfigService: TInstanceConfigService
+) => {
+  const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID, INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY } =
+    await instanceConfigService.getOverridableEnv();
 
   return new ProbotOctokit({
     auth: {
-      appId: appCfg.INF_APP_CONNECTION_GITHUB_RADAR_APP_ID,
-      privateKey: appCfg.INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY,
+      appId: INF_APP_CONNECTION_GITHUB_RADAR_APP_ID,
+      privateKey: INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY,
       installationId
     }
   });
@@ -267,21 +279,17 @@ const scanGitHubFilesAndGetFindings = async (
     const startLine = convertPatchLineToFileLineNumber(patch, finding.StartLine);
     const endLine =
       finding.StartLine === finding.EndLine ? startLine : convertPatchLineToFileLineNumber(patch, finding.EndLine);
-    const startColumn = finding.StartColumn - 1; // subtract 1 for +
-    const endColumn = finding.EndColumn - 1; // subtract 1 for +
 
     return {
       ...finding,
       StartLine: startLine,
       EndLine: endLine,
-      StartColumn: startColumn,
-      EndColumn: endColumn,
       File: filename,
       Commit: commit.sha,
       Author: commit.authorName,
       Email: commit.authorEmail,
       Message: commit.message,
-      Fingerprint: `${commit.sha}:${filename}:${finding.RuleID}:${startLine}:${startColumn}`,
+      Fingerprint: `${commit.sha}:${filename}:${finding.RuleID}:${startLine}:${finding.StartColumn}`,
       Date: commit.date,
       Attributes: {
         ...finding.Attributes,
@@ -294,14 +302,16 @@ const scanGitHubFilesAndGetFindings = async (
     details: toFindingDetails(finding),
     fingerprint: finding.Fingerprint,
     severity: SecretScanningFindingSeverity.High,
-    rule: finding.RuleID
+    rule: finding.RuleID,
+    secretValue: finding.Secret
   }));
 };
 
 /**
- * A commit that changes more files than GitHub lists can't be fully scanned from the API. A pull request check passes
- * `requireCompleteCommits` so it fails rather than passing on part of the commit; a push scan scans what it can. The
- * same goes for a file whose patch GitHub left out and that can't be rebuilt from its contents.
+ * The files GitHub's API limits keep out of a scan are skipped and returned, so a pull request check can report them:
+ * the files past the ones GitHub lists for a commit, and a file whose patch GitHub left out that is too large to fetch.
+ * Retrying never changes either. A file whose contents couldn't be read might be readable on a retry, so a pull request
+ * check passes `failOnUnreadableFiles` to fail rather than pass without it; a push scan scans what it can.
  */
 export const scanGitHubCommitsAndGetFindings = async ({
   octokit,
@@ -309,30 +319,28 @@ export const scanGitHubCommitsAndGetFindings = async ({
   resourceName,
   commits,
   configPath,
-  requireCompleteCommits
+  failOnUnreadableFiles
 }: {
   octokit: TGitHubOctokit;
   repositoryFullName: string;
   resourceName: string;
   commits: TGitHubCommitToScan[];
   configPath?: string;
-  requireCompleteCommits?: boolean;
-}): Promise<TFindingsPayload> => {
+  failOnUnreadableFiles?: boolean;
+}): Promise<{ findings: TFindingsPayload; oversizedFiles: TGitHubOversizedFile[]; truncatedCommitShas: string[] }> => {
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
   const filesToScan: TGitHubFileToScan[] = [];
   const findings: TFindingsPayload = [];
+  const oversizedFiles: TGitHubOversizedFile[] = [];
+  const truncatedCommitShas: string[] = [];
 
   for (const commit of commits) {
     // eslint-disable-next-line no-await-in-loop
     const { files, parentSha, isComplete } = await listCommitFiles(octokit, { owner, repo, sha: commit.sha });
 
     if (!isComplete) {
-      if (requireCompleteCommits) {
-        throw new Error(
-          `Commit ${commit.sha.slice(0, 7)} changes more than ${COMMIT_MAX_LISTED_FILES.toLocaleString("en-US")} files, more than GitHub lists, so it can't be fully scanned.`
-        );
-      }
+      truncatedCommitShas.push(commit.sha);
 
       logger.warn(
         `secretScanningV2DiffScan: GitHub - commit files truncated, scanning the first ${files.length} [repository=${repositoryFullName}] [commit=${commit.sha}]`
@@ -358,19 +366,16 @@ export const scanGitHubCommitsAndGetFindings = async ({
             file
           });
         } catch (error) {
-          const reason =
-            error instanceof MissingPatchFileTooLargeError
-              ? `it is larger than ${MISSING_PATCH_MAX_FILE_BYTES / 1024 / 1024} MB`
-              : "its contents couldn't be read from GitHub";
-
           logger.warn(
             error,
             `secretScanningV2DiffScan: GitHub - file patch missing and couldn't be rebuilt [repository=${repositoryFullName}] [commit=${commit.sha}] [file=${file.filename}]`
           );
 
-          if (requireCompleteCommits) {
+          if (error instanceof MissingPatchFileTooLargeError) {
+            oversizedFiles.push({ commitSha: commit.sha, filename: file.filename });
+          } else if (failOnUnreadableFiles) {
             throw new Error(
-              `Commit ${commit.sha.slice(0, 7)}'s change to ${file.filename} is too large for GitHub to include, and the file couldn't be scanned in full because ${reason}.`
+              `Commit ${commit.sha.slice(0, 7)}'s change to ${file.filename} is too large for GitHub to include, and the file's contents couldn't be read from GitHub to scan it in full.`
             );
           }
         }
@@ -389,7 +394,7 @@ export const scanGitHubCommitsAndGetFindings = async ({
 
   findings.push(...(await scanGitHubFilesAndGetFindings(filesToScan, resourceName, configPath)));
 
-  return findings;
+  return { findings, oversizedFiles, truncatedCommitShas };
 };
 
 // Compares against the exact head the check was created for, so commits pushed after it are left to their own check.
@@ -439,13 +444,15 @@ const listPullRequestCommits = async (
 export const scanGitHubPullRequest = async ({
   payload,
   resourceName,
-  configPath
+  configPath,
+  instanceConfigService
 }: {
   payload: TGitHubPullRequestScanPayload;
   resourceName: string;
   configPath?: string;
+  instanceConfigService: TInstanceConfigService;
 }): Promise<TSecretScanningRealtimeScanFindings> => {
-  const octokit = getGitHubRadarInstallationOctokit(payload.installationId);
+  const octokit = await getGitHubRadarInstallationOctokit(payload.installationId, instanceConfigService);
 
   const { commits, totalCommits } = await listPullRequestCommits(octokit, {
     repositoryFullName: payload.repository.full_name,
@@ -453,16 +460,19 @@ export const scanGitHubPullRequest = async ({
     headSha: payload.pullRequest.headSha
   });
 
-  const findings = await scanGitHubCommitsAndGetFindings({
+  const { findings, oversizedFiles, truncatedCommitShas } = await scanGitHubCommitsAndGetFindings({
     octokit,
     repositoryFullName: payload.repository.full_name,
     resourceName,
     commits,
     configPath,
-    requireCompleteCommits: true
+    failOnUnreadableFiles: true
   });
 
-  return { findings, details: { scannedCommitCount: commits.length, totalCommitCount: totalCommits } };
+  return {
+    findings,
+    details: { scannedCommitCount: commits.length, totalCommitCount: totalCommits, oversizedFiles, truncatedCommitShas }
+  };
 };
 
 export const createPullRequestCheckRun = async ({
@@ -470,15 +480,17 @@ export const createPullRequestCheckRun = async ({
   repositoryFullName,
   headSha,
   scanId,
-  detailsUrl
+  detailsUrl,
+  instanceConfigService
 }: {
   installationId: string;
   repositoryFullName: string;
   headSha: string;
   scanId: string;
   detailsUrl?: string;
+  instanceConfigService: TInstanceConfigService;
 }) => {
-  const octokit = getGitHubRadarInstallationOctokit(installationId);
+  const octokit = await getGitHubRadarInstallationOctokit(installationId, instanceConfigService);
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
   const { data } = await octokit.checks.create({
@@ -504,15 +516,18 @@ export const createSkippedPullRequestCheckRun = async ({
   repositoryFullName,
   headSha,
   title,
-  summary
+  summary,
+  instanceConfigService
 }: {
   installationId: string;
   repositoryFullName: string;
   headSha: string;
   title: string;
   summary: string;
+  instanceConfigService: TInstanceConfigService;
 }) => {
-  const octokit = getGitHubRadarInstallationOctokit(installationId);
+  const octokit = await getGitHubRadarInstallationOctokit(installationId, instanceConfigService);
+  const { INF_APP_CONNECTION_GITHUB_RADAR_APP_ID } = await instanceConfigService.getOverridableEnv();
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
   const { data: existing } = await octokit.checks.listForRef({
@@ -520,7 +535,7 @@ export const createSkippedPullRequestCheckRun = async ({
     repo,
     ref: headSha,
     check_name: GITHUB_PULL_REQUEST_CHECK_NAME,
-    app_id: Number(getConfig().INF_APP_CONNECTION_GITHUB_RADAR_APP_ID),
+    app_id: Number(INF_APP_CONNECTION_GITHUB_RADAR_APP_ID),
     per_page: 1
   });
 
@@ -544,13 +559,15 @@ export const createSkippedPullRequestCheckRun = async ({
 export const getLatestPullRequestCheckRunExternalId = async ({
   installationId,
   repositoryFullName,
-  checkSuiteId
+  checkSuiteId,
+  instanceConfigService
 }: {
   installationId: string;
   repositoryFullName: string;
   checkSuiteId: number;
+  instanceConfigService: TInstanceConfigService;
 }) => {
-  const octokit = getGitHubRadarInstallationOctokit(installationId);
+  const octokit = await getGitHubRadarInstallationOctokit(installationId, instanceConfigService);
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
   const { data } = await octokit.checks.listForSuite({
@@ -567,9 +584,10 @@ export const getLatestPullRequestCheckRunExternalId = async ({
 export const startPullRequestCheckRun = async ({
   installationId,
   repositoryFullName,
-  checkRunId
+  checkRunId,
+  instanceConfigService
 }: TPullRequestCheckRunTarget) => {
-  const octokit = getGitHubRadarInstallationOctokit(installationId);
+  const octokit = await getGitHubRadarInstallationOctokit(installationId, instanceConfigService);
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
   await octokit.checks.update({
@@ -590,13 +608,13 @@ const FindingLocationSchema = GitRepositoryScanFindingDetailsSchema.pick({
   link: true
 });
 
-const getFindingLocations = (findings: TFindingsPayload) =>
+const getFindingLocations = (findings: TCheckRunFinding[]) =>
   findings.flatMap((finding) => {
     const details = FindingLocationSchema.safeParse(finding.details);
     return details.success ? [{ rule: finding.rule, ...details.data }] : [];
   });
 
-const toCheckRunAnnotations = (findings: TFindingsPayload) =>
+const toCheckRunAnnotations = (findings: TCheckRunFinding[]) =>
   getFindingLocations(findings).map(({ rule, file, startLine, endLine, commit, description }) => ({
     path: file,
     start_line: startLine,
@@ -604,6 +622,16 @@ const toCheckRunAnnotations = (findings: TFindingsPayload) =>
     annotation_level: "failure" as const,
     title: `Secret detected: ${rule}`,
     message: `${description.replace(/\.+$/, "")}. Found in commit ${commit.slice(0, 7)}.`
+  }));
+
+const toOversizedFileAnnotations = (oversizedFiles: TGitHubOversizedFile[]) =>
+  oversizedFiles.map(({ commitSha, filename }) => ({
+    path: filename,
+    start_line: 1,
+    end_line: 1,
+    annotation_level: "warning" as const,
+    title: "File not scanned for secrets",
+    message: `This file is larger than ${MISSING_PATCH_MAX_FILE_MB} MB and its change in commit ${commitSha.slice(0, 7)} is too large for GitHub to include, so Infisical didn't scan it. Check it for secrets before merging.`
   }));
 
 const escapeMarkdownTableCell = (value: string) => value.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
@@ -618,24 +646,62 @@ const toStatusLabel = (status?: string | null) =>
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 
+const getOversizedFilesNote = (oversizedFiles: TGitHubOversizedFile[]) => {
+  if (!oversizedFiles.length) return "";
+
+  const listed = oversizedFiles
+    .slice(0, CHECK_RUN_MAX_LISTED_OVERSIZED_FILES)
+    .map(({ commitSha, filename }) => `${commitSha.slice(0, 7)} ${filename.replace(/\r?\n/g, " ")}`);
+  const unlistedCount = oversizedFiles.length - listed.length;
+
+  return [
+    `Infisical didn't scan ${oversizedFiles.length} file(s) larger than ${MISSING_PATCH_MAX_FILE_MB} MB whose changes are too large for GitHub to include. Check them for secrets before merging:`,
+    `\`\`\`\n${listed.join("\n")}\n\`\`\``,
+    unlistedCount ? `${unlistedCount} more file(s) were not scanned.` : ""
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+};
+
 export const getPullRequestScanCheckRunResult = ({
   findings: allFindings,
   scannedCommitCount,
   totalCommitCount,
+  oversizedFiles = [],
+  truncatedCommitShas = [],
   findingsUrl
 }: {
-  findings: (TFindingsPayload[number] & { id?: string; status?: string | null })[];
+  findings: (TCheckRunFinding & { id?: string; status?: string | null })[];
   scannedCommitCount: number;
   totalCommitCount: number;
+  oversizedFiles?: TGitHubOversizedFile[];
+  truncatedCommitShas?: string[];
   findingsUrl?: string;
 }): TPullRequestCheckRunResult => {
-  const truncationNote =
+  const truncationNote = [
     scannedCommitCount < totalCommitCount
       ? `This pull request has ${totalCommitCount} commits. Infisical scanned the first ${scannedCommitCount}; later commits were not scanned.`
-      : "";
+      : "",
+    truncatedCommitShas.length
+      ? `${truncatedCommitShas.length} commit(s) change more than ${COMMIT_MAX_LISTED_FILES.toLocaleString("en-US")} files, more than GitHub lists. Infisical scanned the first ${COMMIT_MAX_LISTED_FILES.toLocaleString("en-US")} files of each: ${truncatedCommitShas.map((sha) => sha.slice(0, 7)).join(", ")}.`
+      : "",
+    getOversizedFilesNote(oversizedFiles)
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  const truncationAlert = truncationNote
+    ? `> [!WARNING]\n${truncationNote
+        .split("\n")
+        .map((line) => (line ? `> ${line}` : ">"))
+        .join("\n")}`
+    : "";
+
+  // Each row is a location, so a secret found in several places of the pull request counts once.
+  const countSecrets = (rows: typeof allFindings) => new Set(rows.map(({ id }, index) => id ?? index)).size;
 
   const findings = allFindings.filter((finding) => !isPullRequestCheckSkipStatus(finding.status));
-  const skippedCount = allFindings.length - findings.length;
+  const secretCount = countSecrets(findings);
+  const skippedCount = countSecrets(allFindings) - secretCount;
 
   if (!findings.length && skippedCount) {
     return {
@@ -643,10 +709,11 @@ export const getPullRequestScanCheckRunResult = ({
       title: `${skippedCount} secret(s) skipped`,
       summary: [
         `Found ${skippedCount} secret(s) in the commits of this pull request, all marked as false positives or ignored in Infisical.`,
-        truncationNote
+        truncationAlert
       ]
         .filter(Boolean)
-        .join("\n\n")
+        .join("\n\n"),
+      oversizedFiles
     };
   }
 
@@ -654,8 +721,11 @@ export const getPullRequestScanCheckRunResult = ({
     if (truncationNote) {
       return {
         conclusion: "neutral",
-        title: "Scan incomplete",
-        summary: `No secrets found in the scanned commits. ${truncationNote}`
+        title: oversizedFiles.length
+          ? `No secrets found, ${oversizedFiles.length} file(s) not scanned`
+          : "Scan incomplete",
+        summary: `No secrets found in the scanned commits.\n\n${truncationAlert}`,
+        oversizedFiles
       };
     }
 
@@ -667,10 +737,10 @@ export const getPullRequestScanCheckRunResult = ({
   }
 
   const intro = [
-    `Found ${findings.length} secret(s) in the commits of this pull request. Rotate each secret, then remove it from the pull request's history.`,
+    `Found ${secretCount} secret(s) in the commits of this pull request. Rotate each secret, then remove it from the pull request's history.`,
     "If the findings are false positives or safe to ignore, use Skip: False positive or Skip: Ignore above to mark them in Infisical and re-run this check. To stop a value from being reported anywhere, add it to the allowlist in your Infisical secret scanning configuration.",
     skippedCount ? `${skippedCount} more secret(s) were marked as false positives or ignored in Infisical.` : "",
-    truncationNote
+    truncationAlert
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -722,9 +792,10 @@ export const getPullRequestScanCheckRunResult = ({
 
   return {
     conclusion: "failure",
-    title: `${findings.length} secret(s) found`,
+    title: `${secretCount} secret(s) found`,
     summary,
     findings,
+    oversizedFiles,
     offerSkipActions: true
   };
 };
@@ -750,12 +821,19 @@ export const completePullRequestCheckRun = async ({
   installationId,
   repositoryFullName,
   checkRunId,
-  result
+  result,
+  instanceConfigService
 }: TPullRequestCheckRunTarget & { result: TPullRequestCheckRunResult }) => {
-  const octokit = getGitHubRadarInstallationOctokit(installationId);
+  const octokit = await getGitHubRadarInstallationOctokit(installationId, instanceConfigService);
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
-  const annotations = toCheckRunAnnotations((result.findings ?? []).slice(0, CHECK_RUN_MAX_ANNOTATIONS));
+  const findingAnnotations = toCheckRunAnnotations((result.findings ?? []).slice(0, CHECK_RUN_MAX_ANNOTATIONS));
+  const annotations = [
+    ...findingAnnotations,
+    ...toOversizedFileAnnotations(
+      (result.oversizedFiles ?? []).slice(0, CHECK_RUN_MAX_ANNOTATIONS - findingAnnotations.length)
+    )
+  ];
   const [firstBatch = [], ...remainingBatches] = chunkArray(annotations, CHECK_RUN_ANNOTATIONS_PER_REQUEST);
 
   await octokit.checks.update({
@@ -815,14 +893,16 @@ export const createPullRequestScanReport = ({
   installationId,
   repositoryFullName,
   metadata,
-  findingsUrl
+  findingsUrl,
+  instanceConfigService
 }: {
   installationId: string;
   repositoryFullName: string;
   metadata: TGitHubPullRequestScanMetadata;
   findingsUrl?: string;
+  instanceConfigService: TInstanceConfigService;
 }): TSecretScanningScanReport => {
-  const target = { installationId, repositoryFullName, checkRunId: metadata.checkRunId };
+  const target = { installationId, repositoryFullName, checkRunId: metadata.checkRunId, instanceConfigService };
 
   return {
     start: async () => {
@@ -836,7 +916,10 @@ export const createPullRequestScanReport = ({
       }
     },
     getCompletedScanMetadata: ({ findings }) =>
-      ({ ...metadata, findingIds: findings.map((finding) => finding.id) }) satisfies TGitHubPullRequestScanMetadata,
+      ({
+        ...metadata,
+        findingIds: [...new Set(findings.map((finding) => finding.id))]
+      }) satisfies TGitHubPullRequestScanMetadata,
     // Judged on every finding in the pull request's commits, including ones an earlier push scan saved first.
     complete: ({ findings, details }) =>
       tryCompletePullRequestCheckRun({
@@ -845,6 +928,8 @@ export const createPullRequestScanReport = ({
           findings,
           scannedCommitCount: details?.scannedCommitCount ?? 0,
           totalCommitCount: details?.totalCommitCount ?? 0,
+          oversizedFiles: details?.oversizedFiles,
+          truncatedCommitShas: details?.truncatedCommitShas,
           findingsUrl
         })
       }),
@@ -863,7 +948,8 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
   secretScanningV2DAL,
   auditLogService,
   discoverResource,
-  queueReportedRealtimeScan
+  queueReportedRealtimeScan,
+  instanceConfigService
 }) => {
   // Pull requests are checked only while the data source scans new commits. A repository the data source doesn't cover
   // yet is discovered the same way a push discovers it, or skipped when discovery is off. If the check run cannot be
@@ -922,6 +1008,7 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
           installationId: String(installationId),
           repositoryFullName: repository.full_name,
           headSha: pullRequest.headSha,
+          instanceConfigService,
           title: "Fork not scanned",
           summary:
             "Infisical doesn't scan pull requests from forks. Their commits are scanned after they are merged into this repository."
@@ -973,7 +1060,8 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
         repositoryFullName: repository.full_name,
         headSha: pullRequest.headSha,
         scanId,
-        detailsUrl: findingsUrl
+        detailsUrl: findingsUrl,
+        instanceConfigService
       });
     } catch (error) {
       logger.warn(
@@ -1061,7 +1149,8 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
       externalId = await getLatestPullRequestCheckRunExternalId({
         installationId: String(installationId),
         repositoryFullName: repository.full_name,
-        checkSuiteId
+        checkSuiteId,
+        instanceConfigService
       });
     } catch (error) {
       logger.warn(
@@ -1142,7 +1231,7 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
     const { pullRequestNumber, findingIds = [] } = metadata.data;
 
     const findings = findingIds.length
-      ? await secretScanningV2DAL.findings.find({ resourceId: resource.id, $in: { id: findingIds } }, { tx: primary })
+      ? await secretScanningV2DAL.findings.findByIdsOrLocationIds(resource.id, findingIds, primary)
       : [];
     const findingsToSkip = findings.filter((finding) => !isPullRequestCheckSkipStatus(finding.status));
 
@@ -1167,7 +1256,14 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
             },
             event: {
               type: EventType.SECRET_SCANNING_FINDING_UPDATE,
-              metadata: { findingId: finding.id, status: action, triageComment }
+              metadata: {
+                findingId: finding.id,
+                findingRule: finding.rule,
+                resourceId: resource.id,
+                resourceName: resource.name,
+                status: action,
+                triageComment
+              }
             }
           })
         )

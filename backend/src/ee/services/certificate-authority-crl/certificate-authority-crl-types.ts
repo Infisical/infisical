@@ -1,10 +1,23 @@
-import { TProjectPermission } from "@app/lib/types";
+import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
+import { TActorInput } from "@app/lib/types";
 
 export type TGetCrlById = string;
 
 export type TGetCaCrlsDTO = {
   caId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
+
+export type TRegenerateCrlDTO = {
+  caId: string;
+  auditLogInfo: AuditLogInfo;
+} & TActorInput;
+
+type TCaCrlDetails = {
+  id: string;
+  thisUpdate: Date;
+  nextUpdate: Date;
+  crl: string;
+};
 
 export type TCertificateAuthorityCrlServiceFactory = {
   getCrlById: (crlId: TGetCrlById) => Promise<{
@@ -75,7 +88,7 @@ export type TCertificateAuthorityCrlServiceFactory = {
     };
     crl: ArrayBuffer;
   }>;
-  getCaCrls: ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCaCrlsDTO) => Promise<{
+  getCaCrls: ({ caId, actor }: TGetCaCrlsDTO) => Promise<{
     ca: {
       readonly requireTemplateForIssuance: boolean;
       readonly internalCa:
@@ -133,9 +146,9 @@ export type TCertificateAuthorityCrlServiceFactory = {
       readonly notAfter: string | undefined;
       readonly activeCaCertId: string | null | undefined;
     };
-    crls: {
-      id: string;
-      crl: string;
-    }[];
+    crls: (TCaCrlDetails & { crlNumber: number | null })[];
+  }>;
+  regenerateCrl: (dto: TRegenerateCrlDTO) => Promise<{
+    crl: TCaCrlDetails & { crlNumber: number };
   }>;
 };

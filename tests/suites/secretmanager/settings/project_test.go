@@ -45,7 +45,7 @@ func TestProject_Settings(t *testing.T) {
 		require.Equalf(t, http.StatusOK, updated.StatusCode(), "turning on delete protection: %s", apierr.Body(updated.Body))
 
 		// Action
-		res, err := tn.Admin.API.DeleteProjectWithResponse(t.Context(), proj.ID)
+		res, err := tn.Admin.API.DeleteProjectWithResponse(t.Context(), proj.ID, nil)
 
 		// Assert
 		require.NoError(t, err)
@@ -68,7 +68,7 @@ func TestProject_Settings(t *testing.T) {
 		}
 
 		// Action
-		res, err := tn.Admin.API.DeleteProjectWithResponse(t.Context(), proj.ID)
+		res, err := tn.Admin.API.DeleteProjectWithResponse(t.Context(), proj.ID, nil)
 
 		// Assert
 		require.NoError(t, err)

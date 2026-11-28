@@ -1,5 +1,5 @@
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { groupBy } from "@app/lib/fn";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
@@ -25,7 +25,7 @@ export type TFnSecretsV2FromImportsDeps = {
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   actorOrgId: string;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
 };
 
 export const getAncestorPaths = (path: string): string[] => {
@@ -102,7 +102,7 @@ export const mergeImportedSecrets = (
 // Resolves and decrypts every secret in the sync's source subtree (a single folder, or, when the
 // sync includes subfolders, that folder plus every folder beneath it), merging in any imports, and wraps the
 // result in a TSecretSyncPayload. A cross-folder duplicate name is not resolved here: flatten()
-// throws on it by default, and payload.dedupeConflicts() is how the one caller that needs to
+// throws on it by default, and payload.tolerateConflicts() is how the one caller that needs to
 // tolerate it (removal) gets a payload that won't.
 export const buildSyncPayload = async (
   args: {
@@ -111,6 +111,7 @@ export const buildSyncPayload = async (
     sourcePath: string;
     sourceFolderId: string;
     syncOptions: Pick<TSecretSync["syncOptions"], "includeAllSubFolders" | "keySchema"> | undefined;
+    includeAllSubFolders: boolean;
     includeImports: boolean;
   },
   deps: {
@@ -125,8 +126,9 @@ export const buildSyncPayload = async (
 ): Promise<TSecretSyncPayload> => {
   const { folderDAL, projectEnvDAL, secretV2BridgeDAL, secretImportDAL, expandSecretReferences, decryptSecretValue } =
     deps;
-  const { projectId, environment, sourcePath, sourceFolderId, syncOptions, includeImports } = args;
-  const { includeAllSubFolders, keySchema } = syncOptions ?? {};
+  const { projectId, environment, sourcePath, sourceFolderId, syncOptions, includeAllSubFolders, includeImports } =
+    args;
+  const { keySchema } = syncOptions ?? {};
 
   const folders = await getSyncedFolders({
     folderDAL,
@@ -135,7 +137,7 @@ export const buildSyncPayload = async (
     environment,
     sourcePath,
     sourceFolderId,
-    includeAllSubFolders: Boolean(includeAllSubFolders)
+    includeAllSubFolders
   });
 
   const pathByFolderId = new Map(folders.map(({ folderId, path }) => [folderId, path]));
@@ -171,8 +173,10 @@ export const buildSyncPayload = async (
     })
   );
 
+  const folderPaths = folders.map(({ path }) => path);
+
   if (!includeImports) {
-    return createSecretSyncPayload(entries, { environment, keySchema });
+    return createSecretSyncPayload(entries, { environment, keySchema, sourcePath, folderPaths });
   }
 
   const secretImports = await secretImportDAL.findByFolderIds(folders.map(({ folderId }) => folderId));
@@ -215,5 +219,5 @@ export const buildSyncPayload = async (
     );
   }
 
-  return createSecretSyncPayload(allEntries, { environment, keySchema });
+  return createSecretSyncPayload(allEntries, { environment, keySchema, sourcePath, folderPaths });
 };

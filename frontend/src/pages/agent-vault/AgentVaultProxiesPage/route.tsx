@@ -6,7 +6,7 @@ import { agentVaultCreateIntentSearchParams } from "@app/hooks/useAgentVaultCrea
 import { AgentVaultProxiesPage } from "./AgentVaultProxiesPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/proxies"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/proxies"
 )({
   component: AgentVaultProxiesPage,
   validateSearch: zodValidator(agentVaultCreateIntentSearchParams),

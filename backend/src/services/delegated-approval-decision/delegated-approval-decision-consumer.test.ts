@@ -1,7 +1,13 @@
 import { UnrecoverableError } from "bullmq";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { TEventOutbox } from "@app/db/schemas";
+import {
+  EventOutboxStatus,
+  EventResultStatus,
+  MAX_OUTBOX_ATTEMPTS,
+  TEvent
+} from "@app/domains/platform/events/ce/module";
+import { buildEvents } from "@app/domains/platform/events/ce/testing/build-events";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { DelegatedApprovalCallbackEvent } from "@app/services/delegated-approval-callback/delegated-approval-callback-enums";
 import {
@@ -9,14 +15,6 @@ import {
   DelegatedApprovalRequestStatus
 } from "@app/services/delegated-approval/delegated-approval-enums";
 import { TDelegatedApprovalRequestDetails } from "@app/services/delegated-approval/delegated-approval-schemas";
-import { eventOutboxRegistryFactory } from "@app/services/event-outbox/event-outbox-registry";
-import { eventOutboxServiceFactory } from "@app/services/event-outbox/event-outbox-service";
-import {
-  EventOutboxStatus,
-  EventResultStatus,
-  MAX_OUTBOX_ATTEMPTS,
-  TEvent
-} from "@app/services/event-outbox/event-outbox-types";
 
 import {
   DELEGATED_APPROVAL_DECISION_RETRY_HINT,
@@ -30,11 +28,6 @@ import { TDelegatedApprovalDecisionReadResult } from "./delegated-approval-decis
 vi.mock("@app/lib/logger", () => ({
   logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
   initLogger: () => {}
-}));
-
-vi.mock("@app/lib/telemetry/metrics", () => ({
-  recordEventOutboxLagMetric: () => {},
-  recordEventOutboxExhaustedMetric: () => {}
 }));
 
 const { fetchDecision, REQUESTED_PERMISSIONS } = vi.hoisted(() => ({
@@ -106,7 +99,7 @@ const decided = (
   decision,
   approvalRequestId: APPROVAL_REQUEST_ID,
   permissions: ["secrets:        create, read", "secret-folders: edit"],
-  decidedBy: "Grace Hopper",
+  approvedBy: ["Grace Hopper", "Ada Lovelace"],
   decidedAt: "2026-10-20 10:15:00",
   notes: null,
   ...overrides
@@ -170,7 +163,7 @@ const buildConsumer = ({
     },
     appConnectionDAL: { findById: vi.fn().mockResolvedValue(connection) },
     membershipDAL: { isUserProjectMember: vi.fn().mockResolvedValue(isRequesterProjectMember) },
-    kmsService: { createCipherPairWithDataKey: vi.fn() },
+    kmsDataKeyService: { createCipherPairWithDataKey: vi.fn() },
     auditLogService: { createAuditLog },
     approvalResources: { [ApprovalPolicyType.SecretAccess]: { postApprovalTxRoutine } },
     decisionNotifiers: { [ApprovalPolicyType.SecretAccess]: notify }
@@ -249,7 +242,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
     auditedWith(createAuditLog, {
       outcome: DelegatedApprovalDecisionOutcome.Applied,
       decision: DelegatedApprovalDecision.Approved,
-      decidedBy: "Grace Hopper",
+      approvedBy: ["Grace Hopper", "Ada Lovelace"],
       decidedAt: "2026-10-20 10:15:00",
       providerRecordNumber: "INFAR1000000"
     });
@@ -661,70 +654,15 @@ describe("delegatedApprovalDecisionConsumer", () => {
 // later, instead of being dropped by a callback that answered 200 before anything was read.
 describe("delegatedApprovalDecisionConsumer through the outbox", () => {
   const buildOutbox = (consumer: ReturnType<typeof buildConsumer>["consumer"]) => {
-    const registry = eventOutboxRegistryFactory();
-    registry.register(consumer);
-
-    const rows: TEventOutbox[] = [];
-    const isDue = (row: TEventOutbox) =>
-      (row.status === EventOutboxStatus.Pending || row.status === EventOutboxStatus.Retry) &&
-      row.nextRetryAt <= new Date();
-
-    const service = eventOutboxServiceFactory({
-      eventOutboxDAL: {
-        insertEvents: async (inserted: Pick<TEventOutbox, "consumer" | "eventType" | "payload">[]) => {
-          inserted.forEach((row) =>
-            rows.push({
-              id: rows.length + 1,
-              status: EventOutboxStatus.Pending,
-              attempts: 0,
-              nextRetryAt: new Date(0),
-              occurredAt: new Date(),
-              ...row
-            } as TEventOutbox)
-          );
-        },
-        claimBatch: async () => {
-          const claimable = rows.filter(isDue);
-          claimable.forEach((row) => Object.assign(row, { status: EventOutboxStatus.Processing }));
-          return { lockToken: "token", rows: claimable.map((row) => ({ ...row })) };
-        },
-        extendClaims: async () => {},
-        commitResults: async (input: {
-          delivered: { ids: string[] }[];
-          retriable: { ids: string[]; nextRetryDelayMs: number; error?: string }[];
-          failed: { ids: string[]; error?: string }[];
-        }) => {
-          const apply = (
-            groups: { ids: string[]; nextRetryDelayMs?: number; error?: string }[],
-            status: EventOutboxStatus
-          ) =>
-            groups.forEach((group) =>
-              group.ids.forEach((id) => {
-                const row = rows.find((candidate) => String(candidate.id) === id);
-                if (!row) return;
-                row.status = status;
-                row.attempts += 1;
-                row.lastError = group.error ?? null;
-                row.nextRetryAt = new Date(Date.now() + (group.nextRetryDelayMs ?? 0));
-              })
-            );
-          apply(input.delivered, EventOutboxStatus.Delivered);
-          apply(input.retriable, EventOutboxStatus.Retry);
-          apply(input.failed, EventOutboxStatus.Failed);
-          return [...input.delivered, ...input.retriable, ...input.failed].reduce(
-            (n, group) => n + group.ids.length,
-            0
-          );
-        }
-      } as never,
-      eventOutboxRegistry: registry
-    });
-
-    const elapseBackoff = () => {
-      rows.forEach((row) => Object.assign(row, { nextRetryAt: new Date(0) }));
+    const { eventEmitterService, eventDeliveryService, outboxEntryStore } = buildEvents({ consumers: [consumer] });
+    return {
+      service: {
+        emit: eventEmitterService.emit.bind(eventEmitterService),
+        drain: eventDeliveryService.drain.bind(eventDeliveryService)
+      },
+      rows: () => outboxEntryStore.all(),
+      elapseBackoff: () => outboxEntryStore.elapseBackoff()
     };
-
-    return { service, rows, elapseBackoff };
   };
 
   test("retries a record without a decision and applies it on a later flush", async () => {
@@ -742,15 +680,15 @@ describe("delegatedApprovalDecisionConsumer through the outbox", () => {
         data: data as Record<string, unknown>
       }
     ]);
-    await service.drain({ consumer: built.consumer.name });
+    await service.drain(built.consumer.name);
 
-    expect(rows[0]).toMatchObject({ status: EventOutboxStatus.Retry, attempts: 1, lastError: "Not yet." });
+    expect(rows()[0]).toMatchObject({ status: EventOutboxStatus.Retry, attempts: 1, lastError: "Not yet." });
     expect(built.row()?.status).toBe(DelegatedApprovalRequestStatus.WaitingApproval);
 
     elapseBackoff();
-    await service.drain({ consumer: built.consumer.name });
+    await service.drain(built.consumer.name);
 
-    expect(rows[0]).toMatchObject({ status: EventOutboxStatus.Delivered, attempts: 2 });
+    expect(rows()[0]).toMatchObject({ status: EventOutboxStatus.Delivered, attempts: 1 });
     expect(built.row()?.status).toBe(DelegatedApprovalRequestStatus.Approved);
     expect(fetchDecision).toHaveBeenCalledTimes(2);
   });
@@ -771,16 +709,16 @@ describe("delegatedApprovalDecisionConsumer through the outbox", () => {
 
     for (let attempt = 1; attempt < MAX_OUTBOX_ATTEMPTS; attempt += 1) {
       // eslint-disable-next-line no-await-in-loop -- one drain per attempt
-      await service.drain({ consumer: built.consumer.name });
-      expect(rows[0].status).toBe(EventOutboxStatus.Retry);
+      await service.drain(built.consumer.name);
+      expect(rows()[0].status).toBe(EventOutboxStatus.Retry);
       expect(built.row()?.details.statusReason).toBe(`Not yet. ${DELEGATED_APPROVAL_DECISION_RETRY_HINT}`);
       elapseBackoff();
     }
 
-    await service.drain({ consumer: built.consumer.name });
+    await service.drain(built.consumer.name);
 
     expect(fetchDecision).toHaveBeenCalledTimes(MAX_OUTBOX_ATTEMPTS);
-    expect(rows[0]).toMatchObject({ status: EventOutboxStatus.Failed, attempts: MAX_OUTBOX_ATTEMPTS });
+    expect(rows()[0]).toMatchObject({ status: EventOutboxStatus.Failed, attempts: MAX_OUTBOX_ATTEMPTS });
     expect(built.row()).toMatchObject({
       status: DelegatedApprovalRequestStatus.WaitingApproval,
       details: { statusReason: `Not yet. ${DELEGATED_APPROVAL_DECISION_STOPPED_HINT}` }

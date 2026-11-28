@@ -2,12 +2,15 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import { ApproverType, BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
-import { removeTrailingSlash } from "@app/lib/fn";
+import { SECRET_CHANGE_POLICIES } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
+import { canonicalizeSecretPathPattern, hasDotPathSegment, removeTrailingSlash } from "@app/lib/fn";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { secretChangePolicyPubSchema } from "@app/server/routes/sanitizedSchemas";
+
+const SECRET_PATH_DOT_SEGMENT_ERR_MSG = "Secret path cannot contain '.' or '..' as a folder name";
 
 export const registerDeprecatedSecretApprovalPolicyRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -26,7 +29,9 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           secretPath: z
             .string()
             .min(1, { message: "Secret path cannot be empty" })
-            .transform((val) => removeTrailingSlash(val)),
+            .max(1024)
+            .refine((val) => !hasDotPathSegment(val), SECRET_PATH_DOT_SEGMENT_ERR_MSG)
+            .transform(canonicalizeSecretPathPattern),
           approvers: z
             .discriminatedUnion("type", [
               z.object({ type: z.literal(ApproverType.Group), id: z.string() }),
@@ -54,22 +59,20 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
           allowedSelfApprovals: z.boolean().default(true),
+          enforceOnSecretImports: z.boolean().default(false).describe(SECRET_CHANGE_POLICIES.enforceOnSecretImports),
           bypassForMachineIdentities: z.boolean().default(false)
         })
         .refine((data) => data.environment || data.environments, "At least one environment should be provided"),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: secretChangePolicyPubSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const approval = await server.services.secretApprovalPolicy.createSecretApprovalPolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+      const approval = await server.services.secretChangePolicy.createSecretApprovalPolicy({
+        actor: req.actor,
         projectId: req.body.workspaceId,
         ...req.body,
         name: req.body.name ?? `${req.body.environment || req.body.environments?.join(",")}-${nanoid(3)}`,
@@ -112,26 +115,26 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
           .string()
           .trim()
           .min(1, { message: "Secret path cannot be empty" })
+          .max(1024)
+          .refine((val) => !hasDotPathSegment(val), SECRET_PATH_DOT_SEGMENT_ERR_MSG)
           .optional()
-          .transform((val) => (val ? removeTrailingSlash(val) : undefined)),
+          .transform((val) => (val ? canonicalizeSecretPathPattern(val) : undefined)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
         allowedSelfApprovals: z.boolean().default(true),
+        enforceOnSecretImports: z.boolean().optional().describe(SECRET_CHANGE_POLICIES.enforceOnSecretImports),
         bypassForMachineIdentities: z.boolean().optional(),
         environments: z.array(z.string()).optional()
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: secretChangePolicyPubSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const approval = await server.services.secretApprovalPolicy.updateSecretApprovalPolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+      const approval = await server.services.secretChangePolicy.updateSecretApprovalPolicy({
+        actor: req.actor,
         ...req.body,
         secretPolicyId: req.params.sapId
       });
@@ -151,17 +154,14 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: secretChangePolicyPubSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const approval = await server.services.secretApprovalPolicy.deleteSecretApprovalPolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+      const approval = await server.services.secretChangePolicy.deleteSecretApprovalPolicy({
+        actor: req.actor,
         secretPolicyId: req.params.sapId
       });
       return { approval };
@@ -180,7 +180,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
       }),
       response: {
         200: z.object({
-          approvals: sapPubSchema
+          approvals: secretChangePolicyPubSchema
             .extend({
               approvers: z
                 .object({
@@ -201,11 +201,8 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const approvals = await server.services.secretApprovalPolicy.getSecretApprovalPolicyByProjectId({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+      const approvals = await server.services.secretChangePolicy.getSecretApprovalPolicyByProjectId({
+        actor: req.actor,
         projectId: req.query.workspaceId
       });
       return { approvals };
@@ -224,7 +221,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema.extend({
+          approval: secretChangePolicyPubSchema.extend({
             approvers: z
               .object({
                 id: z.string().nullable().optional(),
@@ -245,11 +242,8 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const approval = await server.services.secretApprovalPolicy.getSecretApprovalPolicyById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+      const approval = await server.services.secretChangePolicy.getSecretApprovalPolicyById({
+        actor: req.actor,
         ...req.params
       });
 
@@ -271,7 +265,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
       }),
       response: {
         200: z.object({
-          policy: sapPubSchema
+          policy: secretChangePolicyPubSchema
             .extend({
               userApprovers: z.object({ userId: z.string().nullable().optional() }).array()
             })
@@ -281,11 +275,8 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+      const policy = await server.services.secretChangePolicy.getSecretApprovalPolicyOfFolder({
+        actor: req.actor,
         projectId: req.query.workspaceId,
         ...req.query
       });

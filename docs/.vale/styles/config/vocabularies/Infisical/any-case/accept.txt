@@ -84,6 +84,9 @@ I
 (?i)approver
 (?i)approvers
 (?i)async
+(?i)autoenrollment
+(?i)keytab
+(?i)keytabs
 (?i)auditability
 (?i)auditable
 (?i)authorizer
@@ -229,6 +232,7 @@ I
 (?i)uncredentialed
 (?i)unencrypted
 (?i)unproxied
+(?i)unpublish
 (?i)unreplicated
 (?i)unreviewed
 (?i)unrotated

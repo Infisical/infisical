@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,7 +9,6 @@ import {
   SanitizedBitbucketConnectionSchema,
   UpdateBitbucketConnectionSchema
 } from "@app/services/app-connection/bitbucket";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -50,11 +50,7 @@ export const registerBitbucketConnectionRouter = async (server: FastifyZodProvid
         query: { search }
       } = req;
 
-      const workspaces = await server.services.appConnection.bitbucket.listWorkspaces(
-        connectionId,
-        req.permission,
-        search
-      );
+      const workspaces = await server.services.appConnection.bitbucket.listWorkspaces(connectionId, req.actor, search);
 
       return { workspaces };
     }
@@ -90,7 +86,7 @@ export const registerBitbucketConnectionRouter = async (server: FastifyZodProvid
 
       const repositories = await server.services.appConnection.bitbucket.listRepositories(
         { connectionId, workspaceSlug },
-        req.permission,
+        req.actor,
         search
       );
 
@@ -128,7 +124,7 @@ export const registerBitbucketConnectionRouter = async (server: FastifyZodProvid
 
       const environments = await server.services.appConnection.bitbucket.listEnvironments(
         { connectionId, workspaceSlug, repositorySlug },
-        req.permission
+        req.actor
       );
 
       return { environments };

@@ -3,11 +3,12 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -24,20 +25,28 @@ import {
 } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertStatus, CrlReason, TAltNameType } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
+import {
+  caAppConnectionNotFoundError,
+  caNotFoundError,
+  duplicateCaNameError,
+  externalCaNotSavedError
+} from "../certificate-authority-errors";
 import { createDistinguishedName, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
-import { createDigiCertApiClient, TDigiCertApiClient } from "./digicert-api-client";
+import {
+  DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS,
+  createDigiCertApiClient,
+  TDigiCertApiClient
+} from "./digicert-api-client";
 import {
   DIGICERT_FINAL_ISSUED_STATUSES,
   DIGICERT_MAX_CERTIFICATE_VALIDITY_DAYS,
   DigiCertOrderStatus,
-  DigiCertPollOutcome
+  DigiCertPollOutcome,
+  DigiCertRevocationRequestStatus
 } from "./digicert-certificate-authority-enums";
 import { DigiCertCaPurpose, DigiCertCertificateRequestMetadataSchema } from "./digicert-certificate-authority-schemas";
 import {
@@ -65,14 +74,14 @@ type TDigiCertCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById" | "findOne">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "create" | "findById" | "transaction" | "updateById" | "findOneLiveFirst"
+  >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
-  >;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
 };
 
 const assertPurposeMatchesProduct = (purpose: DigiCertCaPurpose | undefined, productNameId: string): void => {
@@ -121,16 +130,16 @@ export const DigiCertCertificateAuthorityFns = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  kmsService,
-  projectDAL
+  kmsDataKeyService,
+  kmsKeyService
 }: TDigiCertCertificateAuthorityFnsDeps) => {
   const codeSigningFns = digiCertCodeSigningFns({
     appConnectionDAL,
     certificateAuthorityDAL,
     certificateDAL,
     certificateBodyDAL,
-    kmsService,
-    projectDAL
+    kmsDataKeyService,
+    kmsKeyService
   });
 
   const createCertificateAuthority = async ({
@@ -144,13 +153,13 @@ export const DigiCertCertificateAuthorityFns = ({
     name: string;
     projectId: string;
     configuration: TCreateDigiCertCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
     const { appConnectionId, organizationId, productNameId, purpose, verifiedContact } = configuration;
 
     const appConnection = await appConnectionDAL.findById(appConnectionId);
     if (!appConnection) {
-      throw new NotFoundError({ message: `DigiCert app connection with ID '${appConnectionId}' not found` });
+      throw caAppConnectionNotFoundError(appConnectionId, AppConnection.DigiCert);
     }
     if (appConnection.app !== AppConnection.DigiCert) {
       throw new BadRequestError({
@@ -207,16 +216,14 @@ export const DigiCertCertificateAuthorityFns = ({
         // 23505 = unique_violation — same CA name in the same project
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
         if ((error as any)?.error?.code === "23505") {
-          throw new BadRequestError({
-            message: "Certificate authority with the same name already exists in your project"
-          });
+          throw duplicateCaNameError(name);
         }
         throw error;
       }
     });
 
     if (!caEntity.externalCa?.id) {
-      throw new BadRequestError({ message: "Failed to create external certificate authority" });
+      throw externalCaNotSavedError(name);
     }
 
     return castDbEntryToDigiCertCertificateAuthority(caEntity);
@@ -232,14 +239,14 @@ export const DigiCertCertificateAuthorityFns = ({
     id: string;
     status?: CaStatus;
     configuration?: TUpdateDigiCertCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
     name?: string;
   }) => {
     if (configuration) {
       const { appConnectionId, organizationId, productNameId, purpose, verifiedContact } = configuration;
       const appConnection = await appConnectionDAL.findById(appConnectionId);
       if (!appConnection) {
-        throw new NotFoundError({ message: `DigiCert app connection with ID '${appConnectionId}' not found` });
+        throw caAppConnectionNotFoundError(appConnectionId, AppConnection.DigiCert);
       }
       if (appConnection.app !== AppConnection.DigiCert) {
         throw new BadRequestError({
@@ -249,7 +256,7 @@ export const DigiCertCertificateAuthorityFns = ({
 
       const ca = await certificateAuthorityDAL.findById(id);
       if (!ca) {
-        throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+        throw caNotFoundError(id);
       }
 
       await appConnectionService.validateAppConnectionUsageById(
@@ -324,7 +331,7 @@ export const DigiCertCertificateAuthorityFns = ({
     return cas.map(castDbEntryToDigiCertCertificateAuthority);
   };
 
-  const $getActiveDigiCertCa = async (caId: string) => {
+  const $getActiveDigiCertCa = async (caId: string, clientOptions?: { requestTimeoutMs?: number }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
       throw new BadRequestError({ message: "CA is not a DigiCert certificate authority" });
@@ -338,10 +345,10 @@ export const DigiCertCertificateAuthorityFns = ({
     const { apiKey, baseUrl } = await getDigiCertClientCredentials(
       digicertCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService
     );
 
-    return { digicertCa, client: createDigiCertApiClient(apiKey, baseUrl) };
+    return { digicertCa, client: createDigiCertApiClient(apiKey, baseUrl, clientOptions) };
   };
 
   const $getOrderForCa = async (
@@ -370,8 +377,8 @@ export const DigiCertCertificateAuthorityFns = ({
   const $getStoredCertificate = async (certificate: { id: string; projectId: string }) => {
     const certificateBody = await certificateBodyDAL.findOne({ certId: certificate.id });
     if (!certificateBody) return null;
-    const kmsId = await getProjectKmsCertificateKeyId({ projectId: certificate.projectId, projectDAL, kmsService });
-    const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId });
+    const kmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(certificate.projectId);
+    const kmsDecryptor = await kmsKeyService.decryptWithKmsKey({ kmsId });
     const decrypted = await kmsDecryptor({ cipherTextBlob: certificateBody.encryptedCertificate });
     const decryptedText = decrypted.toString("utf8");
     return new x509.X509Certificate(
@@ -651,9 +658,17 @@ export const DigiCertCertificateAuthorityFns = ({
     };
   };
 
-  const cancelReissue = async ({ caId, orderId }: { caId: string; orderId: number }): Promise<boolean> => {
+  const cancelReissue = async ({
+    caId,
+    orderId,
+    requestTimeoutMs
+  }: {
+    caId: string;
+    orderId: number;
+    requestTimeoutMs?: number;
+  }): Promise<boolean> => {
     try {
-      const { client } = await $getActiveDigiCertCa(caId);
+      const { client } = await $getActiveDigiCertCa(caId, { requestTimeoutMs });
       await client.cancelOrderReissue(orderId, "Canceled from Infisical");
       logger.info(`DigiCert reissue canceled [caId=${caId}] [orderId=${orderId}]`);
       return true;
@@ -743,7 +758,7 @@ export const DigiCertCertificateAuthorityFns = ({
     const { apiKey, baseUrl } = await getDigiCertClientCredentials(
       digicertCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService
     );
     const client = createDigiCertApiClient(apiKey, baseUrl);
 
@@ -753,12 +768,8 @@ export const DigiCertCertificateAuthorityFns = ({
     const certObj = new x509.X509Certificate(leaf);
     const parsedFields = extractExternallyIssuedCertificateFields(certObj);
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
 
     const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
       plainText: Buffer.from(new Uint8Array(certObj.rawData))
@@ -841,7 +852,7 @@ export const DigiCertCertificateAuthorityFns = ({
     const { apiKey, baseUrl } = await getDigiCertClientCredentials(
       digicertCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService
     );
     const client = createDigiCertApiClient(apiKey, baseUrl);
 
@@ -890,7 +901,7 @@ export const DigiCertCertificateAuthorityFns = ({
     const { apiKey, baseUrl } = await getDigiCertClientCredentials(
       digicertCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService
     );
     const client = createDigiCertApiClient(apiKey, baseUrl);
 
@@ -916,18 +927,20 @@ export const DigiCertCertificateAuthorityFns = ({
   const revokeCertificate = async ({
     caId,
     serialNumber,
-    reason
+    reason,
+    allowPendingApproval = false
   }: {
     caId: string;
     serialNumber: string;
     reason: CrlReason;
-  }) => {
+    allowPendingApproval?: boolean;
+  }): Promise<number | undefined> => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
       throw new BadRequestError({ message: `CA is not a DigiCert certificate authority [caId=${caId}]` });
     }
 
-    const cert = await certificateDAL.findOne({ caId, serialNumber });
+    const cert = await certificateDAL.findOneLiveFirst({ caId, serialNumber });
     if (!cert) {
       throw new NotFoundError({
         message: `Certificate not found for revocation [caId=${caId}] [serialNumber=${serialNumber}]`
@@ -945,9 +958,13 @@ export const DigiCertCertificateAuthorityFns = ({
     const { apiKey, baseUrl } = await getDigiCertClientCredentials(
       digicertCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService
     );
-    const client = createDigiCertApiClient(apiKey, baseUrl);
+    const client = createDigiCertApiClient(
+      apiKey,
+      baseUrl,
+      allowPendingApproval ? { requestTimeoutMs: DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS } : undefined
+    );
 
     let digicertCertificateId = storedDigiCertCertificateId;
     if (!digicertCertificateId) {
@@ -966,10 +983,22 @@ export const DigiCertCertificateAuthorityFns = ({
 
     try {
       const comments = `Revoked via Infisical. Reason: ${reason}`;
-      if (digicertCertificateId) {
-        await client.revokeCertificate(digicertCertificateId, comments);
-      } else {
-        await client.revokeOrder(orderId, comments);
+      const revokeOptions = { skipApproval: allowPendingApproval };
+      const revocationRequest = digicertCertificateId
+        ? await client.revokeCertificate(digicertCertificateId, comments, revokeOptions)
+        : await client.revokeOrder(orderId, comments, revokeOptions);
+      if (allowPendingApproval && revocationRequest) {
+        if (revocationRequest.status === DigiCertRevocationRequestStatus.Rejected) {
+          throw new BadRequestError({
+            message: `DigiCert rejected the revocation request for order #${orderId}, so the certificate is still valid. Check the request in CertCentral.`
+          });
+        }
+        if (revocationRequest.status !== DigiCertRevocationRequestStatus.Approved) {
+          logger.info(
+            `DigiCert revocation waiting for approval [caId=${caId}] [certificateId=${cert.id}] [orderId=${orderId}] [requestId=${revocationRequest.id}]`
+          );
+          return revocationRequest.id;
+        }
       }
     } catch (err) {
       const message = (err as Error)?.message ?? "";
@@ -987,6 +1016,12 @@ export const DigiCertCertificateAuthorityFns = ({
     );
   };
 
+  const getRevocationRequestStatus = async ({ caId, requestId }: { caId: string; requestId: number }) => {
+    const { client } = await $getActiveDigiCertCa(caId, { requestTimeoutMs: DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS });
+    const request = await client.getRequest(requestId);
+    return request?.status ?? null;
+  };
+
   return {
     createCertificateAuthority,
     updateCertificateAuthority,
@@ -998,6 +1033,7 @@ export const DigiCertCertificateAuthorityFns = ({
     fetchAndAttachIssuedCertificate,
     pollOrderForCertificate,
     revokeCertificate,
+    getRevocationRequestStatus,
     assertOrderMatchesCertificate,
     orderCodeSigningCertificate: codeSigningFns.orderCodeSigningCertificate,
     reissueCodeSigningCertificate: codeSigningFns.reissueCodeSigningCertificate,

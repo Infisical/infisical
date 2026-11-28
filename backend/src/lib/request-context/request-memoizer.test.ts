@@ -1,8 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ActionProjectType } from "@app/db/schemas";
-import { ActorType } from "@app/services/auth/auth-type";
-
 import { requestMemoKeys } from "./memo-keys";
 import { RequestContextKey } from "./request-context-keys";
 import { requestMemoize, RequestMemoizer } from "./request-memoizer";
@@ -177,14 +174,7 @@ describe("request-scoped DAL deduplication", () => {
     const permissionFetcher = vi.fn().mockResolvedValue(mockPermissionResult);
 
     // Simulate 50 secret operations each checking the same project permission
-    const cacheKey = requestMemoKeys.projectPermission({
-      projectId: "proj-1",
-      actor: ActorType.IDENTITY,
-      actorId: "id-1",
-      actorAuthMethod: null,
-      actionProjectType: ActionProjectType.SecretManager,
-      actorOrgId: "org-1"
-    });
+    const cacheKey = "permission:project:proj-1";
     const results = await Promise.all(Array.from({ length: 50 }, () => memoizer.getOrSet(cacheKey, permissionFetcher)));
 
     expect(permissionFetcher).toHaveBeenCalledOnce();

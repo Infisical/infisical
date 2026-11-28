@@ -2,14 +2,16 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
+import { PERMISSION_BOUNDARY_ERROR_NAME } from "@app/domains/lib/errors";
+import { ActorPermission, Permission } from "@app/domains/platform/access-control/ce/module";
 import {
+  ProjectPermissionGroupActions,
+  ProjectPermissionSub,
   projectAdminPermissions,
   projectMemberPermissions,
   projectNoAccessPermissions
-} from "@app/ee/services/permission/default-roles";
-import { ProjectPermissionGroupActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
 import { conditionsMatcher } from "@app/lib/casl";
-import { PermissionBoundaryError } from "@app/lib/errors";
 
 import { newProjectMembershipGroupFactory } from "./project-membership-group-factory";
 
@@ -77,16 +79,22 @@ const createGuard = ({
   };
 
   const factory = newProjectMembershipGroupFactory({
-    permissionService: {
-      getProjectPermission: vi.fn().mockResolvedValue({ permission: actorPermission }),
-      getProjectPermissionByRoles: vi.fn().mockImplementation((roles: string[]) =>
+    secretsPermissionService: {
+      getProjectPermissionWithFolderGrants: vi.fn().mockResolvedValue(
+        ActorPermission.of({
+          rules: actorPermission.rules as never,
+          usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem
+        })
+      )
+    } as never,
+    projectPermissionService: {
+      getProjectPermissionByRoles: vi.fn().mockImplementation(({ roles }: { roles: string[] }) =>
         roles.map((role) => ({
-          permission: abilityByRole[role],
+          permission: Permission.fromRules({ rules: abilityByRole[role].rules as never }),
           role: { name: role, slug: role }
         }))
       )
     } as never,
-    orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem }) } as never,
     projectDAL: { findById: vi.fn().mockResolvedValue({ id: PROJECT_ID, type: "secret-manager" }) } as never,
     groupDAL: { findById: vi.fn().mockResolvedValue({ id: GROUP_ID, name: "the-group" }) } as never,
     membershipGroupDAL: {
@@ -97,7 +105,10 @@ const createGuard = ({
 
   return () =>
     factory.onUpdateMembershipGroupGuard({
-      permission: { type: "user", id: "actor-id", orgId: ORG_ID, authMethod: "email" },
+      actor: {
+        principal: { type: "user", id: "actor-id" },
+        org: { id: ORG_ID, rootOrgId: ORG_ID, shouldUseNewPrivilegeSystem }
+      },
       scopeData: { scope: AccessScope.Project, orgId: ORG_ID, projectId: PROJECT_ID },
       selector: { groupId: GROUP_ID },
       data: { roles: [{ role: incomingRole, isTemporary: false }] }
@@ -112,7 +123,7 @@ describe("onUpdateMembershipGroupGuard privilege boundary", () => {
   test("on the legacy system, a weaker actor cannot downgrade an Admin group to no-access", async () => {
     const guard = createGuard({ actorPermission: groupEditorOnly, shouldUseNewPrivilegeSystem: false });
 
-    await expect(guard()).rejects.toThrow(PermissionBoundaryError);
+    await expect(guard()).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 
   test("downgrading to a role the actor may grant is still bounded by what the target holds", async () => {
@@ -122,7 +133,7 @@ describe("onUpdateMembershipGroupGuard privilege boundary", () => {
       incomingRole: ProjectMembershipRole.Member
     });
 
-    await expect(guard()).rejects.toThrow(PermissionBoundaryError);
+    await expect(guard()).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 
   test("an admin can still downgrade an Admin group on either system", async () => {
@@ -137,7 +148,7 @@ describe("onUpdateMembershipGroupGuard privilege boundary", () => {
   test("a groupName-scoped actor cannot strip an out-of-scope Admin group down to no-access", async () => {
     const guard = createGuard({ actorPermission: contractorScopedEditor, shouldUseNewPrivilegeSystem: true });
 
-    await expect(guard()).rejects.toThrow(PermissionBoundaryError);
+    await expect(guard()).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 
   test("nothing outranks the actor, so an ordinary downgrade is let through", async () => {

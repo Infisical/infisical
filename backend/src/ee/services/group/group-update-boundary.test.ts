@@ -2,14 +2,16 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { OrgMembershipRole } from "@app/db/schemas";
+import { PERMISSION_BOUNDARY_ERROR_NAME } from "@app/domains/lib/errors";
+import { ActorPermission, Permission } from "@app/domains/platform/access-control/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   orgAdminPermissions,
   orgMemberPermissions,
   orgNoAccessPermissions,
   OrgPermissionGroupActions,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
-import { PermissionBoundaryError } from "@app/lib/errors";
+} from "@app/domains/platform/organizations/ce/module";
 
 import { groupServiceFactory } from "./group-service";
 
@@ -46,6 +48,15 @@ const groupDeleterOnly = createMongoAbility<MongoAbility>([
   }
 ]);
 
+const groupRenamerOnly = createMongoAbility<MongoAbility>([
+  {
+    action: [OrgPermissionGroupActions.Read, OrgPermissionGroupActions.Edit, OrgPermissionGroupActions.AddMembers],
+    subject: OrgPermissionSubjects.Groups
+  }
+]);
+
+const CURRENT_NAME = "the-group";
+
 const createUpdate = ({
   actorPermission,
   shouldUseNewPrivilegeSystem,
@@ -64,22 +75,35 @@ const createUpdate = ({
   };
 
   const membershipRoleDAL = { create: vi.fn(), delete: vi.fn() };
+  const groupDAL = {
+    transaction: vi.fn().mockImplementation(async (cb: (tx: unknown) => unknown) => cb({})),
+    update: vi
+      .fn()
+      .mockImplementation(async (_filter: unknown, data: { name?: string }) => [
+        { id: GROUP_ID, orgId: ORG_ID, name: data.name ?? CURRENT_NAME }
+      ])
+  };
 
   const service = groupServiceFactory({
-    permissionService: {
-      getOrgPermission: vi.fn().mockResolvedValue({ permission: actorPermission }),
+    orgPermissionService: {
+      getOrgPermission: vi.fn().mockResolvedValue(
+        ActorPermission.of({
+          rules: actorPermission.rules as never,
+          usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem
+        })
+      ),
       getOrgPermissionByRoles: vi
         .fn()
-        .mockImplementation((roles: string[]) => roles.map((role) => ({ permission: abilityByRole[role] })))
+        .mockImplementation(({ roles }: { roles: string[] }) =>
+          roles.map((role) => ({ permission: Permission.fromRules({ rules: abilityByRole[role].rules as never }) }))
+        )
     } as never,
-    licenseService: { getPlan: vi.fn().mockResolvedValue({ groups: true }) } as never,
+    licenseService: new FakeLicenseService().setPlan(ORG_ID, { groups: true }),
     orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem }) } as never,
-    groupDAL: {
-      transaction: vi.fn().mockImplementation(async (cb: (tx: unknown) => unknown) => cb({}))
-    } as never,
+    groupDAL: groupDAL as never,
     membershipGroupDAL: {
       getGroupById: vi.fn().mockResolvedValue({
-        group: { id: GROUP_ID, orgId: ORG_ID, name: "the-group" },
+        group: { id: GROUP_ID, orgId: ORG_ID, name: CURRENT_NAME },
         roles: [{ role: currentRole }]
       }),
       findOne: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID })
@@ -87,19 +111,26 @@ const createUpdate = ({
     membershipRoleDAL: membershipRoleDAL as never
   } as never);
 
-  const actor = { actor: "user", actorId: "actor-id", actorAuthMethod: "email", actorOrgId: ORG_ID };
+  const actor = {
+    actor: {
+      principal: { type: "user", id: "actor-id" },
+      org: { id: ORG_ID, rootOrgId: ORG_ID, shouldUseNewPrivilegeSystem }
+    }
+  };
 
-  const run = () => service.updateGroup({ id: GROUP_ID, role: incomingRole, ...actor } as never);
+  const edit = (fields: { name?: string; slug?: string; role?: string }) =>
+    service.updateGroup({ id: GROUP_ID, ...fields, ...actor } as never);
+  const run = () => edit({ role: incomingRole });
   const remove = () => service.deleteGroup({ id: GROUP_ID, ...actor } as never);
 
-  return { run, remove, membershipRoleDAL };
+  return { run, remove, edit, membershipRoleDAL, groupDAL };
 };
 
 // deleteGroup runs on past the boundary into the teardown this harness does not stand up, so the
 // pass-through cases assert only that the boundary is not what stopped them.
 const expectNoBoundaryError = async (fn: () => Promise<unknown>) => {
   await fn().catch((err: unknown) => {
-    expect(err).not.toBeInstanceOf(PermissionBoundaryError);
+    expect((err as Error).name).not.toBe(PERMISSION_BOUNDARY_ERROR_NAME);
   });
 };
 
@@ -114,7 +145,7 @@ describe("updateGroup privilege boundary", () => {
       shouldUseNewPrivilegeSystem: false
     });
 
-    await expect(run()).rejects.toThrow(PermissionBoundaryError);
+    await expect(run()).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
     expect(membershipRoleDAL.create).not.toHaveBeenCalled();
   });
 
@@ -125,7 +156,7 @@ describe("updateGroup privilege boundary", () => {
       incomingRole: OrgMembershipRole.Member
     });
 
-    await expect(run()).rejects.toThrow(PermissionBoundaryError);
+    await expect(run()).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 
   test("an admin can still change an Admin group's role on either system", async () => {
@@ -140,7 +171,7 @@ describe("updateGroup privilege boundary", () => {
   test("on the legacy system, a weaker actor cannot delete an Admin-role group", async () => {
     const { remove } = createUpdate({ actorPermission: groupDeleterOnly, shouldUseNewPrivilegeSystem: false });
 
-    await expect(remove()).rejects.toThrow(PermissionBoundaryError);
+    await expect(remove()).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 
   test("deleting a group nothing outranks the actor on clears the boundary", async () => {
@@ -167,5 +198,47 @@ describe("updateGroup privilege boundary", () => {
     });
 
     await expect(run()).resolves.toEqual(expect.objectContaining({ id: GROUP_ID }));
+  });
+});
+
+describe("updateGroup rename boundary", () => {
+  test("on the new system, renaming without add-members is rejected", async () => {
+    const { edit, groupDAL } = createUpdate({ actorPermission: groupEditorOnly, shouldUseNewPrivilegeSystem: true });
+
+    await expect(edit({ name: "Admins" })).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
+    expect(groupDAL.update).not.toHaveBeenCalled();
+  });
+
+  test("on the new system, add-members lets the rename through", async () => {
+    const { edit, groupDAL } = createUpdate({ actorPermission: groupRenamerOnly, shouldUseNewPrivilegeSystem: true });
+
+    await expect(edit({ name: "Admins" })).resolves.toEqual(expect.objectContaining({ name: "Admins" }));
+    expect(groupDAL.update).toHaveBeenCalled();
+  });
+
+  test("on the legacy system, a weaker actor cannot rename an Admin group", async () => {
+    const { edit, groupDAL } = createUpdate({ actorPermission: groupEditorOnly, shouldUseNewPrivilegeSystem: false });
+
+    await expect(edit({ name: "Admins" })).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
+    expect(groupDAL.update).not.toHaveBeenCalled();
+  });
+
+  test("a role change that resends the current name is not treated as a rename", async () => {
+    const { edit, membershipRoleDAL } = createUpdate({
+      actorPermission: groupEditorOnly,
+      shouldUseNewPrivilegeSystem: true
+    });
+
+    await expect(
+      edit({ name: CURRENT_NAME, slug: "the-group", role: OrgMembershipRole.Member })
+    ).resolves.toBeDefined();
+    expect(membershipRoleDAL.create).toHaveBeenCalled();
+  });
+
+  test("a slug-only change is not bounded, since sync matches on name", async () => {
+    const { edit, groupDAL } = createUpdate({ actorPermission: groupEditorOnly, shouldUseNewPrivilegeSystem: true });
+
+    await expect(edit({ slug: "new-slug" })).resolves.toBeDefined();
+    expect(groupDAL.update).toHaveBeenCalled();
   });
 });

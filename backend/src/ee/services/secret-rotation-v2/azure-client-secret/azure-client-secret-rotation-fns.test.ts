@@ -99,6 +99,9 @@ const makeFactory = () =>
     {} as any,
     {} as any,
     {} as any,
+    {} as any,
+    {} as any,
+    undefined,
     {} as any
   );
 

@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TSecretFolders, TSecretFoldersUpdate } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
-import { groupBy, removeTrailingSlash, sanitizeSqlLikeString, unique } from "@app/lib/fn";
+import { canonicalizeSecretPath, groupBy, removeTrailingSlash, sanitizeSqlLikeString, unique } from "@app/lib/fn";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { isValidSecretPath } from "@app/lib/validator";
@@ -37,7 +37,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
       throw new BadRequestError({
         message: "Invalid secret path. Only alphanumeric characters, dashes, and underscores are allowed."
       });
-    const formatedPath = removeTrailingSlash(path);
+    const formatedPath = canonicalizeSecretPath(path);
     const pathSegments = formatedPath.split("/").filter(Boolean);
     if (pathSegments.some((segment) => !validateFolderName(segment))) {
       throw new BadRequestError({ message: "Invalid folder name" });
@@ -76,7 +76,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         message: "Invalid secret path. Only alphanumeric characters, dashes, and underscores are allowed."
       });
 
-    const formatedPath = removeTrailingSlash(path);
+    const formatedPath = canonicalizeSecretPath(path);
     const pathSegments = formatedPath.split("/").filter(Boolean);
     if (pathSegments.some((segment) => !validateFolderName(segment))) {
       throw new BadRequestError({ message: "Invalid folder name" });
@@ -136,7 +136,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         message: "Invalid secret path. Only alphanumeric characters, dashes, and underscores are allowed."
       });
 
-    const formatedPath = removeTrailingSlash(path);
+    const formatedPath = canonicalizeSecretPath(path);
     const pathSegments = formatedPath.split("/").filter(Boolean);
     if (pathSegments.some((segment) => !validateFolderName(segment))) {
       throw new BadRequestError({ message: "Invalid folder name" });
@@ -556,6 +556,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     try {
       const folders = await tx(TableName.SecretFolder)
         .whereIn("id", folderIds)
+        .orderBy("id")
         .forUpdate()
         .select(selectAllTableCols(TableName.SecretFolder));
       return folders;

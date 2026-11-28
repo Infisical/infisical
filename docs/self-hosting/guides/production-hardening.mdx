@@ -143,6 +143,20 @@ Set proper site URL for your Infisical instance:
 SITE_URL="https://app.infisical.com"
 ```
 
+#### Protect the initial admin setup
+
+Until someone creates the first super admin account, anyone who can reach your instance can
+create that account and take control of the instance. To stop that, set a
+[setup token](/self-hosting/configuration/envars#param-instance-setup-token)
+before you start the instance:
+
+```bash
+# Generate with: openssl rand -hex 16
+INSTANCE_SETUP_TOKEN="<your-setup-token>"
+```
+
+The super admin signup page then asks for the token. Share the token with the person who'll set up the instance.
+
 #### Public signups are disabled after admin setup
 
 <Warning>

@@ -1,23 +1,23 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../../../../services/app-connection/app-connection-enums";
 import { TGatewayPoolServiceFactory } from "../../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "../../license/license-service";
 import { listChefDataBagItems, listChefDataBags } from "./chef-connection-fns";
 import { TChefConnection } from "./chef-connection-types";
 
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TChefConnection>;
 
 // Enterprise check
-export const checkPlan = async (licenseService: Pick<TLicenseServiceFactory, "getPlan">, orgId: string) => {
+export const checkPlan = async (licenseService: TLicenseService, orgId: string) => {
   const plan = await licenseService.getPlan(orgId);
-  if (!plan.enterpriseAppConnections)
+  if (!plan.has(PlanFeature.EnterpriseAppConnections))
     throw new BadRequestError({
       message:
         "Failed to use app connection due to plan restriction. Upgrade plan to access enterprise app connections."
@@ -26,11 +26,11 @@ export const checkPlan = async (licenseService: Pick<TLicenseServiceFactory, "ge
 
 export const chefConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
+  licenseService: TLicenseService,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ) => {
-  const $getResolvedConnection = async (appConnectionId: string, actor: OrgServiceActor) => {
+  const $getResolvedConnection = async (appConnectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Chef, appConnectionId, actor);
 
     if (!appConnection) {
@@ -45,16 +45,16 @@ export const chefConnectionService = (
     return { ...appConnection, gatewayId: effectiveGatewayId, gatewayPoolId: null };
   };
 
-  const listDataBags = async (appConnectionId: string, actor: OrgServiceActor) => {
-    await checkPlan(licenseService, actor.orgId);
+  const listDataBags = async (appConnectionId: string, actor: TActorContext) => {
+    await checkPlan(licenseService, actor.org.id);
 
     const appConnection = await $getResolvedConnection(appConnectionId, actor);
 
     return listChefDataBags(appConnection, gatewayV2Service);
   };
 
-  const listDataBagItems = async (appConnectionId: string, dataBagName: string, actor: OrgServiceActor) => {
-    await checkPlan(licenseService, actor.orgId);
+  const listDataBagItems = async (appConnectionId: string, dataBagName: string, actor: TActorContext) => {
+    await checkPlan(licenseService, actor.org.id);
 
     const appConnection = await $getResolvedConnection(appConnectionId, actor);
 

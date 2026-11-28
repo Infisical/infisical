@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Link, linkOptions, useParams } from "@tanstack/react-router";
 import { Check, Plus, Star } from "lucide-react";
 
-import { ProjectLimitUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import {
@@ -22,8 +21,7 @@ import {
   OrgPermissionProjectActions,
   OrgPermissionSubjects,
   useOrganization,
-  useProject,
-  useSubscription
+  useProject
 } from "@app/context";
 import { getProjectHomePage, isOrgScopedProduct } from "@app/helpers/project";
 import { useImplicitProduct, usePopUp } from "@app/hooks";
@@ -46,8 +44,6 @@ const ProjectSelectInner = () => {
   const { data: projects = [] } = useGetUserProjects();
   const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg.id);
 
-  const { subscription } = useSubscription();
-
   const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
 
   const addProjectToFavorites = async (projectId: string) => {
@@ -64,14 +60,7 @@ const ProjectSelectInner = () => {
     });
   };
 
-  const isAddingProjectsAllowed = subscription?.workspaceLimit
-    ? subscription.workspacesUsed < subscription.workspaceLimit
-    : true;
-
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
-    "addNewWs",
-    "upgradePlan"
-  ] as const);
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["addNewWs"] as const);
 
   const projectsSortedByFav = useMemo(() => {
     const projectOptions = projects
@@ -117,6 +106,8 @@ const ProjectSelectInner = () => {
     return null;
   }
 
+  const isAgentVault = currentWorkspace.type === ProjectType.AgentVault;
+
   return (
     <NavbarBlock className="min-w-16">
       <NavbarSwitcher
@@ -139,7 +130,7 @@ const ProjectSelectInner = () => {
         >
           <ProjectIcon className="size-[14px] shrink-0 text-project" />
           <span className="truncate">{currentWorkspace?.name}</span>
-          <Badge variant="project" className="hidden lg:inline-flex">
+          <Badge variant={isAgentVault ? "av" : "project"} className="hidden lg:inline-flex">
             Project
           </Badge>
         </Link>
@@ -224,7 +215,7 @@ const ProjectSelectInner = () => {
                         className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-foreground hover:bg-foreground/5 disabled:pointer-events-none disabled:opacity-50"
                         onClick={() => {
                           setOpen(false);
-                          handlePopUpOpen(isAddingProjectsAllowed ? "addNewWs" : "upgradePlan");
+                          handlePopUpOpen("addNewWs");
                         }}
                       >
                         <Plus className="size-4" />
@@ -238,12 +229,6 @@ const ProjectSelectInner = () => {
           </Command>
         </NavbarSwitcherContent>
       </NavbarSwitcher>
-      <UpgradeGate
-        paywallKey="project.limit"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        intent={ProjectLimitUpgradeIntent}
-      />
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}

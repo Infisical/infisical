@@ -1,43 +1,51 @@
 /* eslint-disable no-case-declarations */
 import { AxiosError, AxiosResponse } from "axios";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 
 import { AppConnection } from "../app-connection-enums";
+import { getAzureManagedIdentityAccessToken } from "../shared/azure/azure-managed-identity-fns";
 import { AzureAppConfigurationConnectionMethod } from "./azure-app-configuration-connection-enums";
 import {
   ExchangeCodeAzureResponse,
   TAzureAppConfigurationConnectionConfig
 } from "./azure-app-configuration-connection-types";
 
-export const getAzureAppConfigurationConnectionListItem = () => {
-  const { INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID } = getConfig();
-
+export const getAzureAppConfigurationConnectionListItem = ({
+  INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID
+}: {
+  INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID?: string;
+}) => {
   return {
     name: "Azure App Configuration" as const,
     app: AppConnection.AzureAppConfiguration as const,
     methods: Object.values(AzureAppConfigurationConnectionMethod) as [
       AzureAppConfigurationConnectionMethod.OAuth,
-      AzureAppConfigurationConnectionMethod.ClientSecret
+      AzureAppConfigurationConnectionMethod.ClientSecret,
+      AzureAppConfigurationConnectionMethod.ManagedIdentity
     ],
     oauthClientId: INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID
   };
 };
 
 export const validateAzureAppConfigurationConnectionCredentials = async (
-  config: TAzureAppConfigurationConnectionConfig
+  config: TAzureAppConfigurationConnectionConfig,
+  instanceConfigService: TInstanceConfigService,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
-  const { credentials: inputCredentials, method } = config;
+  const { credentials: inputCredentials, method, orgId, projectId, connection } = config;
 
   const {
     INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID,
-    INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET,
-    SITE_URL
-  } = getConfig();
+    INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET
+  } = await instanceConfigService.getOverridableEnv();
+  const { SITE_URL } = getConfig();
 
   switch (method) {
     case AzureAppConfigurationConnectionMethod.OAuth:
@@ -141,6 +149,39 @@ export const validateAzureAppConfigurationConnectionCredentials = async (
             message: "Failed to get access token"
           });
         }
+      }
+
+    case AzureAppConfigurationConnectionMethod.ManagedIdentity:
+      const { tenantId: managedIdentityTenantId, clientId: managedIdentityClientId } = inputCredentials as {
+        tenantId: string;
+        clientId: string;
+      };
+
+      // A new connection has no ID yet, so Azure cannot trust its subject. Verifying it after create runs the
+      // exchange once the customer has added the federated credential.
+      if (!connection) return { tenantId: managedIdentityTenantId, clientId: managedIdentityClientId };
+
+      try {
+        const managedIdentityToken = await getAzureManagedIdentityAccessToken(
+          {
+            appConnection: { ...connection, orgId, projectId },
+            tenantId: managedIdentityTenantId,
+            clientId: managedIdentityClientId,
+            scope: "https://azconfig.io/.default"
+          },
+          oidcIssuerService
+        );
+
+        return { tenantId: managedIdentityTenantId, clientId: managedIdentityClientId, ...managedIdentityToken };
+      } catch (e: unknown) {
+        if (e instanceof AxiosError) {
+          throw new BadRequestError({
+            message: `Failed to get access token: ${
+              (e?.response?.data as { error_description?: string })?.error_description || "Unknown error"
+            }`
+          });
+        }
+        throw e;
       }
 
     default:

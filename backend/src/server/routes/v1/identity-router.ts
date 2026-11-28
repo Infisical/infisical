@@ -1,8 +1,15 @@
 import { z } from "zod";
 
-import { IdentitiesSchema, IdentityOrgMembershipsSchema, OrgMembershipRole, OrgRolesSchema } from "@app/db/schemas";
+import {
+  IdentitiesSchema,
+  IdentityOrgMembershipsSchema,
+  OrgMembershipRole,
+  OrgRolesSchema,
+  ProjectType
+} from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, IDENTITIES } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { logger } from "@app/lib/logger";
 import { buildSearchZodSchema, SearchResourceOperators } from "@app/lib/search-resource/search";
 import { OrderByDirection } from "@app/lib/types";
@@ -11,7 +18,6 @@ import { identityCreationLimit, readLimit, writeLimit } from "@app/server/config
 import { auditSafeText } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { OrgIdentityOrderBy } from "@app/services/identity/identity-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -67,10 +73,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const identity = await server.services.identityV1.createIdentity({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body,
         orgId: req.body.organizationId
       });
@@ -91,7 +94,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.MachineIdentityCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           orgId: req.body.organizationId,
           name: identity.name,
@@ -144,10 +147,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const identity = await server.services.identityV1.updateIdentity({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth),
         ...req.body
@@ -214,10 +214,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const identity = await server.services.identityV1.deleteIdentity({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });
@@ -299,10 +296,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const identity = await server.services.identityV1.getIdentityById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.params.identityId
       });
 
@@ -350,10 +344,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { identityMemberships, totalCount } = await server.services.identityV1.listOrgIdentities({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         orgId: req.query.orgId
       });
 
@@ -446,12 +437,9 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { identityMemberships, totalCount } = await server.services.identityV1.searchOrgIdentities({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         searchFilter: req.body.search,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         limit: req.body.limit,
         offset: req.body.offset,
         orderBy: req.body.orderBy,
@@ -478,10 +466,24 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        identityId: z.string().describe(IDENTITIES.GET_BY_ID.identityId)
+        identityId: z.string().describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.identityId)
+      }),
+      querystring: z.object({
+        limit: z.coerce.number().int().min(1).max(100).optional().describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.limit),
+        offset: z.coerce.number().int().min(0).default(0).describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.offset),
+        search: z.string().trim().max(255).optional().describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.search),
+        orderDirection: z
+          .nativeEnum(OrderByDirection)
+          .default(OrderByDirection.ASC)
+          .describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.orderDirection),
+        excludeProjectType: z
+          .nativeEnum(ProjectType)
+          .optional()
+          .describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.excludeProjectType)
       }),
       response: {
         200: z.object({
+          totalCount: z.number().describe(IDENTITIES.LIST_PROJECT_MEMBERSHIPS.totalCount),
           identityMemberships: z.array(
             z.object({
               id: z.string(),
@@ -512,15 +514,11 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const identityMemberships = await server.services.identityV1.listProjectIdentitiesByIdentityId({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        identityId: req.params.identityId
+      return server.services.identityV1.listProjectIdentitiesByIdentityId({
+        actor: req.actor,
+        identityId: req.params.identityId,
+        ...req.query
       });
-
-      return { identityMemberships };
     }
   });
 
@@ -555,7 +553,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN], { requireOrg: false }),
     handler: async (req) => {
-      const organization = await server.services.org.findIdentityOrganization(req.permission.id);
+      const organization = await server.services.org.findIdentityOrganization(req.actor.id);
       return { identityDetails: { organization } };
     }
   });

@@ -1,19 +1,19 @@
 import { FastifyRequest } from "fastify";
 
 import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TAgentVaultActorPostHogEvent, TPostHogEvent } from "@app/services/telemetry/telemetry-types";
 
 // this is a unique id for sending posthog event
 export const getTelemetryDistinctId = (req: FastifyRequest) => {
-  if (req.auth.actor === ActorType.USER) {
+  if (req.auth.actorType === ActorType.USER) {
     return req.auth.user.username;
   }
-  if (req.auth.actor === ActorType.IDENTITY) {
+  if (req.auth.actorType === ActorType.IDENTITY) {
     return `identity-${req.auth.identityId}`;
   }
-  if (req.auth.actor === ActorType.SERVICE) {
+  if (req.auth.actorType === ActorType.SERVICE) {
     return req.auth.serviceToken.createdByEmail || `service-token-null-creator-${req.auth.serviceTokenId}`; // when user gets removed from system
   }
   return "unknown-auth-data";
@@ -28,18 +28,18 @@ type TAgentVaultEventInput<T extends TAgentVaultActorPostHogEvent = TAgentVaultA
 
 export const emitAgentVaultTelemetry = (
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">,
-  req: FastifyRequest & { permission: { orgId: string; type: ActorType } },
+  req: FastifyRequest & { actor: { orgId: string; type: ActorType } },
   event: TAgentVaultEventInput
 ) => {
   const payload = {
     event: event.event,
     distinctId: getTelemetryDistinctId(req),
-    organizationId: req.permission.orgId,
+    organizationId: req.actor.orgId,
     properties: {
       ...event.properties,
-      orgId: req.permission.orgId,
+      orgId: req.actor.orgId,
       channel: req.auditLogInfo.userAgentType ?? UserAgentType.OTHER,
-      actorType: req.permission.type
+      actorType: req.actor.type
     }
   } as TPostHogEvent;
 

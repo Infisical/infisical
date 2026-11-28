@@ -5,9 +5,10 @@ import { Knex } from "knex";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TSecretFolderVersions, TSecretVersionsV2 } from "@app/db/schemas";
+import { EntityNotFoundError } from "@app/domains/lib/errors";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
-import { ActorType } from "../auth/auth-type";
 import { FolderModifiedEventV1 } from "../secret-folder/secret-folder-events";
 import { SecretModifiedEventV1 } from "../secret-v2-bridge/secret-events";
 import {
@@ -18,6 +19,9 @@ import {
   ResourceType,
   TFolderCommitServiceFactory
 } from "./folder-commit-service";
+
+const mockSealKnexTransaction = vi.hoisted(() => vi.fn((tx: unknown) => ({ sealed: tx })));
+vi.mock("@app/domains/lib/transactions", () => ({ sealKnexTransaction: mockSealKnexTransaction }));
 
 // Mock config
 vi.mock("@app/lib/config/env", () => ({
@@ -57,7 +61,8 @@ describe("folderCommitServiceFactory", () => {
   };
 
   const mockKmsService = {
-    createCipherPairWithDataKey: vi.fn().mockResolvedValue({})
+    createCipherPairWithDataKey: vi.fn().mockResolvedValue({}),
+    within: vi.fn()
   };
 
   const mockFolderCommitChangesDAL = {
@@ -129,7 +134,8 @@ describe("folderCommitServiceFactory", () => {
   };
 
   const mockSecretVersionV2BridgeDAL = {
-    findLatestVersionByFolderId: vi.fn().mockResolvedValue([]),
+    findByIdAndPreviousVersion: vi.fn(),
+    findLatestSharedVersionsByFolderId: vi.fn().mockResolvedValue([]),
     findById: vi.fn().mockResolvedValue({}),
     deleteById: vi.fn().mockResolvedValue({}),
     create: vi.fn().mockResolvedValue({}),
@@ -158,8 +164,8 @@ describe("folderCommitServiceFactory", () => {
     createFolderTreeCheckpoint: vi.fn().mockResolvedValue({})
   };
 
-  const mockPermissionService = {
-    getProjectPermission: vi.fn().mockResolvedValue({})
+  const mockSecretsPermissionService = {
+    getSecretsPermission: vi.fn().mockResolvedValue({})
   };
 
   const mockSecretTagDAL = {
@@ -180,6 +186,8 @@ describe("folderCommitServiceFactory", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockKmsService.within.mockImplementation(() => mockKmsService);
+    mockSealKnexTransaction.mockImplementation((tx: unknown) => ({ sealed: tx }));
 
     folderCommitService = folderCommitServiceFactory({
       // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
@@ -208,9 +216,8 @@ describe("folderCommitServiceFactory", () => {
       // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
       secretV2BridgeDAL: mockSecretV2BridgeDAL,
       folderCommitQueueService: mockFolderCommitQueueService,
-      // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
-      permissionService: mockPermissionService,
-      kmsService: mockKmsService,
+      secretsPermissionService: mockSecretsPermissionService as never,
+      kmsDataKeyService: mockKmsService as never,
       secretTagDAL: mockSecretTagDAL,
       resourceMetadataDAL: mockResourceMetadataDAL,
       eventEmitter: mockEventEmitter
@@ -234,7 +241,7 @@ describe("folderCommitServiceFactory", () => {
       mockFolderCheckpointDAL.findLatestByFolderId.mockResolvedValue(null);
       mockFolderCommitDAL.findLatestCommit.mockResolvedValue({ id: "latest-commit-id" });
       mockFolderDAL.findByParentId.mockResolvedValue([]);
-      mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([]);
+      mockSecretVersionV2BridgeDAL.findLatestSharedVersionsByFolderId.mockResolvedValue([]);
 
       const data = {
         actor: {
@@ -282,6 +289,35 @@ describe("folderCommitServiceFactory", () => {
       expect(result).toEqual(commitData);
     });
 
+    it("should fetch its own decryptor on the caller's transaction instead of calling KMS Core directly", async () => {
+      // Setup
+      const tx = { isTransaction: true } as unknown as Knex;
+      const version = { key: "A", encryptedValue: Buffer.from("v"), skipMultilineEncoding: false, tags: [] };
+      const decryptor = vi.fn(({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob);
+      mockKmsService.createCipherPairWithDataKey.mockResolvedValueOnce({ decryptor });
+      mockFolderDAL.findById.mockResolvedValue({ id: "folder-id", envId: "env-id" });
+      mockProjectDAL.findProjectByEnvId.mockResolvedValue({ id: "project-id" });
+      mockSecretVersionV2BridgeDAL.findByIdAndPreviousVersion.mockResolvedValue([version, { ...version }]);
+
+      // Action
+      const result = await folderCommitService.createCommit(
+        {
+          actor: { type: ActorType.PLATFORM },
+          folderId: "folder-id",
+          changes: [{ type: CommitType.ADD, isUpdate: true, secretVersionId: "secret-version-1" }]
+        },
+        tx
+      );
+
+      // Assert
+      expect(result).toBeUndefined();
+      expect(mockSealKnexTransaction).toHaveBeenCalledWith(tx);
+      expect(mockKmsService.within).toHaveBeenCalledWith({ sealed: tx });
+      expect(mockKmsService.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
+      expect(decryptor).toHaveBeenCalled();
+      expect(mockFolderCommitDAL.create).not.toHaveBeenCalled();
+    });
+
     it("should successfully create a commit with identity actor", async () => {
       // Arrange
       const identityData = { id: "identity-id", name: "testidentity" };
@@ -294,7 +330,7 @@ describe("folderCommitServiceFactory", () => {
       mockFolderCheckpointDAL.findLatestByFolderId.mockResolvedValue(null);
       mockFolderCommitDAL.findLatestCommit.mockResolvedValue({ id: "latest-commit-id" });
       mockFolderDAL.findByParentId.mockResolvedValue([]);
-      mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([]);
+      mockSecretVersionV2BridgeDAL.findLatestSharedVersionsByFolderId.mockResolvedValue([]);
 
       // Mock folderVersionDAL.find to return an object with folder version data
       mockFolderVersionDAL.find.mockResolvedValue({
@@ -385,7 +421,7 @@ describe("folderCommitServiceFactory", () => {
       mockFolderCheckpointDAL.findLatestByFolderId.mockResolvedValue(null);
       mockFolderCommitDAL.findLatestCommit.mockResolvedValue({ id: "latest-commit-id" });
       mockFolderDAL.findByParentId.mockResolvedValue([]);
-      mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([]);
+      mockSecretVersionV2BridgeDAL.findLatestSharedVersionsByFolderId.mockResolvedValue([]);
       mockFolderVersionDAL.find.mockResolvedValue({});
 
       // Act
@@ -413,7 +449,7 @@ describe("folderCommitServiceFactory", () => {
       mockFolderCheckpointDAL.findLatestByFolderId.mockResolvedValue(null);
       mockFolderCommitDAL.findLatestCommit.mockResolvedValue({ id: "latest-commit-id" });
       mockFolderDAL.findByParentId.mockResolvedValue([]);
-      mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([]);
+      mockSecretVersionV2BridgeDAL.findLatestSharedVersionsByFolderId.mockResolvedValue([]);
       mockFolderVersionDAL.find.mockResolvedValue({});
 
       // Act
@@ -486,6 +522,21 @@ describe("folderCommitServiceFactory", () => {
       await expect(folderCommitService.addCommitChange(data)).rejects.toThrow(BadRequestError);
     });
 
+    it("should rethrow KMS Core domain errors unchanged", async () => {
+      // Arrange
+      const error = new EntityNotFoundError({ message: "KMS key not found" });
+      mockFolderCommitDAL.findById.mockRejectedValue(error);
+
+      // Act & Assert
+      await expect(
+        folderCommitService.addCommitChange({
+          folderCommitId: "commit-id",
+          changeType: CommitType.ADD,
+          secretVersionId: "secret-version-1"
+        })
+      ).rejects.toBe(error);
+    });
+
     it("should throw NotFoundError when commit does not exist", async () => {
       // Arrange
       mockFolderCommitDAL.findById.mockResolvedValue(null);
@@ -553,7 +604,7 @@ describe("folderCommitServiceFactory", () => {
 
       mockFolderDAL.findByParentId.mockResolvedValue([{ id: "subfolder-id" }]);
       mockFolderVersionDAL.findLatestFolderVersions.mockResolvedValue({ "subfolder-id": { id: "folder-version-1" } });
-      mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([{ id: "secret-version-1" }]);
+      mockSecretVersionV2BridgeDAL.findLatestSharedVersionsByFolderId.mockResolvedValue([{ id: "secret-version-1" }]);
       mockFolderCheckpointDAL.create.mockResolvedValue(checkpointData);
 
       // Act
@@ -591,6 +642,47 @@ describe("folderCommitServiceFactory", () => {
       await expect(
         folderCommitService.deepRollbackFolder(targetCommitId, envId, actorId, actorType, projectId)
       ).rejects.toThrow(NotFoundError);
+    });
+  });
+
+  describe("deepRollbackFolder decryptor fetch", () => {
+    it("fetches the decryptor once before the concurrent per-folder comparisons", async () => {
+      // Setup
+      const decryptor = vi.fn((arg: { cipherTextBlob: Buffer }) => arg.cipherTextBlob);
+      const events: string[] = [];
+      mockKmsService.createCipherPairWithDataKey.mockImplementation(async () => {
+        events.push("kms");
+        return { decryptor };
+      });
+      mockFolderCommitDAL.transaction.mockImplementation(async (callback) => callback({} as Knex));
+      mockFolderCommitDAL.findById.mockImplementation(async (id: string) => ({
+        id,
+        commitId: BigInt(id === "target" ? 1 : 10),
+        envId: "env-id"
+      }));
+      mockFolderTreeCheckpointDAL.findNearestCheckpoint.mockResolvedValue({ id: "cp", commitId: BigInt(0) });
+      mockFolderTreeCheckpointResourcesDAL.findByTreeCheckpointId.mockResolvedValue([
+        { folderId: "f1", commitId: BigInt(5), folderCommitId: "c1" },
+        { folderId: "f2", commitId: BigInt(6), folderCommitId: "c2" },
+        { folderId: "f3", commitId: BigInt(7), folderCommitId: "c3" }
+      ]);
+      mockFolderCommitDAL.findAllCommitsBetween.mockResolvedValue([]);
+      mockFolderCheckpointDAL.findNearestCheckpoint.mockResolvedValue({ id: "folder-cp", commitId: BigInt(0) });
+      mockFolderCommitDAL.findCommitsToRecreate.mockResolvedValue([]);
+      mockFolderCheckpointResourcesDAL.findByCheckpointId.mockResolvedValue([]);
+      (mockFolderCommitDAL as Record<string, unknown>).findPreviousCommitTo = vi.fn(async (folderId: string) => {
+        events.push(`prev-${folderId}`);
+        return { id: `prev-${folderId}` };
+      });
+      mockProjectDAL.findProjectByEnvId.mockResolvedValue({ id: "project-id" });
+      mockFolderDAL.findFoldersByRootAndIds.mockResolvedValue([]);
+
+      // Action
+      await folderCommitService.deepRollbackFolder("target", "env-id", "user-id", ActorType.USER, "project-id");
+
+      // Assert
+      expect(mockKmsService.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
+      expect(events.indexOf("kms")).toBeLessThan(events.indexOf("prev-f1"));
     });
   });
 
@@ -701,7 +793,7 @@ describe("folderCommitServiceFactory", () => {
 
       // Make sure other required functions return appropriate values
       mockFolderCheckpointDAL.findLatestByFolderId.mockResolvedValue(null);
-      mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([]);
+      mockSecretVersionV2BridgeDAL.findLatestSharedVersionsByFolderId.mockResolvedValue([]);
 
       // These mocks need to return objects with an id field
       mockSecretVersionV2BridgeDAL.findByIdsWithLatestVersion.mockResolvedValue(Object.values(secretVersions));
@@ -778,7 +870,7 @@ describe("folderCommitServiceFactory", () => {
         "secret-1": { secretId: "secret-1", type: "shared" }
       });
       mockSecretVersionV2BridgeDAL.findLatestVersionMany.mockResolvedValue({});
-      mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([]);
+      mockSecretVersionV2BridgeDAL.findLatestSharedVersionsByFolderId.mockResolvedValue([]);
       mockSecretV2BridgeDAL.deleteById.mockResolvedValue({});
       mockFolderVersionDAL.findByIdsWithLatestVersion.mockResolvedValue({
         "folder-1": { folderId: "folder-1", name: "renamed", envId: "env-1", version: 1 }

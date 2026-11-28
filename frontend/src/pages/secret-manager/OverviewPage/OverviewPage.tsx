@@ -44,6 +44,7 @@ import { twMerge } from "tailwind-merge";
 
 import {
   CreateHoneyTokenModal,
+  DeleteHoneyTokenModal,
   EditHoneyTokenModal,
   HoneyTokenDetailsDrawer,
   RevokeHoneyTokenModal
@@ -215,7 +216,8 @@ import {
   TSecretRotationV2
 } from "@app/hooks/api/secretRotationsV2";
 import { useCheckSecretRotationV2Credentials } from "@app/hooks/api/secretRotationsV2/mutations";
-import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
+import { useCreateCommit, useCreateCommits } from "@app/hooks/api/secrets/mutations";
 import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import {
   ApiErrorTypes,
@@ -238,7 +240,7 @@ import {
   useSecretOverview,
   useSecretRotationOverview
 } from "@app/hooks/utils";
-import { analytics, AnalyticsEvent } from "@app/lib/analytics";
+import { analytics, AnalyticsEvent, FolderAccessSheetSource } from "@app/lib/analytics";
 import { OverviewFlowProperties, OverviewScopeProperties } from "@app/lib/analytics/events";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
@@ -296,6 +298,7 @@ import { CreateSecretForm } from "./components/CreateSecretForm";
 import { EditDynamicSecretForm } from "./components/EditDynamicSecretForm";
 import { SecretsActivationNudge } from "./components/InviteMembersNudge/SecretsActivationNudge";
 import { ImportSecretsSheet } from "./components/SecretDropzone";
+import type { EnvironmentSecretAction } from "./components/SecretTableRow/SecretEditTableRow";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
@@ -308,6 +311,12 @@ import {
   type TableRowActivityChangeHandler,
   type TableRowActivityId
 } from "./components/tableRowActivity";
+import {
+  TUnsavedChange,
+  UnsavedEditsBar,
+  UnsavedEditsScope,
+  useUnsavedEdits
+} from "./components/UnsavedEditsBar";
 import {
   createOverviewTelemetry,
   observeOverviewRequest,
@@ -557,6 +566,7 @@ const OverviewPageContent = () => {
   // truthy value inherited from Object.prototype and render a row as expanded/revealed before
   // the user asked for it. Set/Map have no such inherited entries.
   const [expandedSecretRows, setExpandedSecretRows] = useState<Set<string>>(() => new Set());
+  const [expandedResourceRows, setExpandedResourceRows] = useState<Set<string>>(() => new Set());
   // Maps a revealed secret key to the identity of the secrets that were revealed, so the reveal
   // is dropped when the underlying secrets are swapped out. See secretRowIdentities below.
   const [visibleSecretRows, setVisibleSecretRows] = useState<Map<string, string>>(() => new Map());
@@ -567,6 +577,7 @@ const OverviewPageContent = () => {
   const resetSecretRowStates = useCallback(() => {
     revealGenerationRef.current += 1;
     setExpandedSecretRows(new Set());
+    setExpandedResourceRows(new Set());
     setVisibleSecretRows(new Map());
   }, []);
 
@@ -828,6 +839,24 @@ const OverviewPageContent = () => {
 
   const isSingleEnvView = visibleEnvs.length === 1;
   const [activeTableRows, setActiveTableRows] = useState<Set<TableRowActivityId>>(new Set());
+  const {
+    count: unsavedEditsCount,
+    getEdits: getUnsavedEdits,
+    isCommitting: isCommittingUnsavedEdits,
+    setCommitting: setCommittingUnsavedEdits,
+    dropHeldDrafts
+  } = useUnsavedEdits();
+
+  useEffect(() => {
+    dropHeldDrafts();
+  }, [projectId, secretPath, dropHeldDrafts]);
+  const isCommittingUnsavedEditsRef = useRef(false);
+  const { mutateAsync: createCommits } = useCreateCommits();
+  const [layoutContainer, setLayoutContainer] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setLayoutContainer(document.querySelector<HTMLElement>('[data-slot="sidebar-inset"]'));
+  }, []);
   const handleTableRowActivityChange = useCallback<TableRowActivityChangeHandler>(
     (rowId, isActive) => {
       setActiveTableRows((current) => {
@@ -894,7 +923,7 @@ const OverviewPageContent = () => {
     )
   );
   const canCreateSecretSyncs = Boolean(secretSyncSourceEnv);
-  const { pathPolicies, hasPathPolicies } = usePathAccessPolicies({
+  const { pathPolicies, hasPathPolicies, policies } = usePathAccessPolicies({
     secretPath,
     environment: singleEnvSlug
   });
@@ -1035,6 +1064,7 @@ const OverviewPageContent = () => {
         return (data ?? []).map((item) => ({
           environment: item.environment,
           secretPath: item.secretPath,
+          importId: item.importId,
           sourceEnv,
           secrets: item.secrets
         }));
@@ -1151,7 +1181,8 @@ const OverviewPageContent = () => {
     folderPath: string;
     environmentSlug: string;
   } | null>(null);
-  const [isCurrentFolderAccessOpen, setIsCurrentFolderAccessOpen] = useState(false);
+  const [currentFolderAccessSource, setCurrentFolderAccessSource] =
+    useState<FolderAccessSheetSource | null>(null);
 
   const canManageFolderAccessAt = useCallback(
     (environment: string, folderPath: string) =>
@@ -1260,8 +1291,12 @@ const OverviewPageContent = () => {
   );
 
   const queryClient = useQueryClient();
-  const { mutateAsync: createSecretV3 } = useCreateSecretV3();
-  const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
+  const { mutateAsync: createSecretV3 } = useCreateSecretV3({
+    options: { meta: { skipErrorToast: true } }
+  });
+  const { mutateAsync: updateSecretV3 } = useUpdateSecretV3({
+    options: { meta: { skipErrorToast: true } }
+  });
   const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3();
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: deleteFolder } = useDeleteFolder();
@@ -1284,7 +1319,9 @@ const OverviewPageContent = () => {
   const batchStoreApi = useBatchStoreApi();
   const { addPendingChange, loadPendingChanges, setExistingKeys, removePendingChange } =
     useBatchModeActions();
-  const { mutateAsync: createCommit } = useCreateCommit();
+  const { mutateAsync: createCommit } = useCreateCommit({
+    options: { meta: { skipErrorToast: true } }
+  });
 
   const telemetryScope = useMemo<OverviewScopeProperties>(() => {
     let environmentMode: OverviewScopeProperties["environmentMode"] = "none";
@@ -1481,6 +1518,11 @@ const OverviewPageContent = () => {
     isSingleEnvView && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0);
 
   const [recentQuickAddKeys, setRecentQuickAddKeys] = useState<string[]>([]);
+  const [quickAddAnnotation, setQuickAddAnnotation] = useState<{
+    key: string;
+    action: EnvironmentSecretAction;
+  } | null>(null);
+  const clearQuickAddAnnotation = useCallback(() => setQuickAddAnnotation(null), []);
   const pendingSecretRowKeys = useRef(new Map<string, string>());
   const hadPendingBatchChangesRef = useRef(hasPendingBatchChanges);
   const isRecentQuickAddClearPendingRef = useRef(false);
@@ -1549,6 +1591,17 @@ const OverviewPageContent = () => {
     [isSingleEnvView, singleEnvSlug, getSecretImportsForEnv]
   );
   const [sortableImportItems, setSortableImportItems] = useState<TSecretImport[]>([]);
+  // A replication import's secrets are reported under its source's environment and path, so rows need to know
+  // which groups belong to one to keep a regular import of the same source from showing them.
+  const importedSecretsForRows = useMemo(() => {
+    const replicationImportIds = new Set(
+      sortableImportItems.filter(({ isReplication }) => isReplication).map(({ id }) => id)
+    );
+    return importedSecretsFlat.map((group) => ({
+      ...group,
+      isReplication: Boolean(group.importId && replicationImportIds.has(group.importId))
+    }));
+  }, [importedSecretsFlat, sortableImportItems]);
 
   useEffect(() => {
     if (!isOverviewFetching) {
@@ -1603,6 +1656,7 @@ const OverviewPageContent = () => {
     "importFromDoppler",
     "editHoneyToken",
     "revokeHoneyToken",
+    "deleteHoneyToken",
     "createEnvironment",
     "createSharedSecret"
   ] as const);
@@ -1740,7 +1794,7 @@ const OverviewPageContent = () => {
           environmentSlug: singleEnvSlug
         });
         analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-          source: "folder_row",
+          source: "overview_folder_row",
           projectId
         });
       };
@@ -1765,11 +1819,23 @@ const OverviewPageContent = () => {
     ]
   );
 
+  // an inherited grant is managed on the folder that set it, so the nested sheet hands off to that one
+  const handleManageInheritedAccess = useCallback(
+    (inheritedPath: string, source: FolderAccessSheetSource) => {
+      setFolderAccessTarget(null);
+      setCurrentFolderAccessSource(null);
+      navigate({ search: (prev) => ({ ...prev, secretPath: inheritedPath }) }).then(() =>
+        setCurrentFolderAccessSource(source)
+      );
+    },
+    [navigate]
+  );
+
   const handleCurrentFolderAccessOpen = useCallback(() => {
     const openCurrentFolderAccess = () => {
-      setIsCurrentFolderAccessOpen(true);
+      setCurrentFolderAccessSource("overview_breadcrumb");
       analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-        source: "breadcrumb",
+        source: "overview_breadcrumb",
         projectId
       });
     };
@@ -2262,6 +2328,53 @@ const OverviewPageContent = () => {
     });
   };
 
+  const ensureSecretFolder = async (env: string) => {
+    if (secretPath === "/") return;
+    const pathSegment = secretPath.split("/").filter(Boolean);
+    const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
+    const folderName = pathSegment.at(-1);
+    const canCreateFolder = permission.can(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.SecretFolders, {
+        environment: env,
+        secretPath: parentPath
+      })
+    );
+    if (folderName && parentPath && canCreateFolder) {
+      await getOrCreateFolder({
+        projectId,
+        path: parentPath,
+        environment: env,
+        name: folderName
+      });
+    }
+  };
+
+  const createSecretInEnvironment = async (
+    env: string,
+    key: string,
+    value: string,
+    type: SecretType,
+    comment: string,
+    source: "row" | "quick-add"
+  ) => {
+    await ensureSecretFolder(env);
+    return observeOverviewRequest(
+      overviewTelemetry,
+      { action: "create", resourceType: "secret", source, countBucket: "1" },
+      () =>
+        createSecretV3({
+          environment: env,
+          projectId,
+          secretPath,
+          secretKey: key,
+          secretValue: value,
+          secretComment: comment,
+          type
+        })
+    );
+  };
+
   const handleSecretCreate = async (
     env: string,
     key: string,
@@ -2294,42 +2407,7 @@ const OverviewPageContent = () => {
       return;
     }
 
-    // create folder if not existing
-    if (secretPath !== "/") {
-      // /hello/world -> [hello","world"]
-      const pathSegment = secretPath.split("/").filter(Boolean);
-      const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
-      const folderName = pathSegment.at(-1);
-      const canCreateFolder = permission.can(
-        ProjectPermissionActions.Create,
-        subject(ProjectPermissionSub.SecretFolders, {
-          environment: env,
-          secretPath: parentPath
-        })
-      );
-      if (folderName && parentPath && canCreateFolder) {
-        await getOrCreateFolder({
-          projectId,
-          path: parentPath,
-          environment: env,
-          name: folderName
-        });
-      }
-    }
-    const result = await observeOverviewRequest(
-      overviewTelemetry,
-      { action: "create", resourceType: "secret", source, countBucket: "1" },
-      () =>
-        createSecretV3({
-          environment: env,
-          projectId,
-          secretPath,
-          secretKey: key,
-          secretValue: value,
-          secretComment: comment,
-          type
-        })
-    );
+    const result = await createSecretInEnvironment(env, key, value, type, comment, source);
 
     if ("approval" in result) {
       createNotification({
@@ -2342,6 +2420,66 @@ const OverviewPageContent = () => {
       // The user just created a secret: check whether to surface the activation nudge.
       checkSecretsActivation();
     }
+  };
+
+  const handleQuickAddSecretCreate = async (
+    environments: string[],
+    key: string,
+    value: string,
+    comment: string,
+    isDirectSave: boolean
+  ) => {
+    if (isSingleEnvView) {
+      setRecentQuickAddKeys((prev) => [key, ...prev.filter((recentKey) => recentKey !== key)]);
+      if (!isDirectSave)
+        return Promise.allSettled([
+          handleSecretCreate(
+            environments[0],
+            key,
+            value,
+            SecretType.Shared,
+            comment,
+            "quick-add",
+            isDirectSave
+          )
+        ]);
+    }
+
+    const results = await Promise.allSettled(
+      environments.map((env) =>
+        createSecretInEnvironment(env, key, value, SecretType.Shared, comment, "quick-add")
+      )
+    );
+    const envsWithOutcome = (isApproval: boolean) =>
+      environments.filter((_, index) => {
+        const result = results[index];
+        return result.status === "fulfilled" && "approval" in result.value === isApproval;
+      });
+    const approvalEnvs = envsWithOutcome(true);
+    const createdEnvs = envsWithOutcome(false);
+
+    if (approvalEnvs.length) {
+      createNotification({
+        type: "info",
+        text:
+          environments.length === 1
+            ? "Requested change has been sent for review"
+            : `Change request submitted for ${
+                approvalEnvs.length > 1 ? "environments" : "environment"
+              }: ${approvalEnvs.join(", ")}`
+      });
+    }
+
+    if (createdEnvs.length) {
+      notifySecretsCreated(
+        1,
+        createdEnvs.map((environment) => ({ environment, key, value })),
+        createdEnvs.length > 1 ? `Added to ${createdEnvs.length} environments` : undefined
+      );
+      checkSecretsActivation();
+    }
+
+    return results;
   };
 
   const handleSecretUpdate = async ({
@@ -2506,6 +2644,144 @@ const OverviewPageContent = () => {
     }
   };
 
+  const getUnsavedChanges = () => getUnsavedEdits().flatMap((edit) => edit.getChanges());
+
+  const handleCommitUnsavedEdits = async (message: string) => {
+    const edits = getUnsavedEdits().map((edit) => ({ edit, changes: edit.getChanges() }));
+    const changes = edits.flatMap((edit) => edit.changes);
+    if (!changes.length || isCommittingUnsavedEditsRef.current) return false;
+
+    isCommittingUnsavedEditsRef.current = true;
+    setCommittingUnsavedEdits(true);
+    try {
+      const createEnvironments = [
+        ...new Set(changes.filter((change) => change.isCreate).map((change) => change.environment))
+      ];
+      const preparedFolders = await Promise.allSettled(createEnvironments.map(ensureSecretFolder));
+      const folderFailures = createEnvironments.flatMap((environment, index) => {
+        const result = preparedFolders[index];
+        return result.status === "rejected"
+          ? [{ environment, commit: undefined, error: result.reason as unknown }]
+          : [];
+      });
+      const sendableChanges = changes.filter(
+        (change) => !folderFailures.some(({ environment }) => environment === change.environment)
+      );
+      const updateEnvironments = [
+        ...new Set(
+          sendableChanges.filter((change) => !change.isCreate).map((change) => change.environment)
+        )
+      ];
+      const fetchedSecrets = await Promise.allSettled(
+        updateEnvironments.map((environment) =>
+          fetchProjectSecrets({ projectId, environment, secretPath, viewSecretValue: false })
+        )
+      );
+      const currentSecrets = new Map(
+        updateEnvironments.flatMap((environment, index) => {
+          const result = fetchedSecrets[index];
+          return result.status === "fulfilled"
+            ? [[environment, result.value.secrets] as const]
+            : [];
+        })
+      );
+      const isDeleted = (change: TUnsavedChange) =>
+        !change.isCreate &&
+        currentSecrets.has(change.environment) &&
+        !currentSecrets
+          .get(change.environment)
+          ?.some(({ secretKey }) => secretKey === change.secretKey);
+      const deletedChanges = sendableChanges.filter(isDeleted);
+      const savableChanges = sendableChanges.filter((change) => !isDeleted(change));
+      if (deletedChanges.length) {
+        createNotification({
+          type: "warning",
+          text: `${deletedChanges.length} change${deletedChanges.length === 1 ? " wasn't" : "s weren't"} saved because the secret wasn't found. Discard ${deletedChanges.length === 1 ? "it" : "them"} if the secret was deleted.`
+        });
+      }
+      const { commits: sentCommits } = savableChanges.length
+        ? await createCommits({
+            projectId,
+            secretPath,
+            message,
+            secrets: savableChanges.map((change) => {
+              if (change.isCreate) return change;
+              const current = currentSecrets
+                .get(change.environment)
+                ?.find(({ secretKey }) => secretKey === change.secretKey);
+              return current
+                ? {
+                    ...change,
+                    secretComment: current.secretComment,
+                    tagIds: current.tags?.map((tag) => tag.id)
+                  }
+                : change;
+            })
+          })
+        : { commits: [] };
+      const commits = [...sentCommits, ...folderFailures];
+      const failedEnvironments = commits
+        .filter(({ commit }) => !commit)
+        .map(({ environment }) => environment);
+      const reviewEnvironments = commits
+        .filter(({ commit }) => commit?.approval)
+        .map(({ environment }) => environment);
+      edits.forEach(({ edit, changes: editChanges }) => {
+        const committed = editChanges.filter(
+          (change) =>
+            !failedEnvironments.includes(change.environment) && !deletedChanges.includes(change)
+        );
+        if (committed.length) edit.settle(committed, reviewEnvironments);
+      });
+      showSecretWriteErrors(
+        commits.flatMap(({ environment, error }) =>
+          error
+            ? [
+                {
+                  error,
+                  environmentName: changes.find((change) => change.environment === environment)
+                    ?.environmentName
+                }
+              ]
+            : []
+        )
+      );
+
+      const reviewEnvironmentNames = [
+        ...new Set(
+          changes
+            .filter((change) => reviewEnvironments.includes(change.environment))
+            .map((change) => change.environmentName)
+        )
+      ];
+      const committedCount = savableChanges.filter(
+        (change) =>
+          !reviewEnvironments.includes(change.environment) &&
+          !failedEnvironments.includes(change.environment)
+      ).length;
+
+      if (committedCount > 0) {
+        createNotification({
+          type: "success",
+          text: `Committed ${committedCount} change${committedCount === 1 ? "" : "s"}`
+        });
+      }
+      if (reviewEnvironmentNames.length > 0) {
+        createNotification({
+          type: "info",
+          text: `Change request opened for ${reviewEnvironmentNames.join(", ")}`
+        });
+      }
+      return failedEnvironments.length < commits.length;
+    } catch (error) {
+      showSecretWriteErrors([{ error }]);
+      return false;
+    } finally {
+      isCommittingUnsavedEditsRef.current = false;
+      setCommittingUnsavedEdits(false);
+    }
+  };
+
   const handleSecretDelete = async (
     env: string,
     key: string,
@@ -2635,20 +2911,57 @@ const OverviewPageContent = () => {
     [mergedSecKeys, pendingChanges.secrets]
   );
 
-  const areAllSecretRowsExpanded =
-    mergedSecKeys.length > 0 && mergedSecKeys.every((key) => expandedSecretRows.has(key));
-
-  const toggleExpandAllSecretRows = () => {
-    overviewTelemetry.interaction({
-      action: areAllSecretRowsExpanded ? "collapse-all" : "expand-all",
-      source: "header",
-      resourceType: "secret"
+  const setResourceRowExpanded = useCallback((rowKey: string, isExpanded: boolean) => {
+    setExpandedResourceRows((prev) => {
+      if (prev.has(rowKey) === isExpanded) return prev;
+      const next = new Set(prev);
+      if (isExpanded) next.add(rowKey);
+      else next.delete(rowKey);
+      return next;
     });
-    if (areAllSecretRowsExpanded) {
+  }, []);
+
+  const expandableResourceRowKeys = useMemo(
+    () =>
+      isSingleEnvView
+        ? []
+        : [
+            ...secretImportNames.map(({ importEnvSlug, importPath }) =>
+              overviewRowKey("import", importEnvSlug, importPath)
+            ),
+            ...dynamicSecretNames.map((name) => overviewRowKey("dynamic-secret", name)),
+            ...secretRotationNames.map((name) => overviewRowKey("secret-rotation", name)),
+            ...honeyTokenNames.map((name) => overviewRowKey("honey-token", name)),
+            ...proxiedServiceNames.map((name) => overviewRowKey("proxied-service", name))
+          ],
+    [
+      isSingleEnvView,
+      secretImportNames,
+      dynamicSecretNames,
+      secretRotationNames,
+      honeyTokenNames,
+      proxiedServiceNames
+    ]
+  );
+
+  const hasExpandableRows = mergedSecKeys.length > 0 || expandableResourceRowKeys.length > 0;
+  const areAllRowsExpanded =
+    hasExpandableRows &&
+    mergedSecKeys.every((key) => expandedSecretRows.has(key)) &&
+    expandableResourceRowKeys.every((key) => expandedResourceRows.has(key));
+
+  const toggleExpandAllRows = () => {
+    overviewTelemetry.interaction({
+      action: areAllRowsExpanded ? "collapse-all" : "expand-all",
+      source: "header"
+    });
+    if (areAllRowsExpanded) {
       setExpandedSecretRows(new Set());
+      setExpandedResourceRows(new Set());
       return;
     }
     setExpandedSecretRows((prev) => new Set([...prev, ...mergedSecKeys]));
+    setExpandedResourceRows((prev) => new Set([...prev, ...expandableResourceRowKeys]));
     if (isRevealAll) revealSecretRows(mergedSecKeys);
   };
 
@@ -2839,7 +3152,10 @@ const OverviewPageContent = () => {
   const savePendingChanges = useCallback(
     async (changes: PendingChanges, message: string, source: "bulk" | "row") => {
       if (!singleVisibleEnv) return [];
-      if (isSavingPendingRef.current) throw new Error("A save is already in progress");
+      if (isSavingPendingRef.current)
+        throw new Error(
+          "Another save is still in progress. Wait for it to finish, then save again."
+        );
       isSavingPendingRef.current = true;
       setIsSavingPending(true);
       const environment = singleVisibleEnv.slug;
@@ -3252,6 +3568,9 @@ const OverviewPageContent = () => {
     secrets?.length || folders?.length || secretRotationNames?.length
   );
 
+  const hasSelectedEntries = Object.values(selectedEntries).some(
+    (entries) => Object.keys(entries).length > 0
+  );
   const hasSelectedEntriesOnPage =
     mergedFolderNamesAndDescriptions.some(({ name }) => selectedEntries.folder[name]) ||
     secretRotationNames.some((name) => selectedEntries.secretRotation[name]) ||
@@ -3709,6 +4028,8 @@ const OverviewPageContent = () => {
 
   const renderSecretRow = (key: string, rowKey: string) => (
     <SecretTableRow
+      initialAction={quickAddAnnotation?.key === key ? quickAddAnnotation.action : undefined}
+      onInitialActionHandled={clearQuickAddAnnotation}
       isSelected={!hasPendingBatchChanges && Boolean(selectedEntries.secret[key])}
       onToggleSecretSelect={(_, isShiftKey) => {
         if (!hasPendingBatchChanges) toggleSelectedEntry(EntryType.SECRET, key, isShiftKey);
@@ -4121,10 +4442,10 @@ const OverviewPageContent = () => {
                   variant="ghost"
                   size="xs"
                   className="mr-1.5 shrink-0"
-                  disabled={!mergedSecKeys.length}
-                  onClick={toggleExpandAllSecretRows}
+                  disabled={!hasExpandableRows}
+                  onClick={toggleExpandAllRows}
                 >
-                  {areAllSecretRowsExpanded ? (
+                  {areAllRowsExpanded ? (
                     <>
                       <ChevronsDownUpIcon />
                       Close All
@@ -4469,32 +4790,34 @@ const OverviewPageContent = () => {
                         <TableHead className="min-w-[368px] text-sm font-medium text-muted">
                           <div className="flex w-full items-center justify-between gap-2">
                             Value
-                            <div className="flex items-center gap-2">
-                              <Badge variant="ghost" asChild>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    overviewTelemetry.interaction({
-                                      action: isSingleEnvSecretsVisible ? "hide" : "reveal",
-                                      source: "header",
-                                      resourceType: "secret"
-                                    });
-                                    setIsSingleEnvSecretsVisible.toggle();
-                                  }}
-                                >
-                                  {isSingleEnvSecretsVisible ? (
-                                    <>
-                                      <EyeOffIcon />
-                                      Hide Values
-                                    </>
-                                  ) : (
-                                    <>
-                                      <EyeIcon />
-                                      Reveal All
-                                    </>
-                                  )}
-                                </button>
-                              </Badge>
+                            <div className="-mr-1.5 flex items-center gap-2">
+                              {(mergedSecKeys.length > 0 || sortableImportItems.length > 0) && (
+                                <Badge variant="ghost" asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      overviewTelemetry.interaction({
+                                        action: isSingleEnvSecretsVisible ? "hide" : "reveal",
+                                        source: "header",
+                                        resourceType: "secret"
+                                      });
+                                      setIsSingleEnvSecretsVisible.toggle();
+                                    }}
+                                  >
+                                    {isSingleEnvSecretsVisible ? (
+                                      <>
+                                        <EyeOffIcon />
+                                        Hide Values
+                                      </>
+                                    ) : (
+                                      <>
+                                        <EyeIcon />
+                                        Reveal All
+                                      </>
+                                    )}
+                                  </button>
+                                </Badge>
+                              )}
                               {isProtectedBranch && (
                                 <Tooltip>
                                   <TooltipTrigger>
@@ -4606,28 +4929,28 @@ const OverviewPageContent = () => {
                           page === 1 &&
                           !isTableEmpty && (
                             <QuickAddSecretRow
+                              onAnnotate={
+                                isSingleEnvView
+                                  ? (key, action) => {
+                                      if (
+                                        !key
+                                          .toLowerCase()
+                                          .includes(searchFilter.trim().toLowerCase())
+                                      )
+                                        setSearchFilter("");
+                                      if (isFilteredByResources && !filter.secret)
+                                        setFilter((state) => ({ ...state, secret: true }));
+                                      setQuickAddAnnotation({ key, action });
+                                    }
+                                  : undefined
+                              }
                               autoQueueOnBlur={isSingleEnvView}
                               activityId={getTableRowActivityId("quick-add", secretPath)}
                               environments={visibleEnvs.map((env) => env.slug)}
                               existingSecretKeys={quickAddReservedKeys}
                               onActivityChange={handleTableRowActivityChange}
                               saveLabel={quickAddSaveLabel}
-                              onCreateSecret={(environment, key, value, comment, isDirectSave) => {
-                                if (isSingleEnvView)
-                                  setRecentQuickAddKeys((prev) => [
-                                    key,
-                                    ...prev.filter((recentKey) => recentKey !== key)
-                                  ]);
-                                return handleSecretCreate(
-                                  environment,
-                                  key,
-                                  value,
-                                  SecretType.Shared,
-                                  comment,
-                                  "quick-add",
-                                  isDirectSave
-                                );
-                              }}
+                              onCreateSecret={handleQuickAddSecretCreate}
                               onQueuedSecretConflict={(draft) => {
                                 const pendingCreate = batchStoreApi
                                   .getState()
@@ -4675,6 +4998,12 @@ const OverviewPageContent = () => {
                           sortableImportItems.map((imp, idx) => (
                             <SecretImportTableRow
                               key={overviewRowKey("import", imp.id)}
+                              isExpanded={expandedResourceRows.has(
+                                overviewRowKey("import", imp.id)
+                              )}
+                              onExpandedChange={(isExpanded) =>
+                                setResourceRowExpanded(overviewRowKey("import", imp.id), isExpanded)
+                              }
                               index={idx}
                               secretImport={imp}
                               importEnvSlug={imp.importEnv.slug}
@@ -4688,7 +5017,7 @@ const OverviewPageContent = () => {
                               onDelete={(secretImport) =>
                                 handlePopUpOpen("deleteSecretImport", secretImport)
                               }
-                              importedSecrets={importedSecretsFlat}
+                              importedSecrets={importedSecretsForRows}
                               isVisible={isSingleEnvSecretsVisible}
                               activityId={getTableRowActivityId("secret-import", imp.id)}
                               onActivityChange={handleTableRowActivityChange}
@@ -4699,6 +5028,15 @@ const OverviewPageContent = () => {
                             ({ importEnvSlug, importEnvName, importPath }, index) => (
                               <SecretImportTableRow
                                 key={overviewRowKey("import", importEnvSlug, importPath)}
+                                isExpanded={expandedResourceRows.has(
+                                  overviewRowKey("import", importEnvSlug, importPath)
+                                )}
+                                onExpandedChange={(isExpanded) =>
+                                  setResourceRowExpanded(
+                                    overviewRowKey("import", importEnvSlug, importPath),
+                                    isExpanded
+                                  )
+                                }
                                 index={index}
                                 importEnvSlug={importEnvSlug}
                                 importEnvName={importEnvName}
@@ -4711,7 +5049,7 @@ const OverviewPageContent = () => {
                                 onDelete={(secretImport) =>
                                   handlePopUpOpen("deleteSecretImport", secretImport)
                                 }
-                                importedSecrets={importedSecretsFlat}
+                                importedSecrets={importedSecretsForRows}
                                 isVisible={isSingleEnvSecretsVisible}
                                 activityId={getTableRowActivityId(
                                   "secret-import",
@@ -4773,6 +5111,15 @@ const OverviewPageContent = () => {
                             environments={visibleEnvs}
                             secretPath={secretPath}
                             key={overviewRowKey("dynamic-secret", dynamicSecretName)}
+                            isExpanded={expandedResourceRows.has(
+                              overviewRowKey("dynamic-secret", dynamicSecretName)
+                            )}
+                            onExpandedChange={(isExpanded) =>
+                              setResourceRowExpanded(
+                                overviewRowKey("dynamic-secret", dynamicSecretName),
+                                isExpanded
+                              )
+                            }
                             onEdit={(dynamicSecret) =>
                               handlePopUpOpen("editDynamicSecret", dynamicSecret)
                             }
@@ -4801,6 +5148,15 @@ const OverviewPageContent = () => {
                             getSecretRotationByName={getSecretRotationByName}
                             getSecretRotationStatusesByName={getSecretRotationStatusesByName}
                             key={overviewRowKey("secret-rotation", secretRotationName)}
+                            isExpanded={expandedResourceRows.has(
+                              overviewRowKey("secret-rotation", secretRotationName)
+                            )}
+                            onExpandedChange={(isExpanded) =>
+                              setResourceRowExpanded(
+                                overviewRowKey("secret-rotation", secretRotationName),
+                                isExpanded
+                              )
+                            }
                             isSelected={Boolean(selectedEntries.secretRotation[secretRotationName])}
                             onToggleRotationSelect={(_, isShiftKey) =>
                               toggleSelectedEntry(
@@ -4848,13 +5204,26 @@ const OverviewPageContent = () => {
                         {honeyTokenNames.map((honeyTokenName) => (
                           <HoneyTokenTableRow
                             honeyTokenName={honeyTokenName}
+                            secretPath={secretPath}
                             isHoneyTokenInEnv={isHoneyTokenPresentInEnv}
                             environments={visibleEnvs}
                             getHoneyTokenByName={getHoneyTokenByName}
                             key={overviewRowKey("honey-token", honeyTokenName)}
+                            isExpanded={expandedResourceRows.has(
+                              overviewRowKey("honey-token", honeyTokenName)
+                            )}
+                            onExpandedChange={(isExpanded) =>
+                              setResourceRowExpanded(
+                                overviewRowKey("honey-token", honeyTokenName),
+                                isExpanded
+                              )
+                            }
                             onEdit={(honeyToken) => handlePopUpOpen("editHoneyToken", honeyToken)}
                             onRevoke={(honeyToken) =>
                               handlePopUpOpen("revokeHoneyToken", honeyToken)
+                            }
+                            onDelete={(honeyToken) =>
+                              handlePopUpOpen("deleteHoneyToken", honeyToken)
                             }
                             onViewDetails={(honeyToken) =>
                               setDetailsDrawerHoneyTokenId(honeyToken.id)
@@ -4864,6 +5233,15 @@ const OverviewPageContent = () => {
                         {proxiedServiceNames.map((proxiedServiceName) => (
                           <ProxiedServiceTableRow
                             key={overviewRowKey("proxied-service", proxiedServiceName)}
+                            isExpanded={expandedResourceRows.has(
+                              overviewRowKey("proxied-service", proxiedServiceName)
+                            )}
+                            onExpandedChange={(isExpanded) =>
+                              setResourceRowExpanded(
+                                overviewRowKey("proxied-service", proxiedServiceName),
+                                isExpanded
+                              )
+                            }
                             proxiedServiceName={proxiedServiceName}
                             environments={visibleEnvs}
                             isProxiedServiceInEnv={isProxiedServicePresentInEnv}
@@ -5293,6 +5671,7 @@ const OverviewPageContent = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("deleteSecretRotation", isOpen)}
       />
       <EditHoneyTokenModal
+        secretPath={secretPath}
         isOpen={popUp.editHoneyToken.isOpen}
         honeyToken={popUp.editHoneyToken.data as TDashboardHoneyToken}
         onOpenChange={(isOpen) => handlePopUpToggle("editHoneyToken", isOpen)}
@@ -5301,6 +5680,11 @@ const OverviewPageContent = () => {
         isOpen={popUp.revokeHoneyToken.isOpen}
         honeyToken={popUp.revokeHoneyToken.data as TDashboardHoneyToken}
         onOpenChange={(isOpen) => handlePopUpToggle("revokeHoneyToken", isOpen)}
+      />
+      <DeleteHoneyTokenModal
+        isOpen={popUp.deleteHoneyToken.isOpen}
+        honeyToken={popUp.deleteHoneyToken.data as TDashboardHoneyToken}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteHoneyToken", isOpen)}
       />
       {commitHistoryEnv && (
         <CommitHistorySheet
@@ -5440,16 +5824,26 @@ const OverviewPageContent = () => {
             userAvailableEnvs.find((env) => env.slug === folderAccessTarget.environmentSlug)
               ?.name ?? folderAccessTarget.environmentSlug
           }
+          onManageInheritedAccess={(path) =>
+            handleManageInheritedAccess(path, "overview_folder_row")
+          }
+          source="overview_folder_row"
         />
       )}
-      {isCurrentFolderAccessOpen && (
+      {currentFolderAccessSource && (
         <FolderAccessSheet
           isOpen
-          onOpenChange={setIsCurrentFolderAccessOpen}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setCurrentFolderAccessSource(null);
+          }}
           projectId={projectId}
           environmentSlug={singleEnvSlug}
           folderPath={secretPath}
           environmentName={singleEnvName}
+          onManageInheritedAccess={(path) =>
+            handleManageInheritedAccess(path, currentFolderAccessSource)
+          }
+          source={currentFolderAccessSource}
         />
       )}
       <ConfirmationAlertDialog
@@ -5470,23 +5864,20 @@ const OverviewPageContent = () => {
       <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       {!!pathPolicies && pathPolicies.length > 0 && (
         <RequestAccessModal
-          policies={pathPolicies}
+          policies={policies}
           isOpen={popUp.requestAccess.isOpen}
           onOpenChange={() => {
             handlePopUpClose("requestAccess");
           }}
           selectedActions={popUp.requestAccess.data as ProjectPermissionActions[] | undefined}
-          secretPath={pathPolicies[0].secretPath}
+          secretPath={secretPath}
           environment={singleEnvSlug}
         />
       )}
       <SecretsActivationNudge
         popUp={invitePopUp}
         handlePopUpToggle={handleInvitePopUpToggle}
-        isLifted={
-          hasPendingBatchChanges ||
-          Object.values(selectedEntries).some((entries) => Object.keys(entries).length > 0)
-        }
+        isLifted={hasPendingBatchChanges || hasSelectedEntries || unsavedEditsCount > 0}
       />
       {isSingleEnvView && singleVisibleEnv && (
         <CommitForm
@@ -5501,12 +5892,24 @@ const OverviewPageContent = () => {
           onReviewOpenChange={setIsReviewOpen}
         />
       )}
+      {!isSingleEnvView && (
+        <UnsavedEditsBar
+          count={hasSelectedEntries ? 0 : unsavedEditsCount}
+          isCommitting={isCommittingUnsavedEdits}
+          portalContainer={layoutContainer}
+          getChanges={getUnsavedChanges}
+          onCommit={handleCommitUnsavedEdits}
+          onDiscardAll={() => getUnsavedEdits().forEach((edit) => edit.discard())}
+        />
+      )}
     </div>
   );
 };
 
 export const OverviewPage = () => (
   <StoreProvider>
-    <OverviewPageContent />
+    <UnsavedEditsScope>
+      <OverviewPageContent />
+    </UnsavedEditsScope>
   </StoreProvider>
 );

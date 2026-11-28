@@ -213,7 +213,7 @@ Choose how Docker should receive your application secrets:
 
     ```bash
     docker run --rm \
-      --env-file <(infisical secrets-manager export --env=dev --format=dotenv) \
+      --env-file <(infisical secrets-manager secrets export --env=dev --format=dotenv) \
       orders-service
     ```
 
@@ -274,7 +274,7 @@ Choose how Docker should receive your application secrets:
 
     ```bash
     docker run --rm \
-      --env-file <(infisical secrets-manager export --projectId=<project-id> --env=dev --format=dotenv) \
+      --env-file <(infisical secrets-manager secrets export --projectId=<project-id> --env=dev --format=dotenv) \
       orders-service
     ```
 

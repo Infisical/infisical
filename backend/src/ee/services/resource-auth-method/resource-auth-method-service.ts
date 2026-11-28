@@ -1,14 +1,26 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { ProjectType } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import {
+  OrgPermissionGatewayActions,
+  OrgPermissionGatewayPoolActions,
+  OrgPermissionKmipServerActions,
+  OrgPermissionRelayActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
+import {
+  ProjectPermissionAgentVaultProxyActions,
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
-import { OrgServiceActor } from "@app/lib/types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TAgentVaultProxyDALFactory } from "../agent-vault-proxy/agent-vault-proxy-dal";
@@ -16,16 +28,6 @@ import { TGatewayPoolDALFactory } from "../gateway-pool/gateway-pool-dal";
 import { TGatewayPoolMembershipDALFactory } from "../gateway-pool/gateway-pool-membership-dal";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TKmipServerDALFactory } from "../kmip-server/kmip-server-dal";
-import { TLicenseServiceFactory } from "../license/license-service";
-import {
-  OrgPermissionGatewayActions,
-  OrgPermissionGatewayPoolActions,
-  OrgPermissionKmipServerActions,
-  OrgPermissionRelayActions,
-  OrgPermissionSubjects
-} from "../permission/org-permission";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TRelayDALFactory } from "../relay/relay-dal";
 import { TResourceAwsAuthDALFactory } from "./aws-auth-dal";
 import { validateAllowlists, verifyStsAndExtractCaller } from "./aws-auth-fns";
@@ -105,7 +107,7 @@ type TResourceAuthMethodServiceFactoryDep = {
   resourceGcpAuthDAL: TResourceGcpAuthDALFactory;
   resourceKubernetesAuthDAL: TResourceKubernetesAuthDALFactory;
   resourceTokenAuthDAL: TResourceTokenAuthDALFactory;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById" | "updateById">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   gatewayPoolMembershipDAL: Pick<TGatewayPoolMembershipDALFactory, "find">;
@@ -113,8 +115,9 @@ type TResourceAuthMethodServiceFactoryDep = {
   kmipServerDAL: Pick<TKmipServerDALFactory, "findById" | "updateById">;
   agentVaultProxyDAL: Pick<TAgentVaultProxyDALFactory, "findByIdWithOrg" | "updateById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  orgPermissionService: TOrgPermissionService;
+  projectPermissionService: TProjectPermissionService;
+  licenseService: TLicenseService;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   gatewayProxyRegistry: TGatewayProxyRegistry;
 };
@@ -171,7 +174,7 @@ export const resourceAuthMethodServiceFactory = ({
   resourceGcpAuthDAL,
   resourceKubernetesAuthDAL,
   resourceTokenAuthDAL,
-  kmsService,
+  kmsDataKeyService,
   gatewayV2DAL,
   gatewayPoolDAL,
   gatewayPoolMembershipDAL,
@@ -179,7 +182,8 @@ export const resourceAuthMethodServiceFactory = ({
   kmipServerDAL,
   agentVaultProxyDAL,
   identityDAL,
-  permissionService,
+  orgPermissionService,
+  projectPermissionService,
   licenseService,
   orgDAL,
   gatewayProxyRegistry
@@ -269,48 +273,35 @@ export const resourceAuthMethodServiceFactory = ({
         throw new BadRequestError({ message: "Agent Vault proxy permission check requires the proxy id" });
       }
       const proxy = await agentVaultProxyDAL.findByIdWithOrg(resourceId);
-      if (!proxy || proxy.orgId !== actor.orgId) {
+      if (!proxy || proxy.orgId !== actor.org.id) {
         throw new NotFoundError({ message: `Agent Vault proxy ${resourceId} not found` });
       }
-      const { permission: projectPermission } = await permissionService.getProjectPermission({
-        actor: actor.type,
-        actorId: actor.id,
+      const projectPermission = await projectPermissionService.getProjectPermission({
+        actor,
         projectId: proxy.projectId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId,
-        actionProjectType: ActionProjectType.AgentVault
+        type: ProjectType.AgentVault
       });
-      ForbiddenError.from(projectPermission).throwUnlessCan(
-        AGENT_VAULT_PROXY_PERMISSION_MAP[intent],
-        ProjectPermissionSub.AgentVaultProxies
-      );
+      projectPermission.assert({
+        action: AGENT_VAULT_PROXY_PERMISSION_MAP[intent],
+        subject: ProjectPermissionSub.AgentVaultProxies
+      });
       return;
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
-    });
+    const permission = await orgPermissionService.getOrgPermission({ actor });
     if (resourceType === RESOURCE_TYPE_GATEWAY) {
-      ForbiddenError.from(permission).throwUnlessCan(GATEWAY_PERMISSION_MAP[intent], OrgPermissionSubjects.Gateway);
+      permission.assert({ action: GATEWAY_PERMISSION_MAP[intent], subject: OrgPermissionSubjects.Gateway });
     } else if (resourceType === RESOURCE_TYPE_RELAY) {
-      ForbiddenError.from(permission).throwUnlessCan(RELAY_PERMISSION_MAP[intent], OrgPermissionSubjects.Relay);
+      permission.assert({ action: RELAY_PERMISSION_MAP[intent], subject: OrgPermissionSubjects.Relay });
     } else {
-      ForbiddenError.from(permission).throwUnlessCan(
-        KMIP_SERVER_PERMISSION_MAP[intent],
-        OrgPermissionSubjects.KmipServer
-      );
+      permission.assert({ action: KMIP_SERVER_PERMISSION_MAP[intent], subject: OrgPermissionSubjects.KmipServer });
     }
   };
 
   // Attaching a gateway to something is its own permission, and pools are a licensed feature.
   // Machine identity Kubernetes auth gates its gateway selection the same way.
   const $assertCanAttachProxy = async (
-    actor: Pick<OrgServiceActor, "type" | "id" | "authMethod" | "orgId">,
+    actor: TActorContext,
     proxy: {
       gatewayV2Id?: string | null;
       gatewayPoolId?: string | null;
@@ -320,25 +311,15 @@ export const resourceAuthMethodServiceFactory = ({
   ) => {
     if (!proxy.gatewayV2Id && !proxy.gatewayPoolId) return;
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
-    });
+    const permission = await orgPermissionService.getOrgPermission({ actor });
     if (proxy.gatewayV2Id) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionGatewayActions.AttachGateways,
-        OrgPermissionSubjects.Gateway
-      );
+      permission.assert({ action: OrgPermissionGatewayActions.AttachGateways, subject: OrgPermissionSubjects.Gateway });
       // The reviewing gateway attests every login, so it has to be one specific gateway and a pool is
       // refused for this mode. Exempting it keeps the mode usable under the org's pool requirement.
       if (proxy.tokenReviewMode !== KubernetesTokenReviewMode.Gateway) {
         await assertIndividualGatewayAllowed({
           orgDAL,
-          orgId: actor.orgId,
+          orgId: actor.org.id,
           gatewayId: proxy.gatewayV2Id,
           previousGatewayId: previousGatewayV2Id
         });
@@ -347,13 +328,13 @@ export const resourceAuthMethodServiceFactory = ({
 
     // Pools carry their own attach permission, so holding it for gateways is not sufficient.
     if (proxy.gatewayPoolId) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionGatewayPoolActions.AttachGatewayPools,
-        OrgPermissionSubjects.GatewayPool
-      );
+      permission.assert({
+        action: OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        subject: OrgPermissionSubjects.GatewayPool
+      });
 
-      const plan = await licenseService.getPlan(actor.orgId);
-      if (!plan.gatewayPool) {
+      const plan = await licenseService.getPlan(actor.org.id);
+      if (!plan.has(PlanFeature.GatewayPool)) {
         throw new BadRequestError({
           message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
         });
@@ -425,7 +406,7 @@ export const resourceAuthMethodServiceFactory = ({
 
       let caCertificate = "";
       if (config.encryptedKubernetesCaCertificate && loaded.orgId) {
-        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
           orgId: loaded.orgId
         });
@@ -467,7 +448,7 @@ export const resourceAuthMethodServiceFactory = ({
     await $checkPermission(actor, "list", RESOURCE_TYPE_GATEWAY);
 
     const loaded = await $loadResource(resource);
-    if (!loaded || loaded.orgId !== actor.orgId) {
+    if (!loaded || loaded.orgId !== actor.org.id) {
       throw new NotFoundError({ message: `Gateway ${resource.id} not found` });
     }
 
@@ -483,7 +464,7 @@ export const resourceAuthMethodServiceFactory = ({
     await $checkPermission(actor, "list", RESOURCE_TYPE_RELAY);
 
     const loaded = await $loadResource(resource);
-    if (!loaded || loaded.orgId !== actor.orgId) {
+    if (!loaded || loaded.orgId !== actor.org.id) {
       throw new NotFoundError({ message: `Relay ${resource.id} not found` });
     }
 
@@ -499,7 +480,7 @@ export const resourceAuthMethodServiceFactory = ({
     await $checkPermission(actor, "list", RESOURCE_TYPE_KMIP);
 
     const loaded = await $loadResource(resource);
-    if (!loaded || loaded.orgId !== actor.orgId) {
+    if (!loaded || loaded.orgId !== actor.org.id) {
       throw new NotFoundError({ message: `KMIP server ${resource.id} not found` });
     }
 
@@ -702,7 +683,7 @@ export const resourceAuthMethodServiceFactory = ({
     // Absent when the resource does not exist yet, where it cannot be its own proxy.
     resource?: ResourceRef,
     // Absent on paths where the caller was already authorized to attach, e.g. an unauthenticated login.
-    actor?: Pick<OrgServiceActor, "type" | "id" | "authMethod" | "orgId">
+    actor?: TActorContext
   ) => {
     if (resource) await $assertProxyNotSelf(resource, config);
     if (actor) await $assertCanAttachProxy(actor, config);
@@ -754,7 +735,7 @@ export const resourceAuthMethodServiceFactory = ({
       return {};
     }
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
+    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
 
     const encrypt = (value: string | undefined) => {
       if (value === undefined) return undefined;
@@ -842,7 +823,7 @@ export const resourceAuthMethodServiceFactory = ({
 
     const resourceLabel = RESOURCE_LABEL[resource.type];
     const loaded = await $loadResource(resource);
-    if (!loaded || loaded.orgId !== actor.orgId) {
+    if (!loaded || loaded.orgId !== actor.org.id) {
       throw new NotFoundError({ message: `${resourceLabel} ${resource.id} not found` });
     }
 
@@ -875,9 +856,9 @@ export const resourceAuthMethodServiceFactory = ({
       const stored =
         !isMethodChange && current ? await resourceKubernetesAuthDAL.findOne({ authMethodId: current.id }) : undefined;
       if (!isMethodChange && current && (effectiveCa === undefined || effectiveReviewer === undefined)) {
-        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
-          orgId: actor.orgId
+          orgId: actor.org.id
         });
         const storedCa = stored?.encryptedKubernetesCaCertificate
           ? decryptor({ cipherTextBlob: stored.encryptedKubernetesCaCertificate }).toString()
@@ -924,7 +905,7 @@ export const resourceAuthMethodServiceFactory = ({
           gatewayV2Id: authMethod.gatewayV2Id,
           gatewayPoolId: authMethod.gatewayPoolId
         },
-        actor.orgId
+        actor.org.id
       );
 
       await validateKubernetesConfigReachable({
@@ -934,7 +915,7 @@ export const resourceAuthMethodServiceFactory = ({
         isGatewayReviewer: validation.isGatewayReviewer
       });
 
-      encryptedKubernetesSecrets = await encryptKubernetesSecrets(actor.orgId, {
+      encryptedKubernetesSecrets = await encryptKubernetesSecrets(actor.org.id, {
         caCertificate: authMethod.caCertificate ?? (isMethodChange ? "" : undefined),
         // Dropped rather than carried over when the destination moves. Keeping it would have the
         // next login send a credential the operator never authorised for that address, and refusing
@@ -1071,7 +1052,7 @@ export const resourceAuthMethodServiceFactory = ({
 
     const resourceLabel = RESOURCE_LABEL[resource.type];
     const loaded = await $loadResource(resource);
-    if (!loaded || loaded.orgId !== actor.orgId) {
+    if (!loaded || loaded.orgId !== actor.org.id) {
       throw new NotFoundError({ message: `${resourceLabel} ${resource.id} not found` });
     }
 
@@ -1088,7 +1069,7 @@ export const resourceAuthMethodServiceFactory = ({
       await resourceTokenAuthDAL.delete({ authMethodId: registry.id }, tx);
       return resourceTokenAuthDAL.create(
         {
-          orgId: actor.orgId,
+          orgId: actor.org.id,
           tokenHash: generated.tokenHash,
           ttl: ENROLLMENT_TOKEN_TTL_SECONDS,
           expiresAt: generated.expiresAt,
@@ -1111,7 +1092,7 @@ export const resourceAuthMethodServiceFactory = ({
 
     const resourceLabel = RESOURCE_LABEL[resource.type];
     const loaded = await $loadResource(resource);
-    if (!loaded || loaded.orgId !== actor.orgId) {
+    if (!loaded || loaded.orgId !== actor.org.id) {
       throw new NotFoundError({ message: `${resourceLabel} ${resource.id} not found` });
     }
 
@@ -1323,7 +1304,7 @@ export const resourceAuthMethodServiceFactory = ({
     let caCertificate = "";
     let tokenReviewerJwt = "";
     if (config.encryptedKubernetesCaCertificate || config.encryptedKubernetesTokenReviewerJwt) {
-      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
         orgId: resourceOrgId
       });

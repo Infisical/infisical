@@ -2,8 +2,8 @@ import { describe, expect, type Mocked, test, vi } from "vitest";
 
 import { enforceMfa } from "@app/ee/services/pam/pam-mfa";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { MfaMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
-import { MfaMethod } from "@app/services/auth/auth-type";
 
 import { mfaSessionServiceFactory } from "./mfa-session-service";
 import { MfaSessionStatus, MfaStepUpResource, TMfaSession } from "./mfa-session-types";
@@ -197,8 +197,9 @@ describe("mfaSessionService completing a challenge from another login session", 
       enforceMfa(
         {
           mfaSessionService: service,
-          orgDAL: { findOrgById: vi.fn().mockResolvedValue({ enforceMfa: false }) } as never,
-          userDAL: { findById: vi.fn().mockResolvedValue({ isMfaEnabled: false }) } as never
+          orgDAL: { findRootOrgDetails: vi.fn().mockResolvedValue({ enforceMfa: false }) } as never,
+          userDAL: { findById: vi.fn().mockResolvedValue({ isMfaEnabled: false }) } as never,
+          userService: { getEnrolledMfaMethods: vi.fn().mockResolvedValue([]) } as never
         },
         {
           userId: USER_ID,

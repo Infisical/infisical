@@ -1,7 +1,7 @@
 import snowflake from "snowflake-sdk";
 
 import { logger } from "@app/lib/logger";
-import { executeSnowflakeSql } from "@app/services/app-connection/snowflake";
+import { assertNotSnowflakeFileTransferStatement, executeSnowflakeSql } from "@app/services/app-connection/snowflake";
 
 import { type ControllerParams } from "../pam-data-explorer-session-handler";
 import {
@@ -10,6 +10,7 @@ import {
   type TConnectionController,
   type TTabScopedMessage
 } from "../pam-data-explorer-ws-types";
+import { DATA_EXPLORER_MAX_RESULT_BYTES, estimateRowBytes } from "../pam-web-access-fns";
 import { extractCommand, nextTransactionState, splitSnowflakeStatements } from "./pam-snowflake-data-explorer-fns";
 import {
   COLUMNS_QUERY,
@@ -43,12 +44,17 @@ const readRows = (
   new Promise((resolve, reject) => {
     const rows: Record<string, unknown>[] = [];
     let truncated = false;
+    let bytes = 0;
     const stream = statement.streamRows();
 
     stream.on("data", (row: Record<string, unknown>) => {
+      if (truncated) return;
       if (rows.length < MAX_ROWS) {
-        rows.push(row);
-        return;
+        bytes += estimateRowBytes(row);
+        if (bytes <= DATA_EXPLORER_MAX_RESULT_BYTES) {
+          rows.push(row);
+          return;
+        }
       }
       truncated = true;
       stream.destroy();
@@ -72,6 +78,7 @@ export const createSnowflakeConnectionController = async (params: ControllerPara
 
   const execute = (sqlText: string): Promise<snowflake.RowStatement> =>
     new Promise((resolve, reject) => {
+      assertNotSnowflakeFileTransferStatement(sqlText, "PUT and GET file transfers are not supported in web access");
       runningStatement = client.execute({
         sqlText,
         streamResult: true,

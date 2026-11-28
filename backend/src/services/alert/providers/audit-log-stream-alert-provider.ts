@@ -1,15 +1,16 @@
-import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import {
+  OrgPermissionAuditLogsActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
 import {
   AUDIT_LOG_STREAM_DELIVERY_FAILED_EVENT,
   AUDIT_LOG_STREAM_RESOURCE_TYPE,
   AuditLogStreamDeliveryFailedPayloadSchema
 } from "@app/ee/services/audit-log-stream/audit-log-stream-events";
 import { listProviderOptions } from "@app/ee/services/audit-log-stream/audit-log-stream-fns";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 
@@ -41,12 +42,12 @@ type TAuditLogStreamTarget = {
 
 export type TAuditLogStreamAlertProviderDep = {
   auditLogStreamAlertDAL: TAuditLogStreamAlertDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  orgPermissionService: TOrgPermissionService;
 };
 
 export const auditLogStreamAlertProviderFactory = ({
   auditLogStreamAlertDAL,
-  permissionService
+  orgPermissionService
 }: TAuditLogStreamAlertProviderDep): IEventAlertProvider<TAuditLogStreamTarget> => {
   const buildViewUrl = async (alert: TAlertContext): Promise<string> =>
     `${getConfig().SITE_URL}/organizations/${alert.orgId}/audit-logs?selectedTab=streams`;
@@ -129,23 +130,16 @@ export const auditLogStreamAlertProviderFactory = ({
   };
 
   const assertPermission = async (input: TAlertPermissionInput): Promise<void> => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: input.actor.actor,
-      actorId: input.actor.actorId,
-      orgId: input.orgId,
-      actorAuthMethod: input.actor.actorAuthMethod,
-      actorOrgId: input.actor.actorOrgId
-    });
+    const permission = await orgPermissionService.getOrgPermission({ actor: input.actor, orgId: input.orgId });
 
     const actions = (() => {
-      if (input.action === AlertPermissionAction.Read) return [OrgPermissionActions.Read];
-      if (input.action === AlertPermissionAction.Delete) return [OrgPermissionActions.Edit];
-      return [OrgPermissionActions.Edit, OrgPermissionActions.Read];
+      if (input.action === AlertPermissionAction.Read) return [OrgPermissionAuditLogsActions.Read];
+      if (input.action === AlertPermissionAction.Delete) return [OrgPermissionAuditLogsActions.Edit];
+      return [OrgPermissionAuditLogsActions.Edit, OrgPermissionAuditLogsActions.Read];
     })();
 
     for (const action of actions) {
-      ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.Settings);
+      permission.assert({ action, subject: OrgPermissionSubjects.AuditLogStreams });
     }
   };
 

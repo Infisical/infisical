@@ -1,10 +1,12 @@
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AzureDevOpsConnectionMethod } from "@app/services/app-connection/azure-devops/azure-devops-enums";
 import { getAzureDevopsConnection } from "@app/services/app-connection/azure-devops/azure-devops-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
@@ -12,7 +14,9 @@ import { TAzureDevOpsSyncWithCredentials } from "./azure-devops-sync-types";
 
 type TAzureDevOpsSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 interface AzureDevOpsVariableGroup {
@@ -33,10 +37,15 @@ interface AzureDevOpsVariableGroupList {
   value: AzureDevOpsVariableGroup[];
 }
 
-export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureDevOpsSyncFactoryDeps) => {
+export const azureDevOpsSyncFactory = ({
+  kmsDataKeyService,
+  appConnectionDAL,
+  instanceConfigService,
+  oidcIssuerService
+}: TAzureDevOpsSyncFactoryDeps) => {
   const getConnectionAuth = async (secretSync: TAzureDevOpsSyncWithCredentials) => {
     const { credentials } = secretSync.connection;
-    const isOAuth = secretSync.connection.method === AzureDevOpsConnectionMethod.OAuth;
+    const isBearer = secretSync.connection.method !== AzureDevOpsConnectionMethod.AccessToken;
 
     const { orgName } = credentials;
     if (!orgName) {
@@ -45,13 +54,19 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
       });
     }
 
-    const accessToken = await getAzureDevopsConnection(secretSync.connectionId, appConnectionDAL, kmsService);
+    const accessToken = await getAzureDevopsConnection(
+      secretSync.connectionId,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService,
+      oidcIssuerService
+    );
 
-    return { accessToken, orgName, isOAuth };
+    return { accessToken, orgName, isBearer };
   };
 
-  const getAuthHeader = (accessToken: string, isOAuth: boolean) => {
-    if (isOAuth) {
+  const getAuthHeader = (accessToken: string, isBearer: boolean) => {
+    if (isBearer) {
       return `Bearer ${accessToken}`;
     }
     const basicAuth = Buffer.from(`:${accessToken}`).toString("base64");
@@ -63,12 +78,12 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
     orgName: string,
     projectId: string,
     environmentName: string,
-    isOAuth: boolean
+    isBearer: boolean
   ) => {
     const url = `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${encodeURIComponent(orgName)}/${encodeURIComponent(projectId)}/_apis/distributedtask/variablegroups?api-version=7.1`;
     const response = await request.get<AzureDevOpsVariableGroupList>(url, {
       headers: {
-        Authorization: getAuthHeader(accessToken, isOAuth)
+        Authorization: getAuthHeader(accessToken, isBearer)
       }
     });
 
@@ -94,14 +109,14 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
       });
     }
 
-    const { accessToken, orgName, isOAuth } = await getConnectionAuth(secretSync);
+    const { accessToken, orgName, isBearer } = await getConnectionAuth(secretSync);
 
     const { groupId, groupName } = await $getEnvGroupId(
       accessToken,
       orgName,
       secretSync.destinationConfig.devopsProjectId,
       secretSync.environment.name,
-      isOAuth
+      isBearer
     );
 
     const variables: Record<string, { value: string; isSecret: boolean }> = {};
@@ -135,7 +150,7 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
         },
         {
           headers: {
-            Authorization: getAuthHeader(accessToken, isOAuth),
+            Authorization: getAuthHeader(accessToken, isBearer),
             "Content-Type": "application/json"
           }
         }
@@ -163,7 +178,7 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
         },
         {
           headers: {
-            Authorization: getAuthHeader(accessToken, isOAuth),
+            Authorization: getAuthHeader(accessToken, isBearer),
             "Content-Type": "application/json"
           }
         }
@@ -172,14 +187,14 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
   };
 
   const removeSecrets = async (secretSync: TAzureDevOpsSyncWithCredentials) => {
-    const { accessToken, orgName, isOAuth } = await getConnectionAuth(secretSync);
+    const { accessToken, orgName, isBearer } = await getConnectionAuth(secretSync);
 
     const { groupId } = await $getEnvGroupId(
       accessToken,
       orgName,
       secretSync.destinationConfig.devopsProjectId,
       secretSync.environment?.name || "",
-      isOAuth
+      isBearer
     );
 
     if (groupId) {
@@ -188,21 +203,21 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
 
       await request.delete(deleteUrl, {
         headers: {
-          Authorization: getAuthHeader(accessToken, isOAuth)
+          Authorization: getAuthHeader(accessToken, isBearer)
         }
       });
     }
   };
 
   const getSecrets = async (secretSync: TAzureDevOpsSyncWithCredentials) => {
-    const { accessToken, orgName, isOAuth } = await getConnectionAuth(secretSync);
+    const { accessToken, orgName, isBearer } = await getConnectionAuth(secretSync);
 
     const { groupId } = await $getEnvGroupId(
       accessToken,
       orgName,
       secretSync.destinationConfig.devopsProjectId,
       secretSync.environment?.name || "",
-      isOAuth
+      isBearer
     );
 
     const secretMap: TSecretMap = {};
@@ -211,7 +226,7 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
       const url = `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${orgName}/_apis/distributedtask/variablegroups/${groupId}?api-version=7.1`;
       const response = await request.get<AzureDevOpsVariableGroup>(url, {
         headers: {
-          Authorization: getAuthHeader(accessToken, isOAuth)
+          Authorization: getAuthHeader(accessToken, isBearer)
         }
       });
 

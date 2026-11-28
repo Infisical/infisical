@@ -1,3 +1,4 @@
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 /* eslint-disable no-continue, no-await-in-loop */
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -11,7 +12,6 @@ import { decryptAppConnectionCredentials } from "../app-connection/app-connectio
 import { getAzureADCSConnectionCredentials } from "../app-connection/azure-adcs/azure-adcs-connection-fns";
 import { TVenafiConnection } from "../app-connection/venafi/venafi-connection-types";
 import { splitPemChain } from "../certificate/certificate-fns";
-import { TKmsServiceFactory } from "../kms/kms-service";
 import { submitCsrToNativeAdcs } from "./ca-signing-config/adcs-native-signing-fns";
 import { submitCsrToAdcs } from "./ca-signing-config/adcs-signing-fns";
 import { TCaSigningConfigDALFactory } from "./ca-signing-config/ca-signing-config-dal";
@@ -27,7 +27,7 @@ import {
   renewVenafiCertificate,
   submitCsrToVenafi
 } from "./ca-signing-config/venafi-signing-fns";
-import { CaRenewalStatus } from "./certificate-authority-enums";
+import { CaCrlRegenerationTrigger, CaRenewalStatus } from "./certificate-authority-enums";
 import { TInternalCertificateAuthorityDALFactory } from "./internal/internal-certificate-authority-dal";
 import { TInternalCertificateAuthorityServiceFactory } from "./internal/internal-certificate-authority-service";
 
@@ -41,7 +41,7 @@ type TCaAutoRenewalQueueFactoryDep = {
     "getCaCsr" | "importCertToCa" | "renewCaCert"
   >;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
@@ -58,7 +58,7 @@ export const caAutoRenewalQueueFactory = ({
   caSigningConfigDAL,
   internalCertificateAuthorityService,
   appConnectionDAL,
-  kmsService,
+  kmsDataKeyService,
   gatewayV2Service,
   gatewayPoolService
 }: TCaAutoRenewalQueueFactoryDep) => {
@@ -108,7 +108,7 @@ export const caAutoRenewalQueueFactory = ({
     const credentials = (await decryptAppConnectionCredentials({
       orgId: appConnection.orgId,
       encryptedCredentials: appConnection.encryptedCredentials,
-      kmsService,
+      kmsDataKeyService,
       projectId: appConnection.projectId
     })) as TVenafiConnection["credentials"];
 
@@ -155,7 +155,8 @@ export const caAutoRenewalQueueFactory = ({
       isInternal: true,
       caId,
       certificate,
-      certificateChain
+      certificateChain,
+      crlRegenerationTrigger: CaCrlRegenerationTrigger.CaRenewal
     });
 
     await caSigningConfigDAL.updateById(signingConfig.id, {
@@ -237,7 +238,7 @@ export const caAutoRenewalQueueFactory = ({
     const credentials = await getAzureADCSConnectionCredentials(
       signingConfig.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService
     );
 
     const { certificate, certificateChain } = await submitCsrToAdcs({
@@ -257,7 +258,8 @@ export const caAutoRenewalQueueFactory = ({
       isInternal: true,
       caId,
       certificate,
-      certificateChain
+      certificateChain,
+      crlRegenerationTrigger: CaCrlRegenerationTrigger.CaRenewal
     });
 
     await internalCertificateAuthorityDAL.updateById(internalCaId, {
@@ -308,14 +310,15 @@ export const caAutoRenewalQueueFactory = ({
         template: destinationConfig.template,
         caName: destinationConfig.caName
       },
-      { appConnectionDAL, kmsService, gatewayV2Service, gatewayPoolService }
+      { appConnectionDAL, kmsDataKeyService, gatewayV2Service, gatewayPoolService }
     );
 
     await internalCertificateAuthorityService.importCertToCa({
       isInternal: true,
       caId,
       certificate,
-      certificateChain
+      certificateChain,
+      crlRegenerationTrigger: CaCrlRegenerationTrigger.CaRenewal
     });
 
     await internalCertificateAuthorityDAL.updateById(internalCaId, {

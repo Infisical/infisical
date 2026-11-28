@@ -2,13 +2,19 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName, TAgentVaultSessions, TAgentVaultSessionsInsert } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
-import { ActorType } from "@app/services/auth/auth-type";
+import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
-import { TAgentVaultSessionActor, TAgentVaultSessionOnBehalfOf } from "./agent-vault-session-types";
+import { isOrphanedSession } from "./agent-vault-session-fns";
+import {
+  TAgentVaultSessionActor,
+  TAgentVaultSessionMetadataFilter,
+  TAgentVaultSessionOnBehalfOf
+} from "./agent-vault-session-types";
 
 export type TAgentVaultSessionDALFactory = ReturnType<typeof agentVaultSessionDALFactory>;
 
@@ -26,6 +32,8 @@ export type TAgentVaultSessionListRow = {
   createdAt: Date;
   // Null for a session with services of its own only.
   accessBundle: { id: string | null; name: string } | null;
+  // Null until the proxy uploads the session's first log chunk.
+  stats: { requests: number; brokered: number | null } | null;
 };
 
 // The on-behalf-of user's own alias, since the actor's user is joined under the table's name.
@@ -159,6 +167,16 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Revoking by token and listing the proxy CA fingerprints read the primary: a script that mints and then revokes
+  // or connects straight away would otherwise get a 401 from a replica that hasn't seen the new session.
+  const findByTokenHashOnPrimary = async (tokenHash: string): Promise<TAgentVaultSessions | undefined> => {
+    try {
+      return await db(TableName.AgentVaultSession).where({ tokenHash }).first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault session by token hash on primary" });
+    }
+  };
+
   const findForList = async (
     {
       projectId,
@@ -166,6 +184,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
       actor,
       statuses,
       search,
+      metadataFilter,
       limit,
       offset
     }: {
@@ -174,6 +193,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
       actor?: { type: ActorType.USER | ActorType.IDENTITY; id: string };
       statuses?: AgentVaultSessionStatus[];
       search?: string;
+      metadataFilter?: TAgentVaultSessionMetadataFilter;
       limit: number;
       offset: number;
     },
@@ -254,6 +274,9 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
               });
           });
         }
+        if (metadataFilter?.length) {
+          void applyMetadataFilter(query, metadataFilter, "agentVaultSessionId", TableName.AgentVaultSession);
+        }
         return query;
       };
 
@@ -294,6 +317,11 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           `${TableName.AgentVaultAccessBundle}.id`,
           `${TableName.AgentVaultSessionAccessBundle}.accessBundleId`
         )
+        .leftJoin(
+          TableName.AgentVaultSessionStats,
+          `${TableName.AgentVaultSessionStats}.sessionId`,
+          `${TableName.AgentVaultSession}.id`
+        )
         .select(
           db.ref("id").withSchema(TableName.AgentVaultSession),
           db.ref("userId").withSchema(TableName.AgentVaultSession),
@@ -319,7 +347,9 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           db.ref("lastName").withSchema(ON_BEHALF_OF_USER).as("onBehalfOfUserLiveLastName"),
           db.ref("accessBundleId").withSchema(TableName.AgentVaultSessionAccessBundle),
           db.ref("accessBundleName").withSchema(TableName.AgentVaultSessionAccessBundle),
-          db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("liveAccessBundleName")
+          db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("liveAccessBundleName"),
+          db.ref("requests").withSchema(TableName.AgentVaultSessionStats).as("statsRequests"),
+          db.ref("brokered").withSchema(TableName.AgentVaultSessionStats).as("statsBrokered")
         )
         .orderBy(`${TableName.AgentVaultSession}.createdAt`, "desc")) as {
         id: string;
@@ -347,6 +377,9 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         accessBundleId: string | null;
         accessBundleName: string | null;
         liveAccessBundleName: string | null;
+        // bigint columns, which pg returns as strings
+        statsRequests: string | null;
+        statsBrokered: string | null;
       }[];
 
       const sessions: TAgentVaultSessionListRow[] = rows.map((row) => {
@@ -377,7 +410,14 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           accessBundle:
             row.accessBundleName === null
               ? null
-              : { id: row.accessBundleId, name: row.liveAccessBundleName ?? row.accessBundleName }
+              : { id: row.accessBundleId, name: row.liveAccessBundleName ?? row.accessBundleName },
+          stats:
+            row.statsRequests === null
+              ? null
+              : {
+                  requests: Number(row.statsRequests),
+                  brokered: row.statsBrokered === null ? null : Number(row.statsBrokered)
+                }
         };
       });
 
@@ -435,6 +475,23 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
+  // For an edit that leaves the label alone: locks the row on the primary and tells whether it may be written, under
+  // the same rule and for the same reason as updateLabel. No row back means no such session.
+  const lockForEdit = async (id: string, projectId: string, tx?: Knex) => {
+    try {
+      const row = (await (tx || db)(TableName.AgentVaultSession)
+        .where({ id, projectId })
+        .forUpdate()
+        .first("label", "userId", "identityId", "onBehalfOfUserId", "onBehalfOfUserName")) as
+        | Pick<TAgentVaultSessions, "label" | "userId" | "identityId" | "onBehalfOfUserId" | "onBehalfOfUserName">
+        | undefined;
+      if (!row) return undefined;
+      return { previousLabel: row.label ?? null, isEditable: !isOrphanedSession(row) };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Lock agent vault session for edit" });
+    }
+  };
+
   // Read after a write that didn't happen, so the answer reflects the row as it is, not as a replica last saw it.
   const findByIdOnPrimary = async (id: string, projectId: string, tx?: Knex) => {
     try {
@@ -458,5 +515,15 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByTokenHash, findForList, revokeIfActive, updateLabel, findByIdOnPrimary, createWithId };
+  return {
+    ...orm,
+    findByTokenHash,
+    findByTokenHashOnPrimary,
+    findForList,
+    revokeIfActive,
+    updateLabel,
+    lockForEdit,
+    findByIdOnPrimary,
+    createWithId
+  };
 };

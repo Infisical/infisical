@@ -1,11 +1,12 @@
 import { Knex } from "knex";
 
 import { AccessScope, ProjectVersion, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
+import { Meter } from "@app/domains/platform/license/ce/module";
+import { clearPersonalValuesInProjects } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
-import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { lockMembershipsById } from "@app/services/membership/membership-dal";
 import { emitGroupMembershipRemoved, toOrgMembershipActors } from "@app/services/org/org-membership-events";
 
@@ -314,9 +315,8 @@ export const addUsersToGroupByUserIds = async ({
     }
 
     // These users may now be in a secret-manager or PAM project through this group.
-    usageMeteringService?.emit(group.orgId, SecretIdentities.key);
-    usageMeteringService?.emit(group.orgId, PamIdentities.key);
-    usageMeteringService?.emit(group.orgId, AgentVaultIdentities.key);
+    usageMeteringService.emit(group.orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(group.orgId, Meter.PamIdentities);
     return membersToAddToGroupNonPending.concat(membersToAddToGroupPending);
   };
 
@@ -395,9 +395,8 @@ export const addIdentitiesToGroup = async ({
     );
 
     // These identities may now be in a secret-manager or PAM project through this group.
-    usageMeteringService?.emit(group.orgId, SecretIdentities.key);
-    usageMeteringService?.emit(group.orgId, PamIdentities.key);
-    usageMeteringService?.emit(group.orgId, AgentVaultIdentities.key);
+    usageMeteringService.emit(group.orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(group.orgId, Meter.PamIdentities);
     return identityIdsArray.map((identityId) => ({ id: identityId }));
   });
 };
@@ -417,24 +416,26 @@ export const removeUsersFromGroupByUserIds = async ({
   actorId,
   userDAL,
   userGroupMembershipDAL,
+  identityGroupMembershipDAL,
+  agentVaultPersonalValueDAL,
   projectKeyDAL,
   additionalPrivilegeDAL,
   tx: outerTx,
   membershipGroupDAL,
   groupDAL,
   shouldFailOnMissingMembers = true,
+  deferPersonalValueClear = false,
   usageMeteringService,
   alertChannelRecipientDAL,
   eventEmitter,
-  membershipDAL,
-  membershipRoleDAL,
+  pamPermissionService,
   pamAccountDAL,
   pamSessionDAL,
   gatewayV2Service
 }: TRemoveUsersFromGroupByUserIds) => {
   const processRemoval = async (tx: Knex) => {
     if (userIds.length === 0) {
-      return { users: [], sendPamCancellations: () => {} };
+      return { users: [], sendPamCancellations: () => {}, projectIds: [] as string[] };
     }
 
     const foundMembers = await userDAL.find(
@@ -481,7 +482,7 @@ export const removeUsersFromGroupByUserIds = async ({
       // filter out users not in group for idempotent operation
       const filteredFoundMembers = foundMembers.filter((m) => existingUserGroupMembershipsUserIdsSet.has(m.id));
       if (filteredFoundMembers.length === 0) {
-        return { users: [], sendPamCancellations: () => {} };
+        return { users: [], sendPamCancellations: () => {}, projectIds: [] as string[] };
       }
       // continue with filtered list
       foundMembers.length = 0;
@@ -614,6 +615,15 @@ export const removeUsersFromGroupByUserIds = async ({
       );
     }
 
+    if (!deferPersonalValueClear) {
+      // After the group rows are gone, so the clear keeps only the values of users who still hold the bundle another way.
+      await clearPersonalValuesInProjects(
+        { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+        { projectIds, userIds: foundMembers.map((m) => m.id) },
+        tx
+      );
+    }
+
     await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: foundMembers.map((m) => m.id) }, tx);
 
     await emitGroupMembershipRemoved(
@@ -629,8 +639,7 @@ export const removeUsersFromGroupByUserIds = async ({
     const sendPamCancellations = await terminatePamSessionsLosingGroupAccess({
       userIds: foundMembers.map((m) => m.id),
       actorId,
-      membershipDAL,
-      membershipRoleDAL,
+      pamPermissionService,
       pamAccountDAL,
       pamSessionDAL,
       userDAL,
@@ -639,10 +648,13 @@ export const removeUsersFromGroupByUserIds = async ({
     });
 
     // These users may have left a secret-manager or PAM project they only reached through this group.
-    usageMeteringService?.emit(group.orgId, SecretIdentities.key);
-    usageMeteringService?.emit(group.orgId, PamIdentities.key);
-    usageMeteringService?.emit(group.orgId, AgentVaultIdentities.key);
-    return { users: membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending), sendPamCancellations };
+    usageMeteringService.emit(group.orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(group.orgId, Meter.PamIdentities);
+    return {
+      users: membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending),
+      sendPamCancellations,
+      projectIds
+    };
   };
 
   if (outerTx) {
@@ -667,10 +679,12 @@ export const removeIdentitiesFromGroup = async ({
   membershipDAL,
   groupDAL,
   identityGroupMembershipDAL,
+  userGroupMembershipDAL,
+  agentVaultPersonalValueDAL,
   additionalPrivilegeDAL,
   usageMeteringService,
   eventEmitter,
-  membershipRoleDAL,
+  pamPermissionService,
   pamAccountDAL,
   pamSessionDAL,
   userDAL,
@@ -769,6 +783,14 @@ export const removeIdentitiesFromGroup = async ({
       tx
     );
 
+    // After the group rows are gone, so the clear keeps only the values of identities who still hold the bundle
+    // another way.
+    await clearPersonalValuesInProjects(
+      { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+      { projectIds, identityIds: identityIdsArray },
+      tx
+    );
+
     await emitGroupMembershipRemoved(
       eventEmitter,
       {
@@ -783,8 +805,7 @@ export const removeIdentitiesFromGroup = async ({
       userIds: [],
       identityIds: identityIdsArray,
       actorId,
-      membershipDAL,
-      membershipRoleDAL,
+      pamPermissionService,
       pamAccountDAL,
       pamSessionDAL,
       userDAL,
@@ -793,9 +814,8 @@ export const removeIdentitiesFromGroup = async ({
     });
 
     // These identities may have left a secret-manager or PAM project they only reached through this group.
-    usageMeteringService?.emit(group.orgId, SecretIdentities.key);
-    usageMeteringService?.emit(group.orgId, PamIdentities.key);
-    usageMeteringService?.emit(group.orgId, AgentVaultIdentities.key);
+    usageMeteringService.emit(group.orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(group.orgId, Meter.PamIdentities);
     return { identities: identityIdsArray.map((identityId) => ({ id: identityId })), sendPamCancellations };
   });
 };

@@ -12,12 +12,18 @@ import {
   CertPolicyState,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
+  isRequestReference,
   mapPolicyKeyAlgorithmToApi,
   mapPolicySignatureAlgorithmToApi
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
-import { buildPolicyRules, withRequiredRows } from "./certificatePolicyGuidance";
-import { SubjectAltName, SubjectAttribute } from "./certificateUtils";
+import { buildPolicyRules, normalizeSanValue, withRequiredRows } from "./certificatePolicyGuidance";
+import {
+  getProfileReferenceSans,
+  isValidSanValue,
+  SubjectAltName,
+  SubjectAttribute
+} from "./certificateUtils";
 
 const convertTemplateTtlToCertificateTtl = (templateTtl: string): string => {
   const match = templateTtl.match(/^(\d+)([dmyh])$/);
@@ -39,12 +45,17 @@ const convertTemplateTtlToCertificateTtl = (templateTtl: string): string => {
   }
 };
 
-type PolicyRow = { type: string; value: string };
+type PolicyRow = { type: string; value: string; isFromCommonName?: boolean };
 
 const isSameRows = (current: PolicyRow[] | undefined, next: PolicyRow[]): boolean =>
   Boolean(current) &&
   current!.length === next.length &&
-  current!.every((row, index) => row.type === next[index].type && row.value === next[index].value);
+  current!.every(
+    (row, index) =>
+      row.type === next[index].type &&
+      row.value === next[index].value &&
+      Boolean(row.isFromCommonName) === Boolean(next[index].isFromCommonName)
+  );
 
 const parseTtlToMs = (ttl: string): number => {
   const match = ttl.match(/^(\d+)([dhmy])$/);
@@ -233,6 +244,11 @@ export const useCertificatePolicy = (
     setConstraints(DEFAULT_TEMPLATE_CONSTRAINTS);
   };
 
+  const profileReferenceSans = useMemo(
+    () => getProfileReferenceSans(selectedProfile?.defaults),
+    [selectedProfile]
+  );
+
   const prevProfileIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -325,8 +341,9 @@ export const useCertificatePolicy = (
           defaults.subjectAltNames.length > 0
         ) {
           // Filter to only allowed SAN types
-          nextSans = defaults.subjectAltNames.filter((san: SubjectAltName) =>
-            newConstraints.allowedSanTypes.includes(san.type)
+          nextSans = defaults.subjectAltNames.filter(
+            (san: SubjectAltName) =>
+              newConstraints.allowedSanTypes.includes(san.type) && !isRequestReference(san.value)
           );
         } else {
           nextSans = [];
@@ -355,7 +372,12 @@ export const useCertificatePolicy = (
       // Seed the rows the policy requires so they are visible as fields from the start. Writing an
       // identical value would still hand the form a new array, and the guidance hook reads those
       // identities as an edit and clears the findings the requester is looking at.
-      const seeded = withRequiredRows(buildPolicyRules(templateData), nextSubjectAttrs, nextSans);
+      const seeded = withRequiredRows(
+        buildPolicyRules(templateData),
+        nextSubjectAttrs,
+        nextSans,
+        getProfileReferenceSans(defaults)
+      );
       if (!isSameRows(watch("subjectAltNames"), seeded.subjectAltNames)) {
         setValue("subjectAltNames", seeded.subjectAltNames);
       }
@@ -445,12 +467,78 @@ export const useCertificatePolicy = (
     setValue
   ]);
 
+  const [dismissedCommonNameSanTypes, setDismissedCommonNameSanTypes] = useState<
+    CertSubjectAlternativeNameType[]
+  >([]);
+  useEffect(() => {
+    setDismissedCommonNameSanTypes([]);
+  }, [selectedProfile?.id, isModalOpen]);
+
+  const subjectAttributeRows = watch("subjectAttributes") as SubjectAttribute[] | undefined;
+  const sanRows = watch("subjectAltNames") as SubjectAltName[] | undefined;
+  const commonName =
+    subjectAttributeRows
+      ?.find((attr) => attr.type === CertSubjectAttributeType.COMMON_NAME)
+      ?.value?.trim() ?? "";
+
+  useEffect(() => {
+    const currentRows = watch("subjectAltNames") as SubjectAltName[] | undefined;
+    if (!isModalOpen || !currentRows) return;
+    const currentCommonName =
+      (watch("subjectAttributes") as SubjectAttribute[] | undefined)
+        ?.find((attr) => attr.type === CertSubjectAttributeType.COMMON_NAME)
+        ?.value?.trim() ?? "";
+    const requestedRows = currentRows.filter((san) => !san.isFromCommonName);
+    const isListed = (type: CertSubjectAlternativeNameType) =>
+      requestedRows.some(
+        (san) =>
+          san.type === type &&
+          normalizeSanValue(san.value.trim(), type) === normalizeSanValue(currentCommonName, type)
+      );
+    const commonNameRows = currentCommonName
+      ? profileReferenceSans
+          .filter(
+            ({ type }) =>
+              !dismissedCommonNameSanTypes.includes(type) &&
+              isValidSanValue(type, currentCommonName) &&
+              !isListed(type)
+          )
+          .map(({ type }) => ({ type, value: currentCommonName, isFromCommonName: true }))
+      : [];
+    if (dismissedCommonNameSanTypes.length && !requestedRows.length && !commonNameRows.length) {
+      setDismissedCommonNameSanTypes([]);
+      return;
+    }
+    const nextRows = [...requestedRows, ...commonNameRows];
+    const isUnchanged =
+      nextRows.length === currentRows.length &&
+      nextRows.every(
+        (san, index) =>
+          san.type === currentRows[index].type &&
+          san.value === currentRows[index].value &&
+          Boolean(san.isFromCommonName) === Boolean(currentRows[index].isFromCommonName)
+      );
+    if (!isUnchanged) setValue("subjectAltNames", nextRows);
+  }, [
+    isModalOpen,
+    sanRows,
+    commonName,
+    profileReferenceSans,
+    dismissedCommonNameSanTypes,
+    setValue,
+    watch
+  ]);
+
+  const dismissCommonNameSan = (type: CertSubjectAlternativeNameType) =>
+    setDismissedCommonNameSanTypes((dismissed) => [...dismissed, type]);
+
   return {
     constraints,
     filteredKeyUsages,
     filteredExtendedKeyUsages,
     availableSignatureAlgorithms,
     availableKeyAlgorithms,
-    resetConstraints
+    resetConstraints,
+    dismissCommonNameSan
   };
 };

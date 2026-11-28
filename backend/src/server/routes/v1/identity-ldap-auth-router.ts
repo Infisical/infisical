@@ -16,15 +16,15 @@ import { z } from "zod";
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { IdentityLdapAuthsSchema } from "@app/db/schemas/identity-ldap-auths";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { isValidLdapFilter } from "@app/ee/services/ldap-config/ldap-fns";
+import { isValidLdapFilter, pinLdapTarget } from "@app/ee/services/ldap-config/ldap-fns";
 import { ApiDocsTags, LDAP_AUTH } from "@app/lib/api-docs";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { AllowedFieldsSchema } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
@@ -43,25 +43,26 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
       return done(new UnauthorizedError({ message: "LDAP configuration not found" }));
     }
 
-    const opts = {
-      server: {
-        url: ldapConfig.url,
-        bindDN: ldapConfig.bindDN,
-        bindCredentials: ldapConfig.bindPass,
-        searchBase: ldapConfig.searchBase,
-        searchFilter: ldapConfig.searchFilter,
-        ...(ldapConfig.caCert
-          ? {
-              tlsOptions: {
-                ca: [ldapConfig.caCert]
-              }
-            }
-          : {})
-      },
-      passReqToCallback: true
-    };
-
-    return done(null, opts);
+    process.nextTick(async () => {
+      let target: Awaited<ReturnType<typeof pinLdapTarget>>;
+      try {
+        target = await pinLdapTarget(ldapConfig.url, ldapConfig.caCert ? { ca: [ldapConfig.caCert] } : undefined);
+      } catch (err) {
+        done(err);
+        return;
+      }
+      done(null, {
+        server: {
+          url: target.url,
+          bindDN: ldapConfig.bindDN,
+          bindCredentials: ldapConfig.bindPass,
+          searchBase: ldapConfig.searchBase,
+          searchFilter: ldapConfig.searchFilter,
+          ...(target.tlsOptions ? { tlsOptions: target.tlsOptions } : {})
+        },
+        passReqToCallback: true
+      });
+    });
   };
 
   // Promise-based wrapper for passport authentication
@@ -434,10 +435,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     },
     handler: async (req) => {
       const identityLdapAuth = await server.services.identityLdapAuth.attachLdapAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -445,7 +443,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.ADD_IDENTITY_LDAP_AUTH,
           metadata: {
@@ -468,10 +466,10 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         .sendPostHogEvents({
           event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             identityId: identityLdapAuth.identityId,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             authMethod: IdentityAuthMethod.LDAP_AUTH
           }
         })
@@ -571,10 +569,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     },
     handler: async (req) => {
       const identityLdapAuth = await server.services.identityLdapAuth.updateLdapAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -582,7 +577,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.UPDATE_IDENTITY_LDAP_AUTH,
           metadata: {
@@ -606,10 +601,10 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         .sendPostHogEvents({
           event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             identityId: identityLdapAuth.identityId,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             authMethod: IdentityAuthMethod.LDAP_AUTH
           }
         })
@@ -658,15 +653,12 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const identityLdapAuth = await server.services.identityLdapAuth.getLdapAuth({
         identityId: req.params.identityId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GET_IDENTITY_LDAP_AUTH,
           metadata: {
@@ -711,17 +703,14 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     },
     handler: async (req) => {
       const identityLdapAuth = await server.services.identityLdapAuth.revokeIdentityLdapAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.REVOKE_IDENTITY_LDAP_AUTH,
           metadata: {
@@ -734,10 +723,10 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         .sendPostHogEvents({
           event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             identityId: identityLdapAuth.identityId,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             authMethod: IdentityAuthMethod.LDAP_AUTH
           }
         })
@@ -777,10 +766,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     },
     handler: async (req) => {
       const clearLockoutsData = await server.services.identityLdapAuth.clearLdapAuthLockouts({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         identityId: req.params.identityId
       });
 

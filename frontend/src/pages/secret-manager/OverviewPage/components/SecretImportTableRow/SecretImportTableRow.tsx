@@ -43,7 +43,6 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
-import { useToggle } from "@app/hooks";
 import { useResyncSecretReplication } from "@app/hooks/api";
 import { ReservedFolders } from "@app/hooks/api/secretFolders/types";
 import { TSecretImport } from "@app/hooks/api/secretImports/types";
@@ -68,6 +67,8 @@ import { SecretImportSecretRow } from "./SecretImportSecretRow";
 type ImportedSecretData = {
   environment: string;
   secretPath: string;
+  importId?: string;
+  isReplication?: boolean;
   sourceEnv: string;
   secrets: Pick<SecretV3RawSanitized, "id" | "key" | "env" | "isEmpty" | "version">[];
 };
@@ -92,6 +93,8 @@ type Props = {
   isVisible?: boolean;
   activityId: TableRowActivityId;
   onActivityChange: TableRowActivityChangeHandler;
+  isExpanded: boolean;
+  onExpandedChange: (isExpanded: boolean) => void;
 };
 
 export const SecretImportTableRow = ({
@@ -109,9 +112,10 @@ export const SecretImportTableRow = ({
   secretImport,
   isVisible,
   activityId,
-  onActivityChange
+  onActivityChange,
+  isExpanded,
+  onExpandedChange
 }: Props) => {
-  const [isExpanded, setIsExpanded] = useToggle(false);
   const [selectedReplicationEnv, setSelectedReplicationEnv] = useState<string>("");
   const { currentProject } = useProject();
   const resyncSecretReplication = useResyncSecretReplication();
@@ -143,12 +147,20 @@ export const SecretImportTableRow = ({
 
   const allEnvImportedSecrets = useMemo(() => {
     if (isSingleEnvView) {
-      const match = importedSecrets?.find(
-        (imp) =>
-          imp.environment === importEnvSlug &&
-          imp.secretPath === importPath &&
-          imp.sourceEnv === singleEnvSlug
-      );
+      // A replication import and a regular import of the same source both report the source's environment and
+      // path, so a replication import matches only by its own ID. A regular import falls back to the source,
+      // because the backend returns one group for several regular imports of the same source.
+      const envGroups = importedSecrets?.filter((imp) => imp.sourceEnv === singleEnvSlug) ?? [];
+      const match =
+        envGroups.find((imp) => imp.importId && imp.importId === singleEnvImport?.id) ??
+        (singleEnvImport?.isReplication
+          ? undefined
+          : envGroups.find(
+              (imp) =>
+                !imp.isReplication &&
+                imp.environment === importEnvSlug &&
+                imp.secretPath === importPath
+            ));
       return match ? [match] : [];
     }
     return (
@@ -156,7 +168,15 @@ export const SecretImportTableRow = ({
         (imp) => imp.environment === importEnvSlug && imp.secretPath === importPath
       ) ?? []
     );
-  }, [importedSecrets, importEnvSlug, importPath, isSingleEnvView, singleEnvSlug]);
+  }, [
+    importedSecrets,
+    importEnvSlug,
+    importPath,
+    isSingleEnvView,
+    singleEnvSlug,
+    singleEnvImport?.id,
+    singleEnvImport?.isReplication
+  ]);
 
   // Union of unique secret keys across all environments (preserves search/expand behavior)
   const matchingImportedSecrets = useMemo(() => {
@@ -251,9 +271,9 @@ export const SecretImportTableRow = ({
   useEffect(() => {
     if (searchFilter) {
       if (filteredImportedSecrets.length > 0) {
-        setIsExpanded.on();
+        onExpandedChange(true);
       } else {
-        setIsExpanded.off();
+        onExpandedChange(false);
       }
     }
   }, [searchFilter, filteredImportedSecrets.length]);
@@ -294,7 +314,7 @@ export const SecretImportTableRow = ({
   };
 
   const handleRowClick = () => {
-    setIsExpanded.toggle();
+    onExpandedChange(!isExpanded);
   };
 
   const renderLeadingIcon = () => {

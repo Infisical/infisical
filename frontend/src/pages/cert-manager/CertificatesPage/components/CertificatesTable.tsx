@@ -65,6 +65,8 @@ import {
 } from "@app/context";
 import { useSlashFocusSearch } from "@app/hooks";
 import { useUpdateRenewalConfig } from "@app/hooks/api";
+import { useRevocationPolicyProfileNames } from "@app/hooks/api/approvalPolicies";
+import { usePendingCertificateRevocations } from "@app/hooks/api/approvalRequests";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability, CaType } from "@app/hooks/api/ca/enums";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
@@ -78,7 +80,11 @@ import type {
   TSystemViewFilters
 } from "@app/hooks/api/certificateInventoryViews/types";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
-import { NON_PQC_KEY_ALGORITHMS, PQC_KEY_ALGORITHMS } from "@app/hooks/api/certificates/constants";
+import {
+  getEnrollmentTypeName,
+  NON_PQC_KEY_ALGORITHMS,
+  PQC_KEY_ALGORITHMS
+} from "@app/hooks/api/certificates/constants";
 import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
 import { useGetPkiApplicationPermissions } from "@app/hooks/api/pkiApplications/queries";
@@ -95,15 +101,17 @@ import { ActiveFilterChips } from "./ActiveFilterChips";
 import { AssignCertificateToApplicationModal } from "./AssignCertificateToApplicationModal";
 import { BlockedActionTooltip } from "./BlockedActionTooltip";
 import {
+  canRenewOnExistingKeyPair,
   canRevokeAfterDeletion,
   DELETED_CERTIFICATE_NO_ACTIONS,
   getApplicationCertificateAccess,
+  getRenewNowState,
   getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails,
+  getPendingRevocationState,
   isExpiringWithinOneDay,
-  isManagedCertificate,
-  RENEWAL_UNAVAILABLE_NO_PROFILE
+  isManagedCertificate
 } from "./CertificatesTable.utils";
 import { ColumnVisibilityToggle, getDefaultVisibleColumns } from "./ColumnVisibilityToggle";
 import { certificatesToCSV, downloadCSV } from "./csvExport";
@@ -141,6 +149,7 @@ type Props = {
       hasPrivateKey?: boolean;
       canRevoke?: boolean;
       isRevocableAfterDeletion?: boolean;
+      isRevocationApprovalRequired?: boolean;
       applicationId?: string | null;
     }
   ) => void;
@@ -164,8 +173,7 @@ const EmptyCell = () => <span className="text-muted">—</span>;
 
 const getEnrollmentMethodBadge = (enrollmentType: string | null | undefined) => {
   if (!enrollmentType) return <EmptyCell />;
-  const label = enrollmentType.toUpperCase();
-  return <Badge variant="ghost">{label}</Badge>;
+  return <Badge variant="ghost">{getEnrollmentTypeName(enrollmentType)}</Badge>;
 };
 
 const SortIcon = ({
@@ -199,18 +207,14 @@ export const CertificatesTable = ({
   const [appliedSearch, setAppliedSearch] = useState(externalFilter?.search || "");
 
   const { data: appPermissionData } = useGetPkiApplicationPermissions(applicationId ?? "");
+  const { data: pendingRevocations } = usePendingCertificateRevocations(applicationId);
+  const { data: revocationPolicyProfileNames } = useRevocationPolicyProfileNames(applicationId);
   const canReadAtApplication = Boolean(
     appPermissionData?.permission?.can(
       PkiApplicationResourceActions.Read,
       PkiApplicationResourceSub.Certificates
     )
   );
-  const applicationAccess = applicationId
-    ? getApplicationCertificateAccess({
-        applicationName: applicationName ?? "this application",
-        permission: appPermissionData?.permission
-      })
-    : undefined;
 
   const getFiltersForSystemViewId = (viewId: string | undefined): FilterRule[] => {
     if (viewId === "system-pqc") {
@@ -920,9 +924,18 @@ export const CertificatesTable = ({
                   const canReadCertificate =
                     permission.can(ProjectPermissionCertificateActions.Read, certSubject) ||
                     canReadAtApplication;
-                  const rowApplicationAccess = certificate.applicationId
-                    ? applicationAccess
-                    : undefined;
+                  const isRevocationApprovalRequired = Boolean(
+                    certificate.profileName &&
+                    revocationPolicyProfileNames?.has(certificate.profileName)
+                  );
+                  const rowApplicationAccess =
+                    applicationId && certificate.applicationId
+                      ? getApplicationCertificateAccess({
+                          applicationName: applicationName ?? "this application",
+                          permission: appPermissionData?.permission,
+                          isRevocationApprovalRequired
+                        })
+                      : undefined;
                   const canEditCertificate = rowApplicationAccess
                     ? rowApplicationAccess.canEdit
                     : permission.can(ProjectPermissionCertificateActions.Edit, certSubject);
@@ -932,6 +945,9 @@ export const CertificatesTable = ({
                   const canDeleteCertificate = rowApplicationAccess
                     ? rowApplicationAccess.canDelete
                     : permission.can(ProjectPermissionCertificateActions.Delete, certSubject);
+                  const hasRevokePermission = rowApplicationAccess
+                    ? rowApplicationAccess.canRevoke
+                    : canDeleteCertificate;
                   const certificateCaType = caCapabilityMap[certificate.caId];
                   const canRevokeCertificate =
                     Boolean(certificate.caId) &&
@@ -941,6 +957,11 @@ export const CertificatesTable = ({
                     certificate,
                     certificateCaType
                   );
+                  const pendingRevocation = getPendingRevocationState({
+                    pendingRequest: pendingRevocations?.get(certificate.id),
+                    isRevoked,
+                    isRevocationApprovalRequired
+                  });
                   const canOfferRevoke =
                     canRevokeCertificate &&
                     !isRevoked &&
@@ -957,7 +978,7 @@ export const CertificatesTable = ({
                     !isInventoryView &&
                     !isDeleted &&
                     certificate.profileId &&
-                    certificate.hasPrivateKey !== false &&
+                    canRenewOnExistingKeyPair(certificate) &&
                     !certificate.renewedByCertificateId &&
                     !isRevoked &&
                     !isExpired &&
@@ -1003,7 +1024,27 @@ export const CertificatesTable = ({
                       )}
                       {visibleColumns.has("status") && (
                         <TableCell>
-                          <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {!(
+                              pendingRevocation.isPending &&
+                              displayStatus.status === CertStatus.ACTIVE
+                            ) && (
+                              <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
+                            )}
+                            {pendingRevocation.isPending &&
+                              (pendingRevocation.revokeReplacesRequestReason ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge variant="warning">Revocation Pending</Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-72">
+                                    {pendingRevocation.revokeReplacesRequestReason}
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                <Badge variant="warning">Revocation Pending</Badge>
+                              ))}
+                          </div>
                         </TableCell>
                       )}
                       {visibleColumns.has("health") && (
@@ -1197,7 +1238,7 @@ export const CertificatesTable = ({
                                   !isInventoryView &&
                                   !isDeleted &&
                                   certificate.profileId &&
-                                  certificate.hasPrivateKey !== false &&
+                                  canRenewOnExistingKeyPair(certificate) &&
                                   !certificate.renewedByCertificateId &&
                                   !isRevoked &&
                                   !isExpired &&
@@ -1255,7 +1296,7 @@ export const CertificatesTable = ({
                                   !isInventoryView &&
                                   !isDeleted &&
                                   certificate.profileId &&
-                                  certificate.hasPrivateKey !== false &&
+                                  canRenewOnExistingKeyPair(certificate) &&
                                   !certificate.renewedByCertificateId &&
                                   !isRevoked &&
                                   !isExpired &&
@@ -1297,19 +1338,20 @@ export const CertificatesTable = ({
 
                                 if (!isRenewable) return null;
 
-                                const profileMissing = !certificate.profileId;
-                                if (profileMissing && !isManagedCertificate(certificate))
+                                if (!certificate.profileId && !isManagedCertificate(certificate))
                                   return null;
 
-                                const renewBlockedReason = profileMissing
-                                  ? RENEWAL_UNAVAILABLE_NO_PROFILE
-                                  : rowApplicationAccess?.renewBlockedReason;
+                                const renewNow = getRenewNowState({
+                                  certificate,
+                                  canRenew: canRenewCertificate,
+                                  permissionBlockedReason: rowApplicationAccess?.renewBlockedReason
+                                });
 
                                 return (
-                                  <BlockedActionTooltip reason={renewBlockedReason}>
+                                  <BlockedActionTooltip reason={renewNow.reason}>
                                     <DropdownMenuItem
-                                      isDisabled={!canRenewCertificate || profileMissing}
-                                      isDisabledFocusable={Boolean(renewBlockedReason)}
+                                      isDisabled={renewNow.isDisabled}
+                                      isDisabledFocusable={Boolean(renewNow.reason)}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handlePopUpOpen("renewCertificate", {
@@ -1366,21 +1408,29 @@ export const CertificatesTable = ({
                                 )}
                               {(() => {
                                 if (!canOfferRevoke) return null;
+                                const revokeBlockedReason =
+                                  pendingRevocation.revokeBlockedReason ??
+                                  rowApplicationAccess?.revokeBlockedReason;
 
                                 return (
                                   <BlockedActionTooltip
-                                    reason={rowApplicationAccess?.revokeBlockedReason}
+                                    reason={
+                                      revokeBlockedReason ??
+                                      pendingRevocation.revokeReplacesRequestReason
+                                    }
                                   >
                                     <DropdownMenuItem
                                       variant="danger"
-                                      isDisabled={!canDeleteCertificate}
-                                      isDisabledFocusable={Boolean(
-                                        rowApplicationAccess?.revokeBlockedReason
-                                      )}
+                                      isDisabled={
+                                        !hasRevokePermission ||
+                                        Boolean(pendingRevocation.revokeBlockedReason)
+                                      }
+                                      isDisabledFocusable={Boolean(revokeBlockedReason)}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handlePopUpOpen("revokeCertificate", {
-                                          certificateId: certificate.id
+                                          certificateId: certificate.id,
+                                          isRevocationApprovalRequired
                                         });
                                       }}
                                     >

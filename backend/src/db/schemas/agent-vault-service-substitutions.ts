@@ -14,7 +14,7 @@ export const AgentVaultServiceSubstitutionsSchema = z.object({
   serviceId: z.string().uuid(),
   placeholder: z.string(),
   surfaces: z.string().array(),
-  encryptedValue: zodBuffer,
+  encryptedValue: zodBuffer.nullable().optional(),
   position: z.number(),
   createdAt: z.date(),
   updatedAt: z.date()

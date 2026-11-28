@@ -171,6 +171,24 @@ export type TCreateCommitResponse = {
   folders: { created: TSecretFolder[]; updated: TSecretFolder[]; deleted: TSecretFolder[] };
 };
 
+export type TCreateCommitsDTO = {
+  projectId: string;
+  secretPath: string;
+  message?: string;
+  secrets: {
+    environment: string;
+    secretKey: string;
+    secretValue: string;
+    isCreate: boolean;
+    secretComment?: string;
+    tagIds?: string[];
+  }[];
+};
+
+export type TCreateCommitsResponse = {
+  commits: { environment: string; commit?: TCreateCommitResponse; error?: unknown }[];
+};
+
 export type TCreateSecretsV3DTO = {
   secretKey: string;
   secretValue: string;
@@ -305,6 +323,13 @@ export type TDuplicateSecretResult =
 
 export type TDuplicateSecretResponse = {
   results: TDuplicateSecretResult[];
+};
+
+export type TGetExpandedSecretValueDTO = {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  secretKey: string;
 };
 
 export type TGetSecretReferenceTreeDTO = {

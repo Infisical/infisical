@@ -255,3 +255,11 @@ export type TGetIdentityPermissionAuditResponse = {
 export type TMyPendingProjectAccessRequestsResponse = {
   requests: { projectId: string; createdAt: string }[];
 };
+
+export type TListActorProjectMembershipsParams = {
+  limit?: number;
+  offset?: number;
+  search?: string;
+  orderDirection?: OrderByDirection;
+  excludeProjectType?: ProjectType;
+};

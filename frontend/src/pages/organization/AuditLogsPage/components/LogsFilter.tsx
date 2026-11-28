@@ -119,7 +119,10 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
     secretEvents.includes(eventType)
   );
   const showSecretsSection =
-    !(selectedProject?.type && isOrgScopedProduct(selectedProject.type)) &&
+    !(
+      selectedProject?.type &&
+      (isOrgScopedProduct(selectedProject.type) || selectedProject.type === ProjectType.AgentVault)
+    ) &&
     (hasSecretEventFilter || currentSelectedEventTypes.length === 0);
 
   const filteredEventTypes = useMemo(() => {

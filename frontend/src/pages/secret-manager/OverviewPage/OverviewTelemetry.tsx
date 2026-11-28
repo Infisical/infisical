@@ -2,6 +2,7 @@ import { createContext, ReactNode, useContext } from "react";
 
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import {
+  OverviewAnnotationProperties,
   OverviewCountBucket,
   OverviewFlowProperties,
   OverviewInteractionProperties,
@@ -15,6 +16,14 @@ export const overviewCountBucket = (count: number): OverviewCountBucket => {
   if (count <= 20) return "6-20";
   if (count <= 100) return "21-100";
   return "101+";
+};
+
+export const overviewAnnotationChange = (
+  wasEmpty: boolean,
+  isEmpty: boolean
+): OverviewAnnotationProperties["change"] => {
+  if (wasEmpty) return isEmpty ? undefined : "added";
+  return isEmpty ? "removed" : "edited";
 };
 
 export const overviewResponsePhase = (
@@ -58,6 +67,15 @@ export const createOverviewTelemetry = (
       source: properties.source,
       resourceType: properties.resourceType,
       countBucket: properties.countBucket
+    });
+  },
+  annotation(properties: OverviewAnnotationProperties) {
+    analytics.captureForOrganization(AnalyticsEvent.SecretsOverviewAnnotationProgressed, orgId, {
+      ...scope,
+      annotationType: properties.annotationType,
+      entryPoint: properties.entryPoint,
+      phase: properties.phase,
+      change: properties.change
     });
   },
   flow(properties: OverviewFlowProperties, lifecycle?: OverviewFlowLifecycle) {
@@ -162,6 +180,7 @@ export const observeOverviewRequest = async <T,>(
 
 const OverviewTelemetryContext = createContext<ReturnType<typeof createOverviewTelemetry>>({
   interaction: () => {},
+  annotation: () => {},
   flow: () => {},
   openFlow: () => ({ flow: () => {}, isCurrent: () => true }),
   startFlow: () => ({ flow: () => {}, isCurrent: () => true }),

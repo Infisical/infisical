@@ -18,6 +18,9 @@ import { Certificate } from "@peculiar/asn1-x509";
 import * as x509 from "@peculiar/x509";
 
 import { ProjectType } from "@app/db/schemas";
+import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
+import { TPlanFeatures } from "@app/domains/platform/license/ce/module";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initializePqcSupport } from "@app/lib/crypto/pqc";
 import { opensslDerivePublicKey, opensslGenpkey, verifyPqcOpenSSLAvailability } from "@app/lib/crypto/pqc/pqc-openssl";
@@ -41,7 +44,7 @@ vi.mock("@app/services/app-connection/app-connection-fns", () => ({
 }));
 
 vi.mock("@app/services/app-connection/aws/aws-connection-fns", () => ({
-  getAwsConnectionConfig: vi.fn(async (_connection: unknown, region: string) => ({
+  getAwsConnectionConfig: vi.fn(async (_connection: unknown, _instanceConfigService: unknown, region: string) => ({
     credentials: { accessKeyId: "test", secretAccessKey: "test" },
     region
   }))
@@ -157,9 +160,10 @@ const opensslVerifySelfSigned = (certificate: x509.X509Certificate) => {
 const buildDeps = (plan: Record<string, unknown> = { pkiAwsKmsSigning: true }) => ({
   appConnectionDAL: { findById: vi.fn(async () => ({ id: "conn", app: "aws", orgId: "org" })) } as never,
   appConnectionService: { validateAppConnectionUsageById: vi.fn() } as never,
-  kmsService: {} as never,
+  kmsDataKeyService: {} as never,
+  instanceConfigService: new FakeInstanceConfigService(),
   projectDAL: { findById: vi.fn(async () => ({ id: "project", orgId: "org" })) } as never,
-  licenseService: { getPlan: vi.fn(async () => plan) } as never,
+  licenseService: new FakeLicenseService().setPlan("org", plan as Partial<TPlanFeatures>),
   hsmConnectorService: {} as never,
   hsmConnectorDAL: {} as never,
   certificateAuthoritySecretDAL: { findOne: vi.fn() } as never
@@ -189,7 +193,7 @@ describe("AWS KMS CA key source", () => {
   let isOpensslAvailable = false;
 
   beforeAll(async () => {
-    await crypto.initialize({} as never, {} as never, {} as never);
+    await crypto.initialize(async () => null);
     x509.cryptoProvider.set(webcrypto as unknown as Crypto);
     isOpensslAvailable = await verifyPqcOpenSSLAvailability();
   });
@@ -207,6 +211,7 @@ describe("AWS KMS CA key source", () => {
     expect(reference).toEqual({ appConnectionId: "conn", externalKeyId: KEY_ARN, publicKeySpki });
     expect(getAwsConnectionConfig).toHaveBeenCalledWith(
       expect.objectContaining({ projectType: ProjectType.CertificateManager }),
+      expect.anything(),
       AWSRegion.US_EAST_1
     );
   });

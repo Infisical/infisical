@@ -2,12 +2,15 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { CertificateAuthoritiesSchema, TableName, TCertificateAuthorities } from "@app/db/schemas";
-import { DatabaseError, NotFoundError } from "@app/lib/errors";
+import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, orgTreeIds, ormify, selectAllTableCols, TFindOpt } from "@app/lib/knex";
 import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
+import { DEFAULT_CRL_VALIDITY_DAYS } from "@app/services/certificate-common/certificate-constants";
+
+import { caNotFoundError } from "./certificate-authority-errors";
 
 export const MAX_CA_HIERARCHY_DEPTH = 32;
 
@@ -62,7 +65,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
           .withSchema(TableName.InternalCertificateAuthority)
           .as("internalDisableManagedCrlDistributionPointUrl"),
         db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled"),
-        db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration")
+        db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration"),
+        db.ref("crlValidityDays").withSchema(TableName.InternalCertificateAuthority).as("internalCrlValidityDays")
       )
       .select(
         db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -101,7 +105,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             crlDistributionPointUrls: result.internalCrlDistributionPointUrls ?? [],
             disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false,
             isOcspEnabled: result.internalIsOcspEnabled ?? false,
-            ocspGeneration: result.internalOcspGeneration ?? 0
+            ocspGeneration: result.internalOcspGeneration ?? 0,
+            crlValidityDays: result.internalCrlValidityDays ?? DEFAULT_CRL_VALIDITY_DAYS
           }
         : undefined,
       externalCa: result
@@ -160,7 +165,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
           .withSchema(TableName.InternalCertificateAuthority)
           .as("internalDisableManagedCrlDistributionPointUrl"),
         db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled"),
-        db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration")
+        db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration"),
+        db.ref("crlValidityDays").withSchema(TableName.InternalCertificateAuthority).as("internalCrlValidityDays")
       )
       .select(
         db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -176,7 +182,7 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
       .first();
 
     // a missing row would otherwise surface as a cryptic schema parse error, so fail with a clean 404
-    if (!result) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    if (!result) throw caNotFoundError(caId);
 
     const data = {
       ...CertificateAuthoritiesSchema.parse(result),
@@ -202,7 +208,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             crlDistributionPointUrls: result.internalCrlDistributionPointUrls ?? [],
             disableManagedCrlDistributionPointUrl: result.internalDisableManagedCrlDistributionPointUrl ?? false,
             isOcspEnabled: result.internalIsOcspEnabled ?? false,
-            ocspGeneration: result.internalOcspGeneration ?? 0
+            ocspGeneration: result.internalOcspGeneration ?? 0,
+            crlValidityDays: result.internalCrlValidityDays ?? DEFAULT_CRL_VALIDITY_DAYS
           }
         : undefined,
       externalCa: result
@@ -302,7 +309,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
             .withSchema(TableName.InternalCertificateAuthority)
             .as("internalDisableManagedCrlDistributionPointUrl"),
           db.ref("isOcspEnabled").withSchema(TableName.InternalCertificateAuthority).as("internalIsOcspEnabled"),
-          db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration")
+          db.ref("ocspGeneration").withSchema(TableName.InternalCertificateAuthority).as("internalOcspGeneration"),
+          db.ref("crlValidityDays").withSchema(TableName.InternalCertificateAuthority).as("internalCrlValidityDays")
         )
         .select(
           db.ref("id").withSchema(TableName.ExternalCertificateAuthority).as("externalCaId"),
@@ -360,7 +368,8 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
               crlDistributionPointUrls: ca.internalCrlDistributionPointUrls ?? [],
               disableManagedCrlDistributionPointUrl: ca.internalDisableManagedCrlDistributionPointUrl ?? false,
               isOcspEnabled: ca.internalIsOcspEnabled ?? false,
-              ocspGeneration: ca.internalOcspGeneration ?? 0
+              ocspGeneration: ca.internalOcspGeneration ?? 0,
+              crlValidityDays: ca.internalCrlValidityDays ?? DEFAULT_CRL_VALIDITY_DAYS
             }
           : undefined,
         externalCa: ca

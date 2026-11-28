@@ -155,26 +155,20 @@ export const useGetSecretKeyExistingEnvironments = (
     enabled: enabled && Boolean(params.secretKey) && params.environments.length > 0
   });
 
+const getEnabledTagSlugs = (tags: Record<string, boolean>) =>
+  Object.entries(tags)
+    .filter(([, enabled]) => enabled)
+    .map(([slug]) => slug);
+
+// The search endpoints take POST so the search term travels in the body: users paste secret values
+// into the search box, and URLs end up in proxy and access logs.
 export const fetchProjectSecretsOverview = async ({
-  environments,
   tags,
   ...params
 }: TGetDashboardProjectSecretsOverviewDTO) => {
-  const { data } = await apiRequest.get<DashboardProjectSecretsOverviewResponse>(
+  const { data } = await apiRequest.post<DashboardProjectSecretsOverviewResponse>(
     "/api/v1/dashboard/secrets-overview",
-    {
-      params: {
-        ...params,
-        environments: encodeURIComponent(environments.join(",")),
-        tags: encodeURIComponent(
-          Object.entries(tags ?? {})
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            .filter(([_, enabled]) => enabled)
-            .map(([tag]) => tag)
-            .join(",")
-        )
-      }
-    }
+    { ...params, tags: getEnabledTagSlugs(tags ?? {}) }
   );
 
   return data;
@@ -184,20 +178,9 @@ export const fetchProjectSecretsDetails = async ({
   tags,
   ...params
 }: TGetDashboardProjectSecretsDetailsDTO) => {
-  const { data } = await apiRequest.get<DashboardProjectSecretsDetailsResponse>(
+  const { data } = await apiRequest.post<DashboardProjectSecretsDetailsResponse>(
     "/api/v1/dashboard/secrets-details",
-    {
-      params: {
-        ...params,
-        tags: encodeURIComponent(
-          Object.entries(tags)
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            .filter(([_, enabled]) => enabled)
-            .map(([tag]) => tag)
-            .join(",")
-        )
-      }
-    }
+    { ...params, tags: getEnabledTagSlugs(tags) }
   );
 
   return data;
@@ -490,25 +473,12 @@ export const useGetProjectSecretsDetails = (
 };
 
 export const fetchProjectSecretsQuickSearch = async ({
-  environments,
   tags,
   ...params
 }: TGetDashboardProjectSecretsQuickSearchDTO) => {
-  const { data } = await apiRequest.get<TDashboardProjectSecretsQuickSearchResponse>(
+  const { data } = await apiRequest.post<TDashboardProjectSecretsQuickSearchResponse>(
     "/api/v1/dashboard/secrets-deep-search",
-    {
-      params: {
-        ...params,
-        environments: encodeURIComponent(environments.join(",")),
-        tags: encodeURIComponent(
-          Object.entries(tags)
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            .filter(([_, enabled]) => enabled)
-            .map(([tag]) => tag)
-            .join(",")
-        )
-      }
-    }
+    { ...params, tags: getEnabledTagSlugs(tags) }
   );
 
   return data;
@@ -590,34 +560,19 @@ export const useGetProjectSecretsQuickSearch = (
 };
 
 export const fetchSearchSecretsByMetadata = async ({
-  projectId,
   environments,
   secretPath,
-  operator,
-  filters,
-  tags
+  tags,
+  ...params
 }: TSearchSecretsByMetadataDTO) => {
-  // /secrets-by-metadata parses nested `filters[<n>][key|value|operator]` params (qs syntax) from the
-  // raw querystring, so build it explicitly rather than relying on axios' default array serialization.
-  const params = new URLSearchParams();
-  params.append("projectId", projectId);
-  if (environments?.length) params.append("environments", environments.join(","));
-  if (secretPath) params.append("secretPath", secretPath);
-  params.append("operator", operator);
-  filters.forEach((filter, index) => {
-    params.append(`filters[${index}][key]`, filter.key);
-    params.append(`filters[${index}][value]`, filter.value);
-    params.append(`filters[${index}][operator]`, filter.operator);
-  });
-
-  // tags are sent as a comma-separated list of enabled slugs (same convention as the deep-search endpoint).
-  const enabledTags = Object.entries(tags)
-    .filter(([, enabled]) => enabled)
-    .map(([slug]) => slug);
-  if (enabledTags.length) params.append("tags", enabledTags.join(","));
-
-  const { data } = await apiRequest.get<TSearchSecretsByMetadataResponse>(
-    `/api/v1/dashboard/secrets-by-metadata?${params.toString()}`
+  const { data } = await apiRequest.post<TSearchSecretsByMetadataResponse>(
+    "/api/v1/dashboard/secrets-by-metadata",
+    {
+      ...params,
+      environments: environments?.length ? environments : undefined,
+      secretPath: secretPath || undefined,
+      tags: getEnabledTagSlugs(tags)
+    }
   );
 
   return data;

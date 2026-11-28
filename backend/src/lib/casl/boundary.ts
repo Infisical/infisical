@@ -2,10 +2,8 @@ import { MongoAbility } from "@casl/ability";
 import { MongoQuery } from "@ucast/mongo2js";
 import picomatch from "picomatch";
 
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-
 import { haveDisjointLiteralPrefixes, isGlobSubsetOfGlob } from "./glob-subset";
-import { PermissionConditionOperators } from "./index";
+import { canonicalizeSecretPathCondition, PermissionConditionOperators } from "./index";
 
 type TMissingPermission = {
   action: string;
@@ -22,9 +20,21 @@ type TPermissionConditionShape = {
 
 const getPermissionSetID = (action: string, subject: string) => `${action}:${subject}`;
 
-const IGNORED_PERMISSIONS = new Set([
-  getPermissionSetID(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders)
-]);
+type TRuleConditions = Record<string, TPermissionConditionShape | string> | undefined;
+
+// The matcher compares secret paths canonically, so the boundary check must too, or "//locked" would pass as a
+// different folder from "/locked".
+const canonicalizeRuleConditions = (conditions: unknown): TRuleConditions => {
+  const ruleConditions = conditions as TRuleConditions;
+  if (!ruleConditions?.secretPath) return ruleConditions;
+  return {
+    ...ruleConditions,
+    secretPath: canonicalizeSecretPathCondition(ruleConditions.secretPath) as TPermissionConditionShape | string
+  };
+};
+
+// Reading secret folders never limits a boundary. Literal ID so this shared module imports no domain.
+const IGNORED_PERMISSIONS = new Set([getPermissionSetID("read", "secret-folders")]);
 
 const invertTheOperation = (shouldInvert: boolean, operation: boolean) => (shouldInvert ? !operation : operation);
 const formatConditionOperator = (condition: TPermissionConditionShape | string) => {
@@ -214,13 +224,13 @@ const isSubsetForSamePermissionSubjectAction = (
 
   // all subset rules must pass in comparison to parent rul
   return subsetRules.every((subsetRule) => {
-    const subsetRuleConditions = subsetRule.conditions as Record<string, TPermissionConditionShape | string>;
+    const subsetRuleConditions = canonicalizeRuleConditions(subsetRule.conditions);
     // compare subset rule with all parent rules
     const isSubsetOfNonInvertedParentSet = parentSetRules
       .filter((el) => !el.inverted)
       .some((parentSetRule) => {
         // get conditions and iterate
-        const parentSetRuleConditions = parentSetRule?.conditions as Record<string, TPermissionConditionShape | string>;
+        const parentSetRuleConditions = canonicalizeRuleConditions(parentSetRule?.conditions);
         if (!parentSetRuleConditions) return true;
         return Object.keys(parentSetRuleConditions).every((parentConditionField) => {
           // if parent condition is missing then it's never a subset
@@ -254,10 +264,7 @@ const isSubsetForSamePermissionSubjectAction = (
     };
     const isNotInDeniedRegion = invertedParentSetRules.length
       ? !invertedParentSetRules.some((parentSetRule) => {
-          const parentSetRuleConditions = parentSetRule?.conditions as Record<
-            string,
-            TPermissionConditionShape | string
-          >;
+          const parentSetRuleConditions = canonicalizeRuleConditions(parentSetRule?.conditions);
           // Unconditional inverted rule denies everything; any subset overlaps it.
           if (!parentSetRuleConditions) return true;
           return overlapsWithInvertedParent(parentSetRuleConditions);

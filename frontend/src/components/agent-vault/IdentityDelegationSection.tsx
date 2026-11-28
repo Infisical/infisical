@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { subject as caslSubject } from "@casl/ability";
 import { format } from "date-fns";
 import { UserCogIcon, UsersRoundIcon } from "lucide-react";
 
@@ -24,10 +25,14 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import { useGetAgentVaultDelegation } from "@app/hooks/api/agentVault";
 import { AgentVaultDelegationScope, AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
 import { ManageDelegationSheet, TDelegationSubjectRow } from "./ManageDelegationSheet";
@@ -39,22 +44,28 @@ type Props = {
   machineIdentityName: string;
 };
 
-// Only admins can read or change a delegation, so members don't see the section at all. Changes happen
-// in the Manage Delegation sheet; this lists who the delegation covers.
+// A delegation is read with Read on its machine identity and changed with Edit, so without Read the section is hidden.
+// Changes happen in the Manage Delegation sheet; this lists who the delegation covers.
 export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityName }: Props) => {
-  const { hasProjectRole } = useProjectPermission();
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const { projectId } = useProject();
+  const { permission } = useProjectPermission();
+  const identitySubject = caslSubject(ProjectPermissionSub.Identity, {
+    identityId: machineIdentityId
+  });
+  const canReadDelegation = permission.can(ProjectPermissionIdentityActions.Read, identitySubject);
+  const canEditDelegation = permission.can(ProjectPermissionIdentityActions.Edit, identitySubject);
 
   const { data, isPending, isError, isFetching, refetch } = useGetAgentVaultDelegation(
+    projectId,
     machineIdentityId,
-    isAdmin
+    canReadDelegation
   );
   const delegation = data ?? null;
   // Without a successful read the sheet would start from a list it never saw.
   const isLoadError = isError && data === undefined;
   const [isManageOpen, setIsManageOpen] = useState(false);
 
-  if (!isAdmin) return null;
+  if (!canReadDelegation) return null;
 
   const isAllMembers = delegation?.scope === AgentVaultDelegationScope.AllMembers;
   const subjects: TDelegationSubjectRow[] = [
@@ -121,9 +132,9 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
                 <div className="flex min-w-0 items-center gap-2.5">
                   <UsersRoundIcon className="size-4 shrink-0 text-muted" />
                   <div className="min-w-0">
-                    <div className="truncate">All Agent Vault Members</div>
+                    <div className="truncate">All Project Members</div>
                     <div className="truncate text-xs leading-4 text-muted">
-                      Every user in Agent Vault, including users added later
+                      Every user in this project, including users added later
                     </div>
                   </div>
                 </div>
@@ -134,7 +145,7 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
                   <MissingAccessBundlesHint
                     bundles={delegation.missingAccessBundles}
                     machineIdentityName={machineIdentityName}
-                    onBehalfOf="Agent Vault members"
+                    onBehalfOf="project members"
                   />
                 </div>
               </TableCell>
@@ -178,7 +189,7 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
           Lets this machine identity start sessions on behalf of these users and groups, using each
           user&apos;s personal values. It can still start its own sessions.
         </CardDescription>
-        {!isPending && !isLoadError && (
+        {canEditDelegation && !isPending && !isLoadError && (
           <CardAction>
             <Button variant="av" onClick={() => setIsManageOpen(true)}>
               <UserCogIcon />

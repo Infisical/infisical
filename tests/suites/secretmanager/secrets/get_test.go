@@ -85,13 +85,14 @@ func TestSecret_Get(t *testing.T) {
 		created := secretmanager.CreateSecret(t, proj, "dev", "DB_URL", "postgres://app", secretmanager.WithPath("/app"))
 
 		// Action
-		res, err := tn.Admin.API.GetSecretByIdV4WithResponse(t.Context(), created.ID)
+		res, err := tn.Admin.API.GetSecretByIdV4WithResponse(t.Context(), created.ID, nil)
 
 		// Assert
 		require.NoError(t, err)
 		require.NotNilf(t, res.JSON200, "reading by id returned %d: %s", res.StatusCode(), res.Body)
 		require.Equal(t, "DB_URL", res.JSON200.Secret.SecretKey)
 		require.Equal(t, "postgres://app", res.JSON200.Secret.SecretValue)
+		require.False(t, res.JSON200.Secret.SecretValueHidden)
 		require.Equal(t, "/app", res.JSON200.Secret.SecretPath)
 	})
 
@@ -104,7 +105,7 @@ func TestSecret_Get(t *testing.T) {
 		created := secretmanager.CreateSecret(t, target, "dev", "THEIRS", "their-value")
 
 		// Action
-		res, err := mine.Admin.API.GetSecretByIdV4WithResponse(t.Context(), created.ID)
+		res, err := mine.Admin.API.GetSecretByIdV4WithResponse(t.Context(), created.ID, nil)
 
 		// Assert
 		require.NoError(t, err)
@@ -125,7 +126,7 @@ func TestSecret_Get(t *testing.T) {
 			secretmanager.As(owner), secretmanager.WithPersonal())
 
 		// Action
-		res, err := other.API.GetSecretByIdV4WithResponse(t.Context(), personal.ID)
+		res, err := other.API.GetSecretByIdV4WithResponse(t.Context(), personal.ID, nil)
 
 		// Assert
 		require.NoError(t, err)

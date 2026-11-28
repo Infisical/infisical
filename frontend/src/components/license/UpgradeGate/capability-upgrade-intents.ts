@@ -1,3 +1,5 @@
+import { BillingProduct } from "./upgrade-intents";
+
 export type CapabilityUpgradeIntent = {
   scope: "platform" | "instance" | "product";
   featureKey:
@@ -27,6 +29,8 @@ export type CapabilityUpgradeIntent = {
     | "agent_vault_byo_s3"
     | "agent_vault_managed_storage";
   productName?: string;
+  // The Billing product a product-scoped paywall opens, like the product upgrade dialogs do.
+  productKey?: (typeof BillingProduct)[keyof typeof BillingProduct];
   title: string;
   description: string;
   isEnterpriseFeature: boolean;
@@ -47,7 +51,11 @@ export const getCapabilityUpgradeUrl = (
 ) =>
   intent.scope === "instance"
     ? CONTACT_SALES_URL
-    : `/organizations/${organization.rootOrgId ?? organization.id}/billing`;
+    : `/organizations/${organization.rootOrgId ?? organization.id}/billing${
+        intent.productKey
+          ? `?${new URLSearchParams({ upgradeProduct: intent.productKey }).toString()}`
+          : ""
+      }`;
 
 export const GroupsUpgradeIntent = {
   scope: "platform",
@@ -79,14 +87,6 @@ export const InstanceHsmUpgradeIntent = {
   title: "Unlock Hardware Security Modules",
   description: "Protect your instance's encryption keys with a Hardware Security Module (HSM).",
   isEnterpriseFeature: true
-} satisfies CapabilityUpgradeIntent;
-
-export const ProjectLimitUpgradeIntent = {
-  scope: "platform",
-  featureKey: "workspace_limit",
-  title: "Unlock More Projects",
-  description: "Compare subscriptions to increase your organization's project allowance.",
-  isEnterpriseFeature: false
 } satisfies CapabilityUpgradeIntent;
 
 export const SubOrganizationsUpgradeIntent = {
@@ -244,6 +244,7 @@ export const IdentityAuthUpgradeIntent = {
 export const AgentVaultSessionLogsUpgradeIntent = {
   scope: "product",
   productName: "Agent Vault",
+  productKey: BillingProduct.AgentVault,
   featureKey: "agent_vault_byo_s3",
   title: "Unlock Agent Vault Session Logs",
   description: "Record agent requests in your own storage for review and investigation.",
@@ -253,8 +254,9 @@ export const AgentVaultSessionLogsUpgradeIntent = {
 export const AgentVaultSessionLogDefaultStorageUpgradeIntent = {
   scope: "product",
   productName: "Agent Vault",
+  productKey: BillingProduct.AgentVault,
   featureKey: "agent_vault_managed_storage",
   title: "Unlock Agent Vault Session Logs",
   description: "Record what your agents do, with nothing to set up.",
-  isEnterpriseFeature: true
+  isEnterpriseFeature: false
 } satisfies CapabilityUpgradeIntent;

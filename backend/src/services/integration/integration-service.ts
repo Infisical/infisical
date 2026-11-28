@@ -1,21 +1,16 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { ActionProjectType } from "@app/db/schemas";
-import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { SecretReadAccess, TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { NotFoundError } from "@app/lib/errors";
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
 import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-auth-service";
 import { deleteIntegrationSecrets } from "../integration-auth/integration-delete-secret";
-import { TKmsServiceFactory } from "../kms/kms-service";
-import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
@@ -37,12 +32,12 @@ type TIntegrationServiceFactoryDep = {
   integrationAuthDAL: TIntegrationAuthDALFactory;
   integrationAuthService: TIntegrationAuthServiceFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findByManySecretPath">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsPermissionService: TSecretsPermissionService;
   projectBotService: TProjectBotServiceFactory;
   secretQueueService: Pick<TSecretQueueFactory, "syncIntegrations">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "findByFolderId">;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  kmsDataKeyService: TKmsDataKeyService;
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
@@ -54,22 +49,19 @@ export const integrationServiceFactory = ({
   integrationDAL,
   integrationAuthDAL,
   folderDAL,
-  permissionService,
+  secretsPermissionService,
   secretQueueService,
   integrationAuthService,
   projectBotService,
   secretV2BridgeDAL,
   secretImportDAL,
-  kmsService,
+  kmsDataKeyService,
   secretDAL,
   projectFolderGrantDAL,
   orgDAL
 }: TIntegrationServiceFactoryDep) => {
   const updateIntegration = async ({
-    actorId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     targetEnvironment,
     app,
     id,
@@ -85,21 +77,17 @@ export const integrationServiceFactory = ({
     const integration = await integrationDAL.findById(id);
     if (!integration) throw new NotFoundError({ message: `Integration with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission } = await secretsPermissionService.getSecretsPermission({
       actor,
-      actorId,
-      projectId: integration.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      projectId: integration.projectId
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
+    permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Integrations });
 
     const newEnvironment = environment || integration.environment.slug;
     const newSecretPath = secretPath || integration.secretPath;
 
     if (environment || secretPath) {
-      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+      SecretReadAccess.assert(permission, ProjectPermissionSecretActions.ReadValue, {
         environment: newEnvironment,
         secretPath: newSecretPath
       });
@@ -140,7 +128,7 @@ export const integrationServiceFactory = ({
     };
   };
 
-  const getIntegration = async ({ id, actor, actorAuthMethod, actorId, actorOrgId }: TGetIntegrationDTO) => {
+  const getIntegration = async ({ id, actor }: TGetIntegrationDTO) => {
     const integration = await integrationDAL.findById(id);
 
     if (!integration) {
@@ -149,15 +137,11 @@ export const integrationServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission } = await secretsPermissionService.getSecretsPermission({
       actor,
-      actorId,
-      projectId: integration.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      projectId: integration.projectId
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Integrations });
 
     if (!integration) {
       throw new NotFoundError({
@@ -168,7 +152,7 @@ export const integrationServiceFactory = ({
     return { ...integration, envId: integration.environment.id };
   };
 
-  const getIntegrationAWSIamRole = async ({ id, actor, actorAuthMethod, actorId, actorOrgId }: TGetIntegrationDTO) => {
+  const getIntegrationAWSIamRole = async ({ id, actor }: TGetIntegrationDTO) => {
     const integration = await integrationDAL.findById(id);
 
     if (!integration) {
@@ -177,19 +161,15 @@ export const integrationServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission } = await secretsPermissionService.getSecretsPermission({
       actor,
-      actorId,
-      projectId: integration.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      projectId: integration.projectId
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Integrations });
 
     const integrationAuth = await integrationAuthDAL.findById(integration.integrationAuthId);
 
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: integration.projectId
     });
@@ -209,26 +189,15 @@ export const integrationServiceFactory = ({
     };
   };
 
-  const deleteIntegration = async ({
-    actorId,
-    id,
-    actor,
-    actorAuthMethod,
-    actorOrgId,
-    shouldDeleteIntegrationSecrets
-  }: TDeleteIntegrationDTO) => {
+  const deleteIntegration = async ({ id, actor, shouldDeleteIntegrationSecrets }: TDeleteIntegrationDTO) => {
     const integration = await integrationDAL.findById(id);
     if (!integration) throw new NotFoundError({ message: `Integration with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission } = await secretsPermissionService.getSecretsPermission({
       actor,
-      actorId,
-      projectId: integration.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      projectId: integration.projectId
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Integrations);
+    permission.assert({ action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.Integrations });
 
     const integrationAuth = await integrationAuthDAL.findById(integration.integrationAuthId);
 
@@ -242,10 +211,10 @@ export const integrationServiceFactory = ({
         folderDAL,
         secretImportDAL,
         secretDAL,
-        kmsService,
+        kmsDataKeyService,
         projectFolderGrantDAL,
         orgDAL,
-        actorOrgId
+        actorOrgId: actor.org.id
       });
     }
 
@@ -253,46 +222,29 @@ export const integrationServiceFactory = ({
     return { ...integration, ...deletedIntegration };
   };
 
-  const listIntegrationByProject = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    projectId
-  }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+  const listIntegrationByProject = async ({ actor, projectId }: { projectId: string } & TActorInput) => {
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Integrations });
 
     const integrations = await integrationDAL.findByProjectId(projectId);
     return integrations;
   };
 
-  const syncIntegration = async ({ id, actorId, actor, actorOrgId, actorAuthMethod }: TSyncIntegrationDTO) => {
+  const syncIntegration = async ({ id, actor }: TSyncIntegrationDTO) => {
     const integration = await integrationDAL.findById(id);
     if (!integration) {
       throw new NotFoundError({ message: `Integration with ID '${id}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission } = await secretsPermissionService.getSecretsPermission({
       actor,
-      actorId,
-      projectId: integration.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      projectId: integration.projectId
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Integrations });
 
     await secretQueueService.syncIntegrations({
       isManual: true,
-      actorId,
+      actorId: actor.principal.id,
       environment: integration.environment.slug,
       secretPath: integration.secretPath,
       projectId: integration.projectId

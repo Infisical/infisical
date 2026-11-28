@@ -3,11 +3,12 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
@@ -27,16 +28,14 @@ import {
 } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertStatus, CrlReason } from "@app/services/certificate/certificate-types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
+import { caNotFoundError, duplicateCaNameError, externalCaNotSavedError } from "../certificate-authority-errors";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { createGoDaddyApiClient } from "./godaddy-api-client";
-import { GoDaddyProductType } from "./godaddy-certificate-authority-enums";
+import { GoDaddyCertificateStatus, GoDaddyProductType } from "./godaddy-certificate-authority-enums";
 import {
   TCreateGoDaddyCertificateAuthorityDTO,
   TGoDaddyCertificateAuthority,
@@ -53,14 +52,14 @@ type TGoDaddyCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById" | "findOne">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "create" | "findById" | "transaction" | "updateById" | "findOne" | "findOneLiveFirst"
+  >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsService: Pick<
-    TKmsServiceFactory,
-    "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
-  >;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
+  kmsDataKeyService: TKmsDataKeyService;
+  kmsKeyService: TKmsKeyService;
 };
 
 // GoDaddy renewal reuses the same certificate id and only issues a genuinely renewed certificate
@@ -166,7 +165,7 @@ export const castDbEntryToGoDaddyCertificateAuthority = (
 export const getGoDaddyClientCredentials = async (
   appConnectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsDataKeyService: TKmsDataKeyService
 ): Promise<{ authHeader: string; baseUrl: string }> => {
   const appConnection = await appConnectionDAL.findById(appConnectionId);
   if (!appConnection) {
@@ -180,7 +179,7 @@ export const getGoDaddyClientCredentials = async (
     orgId: appConnection.orgId,
     projectId: appConnection.projectId,
     encryptedCredentials: appConnection.encryptedCredentials,
-    kmsService
+    kmsDataKeyService
   })) as TGoDaddyConnection["credentials"];
 
   return {
@@ -197,8 +196,8 @@ export const GoDaddyCertificateAuthorityFns = ({
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  kmsService,
-  projectDAL
+  kmsDataKeyService,
+  kmsKeyService
 }: TGoDaddyCertificateAuthorityFnsDeps) => {
   const createCertificateAuthority = async ({
     name,
@@ -211,7 +210,7 @@ export const GoDaddyCertificateAuthorityFns = ({
     name: string;
     projectId: string;
     configuration: TCreateGoDaddyCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
     const { appConnectionId, productType } = configuration;
 
@@ -260,16 +259,14 @@ export const GoDaddyCertificateAuthorityFns = ({
         // 23505 = unique_violation — same CA name in the same project
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
         if ((error as any)?.error?.code === "23505") {
-          throw new BadRequestError({
-            message: "Certificate authority with the same name already exists in your project"
-          });
+          throw duplicateCaNameError(name);
         }
         throw error;
       }
     });
 
     if (!caEntity.externalCa?.id) {
-      throw new BadRequestError({ message: "Failed to create external certificate authority" });
+      throw externalCaNotSavedError(name);
     }
 
     return castDbEntryToGoDaddyCertificateAuthority(caEntity);
@@ -285,33 +282,37 @@ export const GoDaddyCertificateAuthorityFns = ({
     id: string;
     status?: CaStatus;
     configuration?: TUpdateGoDaddyCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
     name?: string;
   }) => {
+    // Validated before the transaction: the connection check decrypts through KMS Core, which takes its own connection.
+    if (configuration) {
+      const { appConnectionId } = configuration;
+      const appConnection = await appConnectionDAL.findById(appConnectionId);
+      if (!appConnection) {
+        throw new NotFoundError({ message: `GoDaddy app connection with ID '${appConnectionId}' not found` });
+      }
+      if (appConnection.app !== AppConnection.GoDaddy) {
+        throw new BadRequestError({
+          message: `App connection with ID '${appConnectionId}' is not a GoDaddy connection`
+        });
+      }
+
+      const ca = await certificateAuthorityDAL.findById(id);
+      if (!ca) {
+        throw caNotFoundError(id);
+      }
+
+      await appConnectionService.validateAppConnectionUsageById(
+        appConnection.app as AppConnection,
+        { connectionId: appConnectionId, projectId: ca.projectId },
+        actor
+      );
+    }
+
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
         const { appConnectionId, productType } = configuration;
-        const appConnection = await appConnectionDAL.findById(appConnectionId);
-        if (!appConnection) {
-          throw new NotFoundError({ message: `GoDaddy app connection with ID '${appConnectionId}' not found` });
-        }
-        if (appConnection.app !== AppConnection.GoDaddy) {
-          throw new BadRequestError({
-            message: `App connection with ID '${appConnectionId}' is not a GoDaddy connection`
-          });
-        }
-
-        const ca = await certificateAuthorityDAL.findById(id);
-        if (!ca) {
-          throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
-        }
-
-        await appConnectionService.validateAppConnectionUsageById(
-          appConnection.app as AppConnection,
-          { connectionId: appConnectionId, projectId: ca.projectId },
-          actor
-        );
-
         await externalCertificateAuthorityDAL.update(
           {
             caId: id,
@@ -437,7 +438,7 @@ export const GoDaddyCertificateAuthorityFns = ({
     const { authHeader, baseUrl } = await getGoDaddyClientCredentials(
       godaddyCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService
     );
     const client = createGoDaddyApiClient(authHeader, baseUrl);
 
@@ -513,7 +514,7 @@ export const GoDaddyCertificateAuthorityFns = ({
     const { authHeader, baseUrl } = await getGoDaddyClientCredentials(
       godaddyCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService
     );
     const client = createGoDaddyApiClient(authHeader, baseUrl);
 
@@ -539,12 +540,8 @@ export const GoDaddyCertificateAuthorityFns = ({
       }
     }
 
-    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-      projectId: ca.projectId,
-      projectDAL,
-      kmsService
-    });
-    const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+    const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
+    const kmsEncryptor = await kmsKeyService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
 
     const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
       plainText: Buffer.from(new Uint8Array(certObj.rawData))
@@ -620,7 +617,7 @@ export const GoDaddyCertificateAuthorityFns = ({
       throw new BadRequestError({ message: `CA is not a GoDaddy certificate authority [caId=${caId}]` });
     }
 
-    const cert = await certificateDAL.findOne({ caId, serialNumber });
+    const cert = await certificateDAL.findOneLiveFirst({ caId, serialNumber });
     if (!cert) {
       throw new NotFoundError({
         message: `Certificate not found for revocation [caId=${caId}] [serialNumber=${serialNumber}]`
@@ -638,11 +635,37 @@ export const GoDaddyCertificateAuthorityFns = ({
     const { authHeader, baseUrl } = await getGoDaddyClientCredentials(
       godaddyCa.configuration.appConnectionId,
       appConnectionDAL,
-      kmsService
+      kmsDataKeyService
     );
     const client = createGoDaddyApiClient(authHeader, baseUrl);
 
-    await client.revokeCertificate(certificateId, mapCrlReasonToGoDaddyReason(reason));
+    try {
+      await client.revokeCertificate(certificateId, mapCrlReasonToGoDaddyReason(reason));
+    } catch (revokeError) {
+      // Renewal reuses the GoDaddy certificate id, so after a renewal the read-back reports the
+      // current certificate's status, not this superseded one's.
+      if (cert.renewedByCertificateId) {
+        throw revokeError;
+      }
+      // GoDaddy's revoke error doesn't say whether the certificate was already revoked, so read its status back.
+      const current = await client.getCertificate(certificateId).catch((readError: unknown) => {
+        logger.warn(
+          readError,
+          `Failed to read the GoDaddy certificate's status after a failed revoke [caId=${caId}] [certificateId=${cert.id}] [godaddyCertificateId=${certificateId}]`
+        );
+        return null;
+      });
+      if (
+        current?.status !== GoDaddyCertificateStatus.Revoked &&
+        current?.status !== GoDaddyCertificateStatus.RevokedUponIssuance
+      ) {
+        throw revokeError;
+      }
+      logger.info(
+        `GoDaddy certificate already revoked upstream, treating as success [caId=${caId}] [certificateId=${cert.id}] [godaddyCertificateId=${certificateId}] [status=${current.status}]`
+      );
+      return;
+    }
 
     logger.info(
       `GoDaddy certificate revocation submitted [caId=${caId}] [certificateId=${cert.id}] [godaddyCertificateId=${certificateId}] [reason=${reason}]`

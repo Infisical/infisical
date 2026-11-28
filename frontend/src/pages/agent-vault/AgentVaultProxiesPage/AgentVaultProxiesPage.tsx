@@ -59,7 +59,12 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionAgentVaultProxyActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import { downloadTxtFile } from "@app/helpers/download";
 import {
   getUserTablePreference,
@@ -77,7 +82,6 @@ import {
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultProxy, TAgentVaultProxyToken } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
@@ -141,8 +145,17 @@ const truncateFingerprint = (fingerprint: string) =>
   `${fingerprint.split(":").slice(0, 5).join(":")}…`;
 
 export const AgentVaultProxiesPage = () => {
-  const { hasProjectRole } = useProjectPermission();
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const { projectId } = useProject();
+  const { permission } = useProjectPermission();
+  const canProxy = (action: ProjectPermissionAgentVaultProxyActions) =>
+    permission.can(action, ProjectPermissionSub.AgentVaultProxies);
+  const canCreateProxies = canProxy(ProjectPermissionAgentVaultProxyActions.Create);
+  // The list carries each proxy's settings only for those who can change them, as the server decides.
+  const showsSettings = canProxy(ProjectPermissionAgentVaultProxyActions.Edit);
+  const canIssueTokens = canProxy(ProjectPermissionAgentVaultProxyActions.IssueToken);
+  const canRevokeProxies = canProxy(ProjectPermissionAgentVaultProxyActions.Revoke);
+  const canDeleteProxies = canProxy(ProjectPermissionAgentVaultProxyActions.Delete);
+  const hasProxyActions = showsSettings || canIssueTokens || canRevokeProxies || canDeleteProxies;
   // Asked of the server on every click, never cached: the CA changes on rotation, and only the server can
   // refuse a proxy that serves its own CA.
   const downloadProxyCa = async (proxy: TAgentVaultProxy) => {
@@ -167,7 +180,7 @@ export const AgentVaultProxiesPage = () => {
     getUserTablePreference("agentVaultProxiesTable", PreferenceKey.PerPage, 20)
   );
 
-  const { data, isPending } = useListAgentVaultProxies({
+  const { data, isPending } = useListAgentVaultProxies(projectId, {
     orderBy: sortColumn,
     orderDirection: sortDirection === "ascending" ? "asc" : "desc",
     limit: perPage,
@@ -177,12 +190,12 @@ export const AgentVaultProxiesPage = () => {
   const displayed = data?.proxies ?? [];
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
-  const deleteProxy = useDeleteAgentVaultProxy();
-  const revokeProxy = useRevokeAgentVaultProxyAccess();
-  const rotateProxyToken = useRotateAgentVaultProxyToken();
+  const deleteProxy = useDeleteAgentVaultProxy(projectId);
+  const revokeProxy = useRevokeAgentVaultProxyAccess(projectId);
+  const rotateProxyToken = useRotateAgentVaultProxyToken(projectId);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  useAgentVaultCreateIntent(() => setIsCreateOpen(true), isAdmin);
+  useAgentVaultCreateIntent(() => setIsCreateOpen(true), canCreateProxies);
   const [proxyToEdit, setProxyToEdit] = useState<TAgentVaultProxy | null>(null);
   const [proxyToDelete, setProxyToDelete] = useState<TAgentVaultProxy | null>(null);
   const [proxyToRevoke, setProxyToRevoke] = useState<TAgentVaultProxy | null>(null);
@@ -259,7 +272,7 @@ export const AgentVaultProxiesPage = () => {
             <DocumentationLinkBadge href={AgentVaultDocsUrls.proxies} />
           </CardTitle>
           <CardDescription>An agent points its HTTP traffic at one of these.</CardDescription>
-          {isAdmin && (
+          {canCreateProxies && (
             <CardAction>
               <Button variant="av" onClick={() => setIsCreateOpen(true)}>
                 <PlusIcon />
@@ -294,7 +307,7 @@ export const AgentVaultProxiesPage = () => {
                   <ChevronDownIcon className={sortIconClassName(SortColumn.Name)} />
                 </TableHead>
                 <TableHead>Status</TableHead>
-                {isAdmin && (
+                {showsSettings && (
                   <TableHead>
                     <HeadWithHint hint="Which hosts an agent may reach through this proxy.">
                       Traffic Policy
@@ -306,7 +319,7 @@ export const AgentVaultProxiesPage = () => {
                     Certificate Authority
                   </HeadWithHint>
                 </TableHead>
-                {isAdmin && (
+                {showsSettings && (
                   <TableHead
                     sortDirection={sortColumn === SortColumn.Created ? sortDirection : "none"}
                     onSortChange={(direction) => handleSort(SortColumn.Created, direction)}
@@ -323,7 +336,7 @@ export const AgentVaultProxiesPage = () => {
                 Array.from({ length: 3 }).map((_, index) => (
                   // eslint-disable-next-line react/no-array-index-key
                   <TableRow key={`proxy-skeleton-${index}`}>
-                    {Array.from({ length: isAdmin ? 6 : 4 }).map((__, cell) => (
+                    {Array.from({ length: showsSettings ? 6 : 4 }).map((__, cell) => (
                       // eslint-disable-next-line react/no-array-index-key
                       <TableCell key={`proxy-skeleton-${index}-${cell}`}>
                         <Skeleton className="h-4 w-full" />
@@ -352,7 +365,7 @@ export const AgentVaultProxiesPage = () => {
                     <TableCell>
                       <ProxyStatusBadge proxy={proxy} />
                     </TableCell>
-                    {isAdmin && (
+                    {showsSettings && (
                       <TableCell>
                         <TrafficPolicyCell proxy={proxy} />
                       </TableCell>
@@ -392,7 +405,7 @@ export const AgentVaultProxiesPage = () => {
                         <span className="text-muted">&mdash;</span>
                       )}
                     </TableCell>
-                    {isAdmin && (
+                    {showsSettings && (
                       <TableCell>
                         {proxy.createdAt ? (
                           <Tooltip>
@@ -411,7 +424,7 @@ export const AgentVaultProxiesPage = () => {
                       </TableCell>
                     )}
                     <TableCell variant="action">
-                      {isAdmin && (
+                      {hasProxyActions && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton variant="ghost" size="xs" aria-label="Open proxy actions">
@@ -419,28 +432,36 @@ export const AgentVaultProxiesPage = () => {
                             </IconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent sideOffset={2} align="end">
-                            <DropdownMenuItem onClick={() => setProxyToEdit(proxy)}>
-                              <PencilIcon />
-                              Edit Settings
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setProxyToRotate(proxy)}>
-                              <RefreshCwIcon />
-                              Rotate Proxy Token
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="danger"
-                              onClick={() => setProxyToRevoke(proxy)}
-                            >
-                              <BanIcon />
-                              Revoke Access
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="danger"
-                              onClick={() => setProxyToDelete(proxy)}
-                            >
-                              <TrashIcon />
-                              Delete
-                            </DropdownMenuItem>
+                            {showsSettings && (
+                              <DropdownMenuItem onClick={() => setProxyToEdit(proxy)}>
+                                <PencilIcon />
+                                Edit Settings
+                              </DropdownMenuItem>
+                            )}
+                            {canIssueTokens && (
+                              <DropdownMenuItem onClick={() => setProxyToRotate(proxy)}>
+                                <RefreshCwIcon />
+                                Rotate Proxy Token
+                              </DropdownMenuItem>
+                            )}
+                            {canRevokeProxies && (
+                              <DropdownMenuItem
+                                variant="danger"
+                                onClick={() => setProxyToRevoke(proxy)}
+                              >
+                                <BanIcon />
+                                Revoke Access
+                              </DropdownMenuItem>
+                            )}
+                            {canDeleteProxies && (
+                              <DropdownMenuItem
+                                variant="danger"
+                                onClick={() => setProxyToDelete(proxy)}
+                              >
+                                <TrashIcon />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}

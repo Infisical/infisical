@@ -1,21 +1,32 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, ProjectMembershipRole, RESOURCE_SCOPE, ResourceType, TMemberships } from "@app/db/schemas";
+import { AccessScope, RESOURCE_SCOPE, ResourceType, TMemberships } from "@app/db/schemas";
+import { TAccessBundlePermissionService } from "@app/domains/agent-vault/agent-vault/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { TemporaryAccess } from "@app/domains/platform/access-control/ce/module";
+import { TActorContextService } from "@app/domains/platform/organizations/ce/module";
+import {
+  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/projects/ce/module";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { isActiveRole } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { TGenericPermission } from "@app/lib/types";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { TAgentVaultMemberDALFactory } from "../agent-vault-member/agent-vault-member-dal";
-import { AgentVaultDelegationScope, AgentVaultMemberType } from "../agent-vault/agent-vault-enums";
-import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
+import {
+  AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE,
+  AgentVaultDelegationScope,
+  AgentVaultMemberType
+} from "../agent-vault/agent-vault-enums";
+import { agentVaultActorContext } from "../agent-vault/agent-vault-permission";
 import {
   TAgentVaultDelegationDALFactory,
   TAgentVaultDelegationSubjectDALFactory,
@@ -52,7 +63,13 @@ type TAgentVaultDelegationServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "find" | "findResourceMembershipsForActor">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  accessBundlePermissionService: Pick<
+    TAccessBundlePermissionService,
+    "getAgentVaultPermission" | "getAccessBundlePermission"
+  >;
+  actorContextService: Pick<TActorContextService, "forPrincipal">;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
+  userDAL: Pick<TUserDALFactory, "findById">;
 };
 
 export type TAgentVaultDelegationServiceFactory = ReturnType<typeof agentVaultDelegationServiceFactory>;
@@ -91,27 +108,29 @@ export const agentVaultDelegationServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
   userGroupMembershipDAL,
-  permissionService
+  accessBundlePermissionService,
+  actorContextService,
+  identityDAL,
+  userDAL
 }: TAgentVaultDelegationServiceFactoryDep) => {
   // A delegation says whom an identity can act as, so managing one is managing the identity, which in Agent Vault only
   // the admin role can do.
   const checkIdentityPermission = async (
-    { projectId, ctx, machineIdentityId }: { projectId: string; ctx: TGenericPermission; machineIdentityId?: string },
+    { projectId, ctx, machineIdentityId }: { projectId: string; ctx: TActorContext; machineIdentityId?: string },
     action: ProjectPermissionIdentityActions
   ) => {
-    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    ForbiddenError.from(permission).throwUnlessCan(
-      action,
+    const { permission } = await accessBundlePermissionService.getAgentVaultPermission({ actor: ctx, projectId });
+    permission.assert(
       machineIdentityId
-        ? subject(ProjectPermissionSub.Identity, { identityId: machineIdentityId })
-        : ProjectPermissionSub.Identity
+        ? { action, subject: ProjectPermissionSub.Identity, fields: { identityId: machineIdentityId } }
+        : { action, subject: ProjectPermissionSub.Identity }
     );
   };
 
   // Project-scoped, so an identity from another org is a 404 like one that doesn't exist.
   const notInAgentVault = (machineIdentityId: string) =>
     new NotFoundError({
-      message: `Machine identity with ID '${machineIdentityId}' is not a member of Agent Vault. Add it under Access Control first.`
+      message: `Machine identity with ID '${machineIdentityId}' is not a member of this Agent Vault project. Add it under Access Control first.`
     });
   const requireIdentityMembership = (memberships: TLockedMembership[], machineIdentityId: string) => {
     const identityMembership = memberships.find((row) => row.actorIdentityId === machineIdentityId);
@@ -155,7 +174,7 @@ export const agentVaultDelegationServiceFactory = ({
     const missingGroups = groupIds.filter((id) => !memberGroups.has(id));
     if (missingGroups.length) {
       throw new BadRequestError({
-        message: `Group(s) ${quoted(missingGroups)} are not members of Agent Vault. Add them under Access Control first.`
+        message: `Group(s) ${quoted(missingGroups)} are not members of this Agent Vault project. Add them under Access Control first.`
       });
     }
 
@@ -185,11 +204,13 @@ export const agentVaultDelegationServiceFactory = ({
     const reasons: string[] = [];
     if (viaGroup.length) {
       reasons.push(
-        `User(s) ${quoted(viaGroup)} are in Agent Vault through a group. Name the group instead, or add them directly under Access Control first.`
+        `User(s) ${quoted(viaGroup)} are in this project through a group. Name the group instead, or add them directly under Access Control first.`
       );
     }
     if (strangers.length) {
-      reasons.push(`User(s) ${quoted(strangers)} are not members of Agent Vault. Add them under Access Control first.`);
+      reasons.push(
+        `User(s) ${quoted(strangers)} are not members of this Agent Vault project. Add them under Access Control first.`
+      );
     }
     throw new BadRequestError({ message: reasons.join(" ") });
   };
@@ -197,21 +218,25 @@ export const agentVaultDelegationServiceFactory = ({
   // Users and the identity go through the same reachability as mint, so the view can't disagree with what mint allows.
   const reachOf = async ({
     projectId,
-    orgId,
+    requester,
     actor
   }: {
     projectId: string;
-    orgId: string;
+    requester: TActorContext;
     actor: { type: ActorType.USER | ActorType.IDENTITY; id: string };
   }) => {
     try {
-      const { accessBundleIds } = await getAgentVaultReachability(
-        { permissionService, membershipDAL },
-        { projectId, ctx: { actor: actor.type, actorId: actor.id, actorOrgId: orgId, actorAuthMethod: null } }
+      const actorCtx = await agentVaultActorContext(
+        { actorContextService, userDAL, identityDAL },
+        { actor, orgId: requester.org.id, requester }
       );
+      const { accessBundleIds } = await accessBundlePermissionService.getAccessBundlePermission({
+        actor: actorCtx,
+        projectId
+      });
       return accessBundleIds;
     } catch (error) {
-      if (error instanceof ForbiddenRequestError && error.name === "ProjectMembershipNotFound") return [];
+      if (error instanceof PermissionDeniedError && error.name === "ProjectMembershipNotFound") return [];
       throw error;
     }
   };
@@ -239,10 +264,12 @@ export const agentVaultDelegationServiceFactory = ({
       const membershipIds = new Set(
         memberships.filter((m) => m.actorGroupId === groupId && m.isActive).map((membership) => membership.id)
       );
-      const liveRoles = roles.filter((role) => membershipIds.has(role.membershipId) && isActiveRole(role));
+      const liveRoles = roles.filter(
+        (role) => membershipIds.has(role.membershipId) && TemporaryAccess.restore(role).isActive()
+      );
       if (!liveRoles.length) {
         reaches.set(groupId, []);
-      } else if (liveRoles.some((role) => role.role === ProjectMembershipRole.Admin)) {
+      } else if (liveRoles.some((role) => AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE.includes(role.role))) {
         reaches.set(groupId, null);
       } else {
         reaches.set(
@@ -265,12 +292,12 @@ export const agentVaultDelegationServiceFactory = ({
     delegation
   }: {
     projectId: string;
-    ctx: TGenericPermission;
+    ctx: TActorContext;
     delegation: TAgentVaultDelegationView;
   }) => {
     const identityReach = await reachOf({
       projectId,
-      orgId: ctx.actorOrgId,
+      requester: ctx,
       actor: { type: ActorType.IDENTITY, id: delegation.machineIdentity.id }
     });
     const lacking: TMissingAccessBundle[] =
@@ -286,7 +313,7 @@ export const agentVaultDelegationServiceFactory = ({
       ? await Promise.all([
           Promise.all(
             delegation.users.map((user) =>
-              reachOf({ projectId, orgId: ctx.actorOrgId, actor: { type: ActorType.USER, id: user.id } })
+              reachOf({ projectId, requester: ctx, actor: { type: ActorType.USER, id: user.id } })
             )
           ),
           groupReachOf({ projectId, groupIds: delegation.groups.map((group) => group.id) })
@@ -295,7 +322,7 @@ export const agentVaultDelegationServiceFactory = ({
 
     // Each reach ran getProjectPermission for someone else, and the audit log reads the caller's permission metadata
     // from the request context. Running the caller's check again, memoized so it costs no query, puts it back.
-    await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    await accessBundlePermissionService.getAgentVaultPermission({ actor: ctx, projectId });
 
     const users = delegation.users.map((user, index) => ({
       ...user,
@@ -328,21 +355,30 @@ export const agentVaultDelegationServiceFactory = ({
 
   // An identity may read its own, so an orchestrator can check what it was allowed before it acts.
   const getDelegation = async ({ projectId, ctx, machineIdentityId }: TGetDelegationDTO) => {
-    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    const isSelf = ctx.actor === ActorType.IDENTITY && ctx.actorId === machineIdentityId;
+    const { permission } = await accessBundlePermissionService.getAgentVaultPermission({ actor: ctx, projectId });
+    const isSelf = ctx.principal.type === ActorType.IDENTITY && ctx.principal.id === machineIdentityId;
     if (!isSelf) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Read,
-        subject(ProjectPermissionSub.Identity, { identityId: machineIdentityId })
-      );
+      permission.assert({
+        action: ProjectPermissionIdentityActions.Read,
+        subject: ProjectPermissionSub.Identity,
+        fields: { identityId: machineIdentityId }
+      });
     }
 
     const {
       delegations: [delegation]
     } = await agentVaultDelegationDAL.findViews({ projectId, identityIds: [machineIdentityId] });
     if (!delegation) throw notFound(machineIdentityId);
-    // The missing bundles were never granted to the identity, so reading its own delegation can't reveal them.
-    if (!isAdmin) return { delegation: withNoMissingAccessBundles(delegation) };
+    // The missing bundles were never granted to the identity, so reading its own delegation can't reveal them. Only
+    // someone who can see every bundle's grants gets them.
+    if (
+      permission.cannot({
+        action: ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
+        subject: ProjectPermissionSub.AgentVaultAccessBundles
+      })
+    ) {
+      return { delegation: withNoMissingAccessBundles(delegation) };
+    }
     return { delegation: await withMissingAccessBundles({ projectId, ctx, delegation }) };
   };
 
@@ -413,7 +449,7 @@ export const agentVaultDelegationServiceFactory = ({
     const refuseAllMembers = (scope?: string) => {
       if (scope === AgentVaultDelegationScope.AllMembers) {
         throw new BadRequestError({
-          message: `Machine identity with ID '${machineIdentityId}' already acts on behalf of every Agent Vault member. To name users and groups instead, set its scope to selected.`
+          message: `Machine identity with ID '${machineIdentityId}' already acts on behalf of every project member. To name users and groups instead, set its scope to selected.`
         });
       }
     };
@@ -476,7 +512,7 @@ export const agentVaultDelegationServiceFactory = ({
       if (!current || !before) return undefined;
       if (current.scope === AgentVaultDelegationScope.AllMembers) {
         throw new BadRequestError({
-          message: `Machine identity with ID '${machineIdentityId}' acts on behalf of every Agent Vault member, so it names no users or groups to remove.`
+          message: `Machine identity with ID '${machineIdentityId}' acts on behalf of every project member, so it names no users or groups to remove.`
         });
       }
 
@@ -513,7 +549,7 @@ export const agentVaultDelegationServiceFactory = ({
     const delegation = await agentVaultDelegationDAL.findForIdentity({ projectId, identityId: machineIdentityId });
     return agentVaultMemberDAL.findProductMembers({
       projectId,
-      orgId: ctx.actorOrgId,
+      orgId: ctx.org.id,
       actorTypes: actorType ? [actorType] : [AgentVaultMemberType.User, AgentVaultMemberType.Group],
       search,
       limit,

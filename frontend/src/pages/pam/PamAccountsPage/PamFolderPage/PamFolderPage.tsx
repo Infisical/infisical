@@ -123,8 +123,7 @@ export const PamFolderPage = () => {
   ] as const);
 
   const accountSheet = usePamSheetState("accountId");
-  // The folder is the page itself, so its settings sheet is local state rather than a URL param.
-  const [folderSheetTab, setFolderSheetTab] = useState<PamSheetTab | undefined>();
+  const folderSheet = usePamSheetState("folderId");
 
   const [launchAccount, setLaunchAccount] = useState<TAccessiblePamAccount | null>(null);
   const [requestAccount, setRequestAccount] = useState<TAccessiblePamAccount | null>(null);
@@ -247,7 +246,9 @@ export const PamFolderPage = () => {
                     <div>
                       <DropdownMenuItem
                         isDisabled={!configureTab}
-                        onClick={() => configureTab && setFolderSheetTab(configureTab.value)}
+                        onClick={() =>
+                          configureTab && folderSheet.openSheet(folderId, configureTab.value)
+                        }
                       >
                         <Settings />
                         Configure
@@ -293,9 +294,8 @@ export const PamFolderPage = () => {
                   <TooltipTrigger asChild>
                     <DropdownMenuTrigger asChild>
                       <IconButton
-                        variant="outline"
+                        variant={selectedAccountType ? "pam" : "outline"}
                         aria-label="Filter by account type"
-                        className={selectedAccountType ? "text-product-pam" : undefined}
                       >
                         <Filter />
                       </IconButton>
@@ -304,12 +304,12 @@ export const PamFolderPage = () => {
                   <TooltipContent>{selectedTypeName ?? "Filter by account type"}</TooltipContent>
                 </Tooltip>
                 <DropdownMenuContent align="end" sideOffset={4} className="min-w-48">
-                  <DropdownMenuLabel>Account type</DropdownMenuLabel>
+                  <DropdownMenuLabel>Account Type</DropdownMenuLabel>
                   <DropdownMenuRadioGroup
                     value={selectedAccountType || "all"}
                     onValueChange={(val) => setSelectedAccountType(val === "all" ? "" : val)}
                   >
-                    <DropdownMenuRadioItem value="all">All types</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="all">All Types</DropdownMenuRadioItem>
                     {accountTypes.map((meta) => (
                       <DropdownMenuRadioItem key={meta.type} value={meta.type}>
                         <ProviderIcon
@@ -428,12 +428,12 @@ export const PamFolderPage = () => {
       />
 
       <FolderDetailSheet
-        isOpen={Boolean(folderSheetTab)}
-        folder={folder}
-        activeTab={folderSheetTab}
-        onTabChange={(tab) => setFolderSheetTab(tab as PamSheetTab)}
+        isOpen={folderSheet.isOpen}
+        folder={folders.find((f) => f.id === folderSheet.selectedId)}
+        activeTab={folderSheet.tab}
+        onTabChange={folderSheet.setTab}
         onOpenChange={(open) => {
-          if (!open) setFolderSheetTab(undefined);
+          if (!open) folderSheet.closeSheet();
         }}
       />
 

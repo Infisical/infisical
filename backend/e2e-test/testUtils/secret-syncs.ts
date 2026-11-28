@@ -5,6 +5,7 @@ const DESTINATION = "aws-parameter-store";
 type TSecretSyncRecord = {
   id: string;
   name: string;
+  includeAllSubFolders: boolean;
   syncOptions: {
     initialSyncBehavior: string;
     includeAllSubFolders?: boolean;
@@ -47,12 +48,12 @@ export const createSecretSync = async (dto: {
       connectionId: dto.connectionId,
       environment: dto.environmentSlug,
       secretPath: dto.secretPath,
+      ...(dto.includeAllSubFolders === undefined ? {} : { includeAllSubFolders: dto.includeAllSubFolders }),
       isAutoSyncEnabled: dto.isAutoSyncEnabled ?? false,
       syncOptions: {
         initialSyncBehavior: dto.initialSyncBehavior ?? SecretSyncInitialSyncBehavior.OverwriteDestination,
         ...(dto.keySchema ? { keySchema: dto.keySchema } : {}),
-        ...(dto.disableSecretDeletion === undefined ? {} : { disableSecretDeletion: dto.disableSecretDeletion }),
-        ...(dto.includeAllSubFolders === undefined ? {} : { includeAllSubFolders: dto.includeAllSubFolders })
+        ...(dto.disableSecretDeletion === undefined ? {} : { disableSecretDeletion: dto.disableSecretDeletion })
       },
       destinationConfig: { region: dto.region, path: dto.destinationPath }
     }

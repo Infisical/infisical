@@ -1,7 +1,10 @@
-import { OrgServiceActor } from "@app/lib/types";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
+import { TActorInput } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import {
   THoneyTokenConfigRecord,
@@ -12,15 +15,14 @@ import {
   THoneyTokenConfigByType,
   THoneyTokenTestConnectionResponseByType
 } from "../honey-token/honey-token-provider-types";
-import { TLicenseServiceFactory } from "../license/license-service";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { THoneyTokenConfigDALFactory } from "./honey-token-config-dal";
 
 export type THoneyTokenConfigServiceFactoryDep = {
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  orgPermissionService: TOrgPermissionService;
+  kmsDataKeyService: TKmsDataKeyService;
+  instanceConfigService: TInstanceConfigService;
+  licenseService: TLicenseService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
 };
@@ -47,14 +49,12 @@ export type THoneyTokenConfigProvider<T extends HoneyTokenType = HoneyTokenType>
   getConfig: (input: THoneyTokenConfigProviderGetConfigInput) => Promise<THoneyTokenConfigWithDecrypted | undefined>;
 };
 
-export type THoneyTokenConfigServiceUpsertInput<T extends HoneyTokenType = HoneyTokenType> = {
-  orgPermission: OrgServiceActor;
+export type THoneyTokenConfigServiceUpsertInput<T extends HoneyTokenType = HoneyTokenType> = TActorInput & {
   type: T;
   connectionId: string;
   config: THoneyTokenConfigByType[T];
 };
 
-export type THoneyTokenConfigServiceTypeInput<T extends HoneyTokenType = HoneyTokenType> = {
-  orgPermission: OrgServiceActor;
+export type THoneyTokenConfigServiceTypeInput<T extends HoneyTokenType = HoneyTokenType> = TActorInput & {
   type: T;
 };

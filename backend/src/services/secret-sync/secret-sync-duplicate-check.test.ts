@@ -78,6 +78,24 @@ describe("secret sync destination comparison", () => {
     }
   );
 
+  test("treats a Cloudflare Workers Preview as a different destination from production", () => {
+    const production = { scriptId: "worker", variableType: "secret_text" };
+    const preview = { ...production, previewName: "staging" };
+    const skipFields = SECRET_SYNC_SKIP_FIELDS_MAP[SecretSync.CloudflareWorkers];
+
+    expect(areSecretSyncDestinationConfigsEqual(SecretSync.CloudflareWorkers, production, preview, skipFields)).toBe(
+      false
+    );
+    expect(
+      areSecretSyncDestinationConfigsEqual(
+        SecretSync.CloudflareWorkers,
+        preview,
+        { ...preview, variableType: "plain_text" },
+        skipFields
+      )
+    ).toBe(true);
+  });
+
   test("does not strip empty values in other providers", () => {
     expect(
       areSecretSyncDestinationConfigsEqual(
@@ -102,5 +120,17 @@ describe("secret sync destination comparison", () => {
       areSecretSyncDestinationConfigsEqual(SecretSync.GitHub, legacy, { ...legacy, secretType: "dependabot" }, [])
     ).toBe(false);
     expect(legacy).not.toHaveProperty("secretType");
+  });
+
+  test("treats Jenkins folders that differ only in case as the same destination", () => {
+    const folder = { scope: "folder", folderPath: "Team/App" };
+
+    expect(
+      areSecretSyncDestinationConfigsEqual(SecretSync.Jenkins, folder, { scope: "folder", folderPath: "team/app" }, [])
+    ).toBe(true);
+    expect(
+      areSecretSyncDestinationConfigsEqual(SecretSync.Jenkins, folder, { scope: "folder", folderPath: "team/api" }, [])
+    ).toBe(false);
+    expect(folder.folderPath).toBe("Team/App");
   });
 });

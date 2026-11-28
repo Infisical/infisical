@@ -1,15 +1,17 @@
-import { ForbiddenError } from "@casl/ability";
+import slugify from "@sindresorhus/slugify";
 
-import { OrganizationActionScope } from "@app/db/schemas";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { KmsKeyUsage, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
+import {
+  OrgPermissionKmipActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { KmipOperationType, recordKmipOperationMetric } from "@app/lib/telemetry/metrics";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { KmsKeyUsage } from "@app/services/kms/kms-types";
 
-import { OrgPermissionKmipActions, OrgPermissionSubjects } from "../permission/org-permission";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TKmipClientDALFactory } from "./kmip-client-dal";
 import { KmipPermission } from "./kmip-enum";
 import {
@@ -23,57 +25,30 @@ import {
 } from "./kmip-types";
 
 type TKmipOperationServiceFactoryDep = {
-  kmsService: TKmsServiceFactory;
-  kmsDAL: TKmsKeyDALFactory;
+  kmsKeyService: TKmsKeyService;
   kmipClientDAL: TKmipClientDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  orgPermissionService: TOrgPermissionService;
 };
 
 export type TKmipOperationServiceFactory = ReturnType<typeof kmipOperationServiceFactory>;
 
 export const kmipOperationServiceFactory = ({
-  kmsService,
-  kmsDAL,
+  kmsKeyService,
   kmipClientDAL,
-  permissionService
+  orgPermissionService
 }: TKmipOperationServiceFactoryDep) => {
   // KMIP servers authenticate via their enrollment-based access token, which is itself the
   // authorization — no org-level permission needed. The legacy machine-identity path still
   // requires the (deprecated) KMIP proxy permission.
-  const $authorizeProxyAccess = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
-  }) => {
-    if (actor === ActorType.KMIP_SERVER) return;
+  const $authorizeProxyAccess = async (actor: TActorContext) => {
+    if (actor.principal.type === ActorType.KMIP_SERVER) return;
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionKmipActions.Proxy, subject: OrgPermissionSubjects.Kmip });
   };
 
-  const create = async ({
-    projectId,
-    clientId,
-    algorithm,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TKmipCreateDTO) => {
-    await $authorizeProxyAccess({ actor, actorId, actorAuthMethod, actorOrgId });
+  const create = async ({ projectId, clientId, algorithm, actor }: TKmipCreateDTO) => {
+    await $authorizeProxyAccess(actor);
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -86,16 +61,16 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const kmsKey = await kmsService.generateKmsKey({
+    const kmsKey = await kmsKeyService.generateKmsKey({
       encryptionAlgorithm: algorithm,
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       projectId,
       isReserved: false
     });
 
     recordKmipOperationMetric({
       operationType: KmipOperationType.CREATE,
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       projectId,
       clientId,
       objectId: kmsKey.id,
@@ -105,8 +80,8 @@ export const kmipOperationServiceFactory = ({
     return kmsKey;
   };
 
-  const destroy = async ({ projectId, id, clientId, actor, actorId, actorOrgId, actorAuthMethod }: TKmipDestroyDTO) => {
-    await $authorizeProxyAccess({ actor, actorId, actorAuthMethod, actorOrgId });
+  const destroy = async ({ projectId, id, clientId, actor }: TKmipDestroyDTO) => {
+    await $authorizeProxyAccess(actor);
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -119,9 +94,10 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const key = await kmsDAL.findOne({
+    const [key] = await kmsKeyService.findKeys({
       id,
-      projectId
+      projectId,
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
     });
 
     if (!key) {
@@ -132,11 +108,11 @@ export const kmipOperationServiceFactory = ({
       throw new BadRequestError({ message: "Cannot destroy reserved keys" });
     }
 
-    const completeKeyDetails = await kmsDAL.findByIdWithAssociatedKms(id);
+    const completeKeyDetails = await kmsKeyService.findKeyById(id);
     if (!completeKeyDetails) {
       throw new NotFoundError({ message: `Key with ID '${id}' not found` });
     }
-    if (!completeKeyDetails.internalKms) {
+    if (completeKeyDetails.isExternal) {
       throw new BadRequestError({
         message: "Cannot destroy external keys"
       });
@@ -148,7 +124,7 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const [kms] = await kmsDAL.delete({ id, hasDeleteProtection: false });
+    const kms = await kmsKeyService.deleteKey(id);
 
     if (!kms) {
       throw new BadRequestError({
@@ -158,7 +134,7 @@ export const kmipOperationServiceFactory = ({
 
     recordKmipOperationMetric({
       operationType: KmipOperationType.DESTROY,
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       projectId,
       clientId,
       objectId: id,
@@ -168,8 +144,8 @@ export const kmipOperationServiceFactory = ({
     return kms;
   };
 
-  const get = async ({ projectId, id, clientId, actor, actorId, actorAuthMethod, actorOrgId }: TKmipGetDTO) => {
-    await $authorizeProxyAccess({ actor, actorId, actorAuthMethod, actorOrgId });
+  const get = async ({ projectId, id, clientId, actor }: TKmipGetDTO) => {
+    await $authorizeProxyAccess(actor);
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -182,9 +158,10 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const key = await kmsDAL.findOne({
+    const [key] = await kmsKeyService.findKeys({
       id,
-      projectId
+      projectId,
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
     });
 
     if (!key) {
@@ -195,24 +172,24 @@ export const kmipOperationServiceFactory = ({
       throw new BadRequestError({ message: "Cannot get reserved keys" });
     }
 
-    const completeKeyDetails = await kmsDAL.findByIdWithAssociatedKms(id);
+    const completeKeyDetails = await kmsKeyService.findKeyById(id);
     if (!completeKeyDetails) {
       throw new NotFoundError({ message: `Key with ID '${id}' not found` });
     }
 
-    if (!completeKeyDetails.internalKms) {
+    if (completeKeyDetails.isExternal) {
       throw new BadRequestError({
         message: "Cannot get external keys"
       });
     }
 
-    const kmsKey = await kmsService.getKeyMaterial({
+    const kmsKey = await kmsKeyService.getKeyMaterial({
       kmsId: key.id
     });
 
     recordKmipOperationMetric({
       operationType: KmipOperationType.GET,
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       projectId,
       clientId,
       objectId: id,
@@ -222,7 +199,7 @@ export const kmipOperationServiceFactory = ({
     return {
       id: key.id,
       value: kmsKey.toString("base64"),
-      algorithm: completeKeyDetails.internalKms.encryptionAlgorithm,
+      algorithm: completeKeyDetails.encryptionAlgorithm as string,
       isActive: !key.isDisabled,
       createdAt: key.createdAt,
       updatedAt: key.updatedAt,
@@ -230,8 +207,8 @@ export const kmipOperationServiceFactory = ({
     };
   };
 
-  const activate = async ({ projectId, id, clientId, actor, actorId, actorAuthMethod, actorOrgId }: TKmipGetDTO) => {
-    await $authorizeProxyAccess({ actor, actorId, actorAuthMethod, actorOrgId });
+  const activate = async ({ projectId, id, clientId, actor }: TKmipGetDTO) => {
+    await $authorizeProxyAccess(actor);
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -244,18 +221,24 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const key = await kmsDAL.findOne({
+    const [key] = await kmsKeyService.findKeys({
       id,
-      projectId
+      projectId,
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
     });
 
     if (!key) {
       throw new NotFoundError({ message: `Key with ID ${id} not found` });
     }
 
+    // In KMIP a revoked object is deactivated for good, so activating it again is a lifecycle error, not a no-op.
+    if (key.isDisabled) {
+      throw new BadRequestError({ message: `Key with ID ${id} is revoked and cannot be activated again` });
+    }
+
     recordKmipOperationMetric({
       operationType: KmipOperationType.ACTIVATE,
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       projectId,
       clientId,
       objectId: id,
@@ -268,8 +251,8 @@ export const kmipOperationServiceFactory = ({
     };
   };
 
-  const revoke = async ({ projectId, id, clientId, actor, actorId, actorAuthMethod, actorOrgId }: TKmipRevokeDTO) => {
-    await $authorizeProxyAccess({ actor, actorId, actorAuthMethod, actorOrgId });
+  const revoke = async ({ projectId, id, clientId, actor }: TKmipRevokeDTO) => {
+    await $authorizeProxyAccess(actor);
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -282,9 +265,10 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const key = await kmsDAL.findOne({
+    const [key] = await kmsKeyService.findKeys({
       id,
-      projectId
+      projectId,
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
     });
 
     if (!key) {
@@ -295,24 +279,22 @@ export const kmipOperationServiceFactory = ({
       throw new BadRequestError({ message: "Cannot revoke reserved keys" });
     }
 
-    const completeKeyDetails = await kmsDAL.findByIdWithAssociatedKms(id);
+    const completeKeyDetails = await kmsKeyService.findKeyById(id);
     if (!completeKeyDetails) {
       throw new NotFoundError({ message: `Key with ID '${id}' not found` });
     }
 
-    if (!completeKeyDetails.internalKms) {
+    if (completeKeyDetails.isExternal) {
       throw new BadRequestError({
         message: "Cannot revoke external keys"
       });
     }
 
-    const revokedKey = await kmsDAL.updateById(key.id, {
-      isDisabled: true
-    });
+    const revokedKey = await kmsKeyService.updateKeyAttributes(key.id, { isDisabled: true });
 
     recordKmipOperationMetric({
       operationType: KmipOperationType.REVOKE,
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       projectId,
       clientId,
       objectId: id,
@@ -325,16 +307,8 @@ export const kmipOperationServiceFactory = ({
     };
   };
 
-  const getAttributes = async ({
-    projectId,
-    id,
-    clientId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TKmipGetAttributesDTO) => {
-    await $authorizeProxyAccess({ actor, actorId, actorAuthMethod, actorOrgId });
+  const getAttributes = async ({ projectId, id, clientId, actor }: TKmipGetAttributesDTO) => {
+    await $authorizeProxyAccess(actor);
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -347,9 +321,10 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const key = await kmsDAL.findOne({
+    const [key] = await kmsKeyService.findKeys({
       id,
-      projectId
+      projectId,
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
     });
 
     if (!key) {
@@ -360,12 +335,12 @@ export const kmipOperationServiceFactory = ({
       throw new BadRequestError({ message: "Cannot get reserved keys" });
     }
 
-    const completeKeyDetails = await kmsDAL.findByIdWithAssociatedKms(id);
+    const completeKeyDetails = await kmsKeyService.findKeyById(id);
     if (!completeKeyDetails) {
       throw new NotFoundError({ message: `Key with ID '${id}' not found` });
     }
 
-    if (!completeKeyDetails.internalKms) {
+    if (completeKeyDetails.isExternal) {
       throw new BadRequestError({
         message: "Cannot get external keys"
       });
@@ -373,7 +348,7 @@ export const kmipOperationServiceFactory = ({
 
     recordKmipOperationMetric({
       operationType: KmipOperationType.GET_ATTRIBUTES,
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       projectId,
       clientId,
       objectId: id,
@@ -382,7 +357,7 @@ export const kmipOperationServiceFactory = ({
 
     return {
       id: key.id,
-      algorithm: completeKeyDetails.internalKms.encryptionAlgorithm,
+      algorithm: completeKeyDetails.encryptionAlgorithm as string,
       isActive: !key.isDisabled,
       createdAt: key.createdAt,
       updatedAt: key.updatedAt,
@@ -390,8 +365,8 @@ export const kmipOperationServiceFactory = ({
     };
   };
 
-  const locate = async ({ projectId, clientId, actor, actorId, actorAuthMethod, actorOrgId }: TKmipLocateDTO) => {
-    await $authorizeProxyAccess({ actor, actorId, actorAuthMethod, actorOrgId });
+  const locate = async ({ projectId, clientId, actor }: TKmipLocateDTO) => {
+    await $authorizeProxyAccess(actor);
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -404,11 +379,19 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const keys = await kmsDAL.findProjectCmeks(projectId);
+    // KMIP here only handles symmetric keys, so sign-verify and MAC keys aren't KMIP objects.
+    const keys = (await kmsKeyService.findKeys({ projectId, isReserved: false, keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT }))
+      .filter((key) => !key.isExternal)
+      .map((key) => ({
+        ...key,
+        isActive: !key.isDisabled,
+        algorithm: key.encryptionAlgorithm as string,
+        kmipMetadata: key.kmipMetadata as Record<string, unknown>
+      }));
 
     recordKmipOperationMetric({
       operationType: KmipOperationType.LOCATE,
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       projectId,
       clientId
     });
@@ -416,19 +399,8 @@ export const kmipOperationServiceFactory = ({
     return keys;
   };
 
-  const register = async ({
-    projectId,
-    clientId,
-    key,
-    algorithm,
-    name,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    kmipMetadata
-  }: TKmipRegisterDTO) => {
-    await $authorizeProxyAccess({ actor, actorId, actorAuthMethod, actorOrgId });
+  const register = async ({ projectId, clientId, key, algorithm, name, actor, kmipMetadata }: TKmipRegisterDTO) => {
+    await $authorizeProxyAccess(actor);
 
     const kmipClient = await kmipClientDAL.findOne({
       id: clientId,
@@ -441,20 +413,29 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const kmsKey = await kmsService.importKeyMaterial({
-      name,
-      key: Buffer.from(key, "base64"),
-      algorithm,
-      isReserved: false,
-      projectId,
-      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
-      orgId: actorOrgId,
-      kmipMetadata
-    });
+    let kmsKey: Awaited<ReturnType<TKmsKeyService["importKeyMaterial"]>>;
+    try {
+      kmsKey = await kmsKeyService.importKeyMaterial({
+        name,
+        key: Buffer.from(key, "base64"),
+        algorithm,
+        isReserved: false,
+        projectId,
+        keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
+        orgId: actor.org.id,
+        kmipMetadata
+      });
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        // Names are stored as slugs, so name the slug the new key collided on rather than what the client sent.
+        throw new BadRequestError({ message: `A key with the name "${slugify(name)}" already exists in this project` });
+      }
+      throw err;
+    }
 
     recordKmipOperationMetric({
       operationType: KmipOperationType.REGISTER,
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       projectId,
       clientId,
       objectId: kmsKey.id,

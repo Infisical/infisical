@@ -18,11 +18,15 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { OrgPermissionSubjects } from "@app/context";
-import { OrgPermissionActions } from "@app/context/OrgPermissionContext/types";
+import { OrgPermissionAuditLogsActions } from "@app/context/OrgPermissionContext/types";
 import { AUDIT_LOG_STREAM_PROVIDER_MAP, getProviderUrl } from "@app/helpers/auditLogStreams";
+import { AuditLogStreamProduct } from "@app/hooks/api/auditLogStreams/enums";
 import { TAuditLogStream } from "@app/hooks/api/types";
 
+import { PRODUCT_ICONS } from "../AuditLogStreamForm/AuditLogStreamProductsField";
 import { AuditLogStreamProductBadges } from "./AuditLogStreamProductBadges";
+
+const PamIcon = PRODUCT_ICONS[AuditLogStreamProduct.PAM];
 
 type Props = {
   logStream: TAuditLogStream;
@@ -37,6 +41,7 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
   const url = getProviderUrl(logStream);
 
   const products = logStream.filters?.products ?? [];
+  const pamSessionActivity = logStream.filters?.pamSessionActivity;
 
   return (
     <TableRow className="group" key={`log-stream-${id}`}>
@@ -78,7 +83,24 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
         </div>
       </TableCell>
       <TableCell>
-        <AuditLogStreamProductBadges products={products} />
+        <div className="flex items-center gap-1.5">
+          <AuditLogStreamProductBadges products={products} />
+          {pamSessionActivity && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="neutral" tabIndex={0}>
+                  <PamIcon />
+                  PAM Sessions
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm">
+                {pamSessionActivity.includeOutput
+                  ? "Commands, queries and requests from PAM sessions, including their output."
+                  : "Commands, queries and requests from PAM sessions, without their output."}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
       </TableCell>
       <TableCell>
         <div className="flex items-center justify-end gap-2">
@@ -89,7 +111,10 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
               </IconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent sideOffset={2} align="end">
-              <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+              <OrgPermissionCan
+                I={OrgPermissionAuditLogsActions.Edit}
+                a={OrgPermissionSubjects.AuditLogStreams}
+              >
                 {(isAllowed: boolean) => (
                   <DropdownMenuItem
                     isDisabled={!isAllowed}
@@ -100,7 +125,10 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
                   </DropdownMenuItem>
                 )}
               </OrgPermissionCan>
-              <OrgPermissionCan I={OrgPermissionActions.Delete} a={OrgPermissionSubjects.Settings}>
+              <OrgPermissionCan
+                I={OrgPermissionAuditLogsActions.Edit}
+                a={OrgPermissionSubjects.AuditLogStreams}
+              >
                 {(isAllowed: boolean) => (
                   <DropdownMenuItem
                     variant="danger"

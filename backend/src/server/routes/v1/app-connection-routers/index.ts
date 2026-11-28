@@ -23,6 +23,7 @@ import { registerClickHouseConnectionRouter } from "./clickhouse-connection-rout
 import { registerCloud66ConnectionRouter } from "./cloud-66-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
 import { registerConvexConnectionRouter } from "./convex-connection-router";
+import { registerCoolifyConnectionRouter } from "./coolify-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerDatadogConnectionRouter } from "./datadog-connection-router";
 import { registerDaytonaConnectionRouter } from "./daytona-connection-router";
@@ -47,6 +48,8 @@ import { registerHerokuConnectionRouter } from "./heroku-connection-router";
 import { registerHpeIloConnectionRouter } from "./hpe-ilo-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
 import { registerImpervaConnectionRouter } from "./imperva-connection-router";
+import { registerIncidentIoConnectionRouter } from "./incident-io-connection-router";
+import { registerJenkinsConnectionRouter } from "./jenkins-connection-router";
 import { registerJiraConnectionRouter } from "./jira-connection-router";
 import { registerKeeperConnectionRouter } from "./keeper-connection-router";
 import { registerKempLoadMasterConnectionRouter } from "./kemp-loadmaster-connection-router";
@@ -75,6 +78,7 @@ import { registerQoveryConnectionRouter } from "./qovery-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
 import { registerRedisConnectionRouter } from "./redis-connection-router";
 import { registerRenderConnectionRouter } from "./render-connection-router";
+import { registerRfc2136ConnectionRouter } from "./rfc2136-connection-router";
 import { registerRundeckConnectionRouter } from "./rundeck-connection-router";
 import { registerS3CompatibleConnectionRouter } from "./s3-compatible-connection-router";
 import { registerSalesforceConnectionRouter } from "./salesforce-connection-router";
@@ -183,6 +187,8 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Convex]: registerConvexConnectionRouter,
     [AppConnection.Rundeck]: registerRundeckConnectionRouter,
     [AppConnection.Portainer]: registerPortainerConnectionRouter,
+    [AppConnection.Jenkins]: registerJenkinsConnectionRouter,
+    [AppConnection.Coolify]: registerCoolifyConnectionRouter,
     [AppConnection.HasuraCloud]: registerHasuraCloudConnectionRouter,
     [AppConnection.Qovery]: registerQoveryConnectionRouter,
     [AppConnection.LiteLLM]: registerLiteLLMConnectionRouter,
@@ -196,5 +202,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.ServiceNow]: registerServiceNowConnectionRouter,
     [AppConnection.S3Compatible]: registerS3CompatibleConnectionRouter,
     [AppConnection.Jira]: registerJiraConnectionRouter,
-    [AppConnection.ClickHouse]: registerClickHouseConnectionRouter
+    [AppConnection.ClickHouse]: registerClickHouseConnectionRouter,
+    [AppConnection.IncidentIo]: registerIncidentIoConnectionRouter,
+    [AppConnection.Rfc2136]: registerRfc2136ConnectionRouter
   };

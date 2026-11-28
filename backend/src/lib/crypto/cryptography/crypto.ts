@@ -9,15 +9,7 @@ import nacl from "tweetnacl";
 import naclUtils from "tweetnacl-util";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
-import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
-import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
-import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
-import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
-import { ADMIN_CONFIG_DB_UUID } from "@app/services/super-admin/super-admin-service";
 
-import { isBase64 } from "../../base64";
 import { getConfig, TEnvConfig } from "../../config/env";
 import { CryptographyError } from "../../errors";
 import { logger } from "../../logger";
@@ -26,8 +18,6 @@ import { asymmetricFipsValidated } from "./asymmetric-fips";
 import { hasherFipsValidated } from "./hash-fips";
 import type { TDecryptAsymmetricInput, TDecryptSymmetricInput, TEncryptSymmetricInput } from "./types";
 import { DigestType, SymmetricKeySize } from "./types";
-
-const bytesToBits = (bytes: number) => bytes * 8;
 
 const IV_BYTES_SIZE = 12;
 const BLOCK_SIZE_BYTES_16 = 16;
@@ -97,101 +87,49 @@ const cryptographyFactory = () => {
     return $fipsEnabled;
   };
 
-  const verifyFipsLicense = (licenseService: Pick<TLicenseServiceFactory, "onPremFeatures">) => {
+  // isFipsLicensed is the instance license's fips entitlement, read at boot.
+  const verifyFipsLicense = (isFipsLicensed: boolean) => {
     const appCfg = getConfig();
 
-    if (
-      !appCfg.isDevelopmentMode &&
-      isFipsModeEnabled({ skipInitializationCheck: true }) &&
-      !licenseService.onPremFeatures?.fips
-    ) {
+    if (!appCfg.isDevelopmentMode && isFipsModeEnabled({ skipInitializationCheck: true }) && !isFipsLicensed) {
       throw new CryptographyError({
         message: "FIPS mode is enabled but your license does not include FIPS support. Please contact support."
       });
     }
   };
 
-  const $setFipsModeEnabled = async (
-    enabled: boolean,
-    hsmService: THsmServiceFactory,
-    kmsRootConfigDAL: TKmsRootConfigDALFactory,
-    envCfg?: Pick<TEnvConfig, "ENCRYPTION_KEY">
-  ) => {
-    // If FIPS is enabled, we need to validate that the ENCRYPTION_KEY is in a base64 format, and is a 256-bit key.
-    if (enabled) {
-      crypto.setFips(true);
-
-      const appCfg = envCfg || getConfig();
-
-      const hsmStatus = await isHsmActiveAndEnabled({
-        hsmService,
-        kmsRootConfigDAL
-      });
-
-      // if the encryption strategy is software - user needs to provide an encryption key
-      // if the encryption strategy is null AND the hsm is not configured - user needs to provide an encryption key
-      const needsEncryptionKey =
-        hsmStatus.rootKmsConfigEncryptionStrategy === RootKeyEncryptionStrategy.Software ||
-        (hsmStatus.rootKmsConfigEncryptionStrategy === null && !hsmStatus.isHsmConfigured);
-
-      // only perform encryption key validation if it's actually required.
-      if (needsEncryptionKey) {
-        if (appCfg.ENCRYPTION_KEY) {
-          // we need to validate that the ENCRYPTION_KEY is a base64 encoded 256-bit key
-
-          // note(daniel): for some reason this resolves as true for some hex-encoded strings.
-          if (!isBase64(appCfg.ENCRYPTION_KEY)) {
-            throw new CryptographyError({
-              message:
-                "FIPS mode is enabled, but the ENCRYPTION_KEY environment variable is not a base64 encoded 256-bit key.\nYou can generate a 256-bit key using the following command: `openssl rand -base64 32`"
-            });
-          }
-
-          if (bytesToBits(Buffer.from(appCfg.ENCRYPTION_KEY, "base64").length) !== 256) {
-            throw new CryptographyError({
-              message:
-                "FIPS mode is enabled, but the ENCRYPTION_KEY environment variable is not a 256-bit key.\nYou can generate a 256-bit key using the following command: `openssl rand -base64 32`"
-            });
-          }
-        } else {
-          throw new CryptographyError({
-            message:
-              "FIPS mode is enabled, but the ENCRYPTION_KEY environment variable is not set.\nYou can generate a 256-bit key using the following command: `openssl rand -base64 32`"
-          });
-        }
-      }
-    }
+  // KMS Core checks the FIPS ENCRYPTION_KEY format when it loads the root key: only it knows if the root key is
+  // wrapped with that key at all.
+  const $setFipsModeEnabled = (enabled: boolean) => {
+    if (enabled) crypto.setFips(true);
     $fipsEnabled = enabled;
     $isInitialized = true;
   };
 
-  const initialize = async (
-    superAdminDAL: TSuperAdminDALFactory,
-    hsmService: THsmServiceFactory,
-    kmsRootConfigDAL: TKmsRootConfigDALFactory,
-    envCfg?: Pick<TEnvConfig, "ENCRYPTION_KEY">
-  ) => {
+  // readFipsSetting returns the stored super_admin.fipsEnabled (InstanceConfigCoreModule.readFipsSetting), or null when
+  // the instance has no config row yet, which with FIPS_ENABLED=true means a fresh FIPS deployment. It is called only
+  // when FIPS_ENABLED=true, so a non-FIPS boot never touches the database here.
+  const initialize = async (readFipsSetting: () => Promise<boolean | null>) => {
     if ($isInitialized) {
       return isFipsModeEnabled();
     }
 
     if (process.env.FIPS_ENABLED !== "true") {
       logger.info("Cryptography module initialized in normal operation mode.");
-      await $setFipsModeEnabled(false, hsmService, kmsRootConfigDAL, envCfg);
+      $setFipsModeEnabled(false);
       return false;
     }
 
-    const serverCfg = await superAdminDAL.findById(ADMIN_CONFIG_DB_UUID).catch(() => null);
-
     // if fips mode is enabled, we need to check if the deployment is a new deployment or an old one.
-    if (serverCfg) {
-      if (serverCfg.fipsEnabled) {
+    const fipsSetting = await readFipsSetting();
+    if (fipsSetting !== null) {
+      if (fipsSetting) {
         logger.info("[FIPS]: Instance is configured for FIPS mode of operation. Continuing startup with FIPS enabled.");
-        await $setFipsModeEnabled(true, hsmService, kmsRootConfigDAL, envCfg);
+        $setFipsModeEnabled(true);
         return true;
       }
       logger.info("[FIPS]: Instance age predates FIPS mode inception date. Continuing without FIPS.");
-      await $setFipsModeEnabled(false, hsmService, kmsRootConfigDAL, envCfg);
+      $setFipsModeEnabled(false);
       return false;
     }
 
@@ -200,7 +138,7 @@ const cryptographyFactory = () => {
     // TODO(daniel): check if it's an enterprise deployment
 
     // if there is no server cfg, and FIPS_MODE is `true`, its a fresh FIPS deployment. We need to set the fipsEnabled to true.
-    await $setFipsModeEnabled(true, hsmService, kmsRootConfigDAL, envCfg);
+    $setFipsModeEnabled(true);
     return true;
   };
 

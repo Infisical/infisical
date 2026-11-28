@@ -16,6 +16,8 @@
       | --- | --- | --- |
       | Cluster-wide (default) | Allowed. The cluster is the trust boundary. | You trust everyone who can create operator resources, such as a platform team that manages authentication from one namespace. |
       | Namespace-scoped | Blocked. Kubernetes rejects the operator's requests to other namespaces. | Teams share a cluster and each team owns a namespace. Install one operator per team namespace. |
+
+      In either mode, you can also turn on [namespace isolation](#namespace-isolation) so that v1beta1 resources can only reference objects in their own namespace.
     </Accordion>
 
     <Tabs>
@@ -82,7 +84,7 @@
 
         **Multiple namespaces (single operator):**
 
-        With one operator for several namespaces, a resource in any of those namespaces can reference a service account, `InfisicalAuth`, or secret in the others. Use separate operators if those namespaces belong to different teams.
+        With one operator for several namespaces, a resource in any of those namespaces can reference a service account, `InfisicalAuth`, or secret in the others. Use separate operators if those namespaces belong to different teams, or turn on [namespace isolation](#namespace-isolation).
 
         ```bash
         helm install operator infisical-helm-charts/secrets-operator \
@@ -150,5 +152,31 @@ The value must be at least `1`, and a higher value sends more requests to Infisi
 `maxConcurrency` is supported in chart version `0.11.15` and above.
 
 <Note>
-  `maxConcurrency` currently only applies to [InfisicalStaticSecret](/integrations/platforms/kubernetes/infisical-static-secret-crd) resources. The operator still syncs every other resource type one at a time.
+  `maxConcurrency` currently only applies to [InfisicalStaticSecret](/integrations/platforms/kubernetes/infisical-static-secret-crd) and [InfisicalStaticSecretPush](/integrations/platforms/kubernetes/infisical-static-secret-push-crd) resources. The operator still syncs every other resource type one at a time.
 </Note>
+
+### Namespace isolation
+
+By default, a v1beta1 resource can reference objects in any namespace the operator can access, such as an `InfisicalAuth` or a credentials Secret in another namespace.
+Set `namespaceIsolation` to `true` so that each v1beta1 resource can only reference objects in its own namespace. It works in both cluster-wide and namespace-scoped installs.
+
+```yaml values.yaml
+namespaceIsolation: true
+```
+
+With namespace isolation on, these references must be in the same namespace as the resource:
+
+| Resource | References |
+| --- | --- |
+| [InfisicalAuth](/integrations/platforms/kubernetes/infisical-auth-crd) | Credential Secrets, `kubernetes.serviceAccountRef`, and `infisicalConnectionRef` |
+| [InfisicalConnection](/integrations/platforms/kubernetes/infisical-connection-crd) | The CA certificate Secret in `tls.caCertificate` |
+| [InfisicalStaticSecret](/integrations/platforms/kubernetes/infisical-static-secret-crd) | `infisicalAuthRef` and every entry in `targets` |
+| [InfisicalStaticSecretPush](/integrations/platforms/kubernetes/infisical-static-secret-push-crd) | `infisicalAuthRef` and every entry in `sources.secrets` |
+
+A reference to another namespace fails validation, and the error shows in the resource's status.
+
+- Only resources in the operator's namespace can use the default `InfisicalAuth` and `InfisicalConnection` (the ones named `default`, used when `infisicalAuthRef` or `infisicalConnectionRef` isn't set)
+- An existing `InfisicalAuth` that references another namespace stops working when you turn isolation on, even if it was ready before
+- v1alpha1 resources (`InfisicalSecret`, `InfisicalPushSecret`, and `InfisicalDynamicSecret`) aren't restricted, so use RBAC to control who can create them
+
+`namespaceIsolation` is supported in chart version `0.11.19` and above.

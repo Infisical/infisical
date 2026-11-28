@@ -1,23 +1,24 @@
 import { Knex } from "knex";
 
 import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
+import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import { TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
+import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { ms } from "@app/lib/ms";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import { invalidateFolderAccessCache } from "@app/services/folder-permission/folder-permission-fns";
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/identity-fns";
-import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
@@ -48,23 +49,22 @@ type TMembershipIdentityServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
   roleDAL: Pick<TRoleDALFactory, "find">;
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getOrgPermission" | "getProjectPermission" | "getProjectPermissionByRoles" | "getOrgPermissionByRoles"
-  >;
+  orgPermissionService: TOrgPermissionService;
+  projectPermissionService: TProjectPermissionService;
+  secretsPermissionService: TSecretsPermissionService;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess" | "lockActorsForOrgAccess">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "deleteByIdentityIdsInGroupsOwnedByOrgs">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   applicationMembershipCleanupService: Pick<
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
   >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
+  keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore" | "incrementSeededWithExpiry">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
@@ -81,17 +81,19 @@ export const membershipIdentityServiceFactory = ({
   membershipIdentityDAL,
   roleDAL,
   membershipRoleDAL,
-  permissionService,
+  orgPermissionService,
+  projectPermissionService,
+  secretsPermissionService,
   orgDAL,
   additionalPrivilegeDAL,
   identityDAL,
   identityMetadataDAL,
   identityGroupMembershipDAL,
   licenseService,
+  usageMeteringService,
   applicationMembershipCleanupService,
   projectDAL,
   keyStore,
-  usageMeteringService,
   alertService,
   identityAccessTokenService,
   eventEmitter,
@@ -100,15 +102,15 @@ export const membershipIdentityServiceFactory = ({
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
-      orgDAL,
-      permissionService,
+      orgPermissionService,
       identityDAL,
       membershipIdentityDAL
     }),
     [AccessScope.Project]: newProjectMembershipIdentityFactory({
       membershipIdentityDAL,
       orgDAL,
-      permissionService,
+      projectPermissionService,
+      secretsPermissionService,
       identityDAL,
       projectDAL
     })
@@ -154,7 +156,7 @@ export const membershipIdentityServiceFactory = ({
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
       const plan = await licenseService.getPlan(scopeData.orgId);
-      if (!plan?.rbac)
+      if (!plan?.has(PlanFeature.Rbac))
         throw new BadRequestError({
           message:
             "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
@@ -251,9 +253,9 @@ export const membershipIdentityServiceFactory = ({
 
     // Adding an identity to a project changes the secret-manager and PAM identity meters (a direct member).
     if (scopeData.scope === AccessScope.Project) {
-      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
-      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
-      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
+      await invalidateFolderAccessCache(keyStore, scopeData.projectId);
     }
     return { membership };
   };
@@ -268,7 +270,7 @@ export const membershipIdentityServiceFactory = ({
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
       const plan = await licenseService.getPlan(scopeData.orgId);
-      if (!plan?.rbac)
+      if (!plan?.has(PlanFeature.Rbac))
         throw new BadRequestError({
           message:
             "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
@@ -433,6 +435,14 @@ export const membershipIdentityServiceFactory = ({
     await orgDAL.lockActorsForOrgAccess({ orgId, actorIds: [identityId] }, tx);
     await identityMetadataDAL.delete({ identityId, orgId }, tx);
     await additionalPrivilegeDAL.delete({ actorIdentityId: identityId, orgId }, tx);
+    // Group membership counts as org membership, so a row left in one of this org's groups would keep the
+    // identity in the org with no way for an admin to see or remove it. A parent org's group linked in here
+    // is the parent's to manage. Runs before the revoke so its personal value clear sees the identity out of
+    // these groups, as the user exit in org-fns.ts does.
+    await identityGroupMembershipDAL.deleteByIdentityIdsInGroupsOwnedByOrgs(
+      { identityIds: [identityId], orgIds: [orgId] },
+      tx
+    );
     // Runs before the membership delete below so the project rows it removes are the ones audited. It takes
     // everything, even on projects a group linked in from a parent org still reaches: that access belongs to
     // the parent org.
@@ -441,13 +451,6 @@ export const membershipIdentityServiceFactory = ({
       tx
     );
     await membershipIdentityDAL.delete({ actorIdentityId: identityId, scopeOrgId: orgId }, tx);
-    // Group membership counts as org membership, so a row left in one of this org's groups would keep the
-    // identity in the org with no way for an admin to see or remove it. A parent org's group linked in here
-    // is the parent's to manage.
-    await identityGroupMembershipDAL.deleteByIdentityIdsInGroupsOwnedByOrgs(
-      { identityIds: [identityId], orgIds: [orgId] },
-      tx
-    );
 
     // Durable deny atomic with the org-membership removal.
     await identityAccessTokenService.insertOrgMembershipRevocationMarker({ identityId, orgId, tx });
@@ -489,7 +492,7 @@ export const membershipIdentityServiceFactory = ({
         message: "Identity doesn't have membership"
       });
 
-    if (existingMembership.actorIdentityId === dto.permission.id)
+    if (existingMembership.actorIdentityId === dto.actor.principal.id)
       throw new BadRequestError({
         message: "You can't delete your own membership"
       });
@@ -552,14 +555,10 @@ export const membershipIdentityServiceFactory = ({
 
     // Removing an identity from a project drops a direct member; removing it from the org cascades its
     // project + group memberships. Either way the secret-manager and PAM identity meters change.
+    usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities);
+    usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities);
     if (scopeData.scope === AccessScope.Project) {
-      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
-      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
-      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
-    } else {
-      usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
-      usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
-      usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
+      await invalidateFolderAccessCache(keyStore, scopeData.projectId);
     }
 
     if (needsRevocationBump && externalTx) {
@@ -618,7 +617,13 @@ export const membershipIdentityServiceFactory = ({
     });
     if (!membership) throw new NotFoundError({ message: `Identity membership not found` });
 
-    return membership;
+    return {
+      ...membership,
+      identity: {
+        ...membership.identity,
+        activeLockoutAuthMethods: await getIdentityActiveLockoutAuthMethods(membership.identity.id, keyStore)
+      }
+    };
   };
 
   // It's a list of org identities, so at project scope only org identity read gates it, plus a check that
@@ -641,10 +646,10 @@ export const membershipIdentityServiceFactory = ({
       await scopeFactory[scopeData.scope].onListMembershipIdentityGuard(dto);
     }
 
-    if (scopeData.scope !== AccessScope.Project && dto.permission.rootOrgId === dto.permission.orgId)
+    if (scopeData.scope !== AccessScope.Project && dto.actor.org.rootOrgId === dto.actor.org.id)
       return { identities: [] };
 
-    const identities = await membershipIdentityDAL.listAvailableIdentities(dto.scopeData, dto.permission.rootOrgId);
+    const identities = await membershipIdentityDAL.listAvailableIdentities(dto.scopeData, dto.actor.org.rootOrgId);
 
     return { identities };
   };

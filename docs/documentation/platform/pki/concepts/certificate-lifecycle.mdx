@@ -39,14 +39,18 @@ Replace a certificate before it expires to maintain trust and availability. Rene
 
 Invalidate a certificate when it's compromised, misconfigured, or no longer needed. The CA publishes revocation status through CRLs (Certificate Revocation Lists) or OCSP (Online Certificate Status Protocol) so clients know not to trust the certificate. A new certificate can be issued and deployed as a replacement.
 
-[Learn more about CRL Distribution →](/documentation/platform/pki/ca/crl-distribution)
+[Learn more about CRLs →](/documentation/platform/pki/ca/crl-distribution)
 
 ## Retirement
 
-Deleting a certificate removes the certificate and its private key, and its details stay in the inventory as **Deleted**. Deleting can't be undone. A deleted certificate can't be renewed or imported again, so the only way to replace it is to issue a new one.
+Deleting a certificate removes the certificate and its private key, and its details stay in the inventory as **Deleted**. Deleting can't be undone. A deleted certificate can't be renewed, so to replace it you issue a new one.
+
+To bring a deleted certificate back under monitoring, [import it again](/documentation/platform/pki/applications/certificates#importing-a-deleted-certificate-again). The import adds a new certificate, and the deleted one stays in the inventory. A certificate with a revocation recorded in your organization can't be imported.
 
 - **Revocation:** deleting doesn't revoke a certificate, but you can revoke it afterward if its certificate authority supports revocation
-- **Imported certificates:** revoke a certificate imported into a profile with an internal certificate authority before you delete it, because it can't be revoked afterward
+- **Re-imported certificates:** if you import a deleted certificate again into a profile with the same certificate authority, revoking either one revokes both, and the new certificate's permissions and approval policy apply
+- **Copies without a certificate authority:** revoking a certificate also marks as revoked any copy of it in your organization that has no certificate authority, such as one you imported without a profile
+- **Imported certificates:** revoke a certificate imported into a profile with an internal certificate authority before you delete it, because once it's deleted, the only way to revoke it is to import it again into a profile with the same certificate authority
 - **Quota:** a deleted certificate issued from a certificate authority counts toward your certificate quota until it expires or is revoked (deleted imported and discovered certificates stop counting right away)
 - **Cleanup:** Certificate Cleanup deletes expired certificates the same way, so their details also stay in the inventory as **Deleted**
 

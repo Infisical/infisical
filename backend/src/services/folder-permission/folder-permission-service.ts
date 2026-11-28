@@ -1,23 +1,31 @@
 import slugify from "@sindresorhus/slugify";
 
 import { SecretFolderRole } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { withCacheFingerprint } from "@app/lib/cache/with-cache";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
-import { ActorType } from "../auth/auth-type";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
-import { buildFolderAccess, reviveFolderAccess, splitFolderAccess } from "./folder-access-roles-fns";
+import {
+  buildFolderAccess,
+  pickInheritedGrants,
+  reviveFolderAccess,
+  splitFolderAccess
+} from "./folder-access-roles-fns";
 import { TFolderPermissionDALFactory } from "./folder-permission-dal";
 import {
   assertFullAccessIsPermanent,
   assertGrantTargetEligible,
   assertManageFolderAccess,
+  assertManageFolderSubtree,
   assertReadActorGrantsAccess,
   computeTemporaryFields,
   getFolderAccessPermission,
@@ -46,10 +54,13 @@ import {
 type TFolderPermissionServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<
     TAdditionalPrivilegeDALFactory,
-    "findOne" | "find" | "create" | "updateById" | "deleteById" | "transaction"
+    "findOne" | "findOneForUpdate" | "find" | "create" | "updateById" | "deleteById" | "transaction"
   >;
-  secretFolderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
+  secretFolderDAL: Pick<
+    TSecretFolderDALFactory,
+    "findBySecretPath" | "findSecretPathByFolderIds" | "findByManySecretPath"
+  >;
+  secretsPermissionService: TSecretsPermissionService;
   folderPermissionDAL: Pick<
     TFolderPermissionDALFactory,
     | "findProjectUsersWithRoles"
@@ -58,8 +69,8 @@ type TFolderPermissionServiceFactoryDep = {
     | "hasProjectAccess"
     | "isProjectAdmin"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
+  licenseService: TLicenseService;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "getItemPrimary">;
 };
 
 type TFolderActorType = ActorType.USER | ActorType.IDENTITY;
@@ -72,6 +83,7 @@ type TFolderAccessItem<TActor extends TProjectMemberActor> = {
   actor: TActor;
   membership: TFolderAccessMembership;
   folderRBACAccess: TFolderGrant | null;
+  inheritedFolderRBACAccess: TFolderGrant | null;
 };
 
 export type TFolderPermissionServiceFactory = ReturnType<typeof folderPermissionServiceFactory>;
@@ -79,14 +91,14 @@ export type TFolderPermissionServiceFactory = ReturnType<typeof folderPermission
 export const folderPermissionServiceFactory = ({
   additionalPrivilegeDAL,
   secretFolderDAL,
-  permissionService,
+  secretsPermissionService,
   folderPermissionDAL,
   licenseService,
   keyStore
 }: TFolderPermissionServiceFactoryDep) => {
   const assertFolderRbacLicensed = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
-    if (!plan.secretsFolderRbac) {
+    if (!plan.has(PlanFeature.SecretsFolderRbac)) {
       throw new BadRequestError({
         message: "Failed to access folder access controls due to plan restriction. Upgrade your Infisical plan."
       });
@@ -97,11 +109,14 @@ export const folderPermissionServiceFactory = ({
     const { projectId, environmentSlug, secretPath, target } = dto;
     assertFullAccessIsPermanent(dto.role, Boolean(dto.type?.isTemporary));
 
-    await assertFolderRbacLicensed(dto.permission.orgId);
-    const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
+    await assertFolderRbacLicensed(dto.actor.org.id);
+    const callerPermission = await getFolderAccessPermission(dto.actor, projectId, secretsPermissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
     assertManageFolderAccess(callerPermission, folder);
-    await assertGrantTargetEligible(dto.permission.orgId, projectId, target, folderPermissionDAL);
+    if (dto.isPermissionRecursive) {
+      assertManageFolderSubtree(callerPermission, folder);
+    }
+    await assertGrantTargetEligible(dto.actor.org.id, projectId, target, folderPermissionDAL);
 
     const actorField = targetActorField(target);
     const alreadyExistsError = () =>
@@ -124,11 +139,14 @@ export const folderPermissionServiceFactory = ({
             folderId: folder.id,
             role: dto.role,
             [actorField]: target.actorId,
+            appliesToSubfolders: Boolean(dto.isPermissionRecursive),
             ...computeTemporaryFields(dto.type)
           },
           tx
         );
-        await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
+        await secretsPermissionService
+          .within(sealKnexTransaction(tx))
+          .invalidateFolderGrants({ projectIds: [projectId] });
         return doc;
       });
 
@@ -142,15 +160,15 @@ export const folderPermissionServiceFactory = ({
 
   const updateFolderGrant = async (dto: TUpdateFolderGrantDTO) => {
     const { projectId, environmentSlug, secretPath, target } = dto;
-    await assertFolderRbacLicensed(dto.permission.orgId);
-    const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
+    await assertFolderRbacLicensed(dto.actor.org.id);
+    const callerPermission = await getFolderAccessPermission(dto.actor, projectId, secretsPermissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
     assertManageFolderAccess(callerPermission, folder);
-    await assertGrantTargetEligible(dto.permission.orgId, projectId, target, folderPermissionDAL);
+    await assertGrantTargetEligible(dto.actor.org.id, projectId, target, folderPermissionDAL);
 
     const actorField = targetActorField(target);
     const grant = await additionalPrivilegeDAL.transaction(async (tx) => {
-      const existing = await additionalPrivilegeDAL.findOne(
+      const existing = await additionalPrivilegeDAL.findOneForUpdate(
         { projectId, folderId: folder.id, [actorField]: target.actorId },
         tx
       );
@@ -164,16 +182,21 @@ export const folderPermissionServiceFactory = ({
         (dto.role ?? existing.role) as SecretFolderRole,
         dto.type === undefined ? existing.isTemporary : dto.type.isTemporary
       );
+      if (existing.appliesToSubfolders || dto.isPermissionRecursive)
+        assertManageFolderSubtree(callerPermission, folder);
 
       const doc = await additionalPrivilegeDAL.updateById(
         existing.id,
         {
           ...(dto.role ? { role: dto.role } : {}),
-          ...(dto.type === undefined ? {} : computeTemporaryFields(dto.type))
+          ...(dto.type === undefined ? {} : computeTemporaryFields(dto.type)),
+          ...(dto.isPermissionRecursive === undefined ? {} : { appliesToSubfolders: dto.isPermissionRecursive })
         },
         tx
       );
-      await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
+      await secretsPermissionService
+        .within(sealKnexTransaction(tx))
+        .invalidateFolderGrants({ projectIds: [projectId] });
       return doc;
     });
 
@@ -182,8 +205,8 @@ export const folderPermissionServiceFactory = ({
 
   const deleteFolderGrant = async (dto: TDeleteFolderGrantDTO) => {
     const { projectId, environmentSlug, secretPath, target } = dto;
-    await assertFolderRbacLicensed(dto.permission.orgId);
-    const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
+    await assertFolderRbacLicensed(dto.actor.org.id);
+    const callerPermission = await getFolderAccessPermission(dto.actor, projectId, secretsPermissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
     assertManageFolderAccess(callerPermission, folder);
     // no membership check on revoke: removing access from an actor that already left the project
@@ -191,7 +214,7 @@ export const folderPermissionServiceFactory = ({
 
     const actorField = targetActorField(target);
     const grant = await additionalPrivilegeDAL.transaction(async (tx) => {
-      const existing = await additionalPrivilegeDAL.findOne(
+      const existing = await additionalPrivilegeDAL.findOneForUpdate(
         { projectId, folderId: folder.id, [actorField]: target.actorId },
         tx
       );
@@ -200,16 +223,19 @@ export const folderPermissionServiceFactory = ({
           message: `No folder access found for ${targetLabel(target).toLowerCase()} with ID '${target.actorId}' on the folder at path '${folder.path}' in environment with slug '${folder.environmentSlug}'`
         });
       }
+      if (existing.appliesToSubfolders) assertManageFolderSubtree(callerPermission, folder, "remove");
 
       const doc = await additionalPrivilegeDAL.deleteById(existing.id, tx);
-      await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
+      await secretsPermissionService
+        .within(sealKnexTransaction(tx))
+        .invalidateFolderGrants({ projectIds: [projectId] });
       return doc;
     });
 
     return { folderAccess: toFolderGrant(grant, projectId, folder) };
   };
 
-  const $getFolderAccess = <TActor extends TProjectMemberActor>(
+  const $getFolderAccess = async <TActor extends TProjectMemberActor>(
     {
       projectId,
       orgId,
@@ -221,11 +247,27 @@ export const folderPermissionServiceFactory = ({
   ) => {
     // if we don't take the search in consideration, it can create a cache key that does not have anything.
     const pageKey = `${page.offset}:${page.limit}:${page.search ?? ""}`;
+    const dataFetcher = async () => {
+      const { data, totalCount } = await fetchMembers();
+      return buildFolderAccess(data, folder, totalCount);
+    };
+
+    let rosterVersion: string;
+    try {
+      rosterVersion =
+        (await keyStore.getItemPrimary(KeyStorePrefixes.ProjectFolderAccessRosterVersion(projectId))) ?? "0";
+    } catch (err) {
+      logger.warn(
+        { err, projectId },
+        `Failed to read the folder access roster version, skipping the roster cache. projectId: ${projectId}`
+      );
+      return dataFetcher();
+    }
 
     return withCacheFingerprint<TCachedFolderAccess<TActor>>({
       keyStore,
       dataKey: KeyStorePrefixes.ProjectFolderAccessData(projectId, folder.id, actorType, pageKey),
-      markerKey: KeyStorePrefixes.ProjectFolderAccessMarker(projectId, folder.id, actorType, pageKey),
+      markerKey: KeyStorePrefixes.ProjectFolderAccessMarker(projectId, rosterVersion, folder.id, actorType, pageKey),
       markerTtlSeconds: KeyStoreTtls.ProjectFolderAccessMarkerTtlSeconds,
       dataTtlSeconds: KeyStoreTtls.ProjectFolderAccessDataTtlSeconds,
       // the key is by folder id but the granting roles are evaluated against the folder's path, and a
@@ -234,12 +276,26 @@ export const folderPermissionServiceFactory = ({
         const fingerprint = await folderPermissionDAL.getFolderAccessFingerprint({ projectId, orgId, actorType });
         return `${fingerprint}|${folder.environmentSlug}|${folder.path}`;
       },
-      dataFetcher: async () => {
-        const { data, totalCount } = await fetchMembers();
-        return buildFolderAccess(data, folder, totalCount);
-      },
+      dataFetcher,
       reviver: reviveFolderAccess
     });
+  };
+
+  // The folders above this one, nearest first.
+  const $resolveAncestorFolders = async (folder: TResolvedFolder): Promise<TResolvedFolder[]> => {
+    const segments = folder.path.split("/").filter(Boolean);
+    if (!segments.length) return [];
+
+    const ancestors = await secretFolderDAL.findByManySecretPath(
+      segments
+        .map((_, depth) => ({ envId: folder.envId, secretPath: `/${segments.slice(0, depth).join("/")}` }))
+        .reverse()
+    );
+    return ancestors.flatMap((ancestor) =>
+      ancestor
+        ? [{ id: ancestor.id, path: ancestor.path, environmentSlug: folder.environmentSlug, envId: folder.envId }]
+        : []
+    );
   };
 
   const $listFolderAccessActors = async <TActor extends TProjectMemberActor>(
@@ -258,39 +314,70 @@ export const folderPermissionServiceFactory = ({
     }
   ) => {
     const { projectId, environmentSlug, secretPath, limit, offset, search } = dto;
-    const { orgId } = dto.permission;
+    const orgId = dto.actor.org.id;
     await assertFolderRbacLicensed(orgId);
-    const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
+    const callerPermission = await getFolderAccessPermission(dto.actor, projectId, secretsPermissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
     assertManageFolderAccess(callerPermission, folder);
 
     const page = { limit, offset, search };
     const actorField = actorType === ActorType.USER ? "actorUserId" : "actorIdentityId";
-    // grants stay out of the cached folder access so a grant or revoke is visible on the very next request
-    const [folderAccess, grants] = await Promise.all([
+    const [ancestorFolders, folderAccess] = await Promise.all([
+      $resolveAncestorFolders(folder),
       $getFolderAccess<TActor>({ projectId, orgId, folder, actorType, page }, () =>
         fetchMembers({ projectId, orgId }, page)
-      ),
-      additionalPrivilegeDAL.find({ projectId, folderId: folder.id, $notNull: [actorField] })
+      )
     ]);
+    const folderIds = [folder.id, ...ancestorFolders.map((ancestor) => ancestor.id)];
+    const pageActorIds = folderAccess.actors.map(({ actor }) => actorIdOf(actor));
+    const grants = pageActorIds.length
+      ? await additionalPrivilegeDAL.find({
+          projectId,
+          $in:
+            actorType === ActorType.USER
+              ? { folderId: folderIds, actorUserId: pageActorIds }
+              : { folderId: folderIds, actorIdentityId: pageActorIds }
+        })
+      : [];
+    const now = new Date();
+    const actorIdOfGrant = (grant: (typeof grants)[number]) => grant[actorField] as string;
     const grantByActorId = new Map(
-      grants.filter((grant) => grant.role).map((grant) => [grant[actorField] as string, grant])
+      grants
+        .filter((grant) => grant.folderId === folder.id && grant.role)
+        .map((grant) => [actorIdOfGrant(grant), grant])
     );
+    const inheritedGrantByActorId = pickInheritedGrants({
+      grants,
+      ancestorFolderIds: ancestorFolders.map((ancestor) => ancestor.id),
+      actorIdOf: actorIdOfGrant,
+      now
+    });
 
     // the page is one slice of the project roster; the split only says which of the two lists each of
     // its actors belongs to, so the totals are not per-list
     const { withAccess, withoutAccess } = splitFolderAccess({
       folderAccess,
       grantByActorId,
+      inheritedGrantByActorId,
       actorIdOf,
-      now: new Date()
+      now
     });
 
-    const toItem = ({ actor, membership, grant }: TFolderAccessEntry<TActor>): TFolderAccessItem<TActor> => ({
+    const toItem = ({
       actor,
       membership,
-      folderRBACAccess: grant ? toFolderGrant(grant, projectId, folder) : null
-    });
+      grant,
+      inheritedGrant
+    }: TFolderAccessEntry<TActor>): TFolderAccessItem<TActor> => {
+      const inheritedFrom = ancestorFolders.find((ancestor) => ancestor.id === inheritedGrant?.folderId);
+      return {
+        actor,
+        membership,
+        folderRBACAccess: grant ? toFolderGrant(grant, projectId, folder) : null,
+        inheritedFolderRBACAccess:
+          inheritedGrant && inheritedFrom ? toFolderGrant(inheritedGrant, projectId, inheritedFrom) : null
+      };
+    };
 
     return {
       withAccess: withAccess.map(toItem),
@@ -300,14 +387,20 @@ export const folderPermissionServiceFactory = ({
   };
 
   const listFolderAccessUsers = async (dto: TListFolderAccessActorsDTO) => {
-    const toUser = ({ actor, membership, folderRBACAccess }: TFolderAccessItem<TProjectMemberUser>) => ({
+    const toUser = ({
+      actor,
+      membership,
+      folderRBACAccess,
+      inheritedFolderRBACAccess
+    }: TFolderAccessItem<TProjectMemberUser>) => ({
       userId: actor.userId,
       username: actor.username,
       email: actor.email,
       firstName: actor.firstName,
       lastName: actor.lastName,
       membership,
-      folderRBACAccess
+      folderRBACAccess,
+      inheritedFolderRBACAccess
     });
 
     const result = await $listFolderAccessActors<TProjectMemberUser>(dto, {
@@ -324,11 +417,17 @@ export const folderPermissionServiceFactory = ({
   };
 
   const listFolderAccessIdentities = async (dto: TListFolderAccessActorsDTO) => {
-    const toIdentity = ({ actor, membership, folderRBACAccess }: TFolderAccessItem<TProjectMemberIdentity>) => ({
+    const toIdentity = ({
+      actor,
+      membership,
+      folderRBACAccess,
+      inheritedFolderRBACAccess
+    }: TFolderAccessItem<TProjectMemberIdentity>) => ({
       identityId: actor.identityId,
       name: actor.name,
       membership,
-      folderRBACAccess
+      folderRBACAccess,
+      inheritedFolderRBACAccess
     });
 
     const result = await $listFolderAccessActors<TProjectMemberIdentity>(dto, {
@@ -346,8 +445,8 @@ export const folderPermissionServiceFactory = ({
 
   const listActorFolderGrants = async (dto: TListActorFolderGrantsDTO) => {
     const { projectId, target } = dto;
-    await assertFolderRbacLicensed(dto.permission.orgId);
-    const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
+    await assertFolderRbacLicensed(dto.actor.org.id);
+    const callerPermission = await getFolderAccessPermission(dto.actor, projectId, secretsPermissionService);
     assertReadActorGrantsAccess(callerPermission, target);
 
     const rows = await additionalPrivilegeDAL.find({

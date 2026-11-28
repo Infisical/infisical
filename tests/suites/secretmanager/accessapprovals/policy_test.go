@@ -186,10 +186,10 @@ func TestAccessApprovalPolicy_Create(t *testing.T) {
 		require.Empty(t, policyIDs(t, g.proj))
 	})
 
-	t.Run("should accept a policy when the plan does not include secret approvals", func(t *testing.T) {
+	t.Run("should refuse a policy when the plan does not include secret approvals", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, `[LICENSE] Today access approval policies have no entitlement check at all, unlike secret
-			change policies. A later license clean-up changes this claim.`)
+		spec.Why(t, `[LICENSE] Access approval policies are gated on the secretApproval entitlement, the same
+			as secret change policies.`)
 
 		// Setup
 		tn := harness.From(t).NewTenant(t, harness.WithPlan(license.Enterprise().Without(license.SecretApproval)))
@@ -200,8 +200,42 @@ func TestAccessApprovalPolicy_Create(t *testing.T) {
 		res := createPolicyAs(t, tn.Admin, policyFor(proj, "/", userApprover(approver)))
 
 		// Assert
+		require.Equalf(t, http.StatusBadRequest, res.status, "creating returned %s", apierr.Body(res.body))
+		require.Equal(t,
+			"Failed to create access approval policy due to plan restriction. Upgrade plan to create access approval policy.",
+			res.message(t))
+		require.Empty(t, policyIDs(t, proj))
+	})
+
+	t.Run("should save a policy path of 1024 characters", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		g := newProject(t)
+
+		// Action
+		res := createPolicyAs(t, g.tn.Admin, policyFor(g.proj, longPolicyPath, userApprover(g.approver)))
+
+		// Assert
 		require.Equalf(t, http.StatusOK, res.status, "creating returned %s", apierr.Body(res.body))
-		require.Len(t, policyIDs(t, proj), 1)
+		ids := policyIDs(t, g.proj)
+		require.Len(t, ids, 1)
+		require.Equal(t, longPolicyPath, mustGetPolicy(t, g.proj, ids[0]).SecretPath)
+	})
+
+	t.Run("should refuse a policy path over 1024 characters and create no policy", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		g := newProject(t)
+
+		// Action
+		res := createPolicyAs(t, g.tn.Admin, policyFor(g.proj, longPolicyPath+"a", userApprover(g.approver)))
+
+		// Assert
+		require.Equalf(t, http.StatusUnprocessableEntity, res.status, "creating returned %s", apierr.Body(res.body))
+		require.Contains(t, string(res.body), "String must contain at most 1024 character(s)")
+		require.Empty(t, policyIDs(t, g.proj))
 	})
 }
 
@@ -346,6 +380,41 @@ func TestAccessApprovalPolicy_Update(t *testing.T) {
 		require.NotNil(t, policy.MaxTimePeriod)
 		require.Equal(t, "1h", *policy.MaxTimePeriod)
 	})
+
+	t.Run("should save a new path of 1024 characters", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		g := newGuarded(t)
+
+		// Action
+		res := updatePolicy(t, g.proj, g.policyID, policyBody{
+			"secretPath": longPolicyPath,
+			"approvers":  subjects([]approver{userApprover(g.approver)}),
+		})
+
+		// Assert
+		require.Equalf(t, http.StatusOK, res.status, "updating returned %s", apierr.Body(res.body))
+		require.Equal(t, longPolicyPath, mustGetPolicy(t, g.proj, g.policyID).SecretPath)
+	})
+
+	t.Run("should refuse a new path over 1024 characters and keep the old path", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		g := newGuarded(t)
+
+		// Action
+		res := updatePolicy(t, g.proj, g.policyID, policyBody{
+			"secretPath": longPolicyPath + "a",
+			"approvers":  subjects([]approver{userApprover(g.approver)}),
+		})
+
+		// Assert
+		require.Equalf(t, http.StatusUnprocessableEntity, res.status, "updating returned %s", apierr.Body(res.body))
+		require.Contains(t, string(res.body), "String must contain at most 1024 character(s)")
+		require.Equal(t, guardedPath, mustGetPolicy(t, g.proj, g.policyID).SecretPath)
+	})
 }
 
 func TestAccessApprovalPolicy_Get(t *testing.T) {
@@ -442,7 +511,7 @@ func TestAccessApprovalPolicy_Delete(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, blocked.StatusCode())
-		require.Equal(t, "Environment is in use by an access approval policy", reply{blocked.StatusCode(), blocked.Body}.message(t))
+		require.Equal(t, "Environment is in use by a secret access approval policy", reply{blocked.StatusCode(), blocked.Body}.message(t))
 		require.Equal(t, []string{policyID}, policyIDs(t, g.proj))
 		deleted, err := g.tn.Admin.API.DeleteAccessApprovalPolicyWithResponse(t.Context(), policyID)
 		require.NoError(t, err)

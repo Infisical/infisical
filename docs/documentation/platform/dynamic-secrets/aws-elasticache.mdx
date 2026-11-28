@@ -1,149 +1,196 @@
 ---
 title: "AWS ElastiCache dynamic secrets"
 sidebarTitle: "AWS ElastiCache"
-description: "Learn how to dynamically generate AWS ElastiCache user credentials."
+description: "Learn how to issue short-lived users for an AWS ElastiCache cluster on demand."
 ---
 
 import DynamicSecretUsernameTemplateParamField from "/snippets/documentation/platform/dynamic-secrets/dynamic-secret-username-template-field.mdx";
 
-The Infisical AWS ElastiCache dynamic secret allows you to generate AWS ElastiCache credentials on demand based on configured role.
+The AWS ElastiCache dynamic secret creates a user on your [ElastiCache](https://aws.amazon.com/elasticache/) cluster each time someone creates a lease, and deletes the user when the lease ends. Use it to give an application or a person their own short-lived username and password for the cluster, instead of sharing one long-lived password.
+
+To learn how leases work across providers, see [Dynamic secrets](/documentation/platform/dynamic-secrets/overview).
 
 ## Prerequisites
 
+- An ElastiCache cluster running Redis OSS 6.0 or later, with encryption in transit turned on and set to **Required**
+- A cluster that doesn't already use a user group of your own (see [Cluster access controls](#cluster-access-controls))
+- A [role](/documentation/platform/access-controls/role-based-access-controls) in the Infisical project that lets you create dynamic secrets
 
+## Cluster access controls
 
-2. Create an AWS IAM user with the following permissions:
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "",
-      "Effect": "Allow",
-      "Action": [
-        "elasticache:DescribeUsers",
-        "elasticache:ModifyUser",
-        "elasticache:CreateUser",
-        "elasticache:CreateUserGroup",
-        "elasticache:DeleteUser",
-        "elasticache:DescribeReplicationGroups",
-        "elasticache:DescribeUserGroups",
-        "elasticache:ModifyReplicationGroup",
-        "elasticache:ModifyUserGroup"
-      ],
-      "Resource": "arn:aws:elasticache:<region>:<account-id>:user:*"
-    }
-  ]
-}
-```
+ElastiCache uses [user groups](https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/Clusters.RBAC.html) to decide who can log in to a cluster. Infisical creates a user group for each cluster, named `infisical-` followed by a hash of the cluster name, and attaches the group to the cluster:
 
-3. Create an access key ID and secret access key for the user you created in the previous step. You'll need these to configure the Infisical dynamic secret.
+- Each lease adds a user to its own cluster's group, so the lease works only on that cluster
+- The cluster refuses clients that connect without a username and password
+- A cluster can use only one user group, so Infisical can't use a cluster that already has a user group of your own
 
-<Note>
-  New leases may take up-to a couple of minutes before ElastiCache has the chance to complete their configuration.
-  It's recommended to use a retry strategy when establishing new ElastiCache connections.
-  This may prevent errors when trying to use a password that isn't yet live on the targeted ElastiCache cluster.
+## Step 1: Create an IAM user for Infisical
 
-  While a leasing is being created, you'll be unable to create new leases for the same dynamic secret.
-</Note>
-
-<Note>
-  Please ensure that your ElastiCache cluster has transit encryption enabled and set to required. This is required for the dynamic secret to work.
-</Note>
-
-
-
-
-## Set up dynamic secrets with AWS ElastiCache
+Infisical uses an AWS IAM user to create the cluster's user group and the users for each lease.
 
 <Steps>
-  <Step title="Open Secret Overview Dashboard">
-	Open the Secret Overview dashboard and select the environment in which you would like to add a dynamic secret.
+  <Step>
+    In AWS, create an IAM user with the following policy. Replace `<region>` and `<account-id>` with the region and AWS account ID of your cluster.
+
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "elasticache:DescribeUsers",
+            "elasticache:ModifyUser",
+            "elasticache:CreateUser",
+            "elasticache:CreateUserGroup",
+            "elasticache:DeleteUser",
+            "elasticache:DescribeReplicationGroups",
+            "elasticache:DescribeUserGroups",
+            "elasticache:ModifyReplicationGroup",
+            "elasticache:ModifyUserGroup"
+          ],
+          "Resource": [
+            "arn:aws:elasticache:<region>:<account-id>:user:*",
+            "arn:aws:elasticache:<region>:<account-id>:usergroup:*",
+            "arn:aws:elasticache:<region>:<account-id>:replicationgroup:*"
+          ]
+        }
+      ]
+    }
+    ```
   </Step>
-  <Step title="Click on the 'Add Dynamic Secret' button">
-	![Add Dynamic Secret Button](../../../images/platform/dynamic-secrets/add-dynamic-secret-button.png)
-  </Step>
-  <Step title="Select AWS ElastiCache">
-	![Dynamic Secret Modal](../../../images/platform/dynamic-secrets/dynamic-secret-modal-aws-elasti-cache.png)
-  </Step>
-  <Step title="Provide the inputs for dynamic secret parameters">
-	<ParamField path="Secret Name" type="string" required>
-		Name by which you want the secret to be referenced
-	</ParamField>
-
-	<ParamField path="Default TTL" type="string" required>
-		Default time-to-live for a generated secret (it is possible to modify this value after a secret is generated)
-	</ParamField>
-
-	<ParamField path="Max TTL" type="string" required>
-		Maximum time-to-live for a generated secret.
-	</ParamField>
-
-	<ParamField path="Region" type="string" required>
-    The region that the ElastiCache cluster is located in. _(e.g. us-east-1)_
-	</ParamField>
-
-	<ParamField path="Access Key ID" type="string" required>
-    This is the access key ID of the AWS IAM user you created in the prerequisites. This will be used to provision and manage the dynamic secret leases.
-	</ParamField>
-
-	<ParamField path="Secret Access Key" type="string" required>
-		This is the secret access key of the AWS IAM user you created in the prerequisites. This will be used to provision and manage the dynamic secret leases.
-	</ParamField>
-
-	<ParamField path="CA(SSL)" type="string">
-		A CA may be required if your DB requires it for incoming connections. This is often the case when connecting to a managed service.
-	</ParamField>
-
-  </Step>
-  <Step title="(Optional) Modify ElastiCache Statements">
-  ![Modify ElastiCache Statements Modal](/images/platform/dynamic-secrets/modify-elasticache-statement.png)
-  <DynamicSecretUsernameTemplateParamField />
-	<ParamField path="Customize ElastiCache Statement" type="string">
-  	If you want to provide specific privileges for the generated dynamic credentials, you can modify the ElastiCache statement to your needs. This is useful if you want to only give access to a specific resource.
-	</ParamField>
-  </Step>
-  <Step title="Click `Submit`">
-  	After submitting the form, you'll see a dynamic secret created in the dashboard.
-
-	<Note>
-		If this step fails, you may have to add the CA certificate.
-	</Note>
-
-  </Step>
-  <Step title="Generate dynamic secrets">
-	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
-	To do this, simply select the 'Generate' button which appears when hovering over the dynamic secret item.
-	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
-
-	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
-	![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-lease-empty.png)
-
-	When generating these secrets, it's important to specify a Time-to-Live (TTL) duration. This will dictate how long the credentials are valid for.
-
-	![Provision Lease](/images/platform/dynamic-secrets/provision-lease.png)
-
-	<Tip>
-		Ensure that the TTL for the lease falls within the maximum TTL defined when configuring the dynamic secret.
-	</Tip>
-
-
-	Once you click the `Submit` button, a new secret lease will be generated and the credentials from it will be shown to you.
-
-	![Provision Lease](/images/platform/dynamic-secrets/lease-values.png)
+  <Step>
+    Create an access key for the IAM user, and copy the access key ID and the secret access key.
   </Step>
 </Steps>
 
-## Audit or revoke leases
-Once you have created one or more leases, you'll be able to access them by selecting the respective dynamic secret item on the dashboard.
-This will allow you to see the expiration time of the lease or delete a lease before it's set time to live.
+## Step 2: Create the dynamic secret
 
-![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
+<Steps>
+  <Step>
+    In your project, go to the environment and folder where you want the dynamic secret, then select **Add New** > **Add Dynamic Secret**.
+  </Step>
+  <Step>
+    Select **AWS ElastiCache**.
+  </Step>
+  <Step>
+    Fill in the form:
 
-## Renew leases
-To extend the life of the generated dynamic secret leases past its initial time to live, simply select the **Renew** button as illustrated below.
-![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
+    <ParamField path="Secret Name" type="string" required>
+      The name you use to refer to the dynamic secret.
+    </ParamField>
 
-<Warning>
-	Lease renewals can't exceed the maximum TTL set when configuring the dynamic secret
-</Warning>
+    <ParamField path="Default TTL" type="string" required>
+      How long a lease lasts if the person creating it doesn't choose a TTL (for example, `1h`).
+    </ParamField>
+
+    <ParamField path="Max TTL" type="string">
+      The longest TTL anyone can request for a lease (for example, `24h`).
+    </ParamField>
+
+    <ParamField path="Cluster Name" type="string" required>
+      The name of the ElastiCache cluster, as shown in the ElastiCache console.
+    </ParamField>
+
+    <ParamField path="Region" type="string" required>
+      The AWS region of the cluster (for example, `us-east-1`).
+    </ParamField>
+
+    <ParamField path="Access Key ID" type="string" required>
+      The access key ID of the IAM user from [Step 1](#step-1-create-an-iam-user-for-infisical).
+    </ParamField>
+
+    <ParamField path="Secret Access Key" type="string" required>
+      The secret access key of the IAM user from [Step 1](#step-1-create-an-iam-user-for-infisical).
+    </ParamField>
+  </Step>
+  <Step>
+    (Optional) Expand **Modify ElastiCache Statements** to change how Infisical creates each user:
+
+    <DynamicSecretUsernameTemplateParamField />
+
+    <ParamField path="Creation Statement" type="string">
+      The settings Infisical sends to AWS to create each user. To limit what a lease can do on the cluster, change `AccessString` (for example, `on ~app:* +@read` allows read commands on keys that start with `app:`).
+    </ParamField>
+
+    <ParamField path="Revocation Statement" type="string">
+      The settings Infisical sends to AWS to delete each user.
+    </ParamField>
+  </Step>
+  <Step>
+    Select **Submit**.
+
+    Infisical checks that the IAM user can reach the cluster, then creates the cluster's user group. ElastiCache takes up to a minute to finish creating the group.
+  </Step>
+</Steps>
+
+## Step 3: Create a lease
+
+<Steps>
+  <Step>
+    In the row for the dynamic secret, select **Generate Lease**.
+  </Step>
+  <Step>
+    Enter a **Default TTL** for the lease, then select **Provision Lease**.
+  </Step>
+  <Step>
+    Copy the `DB_USERNAME` and `DB_PASSWORD` values that Infisical shows.
+  </Step>
+</Steps>
+
+<Note>
+  ElastiCache takes about a minute to add a new user to the cluster. Until then, a login with the new password fails, so make your application retry the connection.
+</Note>
+
+## Revoke or renew a lease
+
+Select the dynamic secret to see its leases:
+
+- Select **Revoke lease** to delete the lease's user from the cluster before the lease expires
+- Select **Renew lease** to extend the lease, up to the **Max TTL** of the dynamic secret
+
+When a lease expires, Infisical deletes its user from the cluster.
+
+## Clusters set up by earlier versions of Infisical
+
+Earlier versions of Infisical attached one shared user group, `infisical-managed-group-elasticache`, to every cluster. If your cluster still uses that group, Infisical keeps using it for new leases, so your existing leases keep working.
+
+To give the cluster its own user group, with the [cluster access controls](#cluster-access-controls):
+
+<Steps>
+  <Step>
+    Remove the shared user group from the cluster. Existing leases for the cluster stop working.
+
+    ```bash
+    aws elasticache modify-replication-group \
+      --replication-group-id <cluster-name> \
+      --user-group-ids-to-remove infisical-managed-group-elasticache \
+      --apply-immediately
+    ```
+  </Step>
+  <Step>
+    Create a lease. Infisical creates the cluster's own user group and asks you to try again in a minute.
+  </Step>
+  <Step>
+    Create the lease again. Infisical attaches the cluster's user group to the cluster.
+  </Step>
+  <Step>
+    Revoke the cluster's old leases, then create new leases for the applications that used them.
+  </Step>
+</Steps>
+
+When no cluster uses `infisical-managed-group-elasticache` anymore, you can delete the group in the ElastiCache console.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="A lease fails with 'ElastiCache is still updating the user group for this cluster'">
+    ElastiCache takes about a minute to create a cluster's user group, and about a minute to add each new lease's user. Wait a minute, then create the lease again.
+  </Accordion>
+  <Accordion title="Creating the dynamic secret fails because the cluster already uses a user group">
+    A cluster can use only one user group, and Infisical needs its own group to create leases. Remove your user group from the cluster, or use a different cluster.
+  </Accordion>
+  <Accordion title="An application can't connect and gets 'NOAUTH Authentication required'">
+    The cluster refuses clients that connect without a username and password. Configure the application to log in with the `DB_USERNAME` and `DB_PASSWORD` of a lease.
+  </Accordion>
+</AccordionGroup>

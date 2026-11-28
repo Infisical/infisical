@@ -1,13 +1,16 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, useMutation, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 
 import { apiRequest } from "@app/config/request";
 
+import { approvalRequestQuery } from "../approvalRequests/queries";
 import { certificateProfileKeys } from "../certificateProfiles/queries";
 import { pkiSubscriberKeys } from "../pkiSubscriber/queries";
 import { pkiSyncKeys } from "../pkiSyncs/queries";
 import { projectKeys } from "../projects";
 import { certKeys } from "./queries";
 import {
+  CertificateRevocationStatus,
   TCancelCertificateRequestResponse,
   TCertificate,
   TDeleteCertDTO,
@@ -19,12 +22,31 @@ import {
   TRenewCertificateDTO,
   TRenewCertificateResponse,
   TRevokeCertDTO,
+  TRevokeCertResponse,
   TTriggerCertificateRequestValidationResponse,
   TUnifiedCertificateIssuanceDTO,
   TUnifiedCertificateIssuanceResponse,
   TUpdateCertificateDTO,
   TUpdateRenewalConfigDTO
 } from "./types";
+
+export const invalidateRevokedCertificate = (queryClient: QueryClient, certificateId: string) => {
+  queryClient.invalidateQueries({
+    queryKey: certKeys.getCertificateById(certificateId)
+  });
+  queryClient.invalidateQueries({
+    queryKey: certificateProfileKeys.lists()
+  });
+  queryClient.invalidateQueries({
+    queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
+  });
+  queryClient.invalidateQueries({
+    queryKey: projectKeys.allProjectCertificates()
+  });
+  queryClient.invalidateQueries({
+    queryKey: ["cert-dashboard-stats"]
+  });
+};
 
 export const useDeleteCert = () => {
   const queryClient = useQueryClient();
@@ -60,34 +82,22 @@ export const useDeleteCert = () => {
 
 export const useRevokeCert = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificate, object, TRevokeCertDTO>({
+  return useMutation<TRevokeCertResponse, object, TRevokeCertDTO>({
     mutationFn: async ({ id, revocationReason }) => {
-      const {
-        data: { certificate }
-      } = await apiRequest.post<{ certificate: TCertificate }>(
+      const { data } = await apiRequest.post<TRevokeCertResponse>(
         `/api/v1/cert-manager/certificates/${id}/revoke`,
         {
           revocationReason
         }
       );
-      return certificate;
+      return data;
     },
-    onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({
-        queryKey: certKeys.getCertificateById(id)
-      });
-      queryClient.invalidateQueries({
-        queryKey: certificateProfileKeys.lists()
-      });
-      queryClient.invalidateQueries({
-        queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
-      });
-      queryClient.invalidateQueries({
-        queryKey: projectKeys.allProjectCertificates()
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["cert-dashboard-stats"]
-      });
+    onSuccess: ({ status }, { id }) => {
+      if (status === CertificateRevocationStatus.PendingApproval) {
+        queryClient.invalidateQueries({ queryKey: approvalRequestQuery.allKey() });
+      } else {
+        invalidateRevokedCertificate(queryClient, id);
+      }
     }
   });
 };
@@ -255,8 +265,8 @@ export const useDownloadCertPkcs12 = () => {
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-      } catch (error: any) {
-        if (error.response?.data instanceof ArrayBuffer) {
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.data instanceof ArrayBuffer) {
           const decoder = new TextDecoder();
           const errorText = decoder.decode(error.response.data);
           const errorData = JSON.parse(errorText);

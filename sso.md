@@ -42,7 +42,7 @@ nginx), so Infisical is available at **http://localhost:8080**.
 
 OIDC, SAML, LDAP, SCIM, and groups are paid features. On a plain local instance there is no
 license, so `getDefaultOnPremFeatures()` in
-[`backend/src/ee/services/license/license-fns.ts`](backend/src/ee/services/license/license-fns.ts)
+[`backend/src/domains/platform/license/ee/services/license-policy/default-features.ts`](backend/src/domains/platform/license/ee/services/license-policy/default-features.ts)
 returns `oidcSSO: false` and `ldap: false`, and the config endpoints reject everything.
 Pick one of:
 
@@ -166,7 +166,7 @@ Token exchange lets trusted middleware present a user's token from your IdP and 
 Infisical token. Its trust anchor is the org's OIDC SSO config, so everything above has to be working
 first. See [OAuth Token Exchange](docs/documentation/platform/oauth-applications/token-exchange) for the product docs.
 
-No license is needed: `plan.oidcSSO` is only checked when creating or updating an OIDC config through
+No license is needed: the `oidcSSO` plan feature is only checked when creating or updating an OIDC config through
 the API, and `make seed-dev-oidc` writes the row directly.
 
 **1. Seed, then confirm the trust anchor resolves.** This decides whether the `iss` check passes, so

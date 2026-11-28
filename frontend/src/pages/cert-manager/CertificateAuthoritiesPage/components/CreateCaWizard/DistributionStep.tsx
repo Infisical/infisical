@@ -19,6 +19,7 @@ import {
 } from "@app/components/v3";
 import { useSubscription } from "@app/context";
 import { MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS } from "@app/hooks/api/ca";
+import { CrlValidityDaysField } from "@app/pages/cert-manager/components/CrlValidityDaysField";
 
 import { CaWizardForm } from "./schemas";
 
@@ -137,6 +138,8 @@ export const DistributionStep = ({ form }: Props) => {
           </FieldDescription>
         </FieldContent>
       </Field>
+
+      <CrlValidityDaysField control={form.control} name="crlValidityDays" trigger={form.trigger} />
     </FieldGroup>
   );
 };

@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -9,7 +10,6 @@ import {
   SanitizedHumanitecConnectionSchema,
   UpdateHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -61,7 +61,7 @@ export const registerHumanitecConnectionRouter = async (server: FastifyZodProvid
 
       const organizations: HumanitecOrgWithApps[] = await server.services.appConnection.humanitec.listOrganizations(
         connectionId,
-        req.permission
+        req.actor
       );
 
       return organizations;

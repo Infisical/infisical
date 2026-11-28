@@ -1,37 +1,44 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope, OrganizationActionScope, TUsers } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import {
+  OrgPermissionMemberActions,
+  OrgPermissionSubjects,
+  TActorContextService,
+  TOrgPermissionService,
+  TSsoSessionService
+} from "@app/domains/platform/organizations/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
-import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { PgSqlLock } from "@app/keystore/keystore";
+import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { sanitizeEmail, validateEmail } from "@app/lib/validator";
+import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { AlertPrincipalType } from "@app/services/alert/alert-types";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
-import {
-  AgentVaultIdentities,
-  IdentitiesMeter,
-  PamIdentities,
-  SecretIdentities,
-  UserIdentities
-} from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TOrgDeletionServiceFactory } from "@app/services/org/org-deletion-service";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
-import { getRequiredMfaMethod } from "../auth/auth-fns";
-import { ActorType, AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType, MfaMethod } from "../auth/auth-type";
+import {
+  getOrgAllowedMfaMethods,
+  getUserAllowedMfaMethods,
+  MFA_METHOD_PRIORITY,
+  resolveMfaChallenge
+} from "../auth/auth-fns";
+import { AuthModeSignUpTokenPayload } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TMfaRecoveryCodeServiceFactory } from "../mfa-recovery-code/mfa-recovery-code-service";
@@ -83,16 +90,24 @@ type TUserServiceFactoryDep = {
     | "findEffectiveOrgMembership"
     | "findEffectiveOrgMemberships"
     | "findActiveEffectiveOrgMembershipsByUserId"
+    | "findOrgsWhereUserIsLastMember"
+    | "lockOrgTreeAccessForDeletion"
   >;
-  membershipUserDAL: Pick<TMembershipUserDALFactory, "find" | "insertMany" | "findOne" | "updateById">;
+  orgDeletionService: Pick<TOrgDeletionServiceFactory, "deleteOrganization">;
+  membershipUserDAL: Pick<
+    TMembershipUserDALFactory,
+    "find" | "insertMany" | "findOne" | "updateById" | "findOrgsWhereUserIsLastAdmin"
+  >;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser" | "revokeAllMySessions">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  permissionService: TPermissionServiceFactory;
+  orgPermissionService: TOrgPermissionService;
+  actorContextService: TActorContextService;
+  ssoSessionService: TSsoSessionService;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById" | "delete">;
   totpConfigDAL: Pick<TTotpConfigDALFactory, "findOne">;
   webAuthnCredentialDAL: Pick<TWebAuthnCredentialDALFactory, "find">;
   mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "rotateRecoveryCodes" | "deleteRecoveryCodes">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  usageMeteringService: TUsageMeteringService;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
@@ -104,11 +119,14 @@ export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
 export const userServiceFactory = ({
   userDAL,
   orgDAL,
+  orgDeletionService,
   membershipUserDAL,
   groupProjectDAL,
   tokenService,
   smtpService,
-  permissionService,
+  orgPermissionService,
+  actorContextService,
+  ssoSessionService,
   userAliasDAL,
   totpConfigDAL,
   webAuthnCredentialDAL,
@@ -167,13 +185,14 @@ export const userServiceFactory = ({
     return credentials.length > 0;
   };
 
-  const findReplacementMfaMethod = async (user: { id: string; email?: string | null }, excludeMethod: MfaMethod) => {
-    const fallbackOrder = [MfaMethod.WEBAUTHN, MfaMethod.TOTP, MfaMethod.EMAIL].filter(
-      (method) => method !== excludeMethod
-    );
-    const configured = await Promise.all(fallbackOrder.map((method) => isMfaMethodConfigured(user, method)));
-    return fallbackOrder.find((_, index) => configured[index]) ?? null;
+  // Strongest first. Email counts when the account has an address and SMTP can deliver to it.
+  const getEnrolledMfaMethods = async (user: { id: string; email?: string | null }): Promise<MfaMethod[]> => {
+    const configured = await Promise.all(MFA_METHOD_PRIORITY.map((method) => isMfaMethodConfigured(user, method)));
+    return MFA_METHOD_PRIORITY.filter((_, index) => configured[index]);
   };
+
+  const findReplacementMfaMethod = async (user: { id: string; email?: string | null }, excludeMethod: MfaMethod) =>
+    (await getEnrolledMfaMethods(user)).find((method) => method !== excludeMethod) ?? null;
 
   // A method can only be selected/activated once the user has actually configured
   // that factor. EMAIL uses the account email, so it needs no enrollment, but it
@@ -408,6 +427,12 @@ export const userServiceFactory = ({
     const startTime = new Date();
     const normalizedNewEmail = sanitizeEmail(newEmail);
     validateEmail(normalizedNewEmail);
+    if (isDisposableEmail(normalizedNewEmail)) {
+      throw new BadRequestError({
+        message: `Email address '${normalizedNewEmail}' is from a disposable email provider. Use a different email address.`,
+        name: "RequestEmailChangeOTP"
+      });
+    }
     const changeEmailOTP = await userDAL.transaction(async (tx) => {
       const user = await userDAL.findById(userId, tx);
       if (!user)
@@ -646,24 +671,14 @@ export const userServiceFactory = ({
     };
   };
 
-  // Resolves the MFA method a step-up challenge must use, from the current org
-  // context. Recovery codes bypass the org-required method at login, so the step-up
-  // that gates them must challenge that same method rather than the user's personal
-  // preference (which could be weaker, e.g. email while the org enforces passkeys).
-  // Mirrors login via the shared getRequiredMfaMethod: the root org enforcing MFA dictates
-  // the method, otherwise the user's own preference applies. Reaching a step-up-gated
-  // route already proves membership of this org, so no permission check is needed.
+  // Picks the step-up method by the login rule (resolveMfaChallenge) for the current org. Reaching a
+  // step-up-gated route already proves membership, so no permission check is needed.
   //
-  // Removing a factor never challenges that same factor, it's usually the lost one.
-  // Another configured factor stands in, or the required method if there's nothing else
-  // (e.g. no SMTP on self-hosted). Exception: a factor one of the user's orgs enforces is
-  // still challenged, that org already ruled the alternatives out, and a lost device goes
-  // through recovery-code login instead. All orgs are checked so org switching can't
-  // bypass it.
+  // Removing a factor challenges a substitute instead, since the removed one is usually lost. Every enforcing
+  // org that accepts the removed factor must accept the substitute too, or a weaker org's session could strip it
+  // and enroll its own to get into the stricter org. With no such substitute, the factor itself is challenged.
   //
-  // `accepted` is every factor a prior proof may carry for this action: the required
-  // method, plus the substitute when one is challenged. Other actions never accept the
-  // substitute.
+  // `accepted` lists every factor a prior proof may carry for this action; only removals accept a substitute.
   const getStepUpMfaMethod = async (
     userId: string,
     orgId: string | undefined,
@@ -677,57 +692,74 @@ export const userServiceFactory = ({
       sessionOrg?.rootOrgId && sessionOrg.rootOrgId !== sessionOrg.id
         ? await orgDAL.findById(sessionOrg.rootOrgId)
         : sessionOrg;
-    const { requiredMfaMethod } = getRequiredMfaMethod(org ?? {}, user ?? {});
-    const asRequired = { challenge: requiredMfaMethod, accepted: [requiredMfaMethod] };
-    if (!user || !excludeMethod) return asRequired;
 
+    const allowedMethods = getUserAllowedMfaMethods(org ?? {}, user ?? {});
+    const enrolledMethods = user ? await getEnrolledMfaMethods(user) : [];
+    const { usableMethods, challengeMethod } = resolveMfaChallenge({
+      allowedMethods,
+      enrolledMethods,
+      preferredMethod: user?.selectedMfaMethod
+    });
+    const challenge = challengeMethod ?? allowedMethods[0];
+    const asResolved = { challenge, accepted: usableMethods.length ? usableMethods : [challenge] };
+    if (!user || !excludeMethod) return asResolved;
+
+    const remainingMethods = enrolledMethods.filter((method) => method !== excludeMethod);
     const enforcingOrgs = await findMfaEnforcingOrgs(userId);
-    if (enforcingOrgs.some((enforcingOrg) => (enforcingOrg.selectedMfaMethod ?? MfaMethod.EMAIL) === excludeMethod)) {
-      return { challenge: excludeMethod, accepted: [excludeMethod] };
-    }
-    if (requiredMfaMethod !== excludeMethod) return asRequired;
+    const affectedOrgsAllowedMethods = enforcingOrgs
+      .map((enforcingOrg) => getOrgAllowedMfaMethods(enforcingOrg))
+      .filter((orgAllowedMethods) => orgAllowedMethods.includes(excludeMethod));
 
-    const replacement = await findReplacementMfaMethod(user, excludeMethod);
-    if (!replacement) return asRequired;
-    return { challenge: replacement, accepted: [requiredMfaMethod, replacement] };
+    if (affectedOrgsAllowedMethods.length) {
+      const acceptedMethodsForAffectedOrgs = enrolledMethods.filter((method) =>
+        affectedOrgsAllowedMethods.every((orgAllowedMethods) => orgAllowedMethods.includes(method))
+      );
+      const substituteMethods = acceptedMethodsForAffectedOrgs.filter((method) => method !== excludeMethod);
+
+      if (!substituteMethods.length) return { challenge: excludeMethod, accepted: [excludeMethod] };
+
+      const substituteMethod =
+        substituteMethods.find((method) => method === challenge) ??
+        substituteMethods.find((method) => method === user.selectedMfaMethod) ??
+        substituteMethods[0];
+      return { challenge: substituteMethod, accepted: acceptedMethodsForAffectedOrgs };
+    }
+
+    if (challenge !== excludeMethod) return asResolved;
+
+    const replacement = usableMethods.find((method) => method !== excludeMethod) ?? remainingMethods[0] ?? null;
+    if (!replacement) return asResolved;
+    return { challenge: replacement, accepted: unique([...asResolved.accepted, replacement]) };
   };
 
-  // Adding a factor must be proven with one the account already has, or a password-only
-  // session could plant its own. A new factor of a kind the user already has passes every
-  // login that asks for that kind, so only that kind can prove it; otherwise a weaker factor
-  // could open an org that enforces the stronger one. Mirrors removal (getStepUpMfaMethod).
-  // The first factor of a kind takes any of the user's factors, and an account with none
-  // gets null so enforced-MFA onboarding at login still works.
+  /**
+   * Adding a factor must be proven with the strongest one the account already has (passkey,
+   * TOTP, then email), or a session holding a weaker factor could plant one
+   * that opens an org enforcing the stronger kind.
+   */
   const getFactorEnrollmentStepUpMfaMethods = async (
-    userId: string,
-    enrollingMethod: MfaMethod
+    userId: string
   ): Promise<{ challenge: MfaMethod; accepted: MfaMethod[] } | null> => {
     const user = await userDAL.findById(userId);
     if (!user) throw new NotFoundError({ message: "User not found" });
 
-    const [hasPasskey, hasTotp, enforcingOrgs] = await Promise.all([
-      isMfaMethodConfigured(user, MfaMethod.WEBAUTHN),
-      isMfaMethodConfigured(user, MfaMethod.TOTP),
-      findMfaEnforcingOrgs(userId)
-    ]);
-    const isEmailRequiredAtLogin =
-      (user.isMfaEnabled && (user.selectedMfaMethod ?? MfaMethod.EMAIL) === MfaMethod.EMAIL) ||
-      enforcingOrgs.some((org) => (org.selectedMfaMethod ?? MfaMethod.EMAIL) === MfaMethod.EMAIL);
-    const hasEmail = isEmailRequiredAtLogin && (await isMfaMethodConfigured(user, MfaMethod.EMAIL));
+    const userFactors = await getEnrolledMfaMethods(user);
+    const strongestUserFactor = userFactors[0];
+    if (!strongestUserFactor) return null;
 
-    const userFactors = [
-      ...(hasPasskey ? [MfaMethod.WEBAUTHN] : []),
-      ...(hasTotp ? [MfaMethod.TOTP] : []),
-      ...(hasEmail ? [MfaMethod.EMAIL] : [])
-    ];
-    if (!userFactors.length) return null;
-    if (userFactors.includes(enrollingMethod)) return { challenge: enrollingMethod, accepted: [enrollingMethod] };
-
-    const preferred = userFactors.find((method) => method === user.selectedMfaMethod);
-    return { challenge: preferred ?? userFactors[0], accepted: userFactors };
+    return { challenge: strongestUserFactor, accepted: [strongestUserFactor] };
   };
 
-  const deleteUser = async (userId: string) => {
+  const $formatOrgNames = (orgs: { name: string }[]) => {
+    const isSingleOrg = orgs.length === 1;
+    return {
+      isSingleOrg,
+      orgNoun: isSingleOrg ? "the organization" : "the organizations",
+      orgNames: orgs.map((org) => `'${org.name}'`).join(", ")
+    };
+  };
+
+  const getMyDeletionEligibility = async (userId: string) => {
     // If the deleting user is the only remaining server admin, block self-deletion.
     // The super_admin table's `initialized` flag is not reset on user delete, so
     // letting the last super admin self-delete leaves /admin/signup permanently
@@ -735,28 +767,126 @@ export const userServiceFactory = ({
     // DB intervention (#6091). The super-admin-service.deleteUser path enforces
     // the same guard for admin-initiated deletes; this mirrors it for self-delete.
     const userToDelete = await userDAL.findById(userId);
-
+    let isOnlyServerAdmin = false;
     if (userToDelete?.superAdmin) {
       const superAdmins = await userDAL.find({ superAdmin: true });
-      if (superAdmins.length === 1 && superAdmins[0].id === userId) {
+      isOnlyServerAdmin = superAdmins.length === 1 && superAdmins[0].id === userId;
+    }
+
+    // If nobody's left to sign in, nobody can cancel billing, so these orgs go with the account.
+    const lastMemberOrgs = await orgDAL.findOrgsWhereUserIsLastMember(userId);
+
+    // Skip orgs that get deleted with the account, plus their sub-orgs since those cascade.
+    const deletedOrgIds = new Set(lastMemberOrgs.map((org) => org.id));
+    const lastAdminOrgs = (await membershipUserDAL.findOrgsWhereUserIsLastAdmin(userId)).filter(
+      (org) => !deletedOrgIds.has(org.id) && !(org.rootOrgId && deletedOrgIds.has(org.rootOrgId))
+    );
+
+    return {
+      canDelete: !isOnlyServerAdmin && !lastAdminOrgs.length,
+      isOnlyServerAdmin,
+      lastMemberOrganizations: lastMemberOrgs,
+      lastAdminOrganizations: lastAdminOrgs.map(({ id, name }) => ({ id, name }))
+    };
+  };
+
+  const deleteUser = async (
+    userId: string,
+    { actor, lastMemberOrganizationIds }: { actor: TActorContext; lastMemberOrganizationIds?: string[] }
+  ) => {
+    const {
+      isOnlyServerAdmin,
+      lastMemberOrganizations: lastMemberOrgs,
+      lastAdminOrganizations
+    } = await getMyDeletionEligibility(userId);
+
+    if (isOnlyServerAdmin) {
+      throw new BadRequestError({
+        message:
+          "Cannot delete the only server admin on this instance. Promote another user to server admin before deleting this account."
+      });
+    }
+
+    if (lastAdminOrganizations.length) {
+      const { orgNoun, orgNames } = $formatOrgNames(lastAdminOrganizations);
+      throw new BadRequestError({
+        message: `You are the only admin of ${orgNoun} ${orgNames}. Promote another member to admin before deleting your account.`
+      });
+    }
+
+    // Only delete what the user actually saw. If the list changed, make them look again.
+    const confirmedOrgIds = new Set(lastMemberOrganizationIds ?? []);
+    const matchesConfirmed =
+      lastMemberOrgs.length === confirmedOrgIds.size && lastMemberOrgs.every((org) => confirmedOrgIds.has(org.id));
+    if (!matchesConfirmed) {
+      const { isSingleOrg, orgNoun, orgNames } = $formatOrgNames(lastMemberOrgs);
+      if (!lastMemberOrganizationIds) {
+        throw new BadRequestError({
+          message: `You are the last member of ${orgNoun} ${orgNames}. Invite another member, or delete ${isSingleOrg ? "it" : "them"} along with your account.`
+        });
+      }
+      if (!lastMemberOrgs.length) {
         throw new BadRequestError({
           message:
-            "Cannot delete the only server admin on this instance. Promote another user to server admin before deleting this account."
+            "You are no longer the last member of any organization. Review your account deletion and try again; nothing was deleted."
+        });
+      }
+      throw new BadRequestError({
+        message: `The organizations you are the last member of have changed. You are now the last member of ${orgNoun} ${orgNames}. Review them and try again; nothing was deleted.`
+      });
+    }
+
+    for await (const org of lastMemberOrgs) {
+      try {
+        const orgActor = await actorContextService.forPrincipal({ principal: actor.principal, orgId: org.id });
+        await orgPermissionService.getOrgPermission({ actor: orgActor, scope: OrganizationActionScope.Any });
+        const ssoRefusal = await ssoSessionService.findSsoSessionRefusal(orgActor);
+        if (ssoRefusal) throw new ForbiddenRequestError({ message: ssoRefusal.message });
+      } catch (error) {
+        if (!(error instanceof ForbiddenRequestError) && !(error instanceof PermissionDeniedError)) throw error;
+        throw new ForbiddenRequestError({
+          message: `Your current login cannot delete the organization '${org.name}': ${error.message} Log in to that organization and delete it, or delete your account from there; nothing was deleted.`
         });
       }
     }
 
-    // Capture the user's org memberships before deletion; the delete cascades them away.
-    const orgMemberships = await membershipUserDAL.find({
-      scope: AccessScope.Organization,
-      actorUserId: userId
-    });
+    // Orgs first, one tx each. If one fails the account sticks around so a retry can finish the job.
+    for await (const org of lastMemberOrgs) {
+      await orgDeletionService.deleteOrganization(org.id, undefined, async (tx) => {
+        if (tx) await orgDAL.lockOrgTreeAccessForDeletion(org.id, tx);
+        const lastMemberOrgsNow = await orgDAL.findOrgsWhereUserIsLastMember(userId, tx);
+        if (!lastMemberOrgsNow.some((orgNow) => orgNow.id === org.id)) {
+          throw new BadRequestError({
+            message: `Another member joined the organization '${org.name}' while your account was being deleted, so the organization and your account were kept. Review your account deletion and try again.`
+          });
+        }
+      });
+    }
 
+    let memberOrgIds: string[] = [];
     let sendPamCancellations = () => {};
 
     const user = await userDAL.transaction(async (tx) => {
+      const orgMemberships = await membershipUserDAL.find(
+        { scope: AccessScope.Organization, actorUserId: userId },
+        { tx }
+      );
+      // Can't hold locks across the org deletes, so redo the check under the per-org lock admin demotions and
+      // removals take too. Sorted so overlapping txs can't deadlock.
+      memberOrgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId))].sort();
+      for await (const orgId of memberOrgIds) {
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("org", orgId)]);
+      }
+      const lastAdminOrgsNow = await membershipUserDAL.findOrgsWhereUserIsLastAdmin(userId, tx);
+      if (lastAdminOrgsNow.length) {
+        const { orgNoun, orgNames } = $formatOrgNames(lastAdminOrgsNow);
+        throw new BadRequestError({
+          message: `You are now the only admin of ${orgNoun} ${orgNames}. Promote another member to admin before deleting your account.`
+        });
+      }
+
       sendPamCancellations = await terminatePamSessionsForUsers({
-        orgIds: orgMemberships.map((m) => m.scopeOrgId),
+        orgIds: memberOrgIds,
         userIds: [userId],
         pamSessionDAL,
         gatewayV2Service,
@@ -779,13 +909,11 @@ export const userServiceFactory = ({
     sendPamCancellations();
 
     // Deleting the user cascades its org, project, and group memberships, so every identity meter changes.
-    const orgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId).filter((id): id is string => Boolean(id)))];
-    orgIds.forEach((orgId) => {
-      usageMeteringService.emit(orgId, IdentitiesMeter.key);
-      usageMeteringService.emit(orgId, UserIdentities.key);
-      usageMeteringService.emit(orgId, SecretIdentities.key);
-      usageMeteringService.emit(orgId, PamIdentities.key);
-      usageMeteringService.emit(orgId, AgentVaultIdentities.key);
+    memberOrgIds.forEach((orgId) => {
+      usageMeteringService.emit(orgId, Meter.Identities);
+      usageMeteringService.emit(orgId, Meter.UserIdentities);
+      usageMeteringService.emit(orgId, Meter.SecretIdentities);
+      usageMeteringService.emit(orgId, Meter.PamIdentities);
     });
 
     try {
@@ -895,26 +1023,19 @@ export const userServiceFactory = ({
     return updatedOrgMembership.projectFavorites;
   };
 
-  const listUserGroups = async ({ username, actorOrgId, actor, actorId, actorAuthMethod }: TListUserGroupsDTO) => {
+  const listUserGroups = async ({ username, actor }: TListUserGroupsDTO) => {
     // akhilmhdh: case sensitive email resolution
     const user = await userDAL.findOne({ username });
 
     if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
 
     // This makes it so the user can always read information about themselves, but no one else if they don't have the Members Read permission.
-    if (user.id !== actorId) {
-      const { permission } = await permissionService.getOrgPermission({
-        actor,
-        actorId,
-        orgId: actorOrgId,
-        actorAuthMethod,
-        actorOrgId,
-        scope: OrganizationActionScope.Any
-      });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
+    if (user.id !== actor.principal.id) {
+      const permission = await orgPermissionService.getOrgPermission({ actor });
+      permission.assert({ action: OrgPermissionMemberActions.Read, subject: OrgPermissionSubjects.Member });
     }
 
-    const memberships = await groupProjectDAL.findByUserId(user.id, actorOrgId);
+    const memberships = await groupProjectDAL.findByUserId(user.id, actor.org.id);
     return memberships;
   };
 
@@ -930,8 +1051,10 @@ export const userServiceFactory = ({
     verifyCurrentEmailOTP,
     updateUserEmail,
     deleteUser,
+    getMyDeletionEligibility,
     getMe,
     getStepUpMfaMethod,
+    getEnrolledMfaMethods,
     getFactorEnrollmentStepUpMfaMethods,
     isStepUpMfaRequired,
     resolveMfaMethodAfterRemoval,
