@@ -342,7 +342,7 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
         intent={{
           ...CustomRolesUpgradeIntent,
-          isEnterpriseFeature: true
+          isEnterpriseFeature: false
         }}
       />
     </form>

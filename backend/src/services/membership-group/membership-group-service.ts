@@ -178,7 +178,7 @@ export const membershipGroupServiceFactory = ({
       if (!plan?.has(PlanFeature.Rbac))
         throw new BadRequestError({
           message:
-            "Failed to assign custom role to group due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
+            "Failed to assign custom role to group due to plan RBAC restriction. Upgrade to Infisical Advanced to assign custom roles."
         });
     }
 
@@ -272,7 +272,7 @@ export const membershipGroupServiceFactory = ({
       if (!plan?.has(PlanFeature.Rbac))
         throw new BadRequestError({
           message:
-            "Failed to assign custom role to group due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
+            "Failed to assign custom role to group due to plan RBAC restriction. Upgrade to Infisical Advanced to assign custom roles."
         });
     }
 
