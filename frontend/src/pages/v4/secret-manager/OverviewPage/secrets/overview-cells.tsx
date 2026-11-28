@@ -145,14 +145,16 @@ export function StatusCell({
   status,
   hasOverride,
   pending,
-  annotations
+  annotations,
+  label
 }: {
   status: EnvironmentStatus;
+  label?: string;
   hasOverride?: boolean;
   pending?: "create" | "update";
   annotations?: ReactNode;
 }) {
-  const meta = statusMeta[status];
+  const meta = { ...statusMeta[status], ...(label && { label }) };
   const pendingLabel = pending === "create" ? "Unsaved new value" : "Unsaved change";
   return (
     <TableCell className={styles.statusCell} data-status={status} data-pending={pending}>

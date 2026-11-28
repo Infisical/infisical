@@ -169,7 +169,7 @@ import { PendingApprovalsLine } from "./secrets/pending-approvals-line";
 import { usePlanGateHost } from "./secrets/plan-gates";
 import { ProjectUpgradeState } from "./secrets/project-upgrade";
 import { RequestAccessLine } from "./secrets/request-access-line";
-import { FolderRow, ImportRow, KindRow } from "./secrets/resource-rows";
+import { FolderRow, ImportRow, type ImportSource, KindRow } from "./secrets/resource-rows";
 import { ConfirmDependentsDialog } from "./secrets/row-actions/confirm-dependents-dialog";
 import { DynamicSecretActions } from "./secrets/row-actions/dynamic-secret-actions";
 import { EditFolderDialog } from "./secrets/row-actions/edit-folder-dialog";
@@ -438,44 +438,6 @@ export const OverviewPage = () => {
     limit: perPage,
     offset: (page - 1) * perPage
   });
-  const importSites = adapter.useOverview(
-    {
-      projectId,
-      environments: projectEnvironments.map((environment) => environment.value),
-      secretPath: path,
-      includeFolders: false,
-      includeDynamicSecrets: false,
-      includeSecrets: false,
-      includeImports: true,
-      includeSecretRotations: false,
-      includeHoneyTokens: false,
-      includeProxiedServices: false,
-      limit: 100,
-      offset: 0
-    },
-    {
-      enabled:
-        !single && environmentIds.length > 0 && environmentIds.length < projectEnvironments.length
-    }
-  );
-  const sitesOf = (entries: Of<"import">[]) => {
-    const [{ name }] = entries;
-    const slugs = importSites.data
-      ? (importSites.data.imports ?? [])
-          .filter(
-            (entry) =>
-              importName(
-                projectId,
-                entry.importEnv.projectId ?? projectId,
-                entry.importEnv.slug,
-                entry.importPath
-              ) === name
-          )
-          .map((entry) => entry.environment ?? "")
-      : entries.map((entry) => entry.environment);
-    const found = new Set(slugs);
-    return projectEnvironments.filter((environment) => found.has(environment.value));
-  };
   const valueStore = useSecretValues(projectId);
   const [breadthHolders, setBreadthHolders] = useState(0);
   const holdBreadth = useCallback(
@@ -497,21 +459,38 @@ export const OverviewPage = () => {
     !tags.length &&
     scope.path === path &&
     visibleEnvironments.some((entry) => entry.value === scope.environment);
+  const visibleImports = (overview.data?.imports ?? []).filter((entry) => !entry.isReserved);
   const breadthScopes = [
-    ...(overview.data?.imports ?? [])
+    ...visibleImports
       .filter((entry) => !entry.importEnv.projectId || entry.importEnv.projectId === projectId)
       .map((entry) => ({ environment: entry.importEnv.slug, path: entry.importPath })),
-    ...(wide
-      ? Object.values(folderTree ?? {}).flatMap((environment) =>
-          environment.folders.map((folder) => ({
-            environment: environment.slug,
-            path: folder.path
-          }))
+    ...visibleImports
+      .filter((entry) =>
+        expandedRows.includes(
+          resourceKey({
+            kind: "import",
+            name: importName(
+              projectId,
+              entry.importEnv.projectId ?? projectId,
+              entry.importEnv.slug,
+              entry.importPath
+            )
+          })
         )
+      )
+      .map((entry) => ({ environment: entry.environment ?? "", path })),
+    ...(wide
+      ? Object.values(folderTree ?? {})
+          .flatMap((environment) =>
+            environment.folders.map((folder) => ({
+              environment: environment.slug,
+              path: folder.path
+            }))
+          )
+          .filter((scope) => !overviewHolds(scope))
       : [])
   ].filter(
     (scope, index, all) =>
-      !overviewHolds(scope) &&
       all.findIndex(
         (entry) => entry.environment === scope.environment && entry.path === scope.path
       ) === index
@@ -1376,8 +1355,35 @@ export const OverviewPage = () => {
   const sourceState = (entry: Of<"import">): ScopeState => {
     if (entry.source.project !== projectId)
       return foreignImports[entry.environment]?.status ?? "loading";
-    if (overviewHolds(entry.source)) return "loaded";
     return breadth.state(entry.source);
+  };
+  const importSource: ImportSource = {
+    secrets: sourceSecrets,
+    state: sourceState,
+    missing: (entry) =>
+      entry.source.project === projectId &&
+      Boolean(folderTree) &&
+      !Object.values(folderTree ?? {}).some(
+        (environment) =>
+          environment.slug === entry.source.environment &&
+          environment.folders.some(
+            (folder) => normalizeFolderPath(folder.path) === normalizeFolderPath(entry.source.path)
+          )
+      ),
+    ownKeys: (entry) =>
+      new Set(
+        resources
+          .filter(
+            (resource) =>
+              resource.kind === "secret" &&
+              scopeMatches(resource, {
+                project: projectId,
+                environment: entry.environment,
+                path: entry.path
+              })
+          )
+          .map((resource) => resource.name)
+      )
   };
 
   const insert = (
@@ -2606,10 +2612,8 @@ export const OverviewPage = () => {
                                     rowKey={key}
                                     entries={entries as Of<"import">[]}
                                     ctx={ctx}
-                                    sourceSecrets={sourceSecrets}
-                                    sourceState={sourceState}
+                                    source={importSource}
                                     projectId={project}
-                                    sites={sitesOf(entries as Of<"import">[])}
                                     revealAll={single ? revealAll : showValues}
                                   />
                                 );

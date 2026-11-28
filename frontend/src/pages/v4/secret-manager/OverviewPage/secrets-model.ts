@@ -59,7 +59,7 @@ export type Resource =
       revoked: boolean;
       replicated: boolean;
       position?: number;
-      replicationStatus?: "succeeded" | "failed";
+      replicationStatus?: "succeeded" | "failed" | "pending";
       replicationDetails?: string;
       lastReplicated?: string;
     })
