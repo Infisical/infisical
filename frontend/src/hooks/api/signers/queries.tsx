@@ -8,6 +8,7 @@ import { ResourcePermissionResponse } from "@app/helpers/resourcePermissions";
 import {
   SignerStatus,
   TGetPublicKeyResponse,
+  TGetSigningActivityBySignerDTO,
   TGetSigningActivityTrendDTO,
   TGetUserSignerPermissionDTO,
   TListEffectiveSignerMembersDTO,
@@ -22,6 +23,7 @@ import {
   TListSigningOperationsResponse,
   TSigner,
   TSignerPolicy,
+  TSigningActivityBySigner,
   TSigningActivityPeriod,
   TSigningOperationDetail,
   getOpenCertificateRequest
@@ -55,6 +57,8 @@ export const signerKeys = {
   publicKey: (signerId: string) => [...signerKeys.all, "publicKey", signerId] as const,
   activityTrend: (filters: TGetSigningActivityTrendDTO) =>
     [...signerKeys.all, "activity-trend", filters] as const,
+  activityBySigner: (filters: TGetSigningActivityBySignerDTO) =>
+    [...signerKeys.all, "activity-by-signer", filters] as const,
   operations: (signerId: string) => [...signerKeys.all, "operations", signerId] as const,
   operationsWithOpts: (filters: TListSigningOperationsDTO) =>
     [...signerKeys.operations(filters.signerId), filters] as const,
@@ -95,6 +99,8 @@ export const useListSigners = (dto: TListSignersDTO) => {
         limit: String(dto.limit ?? 25)
       });
       if (dto.search) params.set("search", dto.search);
+      if (dto.orderBy) params.set("orderBy", dto.orderBy);
+      if (dto.orderDirection) params.set("orderDirection", dto.orderDirection);
 
       const { data } = await apiRequest.get<TListSignersResponse>(
         `/api/v1/cert-manager/signers?${params.toString()}`
@@ -156,12 +162,34 @@ export const useGetSigningActivityTrend = (
     queryKey: signerKeys.activityTrend(dto),
     queryFn: async () => {
       const params = new URLSearchParams({ range: dto.range });
-      if (dto.signerId) params.set("signerId", dto.signerId);
+      if (dto.signerIds?.length) params.set("signerIds", dto.signerIds.join(","));
 
       const { data } = await apiRequest.get<{ periods: TSigningActivityPeriod[] }>(
         `/api/v1/cert-manager/signers/activity-trend?${params.toString()}`
       );
       return data.periods;
+    },
+    enabled,
+    placeholderData: (previousData) => previousData
+  });
+};
+
+export const useGetSigningActivityBySigner = (
+  dto: TGetSigningActivityBySignerDTO,
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
+  return useQuery({
+    queryKey: signerKeys.activityBySigner(dto),
+    queryFn: async () => {
+      const params = new URLSearchParams({ range: dto.range });
+      if (dto.signerIds?.length) params.set("signerIds", dto.signerIds.join(","));
+      if (dto.orderBy) params.set("orderBy", dto.orderBy);
+      if (dto.orderDirection) params.set("orderDirection", dto.orderDirection);
+
+      const { data } = await apiRequest.get<TSigningActivityBySigner>(
+        `/api/v1/cert-manager/signers/activity-by-signer?${params.toString()}`
+      );
+      return data;
     },
     enabled,
     placeholderData: (previousData) => previousData

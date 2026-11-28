@@ -4,12 +4,24 @@ import { PkiSigningOperationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { AuthMode } from "@app/lib/auth/actor-types";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SigningOperationStatus } from "@app/services/signer/signer-enums";
-import { SigningActivityRange } from "@app/services/signer/signer-types";
+import {
+  MAX_SIGNING_ACTIVITY_SIGNERS,
+  SigningActivityOrderBy,
+  SigningActivityRange
+} from "@app/services/signer/signer-types";
 
 import { SignerIdParamsSchema } from "./schemas";
+
+const SigningActivitySignerIdsSchema = z
+  .string()
+  .transform((val) => Array.from(new Set(val.split(",").map((id) => id.trim().toLowerCase()))))
+  .pipe(z.array(z.string().uuid()).min(1).max(MAX_SIGNING_ACTIVITY_SIGNERS))
+  .optional()
+  .describe(`Comma-separated signer IDs to limit the activity to, up to ${MAX_SIGNING_ACTIVITY_SIGNERS}.`);
 
 export const registerSignerOperationsRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -23,7 +35,8 @@ export const registerSignerOperationsRouter = async (server: FastifyZodProvider)
       description: "Get signing operation counts per period across the signers the caller can read",
       querystring: z.object({
         range: z.nativeEnum(SigningActivityRange).default(SigningActivityRange.ThirtyDays),
-        signerId: z.string().uuid().optional()
+        signerId: z.string().toLowerCase().uuid().optional(),
+        signerIds: SigningActivitySignerIdsSchema
       }),
       response: {
         200: z.object({
@@ -40,6 +53,67 @@ export const registerSignerOperationsRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) =>
       server.services.pkiSigner.getActivityTrend({
+        ...req.query,
+        projectId: req.internalCertManagerProjectId,
+        actor: req.actor
+      })
+  });
+
+  server.route({
+    method: "GET",
+    url: "/activity-by-signer",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: true,
+      operationId: "getSigningActivityBySigner",
+      tags: [ApiDocsTags.PkiSigners],
+      description:
+        "Get signing operation totals and per-period counts by signer, across the signers the caller can read",
+      querystring: z.object({
+        range: z.nativeEnum(SigningActivityRange).default(SigningActivityRange.ThirtyDays).describe("Defaults to 30d."),
+        signerIds: SigningActivitySignerIdsSchema,
+        orderBy: z
+          .nativeEnum(SigningActivityOrderBy)
+          .default(SigningActivityOrderBy.Total)
+          .describe("Orders signers by total operations or by failed operations. Defaults to total."),
+        orderDirection: z
+          .nativeEnum(OrderByDirection)
+          .default(OrderByDirection.DESC)
+          .describe("Defaults to desc. The first signers in this order are charted.")
+      }),
+      response: {
+        200: z.object({
+          signerTotals: z
+            .array(
+              z.object({
+                signerId: z.string().uuid().describe("The signer ID."),
+                signerName: z.string().describe("The signer name."),
+                success: z.number().int().describe("Successful operations in the range."),
+                failed: z.number().int().describe("Failed or denied operations in the range.")
+              })
+            )
+            .describe(
+              "Every readable signer, or every requested signer when signerIds is set, including signers with no operations, in orderBy and orderDirection order."
+            ),
+          periods: z
+            .array(
+              z.object({
+                period: z.string().describe("YYYY-MM-DD for 7d and 30d, YYYY-MM for 6m."),
+                signerCounts: z
+                  .record(z.string().uuid(), z.number().int())
+                  .describe(
+                    `Operations per charted signer: every requested signer when signerIds is set, otherwise all when ${MAX_SIGNING_ACTIVITY_SIGNERS} or fewer, else the first ${MAX_SIGNING_ACTIVITY_SIGNERS - 1}.`
+                  ),
+                otherCount: z.number().int().describe("Operations for signers that are not charted.")
+              })
+            )
+            .describe("Every period in the range, oldest first.")
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.pkiSigner.getActivityBySigner({
         ...req.query,
         projectId: req.internalCertManagerProjectId,
         actor: req.actor
