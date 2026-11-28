@@ -419,25 +419,31 @@ export const OverviewPage = () => {
   const setPage = (next: number) => setPaging({ scope: pageScope, page: next });
   const include = (kind: ResourceKind) =>
     (!tags.length || kind === "secret") && (!types.length || types.includes(kind));
-  const overview = adapter.useOverview({
-    projectId,
-    environments: visibleEnvironments.map((environment) => environment.value),
-    secretPath: path,
-    orderBy: sort.field as DashboardSecretsOrderBy,
-    orderDirection: sort.direction === "asc" ? OrderByDirection.ASC : OrderByDirection.DESC,
-    sortEnvironment: sort.environment,
-    includeFolders: include("folder"),
-    includeDynamicSecrets: include("dynamic"),
-    includeSecrets: include("secret"),
-    includeImports: include("import"),
-    includeSecretRotations: include("rotation"),
-    includeHoneyTokens: include("honey"),
-    includeProxiedServices: include("proxy"),
-    search: debounced,
-    tags: Object.fromEntries(tags.map((tag) => [tag, true])),
-    limit: perPage,
-    offset: (page - 1) * perPage
-  });
+  const overview = adapter.useOverview(
+    {
+      projectId,
+      environments: visibleEnvironments.map((environment) => environment.value),
+      secretPath: path,
+      orderBy: sort.field as DashboardSecretsOrderBy,
+      orderDirection: sort.direction === "asc" ? OrderByDirection.ASC : OrderByDirection.DESC,
+      sortEnvironment: sort.environment,
+      includeFolders: include("folder"),
+      includeDynamicSecrets: include("dynamic"),
+      includeSecrets: include("secret"),
+      includeImports: include("import"),
+      includeSecretRotations: include("rotation"),
+      includeHoneyTokens: include("honey"),
+      includeProxiedServices: include("proxy"),
+      search: debounced,
+      tags: Object.fromEntries(tags.map((tag) => [tag, true])),
+      limit: perPage,
+      offset: (page - 1) * perPage
+    },
+    {
+      refetchInterval: (cached) =>
+        cached.state.data?.imports?.some((entry) => entry.isReplicationRunning) ? 5000 : false
+    }
+  );
   const valueStore = useSecretValues(projectId);
   const [breadthHolders, setBreadthHolders] = useState(0);
   const holdBreadth = useCallback(
@@ -1361,15 +1367,17 @@ export const OverviewPage = () => {
     secrets: sourceSecrets,
     state: sourceState,
     missing: (entry) =>
-      entry.source.project === projectId &&
-      Boolean(folderTree) &&
-      !Object.values(folderTree ?? {}).some(
-        (environment) =>
-          environment.slug === entry.source.environment &&
-          environment.folders.some(
-            (folder) => normalizeFolderPath(folder.path) === normalizeFolderPath(entry.source.path)
-          )
-      ),
+      Boolean(entry.sourceMissing) ||
+      (entry.source.project === projectId &&
+        Boolean(folderTree) &&
+        !Object.values(folderTree ?? {}).some(
+          (environment) =>
+            environment.slug === entry.source.environment &&
+            environment.folders.some(
+              (folder) =>
+                normalizeFolderPath(folder.path) === normalizeFolderPath(entry.source.path)
+            )
+        )),
     ownKeys: (entry) =>
       new Set(
         resources

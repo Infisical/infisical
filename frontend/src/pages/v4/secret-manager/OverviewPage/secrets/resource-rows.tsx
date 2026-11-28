@@ -853,6 +853,13 @@ const secretCount = (count: number) => `${count} ${count === 1 ? "secret" : "sec
 
 const replicationOf = (entry: Of<"import">, count?: number, single = false) => {
   const from = count === undefined ? "" : ` ${secretCount(count)} from ${sourceLabelOf(entry)}.`;
+  if (entry.replicationRunning)
+    return {
+      tone: "neutral" as const,
+      icon: RefreshCwIcon,
+      label: "Syncing",
+      reason: `Replicating secrets from ${sourceLabelOf(entry)}.`
+    };
   if (entry.replicationStatus === "pending" || !entry.lastReplicated)
     return {
       tone: "neutral" as const,
@@ -886,13 +893,6 @@ export type ImportSource = {
 function ImportEnvCell({ entry, source }: { entry?: Of<"import">; source: ImportSource }) {
   if (!entry) return <StatusCell status="missing" />;
   const status = (() => {
-    if (entry.revoked)
-      return {
-        tone: "neutral" as const,
-        icon: BanIcon,
-        label: "Revoked",
-        reason: `${entry.sourceProjectName ?? "The source project"} revoked access to these secrets.`
-      };
     if (source.missing(entry))
       return {
         tone: "warn" as const,
@@ -900,8 +900,16 @@ function ImportEnvCell({ entry, source }: { entry?: Of<"import">; source: Import
         label: "Source missing",
         reason: `${sourceLabelOf(entry)} no longer exists, so this import adds no secrets.`
       };
+    if (entry.revoked)
+      return {
+        tone: "neutral" as const,
+        icon: BanIcon,
+        label: "Revoked",
+        reason: `${entry.sourceProjectName ?? "The source project"} revoked access to these secrets.`
+      };
     const state = source.state(entry);
-    const count = state === "loaded" ? source.secrets(entry).length : undefined;
+    const total = state === "loaded" ? source.secrets(entry).length : undefined;
+    const count = entry.importedCount ?? total;
     if (entry.replicated) return replicationOf(entry, count);
     if (state === "failed")
       return {
@@ -913,7 +921,9 @@ function ImportEnvCell({ entry, source }: { entry?: Of<"import">; source: Import
     return {
       count,
       reason:
-        count === undefined ? undefined : `${secretCount(count)} from ${sourceLabelOf(entry)}.`
+        count === undefined
+          ? undefined
+          : `${secretCount(count)} from ${sourceLabelOf(entry)}.${total !== undefined && total > count ? ` ${total - count} overridden in this folder.` : ""}`
     };
   })();
   return (

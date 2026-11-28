@@ -62,6 +62,10 @@ export type Resource =
       replicationStatus?: "succeeded" | "failed" | "pending";
       replicationDetails?: string;
       lastReplicated?: string;
+      replicationRunning?: boolean;
+      resyncRequestedAt?: number;
+      sourceMissing?: boolean;
+      importedCount?: number;
     })
   | (ResourceBase & {
       kind: "dynamic";

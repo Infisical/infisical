@@ -61,6 +61,8 @@ export const SECRET_MANAGER_CACHE_PREFIX = "secret-manager";
 // all the key prefixes used must be set here to avoid conflict
 export const KeyStorePrefixes = {
   SecretReplication: "secret-replication-import-lock",
+  SecretImportReplicationRunning: (secretImportId: string) =>
+    `secret-import-replication-running-${secretImportId}` as const,
   FolderTreeCheckpoint: (envId: string) => `folder-tree-checkpoint-${envId}`,
 
   WaitUntilReadyProjectEnvironmentOperation: (projectId: string) =>
@@ -297,6 +299,7 @@ export const KeyStorePrefixes = {
 };
 
 export const KeyStoreTtls = {
+  SecretImportReplicationRunningInSeconds: 900,
   LdapDirectoryMachinesInSeconds: 60,
   LdapHostLoginInSeconds: 3600,
   LdapGuessedHostLoginInSeconds: 30,

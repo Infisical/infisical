@@ -204,6 +204,9 @@ export const buildResources = ({
         ),
         replicationDetails: entry.replicationStatus,
         lastReplicated: entry.lastReplicated,
+        replicationRunning: entry.isReplicationRunning,
+        sourceMissing: entry.isSourceMissing,
+        importedCount: entry.importedSecretCount,
         createdAt: entry.createdAt,
         updatedAt: entry.updatedAt
       })

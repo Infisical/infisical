@@ -281,7 +281,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               }),
               sourceProjectName: z.string().optional(),
               environment: z.string(),
-              isAccessRevoked: z.boolean()
+              isAccessRevoked: z.boolean(),
+              isSourceMissing: z.boolean(),
+              isReplicationRunning: z.boolean(),
+              importedSecretCount: z.number().int().optional()
             })
             .array()
             .optional(),

@@ -2612,7 +2612,8 @@ export const registerRoutes = async (
     secretDAL,
     secretQueueService,
     secretV2BridgeDAL,
-    kmsDataKeyService
+    kmsDataKeyService,
+    keyStore
   });
   const projectFolderGrantService = projectFolderGrantServiceFactory({
     projectFolderGrantDAL,

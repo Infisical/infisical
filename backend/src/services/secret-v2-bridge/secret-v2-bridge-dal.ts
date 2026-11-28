@@ -630,6 +630,42 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const countKeysNotInFolder = async (
+    pairs: { sourceFolderId: string; destinationFolderId: string }[],
+    tx?: Knex
+  ): Promise<{ sourceFolderId: string; destinationFolderId: string; count: number }[]> => {
+    if (!pairs.length) return [];
+    try {
+      const conn = tx || db.replicaNode();
+      const rows = await conn
+        .from(
+          conn.raw(
+            `(values ${pairs.map(() => "(?::uuid, ?::uuid)").join(", ")}) as pairs("sourceFolderId", "destinationFolderId")`,
+            pairs.flatMap(({ sourceFolderId, destinationFolderId }) => [sourceFolderId, destinationFolderId])
+          )
+        )
+        .join(`${TableName.SecretV2} as source`, "source.folderId", "pairs.sourceFolderId")
+        .where("source.type", SecretType.Shared)
+        .whereNotExists((qb) => {
+          void qb
+            .select(conn.raw("1"))
+            .from(`${TableName.SecretV2} as destination`)
+            .whereRaw('destination."folderId" = pairs."destinationFolderId"')
+            .whereRaw("destination.key = source.key")
+            .where("destination.type", SecretType.Shared);
+        })
+        .groupBy("pairs.sourceFolderId", "pairs.destinationFolderId")
+        .select(
+          "pairs.sourceFolderId",
+          "pairs.destinationFolderId",
+          conn.raw("count(distinct source.key)::int as count")
+        );
+      return rows as { sourceFolderId: string; destinationFolderId: string; count: number }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "count imported secret keys" });
+    }
+  };
+
   const findMetadataByFolderIds = async ({
     folderIds,
     afterId,
@@ -1890,6 +1926,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findSecretsInFolderAfter,
     batchSetBlindIndexes,
     countByFolderIds,
+    countKeysNotInFolder,
     findStaleByProject,
     countStaleByProject,
     countByProject,

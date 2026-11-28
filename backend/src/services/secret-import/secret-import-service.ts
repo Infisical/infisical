@@ -19,7 +19,9 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
+import { SECRET_IMPORT_REPLICATION_QUEUED } from "@app/ee/services/secret-replication/secret-replication-constants";
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-fns";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -56,7 +58,11 @@ type TSecretImportServiceFactoryDep = {
   folderDAL: TSecretFolderDALFactory;
   eventEmitter: TEventEmitter;
   secretDAL: Pick<TSecretDALFactory, "find">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "invalidateSecretCacheByProjectId">;
+  secretV2BridgeDAL: Pick<
+    TSecretV2BridgeDALFactory,
+    "find" | "findByFolderIds" | "invalidateSecretCacheByProjectId" | "countKeysNotInFolder"
+  >;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   projectDAL: Pick<TProjectDALFactory, "checkProjectUpgradeStatus" | "findById">;
   projectEnvDAL: TProjectEnvDALFactory;
@@ -91,7 +97,8 @@ export const secretImportServiceFactory = ({
   licenseService,
   projectBotService,
   secretV2BridgeDAL,
-  kmsDataKeyService
+  kmsDataKeyService,
+  keyStore
 }: TSecretImportServiceFactoryDep) => {
   const $annotateCrossProjectImports = async <
     T extends { id: string; importEnv: { id: string; projectId?: string | null }; importPath: string }
@@ -686,6 +693,11 @@ export const secretImportServiceFactory = ({
     );
 
     if (memberships?.length && sourceFolder) {
+      await keyStore.setItemWithExpiry(
+        KeyStorePrefixes.SecretImportReplicationRunning(secretImportDoc.id),
+        KeyStoreTtls.SecretImportReplicationRunningInSeconds,
+        SECRET_IMPORT_REPLICATION_QUEUED
+      );
       await secretQueueService.replicateSecrets({
         orgId: actorOrgId,
         secretPath: secretImportDoc.importPath,
@@ -1085,7 +1097,57 @@ export const secretImportServiceFactory = ({
         }));
       })
     );
-    return secImportsArrays.flat();
+    const imports = secImportsArrays.flat();
+    if (!imports.length) return [];
+
+    const sourceFolders = await folderDAL.findByManySecretPath(
+      imports.map((imp) => ({ envId: imp.importEnv.id, secretPath: imp.importPath }))
+    );
+    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    const countableSourceFolderIds = imports.map((imp, idx) => {
+      const sourceFolder = sourceFolders[idx];
+      if (!shouldUseSecretV2Bridge || !sourceFolder || imp.isAccessRevoked) return undefined;
+      const canDescribeDestination = hasSecretReadValueOrDescribePermission(
+        permission,
+        ProjectPermissionSecretActions.DescribeSecret,
+        { environment: imp.environment, secretPath }
+      );
+      if (!canDescribeDestination) return undefined;
+      const isCrossProject = Boolean(imp.importEnv.projectId) && imp.importEnv.projectId !== projectId;
+      const canDescribeSource =
+        isCrossProject ||
+        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+          environment: imp.importEnv.slug,
+          secretPath: imp.importPath
+        });
+      return canDescribeSource ? sourceFolder.id : undefined;
+    });
+    const countPairs = imports.flatMap((imp, idx) => {
+      const sourceFolderId = countableSourceFolderIds[idx];
+      return sourceFolderId ? [{ sourceFolderId, destinationFolderId: imp.folderId }] : [];
+    });
+    const counts = await secretV2BridgeDAL.countKeysNotInFolder(countPairs);
+    const countByPair = new Map(
+      counts.map(({ sourceFolderId, destinationFolderId, count }) => [
+        `${sourceFolderId}:${destinationFolderId}`,
+        count
+      ])
+    );
+    const running = await Promise.all(
+      imports.map((imp) =>
+        imp.isReplication ? keyStore.getItem(KeyStorePrefixes.SecretImportReplicationRunning(imp.id)) : null
+      )
+    );
+
+    return imports.map((imp, idx) => {
+      const sourceFolderId = countableSourceFolderIds[idx];
+      return {
+        ...imp,
+        isSourceMissing: !sourceFolders[idx],
+        isReplicationRunning: Boolean(imp.isReplication && running[idx]),
+        importedSecretCount: sourceFolderId ? (countByPair.get(`${sourceFolderId}:${imp.folderId}`) ?? 0) : undefined
+      };
+    });
   };
 
   const getFolderIsImportedBy = async ({
