@@ -6,6 +6,7 @@ export * from "./FolderAccessSheet";
 export * from "./FolderBreadcrumb";
 export * from "./FolderTableRow";
 export * from "./HoneyTokenTableRow";
+export * from "./ParentFolderTableRow";
 export * from "./ProxiedServiceTableRow";
 export * from "./QuickAddSecretRow";
 export * from "./ResourceCount";

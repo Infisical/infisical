@@ -275,6 +275,7 @@ import {
   FolderBreadcrumb,
   FolderTableRow,
   HoneyTokenTableRow,
+  ParentFolderTableRow,
   ProxiedServiceTableRow,
   QuickAddSecretRow,
   ResourceCount,
@@ -3508,7 +3509,7 @@ const OverviewPageContent = () => {
     ]
   );
 
-  const handleFolderClick = (path: string) => {
+  const navigateToFolder = (folderPath: string) => {
     if (isOverviewFetching) return;
     overviewTelemetry.interaction({
       action: "folder-navigation",
@@ -3520,13 +3521,16 @@ const OverviewPageContent = () => {
     navigate({
       search: (prev) => ({
         ...prev,
-        secretPath: `${routerSearch.secretPath === "/" ? "" : routerSearch.secretPath}/${path}`
+        secretPath: folderPath
       })
     }).then(() => {
       setFilter(DEFAULT_FILTER_STATE);
       setSearchFilter("");
     });
   };
+
+  const handleFolderClick = (path: string) =>
+    navigateToFolder(`${routerSearch.secretPath === "/" ? "" : routerSearch.secretPath}/${path}`);
 
   const handleClearTags = useCallback(() => {
     overviewTelemetry.interaction({ action: "clear-tags", source: "header" });
@@ -4871,6 +4875,14 @@ const OverviewPageContent = () => {
                         TABLE_BODY_ROW_FILTER_DIMMED_CLASS_NAME
                     )}
                   >
+                    {secretPath !== "/" && page === 1 && !showOverviewSkeleton && (
+                      <ParentFolderTableRow
+                        secretPath={secretPath}
+                        isNavigationDisabled={isOverviewPending}
+                        environments={visibleEnvs}
+                        onClick={navigateToFolder}
+                      />
+                    )}
                     {tableView !== "table" && (
                       <TableFilteredEmptyRow
                         colSpan={visibleEnvs.length + 2}
