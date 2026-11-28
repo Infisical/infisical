@@ -5266,6 +5266,7 @@ export const registerRoutes = async (
     licenseService,
     instanceConfigService,
     actorContextService,
+    blocklistService: domains.blocklist.blocklistService,
     orgPermissionService,
     memberPermissionAudit: memberPermissionAuditService,
     trustedIp: trustedIpService,
@@ -5349,6 +5350,10 @@ export const registerRoutes = async (
   // (license plan, Microsoft Teams bot), so an API pod that stopped running them would serve stale
   // config rather than shed background work.
   const cronJobs: TLocalRefreshHandle[] = [];
+  const blocklistSyncJob = domains.blocklist.startBackgroundSync();
+  if (blocklistSyncJob) {
+    cronJobs.push(blocklistSyncJob);
+  }
   if (appCfg.isProductionMode) {
     const licenseSyncJob = domains.license.startBackgroundSync();
     if (licenseSyncJob) {

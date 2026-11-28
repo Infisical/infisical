@@ -1,9 +1,10 @@
 import { requestContext } from "@fastify/request-context";
 import fp from "fastify-plugin";
 
+import { BlockScope } from "@app/domains/domains";
 import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { TPrincipal } from "@app/lib/auth/principal";
-import { UnauthorizedError } from "@app/lib/errors";
+import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { OrgServiceActor } from "@app/lib/types";
@@ -105,6 +106,19 @@ export const injectActorContext = fp(async (server) => {
     // Treat a session the org's sign-in policy no longer allows like an expired one.
     if (ssoRefusal && !req.routeOptions.config?.skipCurrentOrgSsoCheck)
       throw new UnauthorizedError({ name: ssoRefusal.name, message: ssoRefusal.message });
+    // Infisical Cloud's blocklist (empty elsewhere). Runs for org-less user sessions too, so a blocked user is
+    // refused right after signing in.
+    const block = server.services.blocklistService.findBlock({
+      orgIds: org ? [org.id, org.rootOrgId] : [],
+      userId: principal.type === ActorType.USER ? principal.id : undefined,
+      email: principal.type === ActorType.USER ? principal.email : null
+    });
+    if (block) {
+      throw new ForbiddenRequestError({
+        name: block.scope === BlockScope.User ? "AccountBlocked" : "OrganizationBlocked",
+        message: block.message
+      });
+    }
     const flat: OrgServiceActor = {
       type: principal.type,
       id: actorId,

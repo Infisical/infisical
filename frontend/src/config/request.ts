@@ -4,6 +4,11 @@ import { addSeconds, formatISO } from "date-fns";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { SessionStorageKeys } from "@app/const";
+import {
+  getBlockedMessage,
+  isAccountBlockedError,
+  saveAccountBlockedMessage
+} from "@app/helpers/blocklist";
 import { getTabCertManagerProjectIdForRequest } from "@app/helpers/certManagerActiveProject";
 import { fetchAuthToken } from "@app/hooks/api/auth/refresh";
 import {
@@ -191,6 +196,22 @@ apiRequest.interceptors.response.use(
       return Promise.reject(
         new Error("Session refused by organization SSO policy - redirecting to login")
       );
+    }
+
+    // Every request from a blocked account is refused, so end the session and show the reason.
+    if (isAccountBlockedError(error) && !isRedirecting) {
+      isRedirecting = true;
+      saveAccountBlockedMessage(getBlockedMessage(error));
+      try {
+        setAuthToken("");
+        SecurityClient.setToken("");
+      } catch (err) {
+        console.warn("Error clearing tokens:", err);
+      }
+      endRefusedSession().finally(() => {
+        window.location.href = "/account-blocked";
+      });
+      return Promise.reject(error);
     }
 
     return Promise.reject(error);

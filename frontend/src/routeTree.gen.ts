@@ -17,6 +17,7 @@ import { Route as publicShareSecretPageLegacyRouteImport } from './pages/public/
 import { Route as middlewaresRestrictLoginSignupImport } from './pages/middlewares/restrict-login-signup'
 import { Route as middlewaresAuthenticateImport } from './pages/middlewares/authenticate'
 import { Route as authCliRedirectPageRouteImport } from './pages/auth/CliRedirectPage/route'
+import { Route as authAccountBlockedPageRouteImport } from './pages/auth/AccountBlockedPage/route'
 import { Route as indexImport } from './pages/index'
 import { Route as middlewaresInjectOrgDetailsImport } from './pages/middlewares/inject-org-details'
 import { Route as publicShareSecretPageRouteImport } from './pages/public/ShareSecretPage/route'
@@ -454,6 +455,13 @@ const authCliRedirectPageRouteRoute = authCliRedirectPageRouteImport.update({
   path: '/cli-redirect',
   getParentRoute: () => rootRoute,
 } as any)
+
+const authAccountBlockedPageRouteRoute =
+  authAccountBlockedPageRouteImport.update({
+    id: '/account-blocked',
+    path: '/account-blocked',
+    getParentRoute: () => rootRoute,
+  } as any)
 
 const indexRoute = indexImport.update({
   id: '/',
@@ -2803,6 +2811,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof indexImport
+      parentRoute: typeof rootRoute
+    }
+    '/account-blocked': {
+      id: '/account-blocked'
+      path: '/account-blocked'
+      fullPath: '/account-blocked'
+      preLoaderRoute: typeof authAccountBlockedPageRouteImport
       parentRoute: typeof rootRoute
     }
     '/cli-redirect': {
@@ -6380,6 +6395,7 @@ const middlewaresRestrictLoginSignupRouteWithChildren =
 
 export interface FileRoutesByFullPath {
   '/': typeof indexRoute
+  '/account-blocked': typeof authAccountBlockedPageRouteRoute
   '/cli-redirect': typeof authCliRedirectPageRouteRoute
   '': typeof organizationLayoutRouteWithChildren
   '/share-secret': typeof publicShareSecretPageLegacyRouteRoute
@@ -6684,6 +6700,7 @@ export interface FileRoutesByFullPath {
 
 export interface FileRoutesByTo {
   '/': typeof indexRoute
+  '/account-blocked': typeof authAccountBlockedPageRouteRoute
   '/cli-redirect': typeof authCliRedirectPageRouteRoute
   '': typeof organizationLayoutRouteWithChildren
   '/share-secret': typeof publicShareSecretPageLegacyRouteRoute
@@ -6960,6 +6977,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof indexRoute
+  '/account-blocked': typeof authAccountBlockedPageRouteRoute
   '/cli-redirect': typeof authCliRedirectPageRouteRoute
   '/_authenticate': typeof middlewaresAuthenticateRouteWithChildren
   '/_restrict-login-signup': typeof middlewaresRestrictLoginSignupRouteWithChildren
@@ -7277,6 +7295,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account-blocked'
     | '/cli-redirect'
     | ''
     | '/share-secret'
@@ -7580,6 +7599,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account-blocked'
     | '/cli-redirect'
     | ''
     | '/share-secret'
@@ -7854,6 +7874,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/account-blocked'
     | '/cli-redirect'
     | '/_authenticate'
     | '/_restrict-login-signup'
@@ -8170,6 +8191,7 @@ export interface FileRouteTypes {
 
 export interface RootRouteChildren {
   indexRoute: typeof indexRoute
+  authAccountBlockedPageRouteRoute: typeof authAccountBlockedPageRouteRoute
   authCliRedirectPageRouteRoute: typeof authCliRedirectPageRouteRoute
   middlewaresAuthenticateRoute: typeof middlewaresAuthenticateRouteWithChildren
   middlewaresRestrictLoginSignupRoute: typeof middlewaresRestrictLoginSignupRouteWithChildren
@@ -8181,6 +8203,7 @@ export interface RootRouteChildren {
 
 const rootRouteChildren: RootRouteChildren = {
   indexRoute: indexRoute,
+  authAccountBlockedPageRouteRoute: authAccountBlockedPageRouteRoute,
   authCliRedirectPageRouteRoute: authCliRedirectPageRouteRoute,
   middlewaresAuthenticateRoute: middlewaresAuthenticateRouteWithChildren,
   middlewaresRestrictLoginSignupRoute:
@@ -8204,6 +8227,7 @@ export const routeTree = rootRoute
       "filePath": "root.tsx",
       "children": [
         "/",
+        "/account-blocked",
         "/cli-redirect",
         "/_authenticate",
         "/_restrict-login-signup",
@@ -8215,6 +8239,9 @@ export const routeTree = rootRoute
     },
     "/": {
       "filePath": "index.tsx"
+    },
+    "/account-blocked": {
+      "filePath": "auth/AccountBlockedPage/route.tsx"
     },
     "/cli-redirect": {
       "filePath": "auth/CliRedirectPage/route.tsx"

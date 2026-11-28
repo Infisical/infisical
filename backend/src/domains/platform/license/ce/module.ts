@@ -20,10 +20,13 @@ export * from "./models/meter";
 export * from "./models/plan";
 export * from "./models/seat-usage";
 export type { TLicenseService, TRefreshPlanOptions } from "./services/license/service";
+export { BlocklistEntryType } from "./services/helpers/license-server-types";
 export type {
+  TBlocklistEntry,
   TCatalogProduct,
   TEntitlementOrg,
   TLicenseServerBilling,
+  TLicenseServerBlocklist,
   TProductLineItem,
   TSubscriptionPreviewPayload,
   TSubscriptionResponse

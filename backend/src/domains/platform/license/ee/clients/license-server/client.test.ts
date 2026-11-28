@@ -547,3 +547,57 @@ describe("LicenseServerClient.reportEvents", () => {
     await expect(result).rejects.toThrow("usage report failed with 503");
   });
 });
+
+describe("LicenseServerClient.getBlocklist", () => {
+  test("should read the cloud blocklist and skip entries it can't read", async () => {
+    // Setup
+    const fetchMock = stubFetch(200, {
+      entries: [
+        { id: "e1", type: "email_domain", value: "Acme.test", message: null, expires_at: "2026-12-01T00:00:00Z" },
+        { id: "e2", type: "ip_range", value: "10.0.0.0/8", message: null, expires_at: null },
+        { id: "e3", type: "org_id", value: "", message: null, expires_at: null },
+        { id: "e4", type: "org_id", value: ORG_ID, message: "Unpaid", expires_at: null }
+      ],
+      request_id: "req-1"
+    });
+
+    // Action
+    const entries = await new LicenseServerClient(cloud()).getBlocklist();
+
+    // Assert
+    expect(sent(fetchMock).url.pathname).toBe("/v1/cloud/blocklist");
+    expect(entries).toEqual([
+      {
+        id: "e1",
+        type: "email_domain",
+        value: "acme.test",
+        message: null,
+        expiresAt: new Date("2026-12-01T00:00:00Z")
+      },
+      { id: "e4", type: "org_id", value: ORG_ID, message: "Unpaid", expiresAt: null }
+    ]);
+  });
+
+  test("should throw when the License Server fails, so the caller keeps its list", async () => {
+    // Setup
+    stubFetch(503, { message: "unavailable" });
+
+    // Action
+    const read = new LicenseServerClient(cloud()).getBlocklist();
+
+    // Assert
+    await expect(read).rejects.toThrow();
+  });
+
+  test("should not ask a self-hosted license or an unconfigured instance for the blocklist", async () => {
+    // Setup
+    const fetchMock = stubFetch(200, { entries: [] });
+
+    // Action
+    const results = [await selfHosted().getBlocklist(), await new LicenseServerClient(null).getBlocklist()];
+
+    // Assert
+    expect(results).toEqual([null, null]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});

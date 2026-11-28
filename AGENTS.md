@@ -126,6 +126,15 @@ previous release. The env values an instance admin can override (`EnvOverrides.K
 in `lib/config/env.ts` and never go back into `envSchema`: read them from `getOverridableEnv()` per use, never at boot,
 and destructure only the keys you need, because that object holds plaintext secrets. See `backend/src/domains/platform/instance-config-core/AGENTS.md`.
 
+### Cloud Blocklist
+
+Infisical Cloud refuses blocked orgs and users with a 403 `OrganizationBlocked` or `AccountBlocked` whose message
+the frontend shows (`frontend/src/helpers/blocklist.ts`). The list lives on the License Server; every pod holds it in memory
+through `backend/src/domains/platform/blocklist/` (refreshed every 5 minutes, last list kept on failure). The only check is
+`blocklistService.findBlock` in `server/plugins/auth/inject-actor-context.ts`, so a route that skips the auth plugin
+(`/api/v3/auth/*`, token refresh, identity login) is not covered: a blocked user can still sign in, but every call after
+that is refused. Match blocks there, not in services.
+
 ### Service Factory + Manual DI (Backend)
 
 No IoC container. Every service is a factory function with explicit dependencies, wired in `backend/src/server/routes/index.ts`; see `backend/AGENTS.md`.

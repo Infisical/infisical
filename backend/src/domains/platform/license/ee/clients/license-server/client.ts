@@ -13,6 +13,8 @@ import {
 } from "../../../ce/services/dependencies";
 import {
   billingProfileResponseSchema,
+  blocklistEntrySchema,
+  blocklistResponseSchema,
   catalogResponseSchema,
   checkoutResultSchema,
   cloudPlanResponseSchema,
@@ -29,8 +31,10 @@ import {
   TConfirmTrialPaymentPayload,
   TCreatePortalPayload,
   TEntitlementOrg,
+  TBlocklistEntry,
   TEntitlementsResponse,
   TLicenseServerBilling,
+  TLicenseServerBlocklist,
   trialCancelResultSchema,
   trialResultSchema,
   trialsResponseSchema,
@@ -111,6 +115,7 @@ const SERVICE_TOKEN_SUBJECT = "infisical-cloud";
 const ORG_DELETED_TIMEOUT_MS = 30_000;
 // On the request path whenever no plan is cached, so a hanging License Server must not stall requests.
 const ENTITLEMENTS_TIMEOUT_MS = 5_000;
+const BLOCKLIST_TIMEOUT_MS = 5_000;
 
 // Short-lived RS256 JWT the license server checks with our public key, so the private key is never sent.
 const mintServiceToken = (signingKey: string): string =>
@@ -234,7 +239,9 @@ const parseBody = async <T>(res: Response, schema: TSchema<T>): Promise<T> => {
 
 // Dormant when unconfigured or on an offline license: reads return nothing, changes throw. An offline license
 // also lives in LICENSE_KEY, but sending it would break the air gap and leak the signed credential.
-export class LicenseServerClient implements TLicenseServer, TLicenseServerBilling, TLicenseServerEntitlements {
+export class LicenseServerClient
+  implements TLicenseServer, TLicenseServerBilling, TLicenseServerEntitlements, TLicenseServerBlocklist
+{
   constructor(private readonly connection: TLicenseServerConnection | null) {}
 
   static fromConfig({ envConfig, isOffline }: TLicenseServerClientConfig): LicenseServerClient {
@@ -270,6 +277,31 @@ export class LicenseServerClient implements TLicenseServer, TLicenseServerBillin
       logger.error(error, `license-client: failed to resolve entitlements [orgId=${org.id}]`);
       return null;
     }
+  }
+
+  // Throws when the License Server can't be read, so the caller keeps the list it already has.
+  async getBlocklist(): Promise<TBlocklistEntry[] | null> {
+    const conn = this.connection;
+    if (!conn || conn.isSelfHosted) return null;
+    const res = await send(conn, "GET", "/v1/cloud/blocklist", { timeoutMs: BLOCKLIST_TIMEOUT_MS });
+    const { entries } = await parseBody(res, blocklistResponseSchema);
+    const parsed: TBlocklistEntry[] = [];
+    let skipped = 0;
+    entries.forEach((entry) => {
+      const result = blocklistEntrySchema.safeParse(entry);
+      if (!result.success) {
+        skipped += 1;
+        return;
+      }
+      const { id, type, value, message, expires_at: expiresAt } = result.data;
+      parsed.push({ id, type, value, message: message ?? null, expiresAt: expiresAt ? new Date(expiresAt) : null });
+    });
+    if (skipped) {
+      logger.warn(
+        licenseErrorMessage(readLicenseRequestId(res), `/v1/cloud/blocklist skipped ${skipped} unreadable entries`)
+      );
+    }
+    return parsed;
   }
 
   async getCatalog(orgId: string) {

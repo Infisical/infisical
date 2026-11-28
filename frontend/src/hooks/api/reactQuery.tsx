@@ -167,6 +167,10 @@ export const onRequestError = (
     ) {
       return;
     }
+    // The axios interceptor ends the session and shows the blocked page.
+    if (serverResponse?.error === ApiErrorTypes.AccountBlocked) {
+      return;
+    }
     reportedErrors.add(error);
 
     if (serverResponse?.error === ApiErrorTypes.ValidationError) {

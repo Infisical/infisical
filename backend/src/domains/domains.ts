@@ -14,6 +14,7 @@ import { TDomainKeyStore } from "./lib/key-store";
 import { PamModule, PamProjectRoles } from "./pam/pam/ce/module";
 import { AccessControlModule } from "./platform/access-control/ce/module";
 import { BillingEeModule } from "./platform/billing/ee/module";
+import { BlocklistEeModule } from "./platform/blocklist/ee/module";
 import { EventsModule } from "./platform/events/ce/module";
 import { InstanceConfigCoreModule } from "./platform/instance-config-core/ce/module";
 import { KmsCoreModule } from "./platform/kms-core/ce/module";
@@ -121,6 +122,9 @@ export const startStandaloneKmsCore = async ({
 // Billing is EE only, with no ce/module, so routes/index.ts reaches its routers here.
 export { registerBillingRouter } from "./platform/billing/ee/router/billing-router";
 export { registerOrgPlanRouter } from "./platform/billing/ee/router/org-plan-router";
+// Blocklist is EE only too; the auth middleware checks every request against it.
+export { BlockScope } from "./platform/blocklist/ee/module";
+export type { TBlocklistService } from "./platform/blocklist/ee/module";
 
 // Only file outside a domain that imports ee/. Products build before License and hand it their counters;
 // a product that needs License builds after it, so its counters have to come from data access.
@@ -203,6 +207,12 @@ export const createDomains = async (deps: TDomainDeps) => {
     config: { isCloud: deps.envConfig.isCloud, siteUrl: deps.envConfig.SITE_URL }
   });
 
+  const blocklist = await BlocklistEeModule.create({
+    licenseBlocklist: licenseEe.licenseServerClient,
+    isCloud: deps.envConfig.isCloud,
+    startLocalRefresh
+  });
+
   const agentVault = new AgentVaultEeModule({
     keyStore: deps.keyStore,
     licenseService: license.licenseService,
@@ -243,6 +253,7 @@ export const createDomains = async (deps: TDomainDeps) => {
     events,
     license,
     billing,
+    blocklist,
     kmsCoreEe,
     kmsCore,
     externalKms,

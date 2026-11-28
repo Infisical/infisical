@@ -6,6 +6,7 @@ import { createNotification } from "@app/components/notifications";
 import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import { SessionStorageKeys } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { isAccountBlockedError, isOrganizationBlockedError } from "@app/helpers/blocklist";
 import { userKeys } from "@app/hooks/api";
 import { authKeys, fetchAuthToken } from "@app/hooks/api/auth/queries";
 import { clearSession, fetchUserDetails, logoutUser } from "@app/hooks/api/users/queries";
@@ -64,6 +65,8 @@ export const Route = createFileRoute("/_authenticate")({
         queryFn: fetchUserDetails
       })
       .catch(async (error) => {
+        if (isAccountBlockedError(error)) throw redirect({ to: "/account-blocked" });
+        if (isOrganizationBlockedError(error)) throw error;
         const err = error as AxiosError;
         if (err.response?.status === 403) {
           // (dangtony98): this edge-case can occur if the user's token corresponds to an organization

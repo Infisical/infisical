@@ -39,6 +39,7 @@ import {
 import { cn } from "@app/components/v3/utils";
 import { SessionStorageKeys } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { isAccountBlockedError } from "@app/helpers/blocklist";
 import { getApiErrorMessage } from "@app/helpers/errors";
 import { useToggle } from "@app/hooks";
 import {
@@ -259,6 +260,7 @@ export const SelectOrgPage = () => {
       isMfaEnabled = result.isMfaEnabled;
       mfaMethod = result.mfaMethod;
     } catch (error) {
+      if (isAccountBlockedError(error)) return;
       if (axios.isAxiosError(error) && error.response?.data?.error === "SmtpError") {
         // Global MutationCache.onError already showed the SMTP error toast — just log out silently.
         await handleLogout();

@@ -9,8 +9,10 @@ import {
 } from "lucide-react";
 
 import { Button } from "@app/components/v3";
+import { isOrganizationBlockedError } from "@app/helpers/blocklist";
 
 import { ForbiddenPage } from "../ForbiddenPage/ForbiddenPage";
+import { OrganizationBlockedPage } from "../OrganizationBlockedPage/OrganizationBlockedPage";
 import { ErrorPageFrame, ProjectAccessError, useErrorPageTimestamp } from "./components";
 
 const isProjectAccessDeniedError = (error: unknown): error is AxiosError =>
@@ -33,6 +35,10 @@ const STATUS_LABELS: Record<number, string> = {
 
 export const ErrorPage = ({ error }: ErrorComponentProps) => {
   const occurredAt = useErrorPageTimestamp();
+
+  if (isOrganizationBlockedError(error)) {
+    return <OrganizationBlockedPage error={error} />;
+  }
 
   if (isProjectAccessDeniedError(error)) {
     return <ProjectAccessError />;

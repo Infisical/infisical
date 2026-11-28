@@ -45,7 +45,9 @@ export enum ApiErrorTypes {
   ForbiddenError = "PermissionDenied",
   CustomForbiddenError = "ForbiddenError",
   RateLimitError = "RateLimitExceeded",
-  NotFoundError = "NotFound"
+  NotFoundError = "NotFound",
+  AccountBlocked = "AccountBlocked",
+  OrganizationBlocked = "OrganizationBlocked"
 }
 
 export type TApiErrors =
@@ -66,6 +68,12 @@ export type TApiErrors =
       error: ApiErrorTypes.ForbiddenError;
       message: string;
       details: PureAbility["rules"];
+      statusCode: 403;
+    }
+  | {
+      reqId: string;
+      error: ApiErrorTypes.AccountBlocked | ApiErrorTypes.OrganizationBlocked;
+      message: string;
       statusCode: 403;
     }
   | {

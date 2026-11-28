@@ -655,3 +655,34 @@ export type TLicenseServerBilling = {
   confirmTrialPayment: (orgId: string, payload: TConfirmTrialPaymentPayload) => Promise<TConfirmTrialPaymentResult>;
   getTrials: (orgId: string) => Promise<TTrialsResponse>;
 };
+
+export enum BlocklistEntryType {
+  OrgId = "org_id",
+  UserId = "user_id",
+  Email = "email",
+  EmailDomain = "email_domain"
+}
+
+export const blocklistEntrySchema = z.object({
+  id: z.string(),
+  type: z.nativeEnum(BlocklistEntryType),
+  value: z.string().trim().toLowerCase().min(1),
+  message: z.string().nullish(),
+  expires_at: z.string().datetime({ offset: true }).nullish()
+});
+
+// Entries are parsed one at a time by the client, so a new entry type or one malformed row can't drop the whole list.
+export const blocklistResponseSchema = z.object({ entries: z.array(z.unknown()).default([]) }).passthrough();
+
+export type TBlocklistEntry = {
+  id: string;
+  type: BlocklistEntryType;
+  value: string;
+  message: string | null;
+  expiresAt: Date | null;
+};
+
+export type TLicenseServerBlocklist = {
+  // Null when the instance has no cloud connection to the License Server.
+  getBlocklist: () => Promise<TBlocklistEntry[] | null>;
+};

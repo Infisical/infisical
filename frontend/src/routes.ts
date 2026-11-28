@@ -481,6 +481,7 @@ export const routes = rootRoute("root.tsx", [
   route("/secret-request/secret/$secretRequestId", "public/ViewSecretRequestByIDPage/route.tsx"),
   route("/share-secret", "public/ShareSecretPage/legacy-route.tsx"),
   route("/cli-redirect", "auth/CliRedirectPage/route.tsx"),
+  route("/account-blocked", "auth/AccountBlockedPage/route.tsx"),
   middleware("restrict-login-signup.tsx", [
     route("/admin/signup", "admin/SignUpPage/route.tsx"),
     route("/login", [

@@ -7,6 +7,7 @@ import { captureSignupCompleted } from "@app/components/analytics/experiments/si
 import { createNotification } from "@app/components/notifications";
 import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import { SessionStorageKeys } from "@app/const";
+import { isAccountBlockedError } from "@app/helpers/blocklist";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { consumeLoginRedirectUrl } from "@app/helpers/sessionStorage";
 import { adminQueryKeys } from "@app/hooks/api/admin/queries";
@@ -219,6 +220,7 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
     } catch (error) {
       // If it's a redirect, re-throw it
       if (isRedirect(error)) throw error;
+      if (isAccountBlockedError(error)) throw redirect({ to: "/account-blocked" });
       // selectOrganization is called directly (not via mutation hook), so MutationCache.onError
       // never fires for it — surface SMTP and lockout errors manually and log the user out.
       if (typeof error === "object" && error !== null && "response" in error) {
