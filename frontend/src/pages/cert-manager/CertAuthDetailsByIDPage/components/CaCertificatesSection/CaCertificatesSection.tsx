@@ -170,7 +170,11 @@ export const CaCertificatesSection = ({ caId, caName, handlePopUpOpen }: Props) 
         <CardAction>{renderActionButton()}</CardAction>
       </CardHeader>
       <CardContent>
-        <CaCertificatesTable caId={caId} caName={caName} />
+        <CaCertificatesTable
+          caId={caId}
+          caName={caName}
+          isRootCa={ca?.configuration.type === InternalCaType.ROOT}
+        />
       </CardContent>
     </Card>
   );
