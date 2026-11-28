@@ -3,7 +3,7 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
 <AgentVaultBranch agent="claude-code">
   ```dockerfile Dockerfile
   FROM node:24-bookworm-slim
-  RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+  RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
   RUN npm install -g @infisical/cli@<cli-version> @anthropic-ai/claude-code
   USER node
   WORKDIR /home/node
@@ -15,7 +15,7 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
 <AgentVaultBranch agent="codex">
   ```dockerfile Dockerfile
   FROM node:24-bookworm-slim
-  RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+  RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
   RUN npm install -g @infisical/cli@<cli-version> @openai/codex
   USER node
   WORKDIR /home/node
@@ -27,7 +27,7 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
 <AgentVaultBranch agent="opencode">
   ```dockerfile Dockerfile
   FROM node:24-bookworm-slim
-  RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+  RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
   RUN npm install -g @infisical/cli@<cli-version> opencode-ai
   USER node
   WORKDIR /home/node
@@ -39,7 +39,7 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
 <AgentVaultBranch agent="openclaw">
   ```dockerfile Dockerfile
   FROM node:24-bookworm-slim
-  RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+  RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
   RUN npm install -g @infisical/cli@<cli-version> openclaw
   USER node
   WORKDIR /home/node

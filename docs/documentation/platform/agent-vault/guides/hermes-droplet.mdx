@@ -24,8 +24,8 @@ The Droplet's firewall allows only SSH in, because the gateway connects out to T
   The gateway polls Telegram every few seconds, and each poll counts as a brokered request, even when nobody messages Hermes. An idle gateway uses thousands of requests a day, so stop it when you're not using it.
 </Note>
 
-## What you need
+## Prerequisites
 
-- An Agent Vault project where you have the Admin role
-- A Telegram account
-- A DigitalOcean account, with an SSH key added to it
+- An [Agent Vault project](/documentation/platform/agent-vault/projects) where you have the [**Admin** role](/documentation/platform/agent-vault/access-control#product-membership)
+- A [Telegram](https://telegram.org/) account
+- A DigitalOcean account, with an [SSH key added to it](https://docs.digitalocean.com/platform/teams/upload-ssh-keys/)
