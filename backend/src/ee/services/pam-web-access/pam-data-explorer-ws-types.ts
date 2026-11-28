@@ -123,7 +123,9 @@ export const QueryResultResponseSchema = TabScopedBaseSchema.extend({
   isTruncated: z.boolean(),
   transactionOpen: z.boolean(),
   command: z.string(),
-  executionTimeMs: z.number()
+  executionTimeMs: z.number(),
+  // Server notices shown under the results, such as PRINT output or why a script stopped early
+  messages: z.array(z.string()).optional()
 });
 
 export const ErrorResponseSchema = CorrelatedBaseSchema.extend({
@@ -132,7 +134,8 @@ export const ErrorResponseSchema = CorrelatedBaseSchema.extend({
   transactionOpen: z.boolean().optional(),
   error: z.string(),
   detail: z.string().optional(),
-  hint: z.string().optional()
+  hint: z.string().optional(),
+  messages: z.array(z.string()).optional()
 });
 
 export const ConnectionOpenedResponseSchema = CorrelatedBaseSchema.extend({

@@ -29,7 +29,8 @@ import { useQueryTabs } from "./use-query-tabs";
 const DIALECT_BY_ACCOUNT_TYPE: Partial<Record<PamAccountType, SqlDialect>> = {
   [PamAccountType.MySQL]: "mysql",
   [PamAccountType.Snowflake]: "snowflake",
-  [PamAccountType.ClickHouse]: "clickhouse"
+  [PamAccountType.ClickHouse]: "clickhouse",
+  [PamAccountType.MsSQL]: "mssql"
 };
 
 type Props = {
@@ -56,6 +57,8 @@ export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
     defaultSchema = connectionDetails?.database ?? "";
   } else if (dialect === "snowflake") {
     defaultSchema = connectionDetails?.schema ?? "PUBLIC";
+  } else if (dialect === "mssql") {
+    defaultSchema = "dbo";
   } else if (dialect === "clickhouse") {
     defaultSchema = connectionDetails?.database ?? "default";
   } else {

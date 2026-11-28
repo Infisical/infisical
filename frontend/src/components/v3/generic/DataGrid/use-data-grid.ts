@@ -328,11 +328,18 @@ function useDataGrid<TData>({
     return columnIds.filter((c) => !NON_NAVIGABLE_COLUMN_IDS.includes(c));
   }, [columnIds]);
 
+  const isColumnReadOnly = React.useCallback(
+    (columnId: string) => Boolean(tableRef.current?.getColumn(columnId)?.columnDef.meta?.readOnly),
+    []
+  );
+
   const onDataUpdate = React.useCallback(
     (updates: CellUpdate | Array<CellUpdate>) => {
       if (propsRef.current.readOnly) return;
 
-      const updateArray = Array.isArray(updates) ? updates : [updates];
+      const updateArray = (Array.isArray(updates) ? updates : [updates]).filter(
+        (update) => !isColumnReadOnly(update.columnId)
+      );
 
       if (updateArray.length === 0) return;
 
@@ -1351,7 +1358,7 @@ function useDataGrid<TData>({
 
   const onCellEditingStart = React.useCallback(
     (rowIndex: number, columnId: string) => {
-      if (propsRef.current.readOnly) return;
+      if (propsRef.current.readOnly || isColumnReadOnly(columnId)) return;
 
       store.batch(() => {
         store.setState("focusedCell", { rowIndex, columnId });

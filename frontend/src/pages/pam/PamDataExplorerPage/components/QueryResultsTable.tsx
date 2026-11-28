@@ -120,21 +120,34 @@ export function QueryResultsTable({ result, error, isRunning }: Props) {
     };
 
     const isMutation = verb[cmdUpper] !== undefined && result.fields.length === 0;
+    // An empty command means the server reported a count but not which statement produced it
+    const isUnattributedCount =
+      (cmdUpper === "" || cmdUpper === "MERGE") &&
+      result.rowCount !== null &&
+      result.fields.length === 0;
+    const rows = `${count} row${count !== 1 ? "s" : ""}`;
 
     let message: string;
     if (staticMessage[cmdUpper]) {
       message = staticMessage[cmdUpper];
+    } else if (isMutation && result.rowCount === null) {
+      message = "Commands completed successfully";
     } else if (isMutation) {
-      message = `${count} row${count !== 1 ? "s" : ""} ${verb[cmdUpper]}`;
+      message = `${rows} ${verb[cmdUpper]}`;
+    } else if (isUnattributedCount) {
+      message = `${rows} affected`;
+    } else if (cmdUpper === "" && result.rowCount === null && result.fields.length === 0) {
+      message = "Commands completed successfully";
     } else {
       message = "No rows returned";
     }
+    const showNoRowsSuffix = (isMutation && result.rowCount !== null) || isUnattributedCount;
 
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2">
         <span className="rounded border-2 border-border bg-container px-3 py-1.5 font-mono text-sm text-foreground">
           {message}
-          {isMutation && <span className="ml-2 text-muted">· No rows returned</span>}
+          {showNoRowsSuffix && <span className="ml-2 text-muted">· No rows returned</span>}
         </span>
       </div>
     );

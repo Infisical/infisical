@@ -39,6 +39,8 @@ type UseDataExplorerSessionOptions = {
 };
 
 const REQUEST_TIMEOUT_MS = 30_000;
+// Longer than the server's 30s query limit, so the server's own timeout message reaches the user
+const QUERY_TIMEOUT_MS = 40_000;
 
 // Cadence for the visibility-driven keepalive. The BE idle timer is 10 min;
 // 60s leaves plenty of headroom if a heartbeat drops on flaky networks.
@@ -52,6 +54,7 @@ type QueryResult = {
   transactionOpen: boolean;
   command: string;
   executionTimeMs: number;
+  messages?: string[];
 };
 
 export const useDataExplorerSession = ({
@@ -160,7 +163,12 @@ export const useDataExplorerSession = ({
               const errMsg = [serverMsg.error, serverMsg.detail, serverMsg.hint]
                 .filter(Boolean)
                 .join("\n");
-              pending.reject(new Error(errMsg));
+              pending.reject(
+                Object.assign(new Error(errMsg), {
+                  transactionOpen: serverMsg.transactionOpen,
+                  messages: serverMsg.messages
+                })
+              );
             } else if (serverMsg.type === "connection-open-failed") {
               pending.reject(new Error(serverMsg.error));
             } else {
@@ -303,7 +311,7 @@ export const useDataExplorerSession = ({
   const sendRequest = useCallback(
     async <T extends DataExplorerServerMessage>(
       msg: Record<string, unknown>,
-      opts?: { connectionId?: string }
+      opts?: { connectionId?: string; timeoutMs?: number }
     ): Promise<T> => {
       if (readyPromiseRef.current) {
         await readyPromiseRef.current;
@@ -316,7 +324,7 @@ export const useDataExplorerSession = ({
         const timer = setTimeout(() => {
           pendingRequestsRef.current.delete(id);
           reject(new Error("Request timed out"));
-        }, REQUEST_TIMEOUT_MS);
+        }, opts?.timeoutMs ?? REQUEST_TIMEOUT_MS);
 
         pendingRequestsRef.current.set(id, {
           resolve: resolve as (m: DataExplorerServerMessage) => void,
@@ -411,7 +419,7 @@ export const useDataExplorerSession = ({
     async (connectionId: string, sql: string): Promise<QueryResult> => {
       const resp = await sendRequest<Extract<DataExplorerServerMessage, { type: "query-result" }>>(
         { type: "query", connectionId, sql },
-        { connectionId }
+        { connectionId, timeoutMs: QUERY_TIMEOUT_MS }
       );
       return {
         rows: resp.rows,
@@ -420,7 +428,8 @@ export const useDataExplorerSession = ({
         isTruncated: resp.isTruncated,
         transactionOpen: resp.transactionOpen,
         command: resp.command,
-        executionTimeMs: resp.executionTimeMs
+        executionTimeMs: resp.executionTimeMs,
+        messages: resp.messages
       };
     },
     [sendRequest]

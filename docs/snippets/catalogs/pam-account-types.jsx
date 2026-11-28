@@ -32,7 +32,7 @@ export const pamAccountTypes = [
     path: "/documentation/platform/pam/accounts/mssql",
     description: "Give people and agents access to a Microsoft SQL Server database without sharing its credentials.",
     category: "Databases",
-    browserAccess: false,
+    browserAccess: true,
   },
   {
     name: "Oracle",

@@ -4,7 +4,7 @@ sidebarTitle: "Microsoft SQL Server"
 description: "Give people and agents access to a Microsoft SQL Server database without sharing its credentials."
 ---
 
-A Microsoft SQL Server [account](/documentation/platform/pam/accounts/overview) stores the credentials for one SQL Server login or Windows user. Members connect to the database through the Infisical CLI, and Infisical records every query they run.
+A Microsoft SQL Server [account](/documentation/platform/pam/accounts/overview) stores the credentials for one SQL Server login or Windows user. Members connect to the database in the browser or through the Infisical CLI, and Infisical records every query they run.
 
 ## Prerequisites
 
@@ -68,21 +68,36 @@ A Microsoft SQL Server [account](/documentation/platform/pam/accounts/overview) 
 
 ## Connect
 
-To open a session, follow [Connect to an account](/documentation/platform/pam/accounts/connect). Microsoft SQL Server accounts don't support the browser, so use the CLI.
+To open a session, follow [Connect to an account](/documentation/platform/pam/accounts/connect).
 
-Start the local proxy:
+<Tabs>
+  <Tab title="Browser">
+    The browser session has a table browser, where you can view, filter, edit, and export rows, and a SQL editor for running queries. In the SQL editor, you can separate batches with `GO` lines, as you would in SQL Server Management Studio.
 
-```bash
-infisical pam access analytics/reporting-db
-```
+    The SQL editor shows one result set per script: the last one, or a stored procedure's first one. It lists `PRINT` output and other server messages under the results, or under the error if a statement fails. Limits:
 
-The proxy keeps running in that terminal and prints its port. In a second terminal, connect your SQL Server client, such as `sqlcmd` or Azure Data Studio, to that port:
+    - A script can run for up to 30 seconds
+    - If a query returns more than 1,000 rows or 16 MB of data, the SQL editor shows the rows up to that limit and cancels the script. By then SQL Server may already have run the statements after that query in the same batch. Later `GO` batches don't run.
+    - If a `GO` batch fails, the batches after it don't run, and the error says which batches completed
 
-```bash
-sqlcmd -S localhost,<port> -d analytics
-```
+    SQL Server keeps running a batch after most statement errors, such as a duplicate key, so a later `COMMIT` in the batch commits the statements that succeeded. When a statement fails or you cancel a script, an open transaction stays open. Commit it or roll it back before you close the tab. To roll back the whole transaction when a statement fails at run time instead, add `SET XACT_ABORT ON` at the start of the script.
+  </Tab>
+  <Tab title="CLI">
+    Start the local proxy:
 
-The proxy signs in for you, so the client doesn't need a password.
+    ```bash
+    infisical pam access analytics/reporting-db
+    ```
+
+    The proxy keeps running in that terminal and prints its port. In a second terminal, connect your SQL Server client, such as `sqlcmd` or Azure Data Studio, to that port:
+
+    ```bash
+    sqlcmd -S localhost,<port> -d analytics
+    ```
+
+    The proxy signs in for you, so the client doesn't need a password.
+  </Tab>
+</Tabs>
 
 ## Next steps
 

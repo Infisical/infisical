@@ -232,13 +232,13 @@ export const FilterPopover = ({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent position="popper">
-                      {OPERATORS.filter((op) => dialect !== "mysql" || op.value !== "ILIKE").map(
-                        (op) => (
-                          <SelectItem key={op.value} value={op.value}>
-                            {op.label}
-                          </SelectItem>
-                        )
-                      )}
+                      {OPERATORS.filter(
+                        (op) => (dialect !== "mysql" && dialect !== "mssql") || op.value !== "ILIKE"
+                      ).map((op) => (
+                        <SelectItem key={op.value} value={op.value}>
+                          {op.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
 

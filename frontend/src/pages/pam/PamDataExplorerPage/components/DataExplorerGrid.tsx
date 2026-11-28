@@ -136,6 +136,9 @@ const SELECT_COLUMN: ColumnDef<RowData> = {
   enableResizing: false
 };
 
+// Identity, computed, rowversion and temporal period columns reject written values
+const isGeneratedAlways = (col: ColumnInfo) => col.identityGeneration === "ALWAYS";
+
 function buildColumnDefs(
   cols: ColumnInfo[],
   primaryKeys: string[],
@@ -159,7 +162,8 @@ function buildColumnDefs(
         label: col.name,
         typeLabel: col.type,
         cell: pgTypeToCellOpts(),
-        columnIndicator
+        columnIndicator,
+        readOnly: isGeneratedAlways(col)
       },
       size: getColumnSize(col, Boolean(columnIndicator)),
       minSize: 80,
@@ -209,9 +213,9 @@ export const DataExplorerGrid = ({
 }: DataExplorerGridProps) => {
   const executeStatements = useCallback(
     async (statements: string[]) => {
-      await executeQuery(connectionId, wrapInTransaction(statements));
+      await executeQuery(connectionId, wrapInTransaction(statements, dialect));
     },
-    [executeQuery, connectionId]
+    [executeQuery, connectionId, dialect]
   );
 
   const [originalData, setOriginalData] = useState<Record<string, unknown>[]>([]);
@@ -232,6 +236,10 @@ export const DataExplorerGrid = ({
   const primaryKeys = tableDetail?.primaryKeys ?? [];
   const foreignKeys = tableDetail?.foreignKeys ?? [];
   const tableColumns = tableDetail?.columns ?? [];
+  const columnTypes = useMemo(
+    () => Object.fromEntries(tableColumns.map((c) => [c.name, c.type])),
+    [tableColumns]
+  );
   const hasMaskedKeys = originalData.some((row) => hasMaskedKey(row, primaryKeys));
   const canEditRows = primaryKeys.length > 0 && supportsRowEditing(dialect) && !hasMaskedKeys;
   const primaryKeysRef = useRef(primaryKeys);
@@ -266,9 +274,10 @@ export const DataExplorerGrid = ({
           limit: ps,
           offset: o,
           primaryKeys,
+          columns: tableColumns,
           dialect
         });
-        const countSql = buildCountQuery({ schema, table, filters: f, dialect });
+        const countSql = buildCountQuery({ schema, table, filters: f, columnTypes, dialect });
 
         // These two queries don't share a database snapshot (the backend processes them
         // sequentially, not in a single transaction), so the count could be off by 1 if
@@ -306,7 +315,17 @@ export const DataExplorerGrid = ({
         setIsDataLoading(false);
       }
     },
-    [tableDetail, schema, table, primaryKeys, executeQuery, connectionId, dialect]
+    [
+      tableDetail,
+      tableColumns,
+      columnTypes,
+      schema,
+      table,
+      primaryKeys,
+      executeQuery,
+      connectionId,
+      dialect
+    ]
   );
 
   // Fetch data when filters/sorts/pagination change.
@@ -418,6 +437,7 @@ export const DataExplorerGrid = ({
               schema,
               table,
               primaryKeyMatch: getPkMatch(row, primaryKeys),
+              columnTypes,
               dialect
             })
           );
@@ -461,6 +481,7 @@ export const DataExplorerGrid = ({
     [
       currentData,
       primaryKeys,
+      columnTypes,
       schema,
       table,
       dialect,
@@ -490,6 +511,7 @@ export const DataExplorerGrid = ({
         const values: Record<string, unknown> = {};
         tableColumns.forEach((col) => {
           if (
+            !isGeneratedAlways(col) &&
             row[col.name] !== null &&
             row[col.name] !== undefined &&
             String(row[col.name]) !== ""
@@ -497,7 +519,7 @@ export const DataExplorerGrid = ({
             values[col.name] = row[col.name];
           }
         });
-        statements.push(buildInsertQuery({ schema, table, row: values, dialect }));
+        statements.push(buildInsertQuery({ schema, table, row: values, columnTypes, dialect }));
       });
 
       // Updates (changed rows) — use PK-based lookup so prepends don't misalign
@@ -509,7 +531,7 @@ export const DataExplorerGrid = ({
         if (!original) return;
         const changes: Record<string, unknown> = {};
         tableColumns.forEach((col) => {
-          if (!cellValuesEqual(row[col.name], original[col.name])) {
+          if (!isGeneratedAlways(col) && !cellValuesEqual(row[col.name], original[col.name])) {
             changes[col.name] = row[col.name];
           }
         });
@@ -520,6 +542,7 @@ export const DataExplorerGrid = ({
               table,
               changes,
               primaryKeyMatch: getPkMatch(original, primaryKeys),
+              columnTypes,
               dialect
             })
           );
@@ -565,6 +588,7 @@ export const DataExplorerGrid = ({
     originalDataByPk,
     newRowTempIds,
     tableColumns,
+    columnTypes,
     primaryKeys,
     schema,
     table,
@@ -663,6 +687,7 @@ export const DataExplorerGrid = ({
             schema,
             table,
             primaryKeyMatch: getPkMatch(row, primaryKeys),
+            columnTypes,
             dialect
           })
         );

@@ -1,7 +1,7 @@
 // Client-side SQL generation for the Data Explorer.
 // All identifiers are properly quoted to prevent SQL injection.
 
-export type SqlDialect = "postgres" | "mysql" | "snowflake" | "clickhouse";
+export type SqlDialect = "postgres" | "mysql" | "snowflake" | "clickhouse" | "mssql";
 
 export function supportsRowEditing(dialect: SqlDialect): boolean {
   return dialect !== "clickhouse";
@@ -16,17 +16,99 @@ function assertRowEditingSupported(dialect: SqlDialect): void {
 
 function quoteIdent(name: string, dialect: SqlDialect = "postgres"): string {
   if (dialect === "mysql") return `\`${name.replace(/`/g, "``")}\``;
+  if (dialect === "mssql") return `[${name.replaceAll("]", "]]")}]`;
   return `"${name.replace(/"/g, '""')}"`;
 }
 
-function quoteLiteral(value: unknown, dialect: SqlDialect = "postgres"): string {
+export type ColumnTypes = Record<string, string>;
+
+const MSSQL_TEXT_TYPES = new Set([
+  "char",
+  "varchar",
+  "nchar",
+  "nvarchar",
+  "text",
+  "ntext",
+  "xml",
+  "sysname"
+]);
+const MSSQL_BINARY_TYPES = new Set([
+  "binary",
+  "varbinary",
+  "image",
+  "timestamp",
+  "rowversion",
+  "hierarchyid"
+]);
+const MSSQL_NON_UNICODE_TYPES = new Set(["char", "varchar", "text"]);
+const MSSQL_SOURCE_ALIAS = "[__src]";
+
+function baseType(type: string): string {
+  return type.split("(")[0].trim().toLowerCase();
+}
+
+function isAscii(str: string): boolean {
+  return [...str].every((ch) => ch.charCodeAt(0) < 128);
+}
+
+function isHexLiteral(str: string): boolean {
+  if (!str.startsWith("0x") && !str.startsWith("0X")) return false;
+  return [...str.slice(2)].every((ch) => "0123456789abcdefABCDEF".includes(ch));
+}
+
+// T-SQL drops a backslash that ends a line inside a string literal, so the literal is split after each one
+function splitAfterLineEndingBackslashes(str: string): string[] {
+  const parts: string[] = [];
+  let start = 0;
+  for (let i = 0; i < str.length; i += 1) {
+    if (str[i] === "\\" && (str[i + 1] === "\n" || str[i + 1] === "\r")) {
+      parts.push(str.slice(start, i + 1));
+      start = i + 1;
+    }
+  }
+  parts.push(str.slice(start));
+  return parts;
+}
+
+// The first part is cast to max, or + would truncate the joined value at 4,000 or 8,000 characters
+function mssqlStringLiteral(str: string, unicode: boolean): string {
+  const prefix = unicode ? "N" : "";
+  const parts = splitAfterLineEndingBackslashes(str).map(
+    (part) => `${prefix}'${part.replaceAll("'", "''")}'`
+  );
+  if (parts.length === 1) return parts[0];
+  const [first, ...rest] = parts;
+  return [`CAST(${first} AS ${unicode ? "nvarchar" : "varchar"}(max))`, ...rest].join(" + ");
+}
+
+function quoteLiteral(
+  value: unknown,
+  dialect: SqlDialect = "postgres",
+  columnType?: string
+): string {
+  if (dialect === "mssql" && columnType) {
+    const type = baseType(columnType);
+    // SQL Server silently converts '' to 0, 1900-01-01 or false for non-text columns
+    if (value === "" && !MSSQL_TEXT_TYPES.has(type)) return "NULL";
+    if (MSSQL_BINARY_TYPES.has(type) && typeof value === "string" && isHexLiteral(value)) {
+      return value;
+    }
+    // N'' makes SQL Server convert a varchar column (seeks become scans); only ASCII survives every code page unprefixed
+    if (MSSQL_NON_UNICODE_TYPES.has(type) && typeof value === "string" && isAscii(value)) {
+      return mssqlStringLiteral(value, false);
+    }
+  }
   if (value === null || value === undefined) return "NULL";
   if (typeof value === "number") {
     if (!Number.isFinite(value)) return "NULL";
     return String(value);
   }
-  if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
+  if (typeof value === "boolean") {
+    if (dialect === "mssql") return value ? "1" : "0";
+    return value ? "TRUE" : "FALSE";
+  }
   const str = String(value);
+  if (dialect === "mssql") return mssqlStringLiteral(str, true);
   if (dialect === "postgres" && str.includes("'") && !str.includes("$")) {
     return `$$${str}$$`;
   }
@@ -61,10 +143,15 @@ export type SortCondition = {
   direction: "ASC" | "DESC";
 };
 
-function buildWhereClause(filters: FilterCondition[], dialect: SqlDialect): string {
+function buildWhereClause(
+  filters: FilterCondition[],
+  dialect: SqlDialect,
+  columnTypes?: ColumnTypes
+): string {
   if (filters.length === 0) return "";
   const conditions = filters.map((f) => {
     const col = quoteIdent(f.column, dialect);
+    const type = columnTypes?.[f.column];
     switch (f.operator) {
       case "IS NULL":
         return `${col} IS NULL`;
@@ -73,26 +160,51 @@ function buildWhereClause(filters: FilterCondition[], dialect: SqlDialect): stri
       case "IN": {
         const values = f.value
           .split(",")
-          .map((v) => quoteLiteral(v.trim(), dialect))
+          .map((v) => quoteLiteral(v.trim(), dialect, type))
           .join(", ");
         return `${col} IN (${values})`;
       }
       case "ILIKE":
-        if (dialect === "mysql") return `${col} LIKE ${quoteLiteral(f.value, dialect)}`;
-        return `${col} ILIKE ${quoteLiteral(f.value, dialect)}`;
+        if (dialect === "mysql" || dialect === "mssql")
+          return `${col} LIKE ${quoteLiteral(f.value, dialect, type)}`;
+        return `${col} ILIKE ${quoteLiteral(f.value, dialect, type)}`;
       case "LIKE":
-        return `${col} LIKE ${quoteLiteral(f.value, dialect)}`;
+        return `${col} LIKE ${quoteLiteral(f.value, dialect, type)}`;
       default:
-        return `${col} ${f.operator} ${quoteLiteral(f.value, dialect)}`;
+        return `${col} ${f.operator} ${quoteLiteral(f.value, dialect, type)}`;
     }
   });
   return ` WHERE ${conditions.join(" AND ")}`;
 }
 
-function buildOrderByClause(sorts: SortCondition[], dialect: SqlDialect): string {
+function buildOrderByClause(sorts: SortCondition[], dialect: SqlDialect, qualifier = ""): string {
   if (sorts.length === 0) return "";
-  const parts = sorts.map((s) => `${quoteIdent(s.column, dialect)} ${s.direction}`);
+  const parts = sorts.map((s) => `${qualifier}${quoteIdent(s.column, dialect)} ${s.direction}`);
   return ` ORDER BY ${parts.join(", ")}`;
+}
+
+// The driver decodes decimal and money into floating point and drops datetimeoffset's offset, so the grid reads them as text
+function buildMssqlSelectList(columns?: { name: string; type: string }[]): string {
+  if (!columns || columns.length === 0) return "*";
+  return columns
+    .map((c) => {
+      const id = quoteIdent(c.name, "mssql");
+      const type = baseType(c.type);
+      if (type === "money" || type === "smallmoney") {
+        return `CONVERT(varchar(32), ${MSSQL_SOURCE_ALIAS}.${id}, 2) AS ${id}`;
+      }
+      if (type === "decimal" || type === "numeric") {
+        return `CONVERT(varchar(64), ${MSSQL_SOURCE_ALIAS}.${id}) AS ${id}`;
+      }
+      if (type === "datetimeoffset") {
+        return `CONVERT(varchar(34), ${MSSQL_SOURCE_ALIAS}.${id}, 121) AS ${id}`;
+      }
+      if (type === "xml") {
+        return `CONVERT(nvarchar(max), ${MSSQL_SOURCE_ALIAS}.${id}) AS ${id}`;
+      }
+      return `${MSSQL_SOURCE_ALIAS}.${id}`;
+    })
+    .join(", ");
 }
 
 export function buildSelectQuery(params: {
@@ -103,6 +215,7 @@ export function buildSelectQuery(params: {
   limit: number;
   offset: number;
   primaryKeys?: string[];
+  columns?: { name: string; type: string }[];
   dialect?: SqlDialect;
 }): string {
   const {
@@ -113,23 +226,35 @@ export function buildSelectQuery(params: {
     limit,
     offset,
     primaryKeys,
+    columns,
     dialect = "postgres"
   } = params;
   const tableName = `${quoteIdent(schema, dialect)}.${quoteIdent(table, dialect)}`;
-  const where = buildWhereClause(filters, dialect);
+  const columnTypes = columns
+    ? Object.fromEntries(columns.map((c) => [c.name, c.type]))
+    : undefined;
+  const where = buildWhereClause(filters, dialect, columnTypes);
+  // Qualified so a sort on a converted column uses the real column, not its varchar alias
+  const qualifier = dialect === "mssql" ? `${MSSQL_SOURCE_ALIAS}.` : "";
 
   let orderBy: string;
   if (sorts.length > 0) {
-    orderBy = buildOrderByClause(sorts, dialect);
+    orderBy = buildOrderByClause(sorts, dialect, qualifier);
   } else if (primaryKeys && primaryKeys.length > 0) {
     orderBy = buildOrderByClause(
       primaryKeys.map((pk) => ({ column: pk, direction: "ASC" as const })),
-      dialect
+      dialect,
+      qualifier
     );
   } else {
     orderBy = "";
   }
 
+  if (dialect === "mssql") {
+    // OFFSET ... FETCH needs an ORDER BY
+    const mssqlOrderBy = orderBy || " ORDER BY (SELECT NULL)";
+    return `SELECT ${buildMssqlSelectList(columns)} FROM ${tableName} AS ${MSSQL_SOURCE_ALIAS}${where}${mssqlOrderBy} OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY`;
+  }
   return `SELECT * FROM ${tableName}${where}${orderBy} LIMIT ${limit} OFFSET ${offset}`;
 }
 
@@ -137,35 +262,52 @@ export function buildCountQuery(params: {
   schema: string;
   table: string;
   filters: FilterCondition[];
+  columnTypes?: ColumnTypes;
   dialect?: SqlDialect;
 }): string {
-  const { schema, table, filters, dialect = "postgres" } = params;
+  const { schema, table, filters, columnTypes, dialect = "postgres" } = params;
   const tableName = `${quoteIdent(schema, dialect)}.${quoteIdent(table, dialect)}`;
-  const where = buildWhereClause(filters, dialect);
-  return `SELECT COUNT(*) AS ${quoteIdent("count", dialect)} FROM ${tableName}${where}`;
+  const where = buildWhereClause(filters, dialect, columnTypes);
+  const countFn = dialect === "mssql" ? "COUNT_BIG(*)" : "COUNT(*)";
+  return `SELECT ${countFn} AS ${quoteIdent("count", dialect)} FROM ${tableName}${where}`;
 }
 
 export function buildInsertQuery(params: {
   schema: string;
   table: string;
   row: Record<string, unknown>;
+  columnTypes?: ColumnTypes;
   dialect?: SqlDialect;
 }): string {
-  const { schema, table, row, dialect = "postgres" } = params;
+  const { schema, table, row, columnTypes, dialect = "postgres" } = params;
   assertRowEditingSupported(dialect);
   const tableName = `${quoteIdent(schema, dialect)}.${quoteIdent(table, dialect)}`;
   const entries = Object.entries(row).filter(([, v]) => v !== undefined && v !== "");
   if (entries.length === 0) {
     if (dialect === "mysql") return `INSERT INTO ${tableName} () VALUES ()`;
+    if (dialect === "mssql") return `INSERT INTO ${tableName} DEFAULT VALUES`;
     if (dialect === "snowflake") {
       throw new Error("Snowflake cannot insert a row with no values. Fill in at least one column.");
     }
     return `INSERT INTO ${tableName} DEFAULT VALUES RETURNING *`;
   }
   const columns = entries.map(([k]) => quoteIdent(k, dialect)).join(", ");
-  const values = entries.map(([, v]) => quoteLiteral(v, dialect)).join(", ");
+  const values = entries.map(([k, v]) => quoteLiteral(v, dialect, columnTypes?.[k])).join(", ");
   if (dialect !== "postgres") return `INSERT INTO ${tableName} (${columns}) VALUES (${values})`;
   return `INSERT INTO ${tableName} (${columns}) VALUES (${values}) RETURNING *`;
+}
+
+function buildPrimaryKeyMatch(
+  primaryKeyMatch: Record<string, unknown>,
+  dialect: SqlDialect,
+  columnTypes?: ColumnTypes
+): string {
+  return Object.entries(primaryKeyMatch)
+    .map(
+      ([col, val]) =>
+        `${quoteIdent(col, dialect)} = ${quoteLiteral(val, dialect, columnTypes?.[col])}`
+    )
+    .join(" AND ");
 }
 
 export function buildUpdateQuery(params: {
@@ -173,20 +315,22 @@ export function buildUpdateQuery(params: {
   table: string;
   changes: Record<string, unknown>;
   primaryKeyMatch: Record<string, unknown>;
+  columnTypes?: ColumnTypes;
   dialect?: SqlDialect;
 }): string {
-  const { schema, table, changes, primaryKeyMatch, dialect = "postgres" } = params;
+  const { schema, table, changes, primaryKeyMatch, columnTypes, dialect = "postgres" } = params;
   assertRowEditingSupported(dialect);
   if (Object.keys(primaryKeyMatch).length === 0) {
     throw new Error("UPDATE requires at least one primary key condition");
   }
   const tableName = `${quoteIdent(schema, dialect)}.${quoteIdent(table, dialect)}`;
   const setClauses = Object.entries(changes)
-    .map(([col, val]) => `${quoteIdent(col, dialect)} = ${quoteLiteral(val, dialect)}`)
+    .map(
+      ([col, val]) =>
+        `${quoteIdent(col, dialect)} = ${quoteLiteral(val, dialect, columnTypes?.[col])}`
+    )
     .join(", ");
-  const whereClauses = Object.entries(primaryKeyMatch)
-    .map(([col, val]) => `${quoteIdent(col, dialect)} = ${quoteLiteral(val, dialect)}`)
-    .join(" AND ");
+  const whereClauses = buildPrimaryKeyMatch(primaryKeyMatch, dialect, columnTypes);
   if (dialect !== "postgres") return `UPDATE ${tableName} SET ${setClauses} WHERE ${whereClauses}`;
   return `UPDATE ${tableName} SET ${setClauses} WHERE ${whereClauses} RETURNING *`;
 }
@@ -195,22 +339,25 @@ export function buildDeleteQuery(params: {
   schema: string;
   table: string;
   primaryKeyMatch: Record<string, unknown>;
+  columnTypes?: ColumnTypes;
   dialect?: SqlDialect;
 }): string {
-  const { schema, table, primaryKeyMatch, dialect = "postgres" } = params;
+  const { schema, table, primaryKeyMatch, columnTypes, dialect = "postgres" } = params;
   assertRowEditingSupported(dialect);
   if (Object.keys(primaryKeyMatch).length === 0) {
     throw new Error("DELETE requires at least one primary key condition");
   }
   const tableName = `${quoteIdent(schema, dialect)}.${quoteIdent(table, dialect)}`;
-  const whereClauses = Object.entries(primaryKeyMatch)
-    .map(([col, val]) => `${quoteIdent(col, dialect)} = ${quoteLiteral(val, dialect)}`)
-    .join(" AND ");
+  const whereClauses = buildPrimaryKeyMatch(primaryKeyMatch, dialect, columnTypes);
   return `DELETE FROM ${tableName} WHERE ${whereClauses}`;
 }
 
 // RETURNING * in individual INSERT/UPDATE is harmless but unused when wrapped here.
 // The frontend re-fetches data after save anyway.
-export function wrapInTransaction(statements: string[]): string {
+export function wrapInTransaction(statements: string[], dialect: SqlDialect = "postgres"): string {
+  if (dialect === "mssql") {
+    // TRY/CATCH stops a failed statement from reaching COMMIT; XACT_ABORT rolls back when a timeout cancels the batch
+    return `SET XACT_ABORT ON;\nBEGIN TRY\nBEGIN TRANSACTION;\n${statements.join(";\n")};\nCOMMIT TRANSACTION;\nEND TRY\nBEGIN CATCH\nIF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;\nTHROW;\nEND CATCH`;
+  }
   return `BEGIN;\n${statements.join(";\n")};\nCOMMIT;`;
 }

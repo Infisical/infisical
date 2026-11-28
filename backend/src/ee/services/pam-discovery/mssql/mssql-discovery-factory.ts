@@ -1,5 +1,3 @@
-import net from "node:net";
-
 import slugify from "@sindresorhus/slugify";
 import knex from "knex";
 import pLimit from "p-limit";
@@ -9,6 +7,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
+import { localOnlyMssqlConnector } from "../../pam-web-access/mssql/pam-mssql-client";
 import { PamAccountType } from "../../pam/pam-enums";
 import { executeWithGateway, sweepReachableTargets } from "../pam-discovery-fns";
 import {
@@ -159,20 +158,9 @@ export const msSqlDiscoveryFactory: TPamDiscoveryFactory = ({
     try {
       return await executeWithGateway(host, port, gatewayId, gatewayV2Service, async (proxyPort) => {
         let redirected = false;
-        const connector = ({ host: dialHost, port: dialPort }: { host: string; port: number }) =>
-          new Promise<net.Socket>((resolve, reject) => {
-            if (dialHost !== PROXY_HOST || dialPort !== proxyPort) {
-              redirected = true;
-              reject(new Error("Refused a server-sent redirect"));
-              return;
-            }
-            const socket = net.connect({ host: PROXY_HOST, port: proxyPort });
-            socket.once("error", reject);
-            socket.once("connect", () => {
-              socket.off("error", reject);
-              resolve(socket);
-            });
-          });
+        const connector = localOnlyMssqlConnector(proxyPort, () => {
+          redirected = true;
+        });
         const options = {
           encrypt: account.sslEnabled,
           connector,
