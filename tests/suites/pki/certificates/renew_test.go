@@ -72,7 +72,7 @@ func TestCertificate_Renew(t *testing.T) {
 
 		// Assert
 		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
-		require.Equal(t, "Certificate is not eligible for renewal: Certificate status is revoked, must be active, Certificate is revoked and cannot be renewed", apierr.Message(res.Body))
+		require.Equal(t, "Certificate is not eligible for renewal: Certificate status is revoked, must be active; Certificate is revoked and cannot be renewed. Issue a new certificate instead", apierr.Message(res.Body))
 		require.Nil(t, pki.ReadCertificate(t, g.Operator, original.ID).JSON200.Certificate.RenewedByCertificateId)
 	})
 
@@ -100,7 +100,7 @@ func TestCertificate_Renew(t *testing.T) {
 
 		// Assert
 		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
-		require.Equal(t, "Certificate renewal failed. Errors: dns_name SAN value '"+name+"' does not match allowed patterns: *.allowed.test", apierr.Message(res.Body))
+		require.Equal(t, "Certificate request does not meet the certificate policy: dns_name SAN value '"+name+"' does not match allowed patterns: '*.allowed.test'.", apierr.Message(res.Body))
 		require.Nil(t, pki.ReadCertificate(t, g.Operator, original.ID).JSON200.Certificate.RenewedByCertificateId)
 	})
 }

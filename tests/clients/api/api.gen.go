@@ -82623,6 +82623,21 @@ func (e ListDynamicSecretLeases500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordType.
+const (
+	ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordTypeTXT ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordType = "TXT"
+)
+
+// Valid indicates whether the value is a known member of the ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordType enum.
+func (e ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordType) Valid() bool {
+	switch e {
+	case ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordTypeTXT:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListEmailDomains400JSONResponseBodyStatusCode.
 const (
 	ListEmailDomains400JSONResponseBodyStatusCodeN400 ListEmailDomains400JSONResponseBodyStatusCode = 400
@@ -82707,6 +82722,21 @@ const (
 func (e ListEmailDomains500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case ListEmailDomains500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType.
+const (
+	CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordTypeTXT CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType = "TXT"
+)
+
+// Valid indicates whether the value is a known member of the CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType enum.
+func (e CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType) Valid() bool {
+	switch e {
+	case CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordTypeTXT:
 		return true
 	default:
 		return false
@@ -82803,6 +82833,21 @@ func (e CreateEmailDomain500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType.
+const (
+	DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordTypeTXT DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType = "TXT"
+)
+
+// Valid indicates whether the value is a known member of the DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType enum.
+func (e DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType) Valid() bool {
+	switch e {
+	case DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordTypeTXT:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DeleteEmailDomain400JSONResponseBodyStatusCode.
 const (
 	DeleteEmailDomain400JSONResponseBodyStatusCodeN400 DeleteEmailDomain400JSONResponseBodyStatusCode = 400
@@ -82887,6 +82932,21 @@ const (
 func (e DeleteEmailDomain500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case DeleteEmailDomain500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType.
+const (
+	VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordTypeTXT VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType = "TXT"
+)
+
+// Valid indicates whether the value is a known member of the VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType enum.
+func (e VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType) Valid() bool {
+	switch e {
+	case VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordTypeTXT:
 		return true
 	default:
 		return false
@@ -100119,6 +100179,240 @@ func (e GetOrgWideSecretValueTrackingStatus500JSONResponseBodyStatusCode) Valid(
 	}
 }
 
+// Defines values for GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust.
+const (
+	GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrustNone   GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust = "none"
+	GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrustSignal GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust = "signal"
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust enum.
+func (e GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust) Valid() bool {
+	switch e {
+	case GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrustNone:
+		return true
+	case GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrustSignal:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrganizationSsoSettings400JSONResponseBodyStatusCode.
+const (
+	GetOrganizationSsoSettings400JSONResponseBodyStatusCodeN400 GetOrganizationSsoSettings400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationSsoSettings400JSONResponseBodyStatusCode enum.
+func (e GetOrganizationSsoSettings400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrganizationSsoSettings400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrganizationSsoSettings401JSONResponseBodyStatusCode.
+const (
+	GetOrganizationSsoSettings401JSONResponseBodyStatusCodeN401 GetOrganizationSsoSettings401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationSsoSettings401JSONResponseBodyStatusCode enum.
+func (e GetOrganizationSsoSettings401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrganizationSsoSettings401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrganizationSsoSettings403JSONResponseBodyStatusCode.
+const (
+	GetOrganizationSsoSettings403JSONResponseBodyStatusCodeN403 GetOrganizationSsoSettings403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationSsoSettings403JSONResponseBodyStatusCode enum.
+func (e GetOrganizationSsoSettings403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrganizationSsoSettings403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrganizationSsoSettings404JSONResponseBodyStatusCode.
+const (
+	GetOrganizationSsoSettings404JSONResponseBodyStatusCodeN404 GetOrganizationSsoSettings404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationSsoSettings404JSONResponseBodyStatusCode enum.
+func (e GetOrganizationSsoSettings404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrganizationSsoSettings404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrganizationSsoSettings422JSONResponseBodyStatusCode.
+const (
+	GetOrganizationSsoSettings422JSONResponseBodyStatusCodeN422 GetOrganizationSsoSettings422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationSsoSettings422JSONResponseBodyStatusCode enum.
+func (e GetOrganizationSsoSettings422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrganizationSsoSettings422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrganizationSsoSettings500JSONResponseBodyStatusCode.
+const (
+	GetOrganizationSsoSettings500JSONResponseBodyStatusCodeN500 GetOrganizationSsoSettings500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationSsoSettings500JSONResponseBodyStatusCode enum.
+func (e GetOrganizationSsoSettings500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrganizationSsoSettings500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrganizationSsoSettingsJSONBodySsoMfaTrust.
+const (
+	UpdateOrganizationSsoSettingsJSONBodySsoMfaTrustNone   UpdateOrganizationSsoSettingsJSONBodySsoMfaTrust = "none"
+	UpdateOrganizationSsoSettingsJSONBodySsoMfaTrustSignal UpdateOrganizationSsoSettingsJSONBodySsoMfaTrust = "signal"
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrganizationSsoSettingsJSONBodySsoMfaTrust enum.
+func (e UpdateOrganizationSsoSettingsJSONBodySsoMfaTrust) Valid() bool {
+	switch e {
+	case UpdateOrganizationSsoSettingsJSONBodySsoMfaTrustNone:
+		return true
+	case UpdateOrganizationSsoSettingsJSONBodySsoMfaTrustSignal:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust.
+const (
+	UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrustNone   UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust = "none"
+	UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrustSignal UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust = "signal"
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust enum.
+func (e UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust) Valid() bool {
+	switch e {
+	case UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrustNone:
+		return true
+	case UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrustSignal:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrganizationSsoSettings400JSONResponseBodyStatusCode.
+const (
+	UpdateOrganizationSsoSettings400JSONResponseBodyStatusCodeN400 UpdateOrganizationSsoSettings400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrganizationSsoSettings400JSONResponseBodyStatusCode enum.
+func (e UpdateOrganizationSsoSettings400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOrganizationSsoSettings400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrganizationSsoSettings401JSONResponseBodyStatusCode.
+const (
+	UpdateOrganizationSsoSettings401JSONResponseBodyStatusCodeN401 UpdateOrganizationSsoSettings401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrganizationSsoSettings401JSONResponseBodyStatusCode enum.
+func (e UpdateOrganizationSsoSettings401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOrganizationSsoSettings401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrganizationSsoSettings403JSONResponseBodyStatusCode.
+const (
+	UpdateOrganizationSsoSettings403JSONResponseBodyStatusCodeN403 UpdateOrganizationSsoSettings403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrganizationSsoSettings403JSONResponseBodyStatusCode enum.
+func (e UpdateOrganizationSsoSettings403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOrganizationSsoSettings403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrganizationSsoSettings404JSONResponseBodyStatusCode.
+const (
+	UpdateOrganizationSsoSettings404JSONResponseBodyStatusCodeN404 UpdateOrganizationSsoSettings404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrganizationSsoSettings404JSONResponseBodyStatusCode enum.
+func (e UpdateOrganizationSsoSettings404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOrganizationSsoSettings404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrganizationSsoSettings422JSONResponseBodyStatusCode.
+const (
+	UpdateOrganizationSsoSettings422JSONResponseBodyStatusCodeN422 UpdateOrganizationSsoSettings422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrganizationSsoSettings422JSONResponseBodyStatusCode enum.
+func (e UpdateOrganizationSsoSettings422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOrganizationSsoSettings422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrganizationSsoSettings500JSONResponseBodyStatusCode.
+const (
+	UpdateOrganizationSsoSettings500JSONResponseBodyStatusCodeN500 UpdateOrganizationSsoSettings500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrganizationSsoSettings500JSONResponseBodyStatusCode enum.
+func (e UpdateOrganizationSsoSettings500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOrganizationSsoSettings500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListAvailableOrganizationUsers400JSONResponseBodyStatusCode.
 const (
 	ListAvailableOrganizationUsers400JSONResponseBodyStatusCodeN400 ListAvailableOrganizationUsers400JSONResponseBodyStatusCode = 400
@@ -100344,24 +100638,6 @@ const (
 func (e UpdateOrganizationJSONBodySecretShareBrandConfigSecondaryColor1) Valid() bool {
 	switch e {
 	case UpdateOrganizationJSONBodySecretShareBrandConfigSecondaryColor1Empty:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateOrganizationJSONBodySsoMfaTrust.
-const (
-	UpdateOrganizationJSONBodySsoMfaTrustNone   UpdateOrganizationJSONBodySsoMfaTrust = "none"
-	UpdateOrganizationJSONBodySsoMfaTrustSignal UpdateOrganizationJSONBodySsoMfaTrust = "signal"
-)
-
-// Valid indicates whether the value is a known member of the UpdateOrganizationJSONBodySsoMfaTrust enum.
-func (e UpdateOrganizationJSONBodySsoMfaTrust) Valid() bool {
-	switch e {
-	case UpdateOrganizationJSONBodySsoMfaTrustNone:
-		return true
-	case UpdateOrganizationJSONBodySsoMfaTrustSignal:
 		return true
 	default:
 		return false
@@ -128637,6 +128913,96 @@ const (
 func (e CreateSamlConfig500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case CreateSamlConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteOidcConfig400JSONResponseBodyStatusCode.
+const (
+	DeleteOidcConfig400JSONResponseBodyStatusCodeN400 DeleteOidcConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteOidcConfig400JSONResponseBodyStatusCode enum.
+func (e DeleteOidcConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteOidcConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteOidcConfig401JSONResponseBodyStatusCode.
+const (
+	DeleteOidcConfig401JSONResponseBodyStatusCodeN401 DeleteOidcConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteOidcConfig401JSONResponseBodyStatusCode enum.
+func (e DeleteOidcConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteOidcConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteOidcConfig403JSONResponseBodyStatusCode.
+const (
+	DeleteOidcConfig403JSONResponseBodyStatusCodeN403 DeleteOidcConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteOidcConfig403JSONResponseBodyStatusCode enum.
+func (e DeleteOidcConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteOidcConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteOidcConfig404JSONResponseBodyStatusCode.
+const (
+	DeleteOidcConfig404JSONResponseBodyStatusCodeN404 DeleteOidcConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteOidcConfig404JSONResponseBodyStatusCode enum.
+func (e DeleteOidcConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteOidcConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteOidcConfig422JSONResponseBodyStatusCode.
+const (
+	DeleteOidcConfig422JSONResponseBodyStatusCodeN422 DeleteOidcConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteOidcConfig422JSONResponseBodyStatusCode enum.
+func (e DeleteOidcConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteOidcConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteOidcConfig500JSONResponseBodyStatusCode.
+const (
+	DeleteOidcConfig500JSONResponseBodyStatusCodeN500 DeleteOidcConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteOidcConfig500JSONResponseBodyStatusCode enum.
+func (e DeleteOidcConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteOidcConfig500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -188575,6 +188941,9 @@ type ListDynamicSecretLeases422JSONResponseBodyStatusCode float32
 // ListDynamicSecretLeases500JSONResponseBodyStatusCode defines parameters for ListDynamicSecretLeases.
 type ListDynamicSecretLeases500JSONResponseBodyStatusCode float32
 
+// ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordType defines parameters for ListEmailDomains.
+type ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordType string
+
 // ListEmailDomains400JSONResponseBodyStatusCode defines parameters for ListEmailDomains.
 type ListEmailDomains400JSONResponseBodyStatusCode float32
 
@@ -188595,9 +188964,12 @@ type ListEmailDomains500JSONResponseBodyStatusCode float32
 
 // CreateEmailDomainJSONBody defines parameters for CreateEmailDomain.
 type CreateEmailDomainJSONBody struct {
-	// Domain The domain to verify (e.g., company.com)
+	// Domain The email domain to claim for the organization (e.g. company.com). The response includes the DNS TXT record to publish before verifying it.
 	Domain string `json:"domain"`
 }
+
+// CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType defines parameters for CreateEmailDomain.
+type CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType string
 
 // CreateEmailDomain400JSONResponseBodyStatusCode defines parameters for CreateEmailDomain.
 type CreateEmailDomain400JSONResponseBodyStatusCode float32
@@ -188617,6 +188989,9 @@ type CreateEmailDomain422JSONResponseBodyStatusCode float32
 // CreateEmailDomain500JSONResponseBodyStatusCode defines parameters for CreateEmailDomain.
 type CreateEmailDomain500JSONResponseBodyStatusCode float32
 
+// DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType defines parameters for DeleteEmailDomain.
+type DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType string
+
 // DeleteEmailDomain400JSONResponseBodyStatusCode defines parameters for DeleteEmailDomain.
 type DeleteEmailDomain400JSONResponseBodyStatusCode float32
 
@@ -188634,6 +189009,9 @@ type DeleteEmailDomain422JSONResponseBodyStatusCode float32
 
 // DeleteEmailDomain500JSONResponseBodyStatusCode defines parameters for DeleteEmailDomain.
 type DeleteEmailDomain500JSONResponseBodyStatusCode float32
+
+// VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType defines parameters for VerifyEmailDomain.
+type VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType string
 
 // VerifyEmailDomain400JSONResponseBodyStatusCode defines parameters for VerifyEmailDomain.
 type VerifyEmailDomain400JSONResponseBodyStatusCode float32
@@ -194328,6 +194706,66 @@ type GetOrgWideSecretValueTrackingStatus422JSONResponseBodyStatusCode float32
 // GetOrgWideSecretValueTrackingStatus500JSONResponseBodyStatusCode defines parameters for GetOrgWideSecretValueTrackingStatus.
 type GetOrgWideSecretValueTrackingStatus500JSONResponseBodyStatusCode float32
 
+// GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust defines parameters for GetOrganizationSsoSettings.
+type GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust string
+
+// GetOrganizationSsoSettings400JSONResponseBodyStatusCode defines parameters for GetOrganizationSsoSettings.
+type GetOrganizationSsoSettings400JSONResponseBodyStatusCode float32
+
+// GetOrganizationSsoSettings401JSONResponseBodyStatusCode defines parameters for GetOrganizationSsoSettings.
+type GetOrganizationSsoSettings401JSONResponseBodyStatusCode float32
+
+// GetOrganizationSsoSettings403JSONResponseBodyStatusCode defines parameters for GetOrganizationSsoSettings.
+type GetOrganizationSsoSettings403JSONResponseBodyStatusCode float32
+
+// GetOrganizationSsoSettings404JSONResponseBodyStatusCode defines parameters for GetOrganizationSsoSettings.
+type GetOrganizationSsoSettings404JSONResponseBodyStatusCode float32
+
+// GetOrganizationSsoSettings422JSONResponseBodyStatusCode defines parameters for GetOrganizationSsoSettings.
+type GetOrganizationSsoSettings422JSONResponseBodyStatusCode float32
+
+// GetOrganizationSsoSettings500JSONResponseBodyStatusCode defines parameters for GetOrganizationSsoSettings.
+type GetOrganizationSsoSettings500JSONResponseBodyStatusCode float32
+
+// UpdateOrganizationSsoSettingsJSONBody defines parameters for UpdateOrganizationSsoSettings.
+type UpdateOrganizationSsoSettingsJSONBody struct {
+	// AuthEnforced Whether members must sign in through the organization's SAML or OIDC provider. Can only be turned on after someone has signed in through the active SAML or OIDC configuration.
+	AuthEnforced *bool `json:"authEnforced,omitempty"`
+
+	// BypassOrgAuthEnabled Whether organization admins can still sign in with a password at /login/admin while SSO is enforced.
+	BypassOrgAuthEnabled *bool `json:"bypassOrgAuthEnabled,omitempty"`
+
+	// GoogleSsoAuthEnforced Whether members must sign in with Google. Cannot be on at the same time as authEnforced, or while a SAML, OIDC or LDAP configuration is active.
+	GoogleSsoAuthEnforced *bool `json:"googleSsoAuthEnforced,omitempty"`
+
+	// SsoMfaTrust Whether MFA performed at the identity provider satisfies the organization's MFA requirement: 'none' or 'signal'. Has no effect unless MFA is enforced.
+	SsoMfaTrust *UpdateOrganizationSsoSettingsJSONBodySsoMfaTrust `json:"ssoMfaTrust,omitempty"`
+}
+
+// UpdateOrganizationSsoSettingsJSONBodySsoMfaTrust defines parameters for UpdateOrganizationSsoSettings.
+type UpdateOrganizationSsoSettingsJSONBodySsoMfaTrust string
+
+// UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust defines parameters for UpdateOrganizationSsoSettings.
+type UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust string
+
+// UpdateOrganizationSsoSettings400JSONResponseBodyStatusCode defines parameters for UpdateOrganizationSsoSettings.
+type UpdateOrganizationSsoSettings400JSONResponseBodyStatusCode float32
+
+// UpdateOrganizationSsoSettings401JSONResponseBodyStatusCode defines parameters for UpdateOrganizationSsoSettings.
+type UpdateOrganizationSsoSettings401JSONResponseBodyStatusCode float32
+
+// UpdateOrganizationSsoSettings403JSONResponseBodyStatusCode defines parameters for UpdateOrganizationSsoSettings.
+type UpdateOrganizationSsoSettings403JSONResponseBodyStatusCode float32
+
+// UpdateOrganizationSsoSettings404JSONResponseBodyStatusCode defines parameters for UpdateOrganizationSsoSettings.
+type UpdateOrganizationSsoSettings404JSONResponseBodyStatusCode float32
+
+// UpdateOrganizationSsoSettings422JSONResponseBodyStatusCode defines parameters for UpdateOrganizationSsoSettings.
+type UpdateOrganizationSsoSettings422JSONResponseBodyStatusCode float32
+
+// UpdateOrganizationSsoSettings500JSONResponseBodyStatusCode defines parameters for UpdateOrganizationSsoSettings.
+type UpdateOrganizationSsoSettings500JSONResponseBodyStatusCode float32
+
 // ListAvailableOrganizationUsers400JSONResponseBodyStatusCode defines parameters for ListAvailableOrganizationUsers.
 type ListAvailableOrganizationUsers400JSONResponseBodyStatusCode float32
 
@@ -194372,14 +194810,11 @@ type UpdateOrganizationJSONBody struct {
 
 	// AllowedMfaMethods Methods members may use to satisfy MFA while it is enforced
 	AllowedMfaMethods *[]UpdateOrganizationJSONBodyAllowedMfaMethods `json:"allowedMfaMethods,omitempty"`
-	AuthEnforced      *bool                                          `json:"authEnforced,omitempty"`
 
 	// BlockDuplicateSecretSyncDestinations Block duplicate secret sync destinations across the organization
 	BlockDuplicateSecretSyncDestinations *bool    `json:"blockDuplicateSecretSyncDestinations,omitempty"`
-	BypassOrgAuthEnabled                 *bool    `json:"bypassOrgAuthEnabled,omitempty"`
 	DefaultMembershipRoleSlug            *string  `json:"defaultMembershipRoleSlug,omitempty"`
 	EnforceMfa                           *bool    `json:"enforceMfa,omitempty"`
-	GoogleSsoAuthEnforced                *bool    `json:"googleSsoAuthEnforced,omitempty"`
 	KmsProductEnabled                    *bool    `json:"kmsProductEnabled,omitempty"`
 	MaxSharedSecretLifetime              *float32 `json:"maxSharedSecretLifetime,omitempty"`
 	MaxSharedSecretViewLimit             *float32 `json:"maxSharedSecretViewLimit,omitempty"`
@@ -194396,11 +194831,10 @@ type UpdateOrganizationJSONBody struct {
 		PrimaryColor   *UpdateOrganizationJSONBody_SecretShareBrandConfig_PrimaryColor   `json:"primaryColor,omitempty"`
 		SecondaryColor *UpdateOrganizationJSONBody_SecretShareBrandConfig_SecondaryColor `json:"secondaryColor,omitempty"`
 	} `json:"secretShareBrandConfig,omitempty"`
-	SecretsProductEnabled      *bool                                  `json:"secretsProductEnabled,omitempty"`
-	ShareSecretsProductEnabled *bool                                  `json:"shareSecretsProductEnabled,omitempty"`
-	Slug                       *string                                `json:"slug,omitempty"`
-	SsoMfaTrust                *UpdateOrganizationJSONBodySsoMfaTrust `json:"ssoMfaTrust,omitempty"`
-	UserTokenExpiration        *string                                `json:"userTokenExpiration,omitempty"`
+	SecretsProductEnabled      *bool   `json:"secretsProductEnabled,omitempty"`
+	ShareSecretsProductEnabled *bool   `json:"shareSecretsProductEnabled,omitempty"`
+	Slug                       *string `json:"slug,omitempty"`
+	UserTokenExpiration        *string `json:"userTokenExpiration,omitempty"`
 }
 
 // UpdateOrganizationJSONBodyAllowedMfaMethods defines parameters for UpdateOrganization.
@@ -194443,9 +194877,6 @@ type UpdateOrganizationJSONBodySecretShareBrandConfigSecondaryColor1 string
 type UpdateOrganizationJSONBody_SecretShareBrandConfig_SecondaryColor struct {
 	union json.RawMessage
 }
-
-// UpdateOrganizationJSONBodySsoMfaTrust defines parameters for UpdateOrganization.
-type UpdateOrganizationJSONBodySsoMfaTrust string
 
 // UpdateOrganization400JSONResponseBodyStatusCode defines parameters for UpdateOrganization.
 type UpdateOrganization400JSONResponseBodyStatusCode float32
@@ -203815,11 +204246,23 @@ type OidcCallbackParams struct {
 	State *string `form:"state,omitempty" json:"state,omitempty"`
 }
 
-// GetOidcConfigParams defines parameters for GetOidcConfig.
-type GetOidcConfigParams struct {
-	// OrganizationId The ID of the organization to get the OIDC config for.
-	OrganizationId string `form:"organizationId" json:"organizationId"`
-}
+// DeleteOidcConfig400JSONResponseBodyStatusCode defines parameters for DeleteOidcConfig.
+type DeleteOidcConfig400JSONResponseBodyStatusCode float32
+
+// DeleteOidcConfig401JSONResponseBodyStatusCode defines parameters for DeleteOidcConfig.
+type DeleteOidcConfig401JSONResponseBodyStatusCode float32
+
+// DeleteOidcConfig403JSONResponseBodyStatusCode defines parameters for DeleteOidcConfig.
+type DeleteOidcConfig403JSONResponseBodyStatusCode float32
+
+// DeleteOidcConfig404JSONResponseBodyStatusCode defines parameters for DeleteOidcConfig.
+type DeleteOidcConfig404JSONResponseBodyStatusCode float32
+
+// DeleteOidcConfig422JSONResponseBodyStatusCode defines parameters for DeleteOidcConfig.
+type DeleteOidcConfig422JSONResponseBodyStatusCode float32
+
+// DeleteOidcConfig500JSONResponseBodyStatusCode defines parameters for DeleteOidcConfig.
+type DeleteOidcConfig500JSONResponseBodyStatusCode float32
 
 // GetOidcConfig400JSONResponseBodyStatusCode defines parameters for GetOidcConfig.
 type GetOidcConfig400JSONResponseBodyStatusCode float32
@@ -203879,9 +204322,6 @@ type UpdateOidcConfigJSONBody struct {
 
 	// MfaClaimName The ID token claim that lists the authentication methods the user completed. Defaults to amr.
 	MfaClaimName *string `json:"mfaClaimName,omitempty"`
-
-	// OrganizationId The ID of the organization to update the OIDC config for.
-	OrganizationId string `json:"organizationId"`
 
 	// TokenEndpoint The token endpoint to use for OIDC token exchange.
 	TokenEndpoint *string `json:"tokenEndpoint,omitempty"`
@@ -203954,9 +204394,6 @@ type CreateOidcConfigJSONBody struct {
 
 	// MfaClaimName The ID token claim that lists the authentication methods the user completed. Defaults to amr.
 	MfaClaimName *string `json:"mfaClaimName,omitempty"`
-
-	// OrganizationId The ID of the organization to create the OIDC config for.
-	OrganizationId string `json:"organizationId"`
 
 	// TokenEndpoint The token endpoint to use for OIDC token exchange.
 	TokenEndpoint *string `json:"tokenEndpoint,omitempty"`
@@ -211484,6 +211921,9 @@ type CreateOrganizationRoleJSONRequestBody CreateOrganizationRoleJSONBody
 
 // UpdateOrganizationRoleJSONRequestBody defines body for UpdateOrganizationRole for application/json ContentType.
 type UpdateOrganizationRoleJSONRequestBody UpdateOrganizationRoleJSONBody
+
+// UpdateOrganizationSsoSettingsJSONRequestBody defines body for UpdateOrganizationSsoSettings for application/json ContentType.
+type UpdateOrganizationSsoSettingsJSONRequestBody UpdateOrganizationSsoSettingsJSONBody
 
 // UpdateOrganizationJSONRequestBody defines body for UpdateOrganization for application/json ContentType.
 type UpdateOrganizationJSONRequestBody UpdateOrganizationJSONBody
@@ -257717,20 +258157,30 @@ type ClientInterface interface {
 	ListDynamicSecretLeases(ctx context.Context, name string, params *ListDynamicSecretLeasesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListEmailDomains performs a GET /api/v1/email-domains (the `ListEmailDomains` operationId) request.
+	//
+	// List email domains.
 	ListEmailDomains(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateEmailDomainWithBody performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request,
 	// with any type of body and a specified content type.
+	//
+	// Create email domain.
 	CreateEmailDomainWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateEmailDomain performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request.
 	// Takes a body of the `application/json` content type.
+	//
+	// Create email domain.
 	CreateEmailDomain(ctx context.Context, body CreateEmailDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteEmailDomain performs a DELETE /api/v1/email-domains/{emailDomainId} (the `DeleteEmailDomain` operationId) request.
+	//
+	// Delete email domain.
 	DeleteEmailDomain(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// VerifyEmailDomain performs a POST /api/v1/email-domains/{emailDomainId}/verify (the `VerifyEmailDomain` operationId) request.
+	//
+	// Verify email domain.
 	VerifyEmailDomain(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SubscribeToProjectEventsWithBody performs a POST /api/v1/events/subscribe/project-events (the `SubscribeToProjectEvents` operationId) request,
@@ -258758,6 +259208,23 @@ type ClientInterface interface {
 	//
 	// Report progress of the org-wide secret value tracking backfill.
 	GetOrgWideSecretValueTrackingStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetOrganizationSsoSettings performs a GET /api/v1/organization/sso-settings (the `GetOrganizationSsoSettings` operationId) request.
+	//
+	// Get the organization's SSO enforcement settings.
+	GetOrganizationSsoSettings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateOrganizationSsoSettingsWithBody performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update the organization's SSO enforcement settings.
+	UpdateOrganizationSsoSettingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateOrganizationSsoSettings performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Update the organization's SSO enforcement settings.
+	UpdateOrganizationSsoSettings(ctx context.Context, body UpdateOrganizationSsoSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListAvailableOrganizationUsers performs a GET /api/v1/organization/users/available (the `ListAvailableOrganizationUsers` operationId) request.
 	ListAvailableOrganizationUsers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -260270,10 +260737,15 @@ type ClientInterface interface {
 	// OidcCallback performs a GET /api/v1/sso/oidc/callback (the `OidcCallback` operationId) request.
 	OidcCallback(ctx context.Context, params *OidcCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteOidcConfig performs a DELETE /api/v1/sso/oidc/config (the `DeleteOidcConfig` operationId) request.
+	//
+	// Delete OIDC config.
+	DeleteOidcConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetOidcConfig performs a GET /api/v1/sso/oidc/config (the `GetOidcConfig` operationId) request.
 	//
 	// Get OIDC config.
-	GetOidcConfig(ctx context.Context, params *GetOidcConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetOidcConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateOidcConfigWithBody performs a PATCH /api/v1/sso/oidc/config (the `UpdateOidcConfig` operationId) request,
 	// with any type of body and a specified content type.
@@ -272127,6 +272599,8 @@ func (c *Client) ListDynamicSecretLeases(ctx context.Context, name string, param
 }
 
 // ListEmailDomains performs a GET /api/v1/email-domains (the `ListEmailDomains` operationId) request.
+//
+// List email domains.
 func (c *Client) ListEmailDomains(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListEmailDomainsRequest(c.Server)
 	if err != nil {
@@ -272141,6 +272615,8 @@ func (c *Client) ListEmailDomains(ctx context.Context, reqEditors ...RequestEdit
 
 // CreateEmailDomainWithBody performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request,
 // with any type of body and a specified content type.
+//
+// Create email domain.
 func (c *Client) CreateEmailDomainWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateEmailDomainRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -272155,6 +272631,8 @@ func (c *Client) CreateEmailDomainWithBody(ctx context.Context, contentType stri
 
 // CreateEmailDomain performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request.
 // Takes a body of the `application/json` content type.
+//
+// Create email domain.
 func (c *Client) CreateEmailDomain(ctx context.Context, body CreateEmailDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateEmailDomainRequest(c.Server, body)
 	if err != nil {
@@ -272168,6 +272646,8 @@ func (c *Client) CreateEmailDomain(ctx context.Context, body CreateEmailDomainJS
 }
 
 // DeleteEmailDomain performs a DELETE /api/v1/email-domains/{emailDomainId} (the `DeleteEmailDomain` operationId) request.
+//
+// Delete email domain.
 func (c *Client) DeleteEmailDomain(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteEmailDomainRequest(c.Server, emailDomainId)
 	if err != nil {
@@ -272181,6 +272661,8 @@ func (c *Client) DeleteEmailDomain(ctx context.Context, emailDomainId openapi_ty
 }
 
 // VerifyEmailDomain performs a POST /api/v1/email-domains/{emailDomainId}/verify (the `VerifyEmailDomain` operationId) request.
+//
+// Verify email domain.
 func (c *Client) VerifyEmailDomain(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewVerifyEmailDomainRequest(c.Server, emailDomainId)
 	if err != nil {
@@ -275449,6 +275931,53 @@ func (c *Client) EnableOrgWideSecretValueTracking(ctx context.Context, reqEditor
 // Report progress of the org-wide secret value tracking backfill.
 func (c *Client) GetOrgWideSecretValueTrackingStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetOrgWideSecretValueTrackingStatusRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetOrganizationSsoSettings performs a GET /api/v1/organization/sso-settings (the `GetOrganizationSsoSettings` operationId) request.
+//
+// Get the organization's SSO enforcement settings.
+func (c *Client) GetOrganizationSsoSettings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOrganizationSsoSettingsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateOrganizationSsoSettingsWithBody performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update the organization's SSO enforcement settings.
+func (c *Client) UpdateOrganizationSsoSettingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateOrganizationSsoSettingsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateOrganizationSsoSettings performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Update the organization's SSO enforcement settings.
+func (c *Client) UpdateOrganizationSsoSettings(ctx context.Context, body UpdateOrganizationSsoSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateOrganizationSsoSettingsRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -280169,11 +280698,26 @@ func (c *Client) OidcCallback(ctx context.Context, params *OidcCallbackParams, r
 	return c.Client.Do(req)
 }
 
+// DeleteOidcConfig performs a DELETE /api/v1/sso/oidc/config (the `DeleteOidcConfig` operationId) request.
+//
+// Delete OIDC config.
+func (c *Client) DeleteOidcConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteOidcConfigRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetOidcConfig performs a GET /api/v1/sso/oidc/config (the `GetOidcConfig` operationId) request.
 //
 // Get OIDC config.
-func (c *Client) GetOidcConfig(ctx context.Context, params *GetOidcConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetOidcConfigRequest(c.Server, params)
+func (c *Client) GetOidcConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOidcConfigRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -312048,6 +312592,73 @@ func NewGetOrgWideSecretValueTrackingStatusRequest(server string) (*http.Request
 	return req, nil
 }
 
+// NewGetOrganizationSsoSettingsRequest constructs an http.Request for the GetOrganizationSsoSettings method
+func NewGetOrganizationSsoSettingsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organization/sso-settings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateOrganizationSsoSettingsRequest calls the generic UpdateOrganizationSsoSettings builder with application/json body
+func NewUpdateOrganizationSsoSettingsRequest(server string, body UpdateOrganizationSsoSettingsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateOrganizationSsoSettingsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpdateOrganizationSsoSettingsRequestWithBody constructs an http.Request for the UpdateOrganizationSsoSettings method, with any body, and a specified content type
+func NewUpdateOrganizationSsoSettingsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organization/sso-settings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListAvailableOrganizationUsersRequest constructs an http.Request for the ListAvailableOrganizationUsers method
 func NewListAvailableOrganizationUsersRequest(server string) (*http.Request, error) {
 	var err error
@@ -323364,8 +323975,8 @@ func NewOidcCallbackRequest(server string, params *OidcCallbackParams) (*http.Re
 	return req, nil
 }
 
-// NewGetOidcConfigRequest constructs an http.Request for the GetOidcConfig method
-func NewGetOidcConfigRequest(server string, params *GetOidcConfigParams) (*http.Request, error) {
+// NewDeleteOidcConfigRequest constructs an http.Request for the DeleteOidcConfig method
+func NewDeleteOidcConfigRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -323383,27 +323994,31 @@ func NewGetOidcConfigRequest(server string, params *GetOidcConfigParams) (*http.
 		return nil, err
 	}
 
-	if params != nil {
-		// queryValues collects non-styled parameters (passthrough, JSON)
-		// that are safe to round-trip through url.Values.Encode().
-		queryValues := queryURL.Query()
-		// rawQueryFragments collects pre-encoded query fragments from
-		// styled parameters, preserving literal commas as delimiters
-		// per the OpenAPI spec (e.g. "color=blue,black,brown").
-		var rawQueryFragments []string
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "organizationId", params.OrganizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
+	return req, nil
+}
 
-		if encoded := queryValues.Encode(); encoded != "" {
-			rawQueryFragments = append(rawQueryFragments, encoded)
-		}
-		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+// NewGetOidcConfigRequest constructs an http.Request for the GetOidcConfig method
+func NewGetOidcConfigRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/oidc/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -336509,25 +337124,35 @@ type ClientWithResponsesInterface interface {
 
 	// ListEmailDomainsWithResponse performs a GET /api/v1/email-domains (the `ListEmailDomains` operationId) request.
 	//
+	// List email domains.
+	//
 	// Returns a wrapper object for the known response body format(s).
 	ListEmailDomainsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListEmailDomainsResponse, error)
 
 	// CreateEmailDomainWithBodyWithResponse performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request,
 	// with any type of body and a specified content type.
 	//
+	// Create email domain.
+	//
 	// Returns a wrapper object for the known response body format(s).
 	CreateEmailDomainWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEmailDomainResponse, error)
 
 	// CreateEmailDomainWithResponse performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create email domain.
 	CreateEmailDomainWithResponse(ctx context.Context, body CreateEmailDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateEmailDomainResponse, error)
 
 	// DeleteEmailDomainWithResponse performs a DELETE /api/v1/email-domains/{emailDomainId} (the `DeleteEmailDomain` operationId) request.
+	//
+	// Delete email domain.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	DeleteEmailDomainWithResponse(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteEmailDomainResponse, error)
 
 	// VerifyEmailDomainWithResponse performs a POST /api/v1/email-domains/{emailDomainId}/verify (the `VerifyEmailDomain` operationId) request.
+	//
+	// Verify email domain.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	VerifyEmailDomainWithResponse(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*VerifyEmailDomainResponse, error)
@@ -337881,6 +338506,27 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	GetOrgWideSecretValueTrackingStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOrgWideSecretValueTrackingStatusResponse, error)
+
+	// GetOrganizationSsoSettingsWithResponse performs a GET /api/v1/organization/sso-settings (the `GetOrganizationSsoSettings` operationId) request.
+	//
+	// Get the organization's SSO enforcement settings.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetOrganizationSsoSettingsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOrganizationSsoSettingsResponse, error)
+
+	// UpdateOrganizationSsoSettingsWithBodyWithResponse performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update the organization's SSO enforcement settings.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdateOrganizationSsoSettingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateOrganizationSsoSettingsResponse, error)
+
+	// UpdateOrganizationSsoSettingsWithResponse performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Update the organization's SSO enforcement settings.
+	UpdateOrganizationSsoSettingsWithResponse(ctx context.Context, body UpdateOrganizationSsoSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationSsoSettingsResponse, error)
 
 	// ListAvailableOrganizationUsersWithResponse performs a GET /api/v1/organization/users/available (the `ListAvailableOrganizationUsers` operationId) request.
 	//
@@ -339859,12 +340505,19 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	OidcCallbackWithResponse(ctx context.Context, params *OidcCallbackParams, reqEditors ...RequestEditorFn) (*OidcCallbackResponse, error)
 
+	// DeleteOidcConfigWithResponse performs a DELETE /api/v1/sso/oidc/config (the `DeleteOidcConfig` operationId) request.
+	//
+	// Delete OIDC config.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteOidcConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeleteOidcConfigResponse, error)
+
 	// GetOidcConfigWithResponse performs a GET /api/v1/sso/oidc/config (the `GetOidcConfig` operationId) request.
 	//
 	// Get OIDC config.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	GetOidcConfigWithResponse(ctx context.Context, params *GetOidcConfigParams, reqEditors ...RequestEditorFn) (*GetOidcConfigResponse, error)
+	GetOidcConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOidcConfigResponse, error)
 
 	// UpdateOidcConfigWithBodyWithResponse performs a PATCH /api/v1/sso/oidc/config (the `UpdateOidcConfig` operationId) request,
 	// with any type of body and a specified content type.
@@ -430322,17 +430975,19 @@ type ListEmailDomainsResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		EmailDomains []struct {
-			CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-			CreatedAt              time.Time          `json:"createdAt"`
-			Domain                 string             `json:"domain"`
-			Id                     openapi_types.UUID `json:"id"`
-			OrgId                  openapi_types.UUID `json:"orgId"`
-			Status                 *string            `json:"status,omitempty"`
-			UpdatedAt              time.Time          `json:"updatedAt"`
-			VerificationCode       string             `json:"verificationCode"`
-			VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-			VerificationRecordName string             `json:"verificationRecordName"`
-			VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+			CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+			CreatedAt          time.Time          `json:"createdAt"`
+			Domain             string             `json:"domain"`
+			Id                 openapi_types.UUID `json:"id"`
+			OrgId              openapi_types.UUID `json:"orgId"`
+			Status             *string            `json:"status,omitempty"`
+			UpdatedAt          time.Time          `json:"updatedAt"`
+			VerificationRecord struct {
+				Name  string                                                                `json:"name"`
+				Type  ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordType `json:"type"`
+				Value string                                                                `json:"value"`
+			} `json:"verificationRecord"`
+			VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 		} `json:"emailDomains"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -430384,17 +431039,19 @@ type ListEmailDomainsResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r ListEmailDomainsResponse) GetJSON200() *struct {
 	EmailDomains []struct {
-		CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-		CreatedAt              time.Time          `json:"createdAt"`
-		Domain                 string             `json:"domain"`
-		Id                     openapi_types.UUID `json:"id"`
-		OrgId                  openapi_types.UUID `json:"orgId"`
-		Status                 *string            `json:"status,omitempty"`
-		UpdatedAt              time.Time          `json:"updatedAt"`
-		VerificationCode       string             `json:"verificationCode"`
-		VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-		VerificationRecordName string             `json:"verificationRecordName"`
-		VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+		CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+		CreatedAt          time.Time          `json:"createdAt"`
+		Domain             string             `json:"domain"`
+		Id                 openapi_types.UUID `json:"id"`
+		OrgId              openapi_types.UUID `json:"orgId"`
+		Status             *string            `json:"status,omitempty"`
+		UpdatedAt          time.Time          `json:"updatedAt"`
+		VerificationRecord struct {
+			Name  string                                                                `json:"name"`
+			Type  ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordType `json:"type"`
+			Value string                                                                `json:"value"`
+		} `json:"verificationRecord"`
+		VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 	} `json:"emailDomains"`
 } {
 	return r.JSON200
@@ -430497,17 +431154,19 @@ type CreateEmailDomainResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		EmailDomain struct {
-			CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-			CreatedAt              time.Time          `json:"createdAt"`
-			Domain                 string             `json:"domain"`
-			Id                     openapi_types.UUID `json:"id"`
-			OrgId                  openapi_types.UUID `json:"orgId"`
-			Status                 *string            `json:"status,omitempty"`
-			UpdatedAt              time.Time          `json:"updatedAt"`
-			VerificationCode       string             `json:"verificationCode"`
-			VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-			VerificationRecordName string             `json:"verificationRecordName"`
-			VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+			CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+			CreatedAt          time.Time          `json:"createdAt"`
+			Domain             string             `json:"domain"`
+			Id                 openapi_types.UUID `json:"id"`
+			OrgId              openapi_types.UUID `json:"orgId"`
+			Status             *string            `json:"status,omitempty"`
+			UpdatedAt          time.Time          `json:"updatedAt"`
+			VerificationRecord struct {
+				Name  string                                                                `json:"name"`
+				Type  CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType `json:"type"`
+				Value string                                                                `json:"value"`
+			} `json:"verificationRecord"`
+			VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 		} `json:"emailDomain"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -430559,17 +431218,19 @@ type CreateEmailDomainResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r CreateEmailDomainResponse) GetJSON200() *struct {
 	EmailDomain struct {
-		CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-		CreatedAt              time.Time          `json:"createdAt"`
-		Domain                 string             `json:"domain"`
-		Id                     openapi_types.UUID `json:"id"`
-		OrgId                  openapi_types.UUID `json:"orgId"`
-		Status                 *string            `json:"status,omitempty"`
-		UpdatedAt              time.Time          `json:"updatedAt"`
-		VerificationCode       string             `json:"verificationCode"`
-		VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-		VerificationRecordName string             `json:"verificationRecordName"`
-		VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+		CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+		CreatedAt          time.Time          `json:"createdAt"`
+		Domain             string             `json:"domain"`
+		Id                 openapi_types.UUID `json:"id"`
+		OrgId              openapi_types.UUID `json:"orgId"`
+		Status             *string            `json:"status,omitempty"`
+		UpdatedAt          time.Time          `json:"updatedAt"`
+		VerificationRecord struct {
+			Name  string                                                                `json:"name"`
+			Type  CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType `json:"type"`
+			Value string                                                                `json:"value"`
+		} `json:"verificationRecord"`
+		VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 	} `json:"emailDomain"`
 } {
 	return r.JSON200
@@ -430672,17 +431333,19 @@ type DeleteEmailDomainResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		EmailDomain struct {
-			CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-			CreatedAt              time.Time          `json:"createdAt"`
-			Domain                 string             `json:"domain"`
-			Id                     openapi_types.UUID `json:"id"`
-			OrgId                  openapi_types.UUID `json:"orgId"`
-			Status                 *string            `json:"status,omitempty"`
-			UpdatedAt              time.Time          `json:"updatedAt"`
-			VerificationCode       string             `json:"verificationCode"`
-			VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-			VerificationRecordName string             `json:"verificationRecordName"`
-			VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+			CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+			CreatedAt          time.Time          `json:"createdAt"`
+			Domain             string             `json:"domain"`
+			Id                 openapi_types.UUID `json:"id"`
+			OrgId              openapi_types.UUID `json:"orgId"`
+			Status             *string            `json:"status,omitempty"`
+			UpdatedAt          time.Time          `json:"updatedAt"`
+			VerificationRecord struct {
+				Name  string                                                                `json:"name"`
+				Type  DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType `json:"type"`
+				Value string                                                                `json:"value"`
+			} `json:"verificationRecord"`
+			VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 		} `json:"emailDomain"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -430734,17 +431397,19 @@ type DeleteEmailDomainResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r DeleteEmailDomainResponse) GetJSON200() *struct {
 	EmailDomain struct {
-		CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-		CreatedAt              time.Time          `json:"createdAt"`
-		Domain                 string             `json:"domain"`
-		Id                     openapi_types.UUID `json:"id"`
-		OrgId                  openapi_types.UUID `json:"orgId"`
-		Status                 *string            `json:"status,omitempty"`
-		UpdatedAt              time.Time          `json:"updatedAt"`
-		VerificationCode       string             `json:"verificationCode"`
-		VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-		VerificationRecordName string             `json:"verificationRecordName"`
-		VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+		CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+		CreatedAt          time.Time          `json:"createdAt"`
+		Domain             string             `json:"domain"`
+		Id                 openapi_types.UUID `json:"id"`
+		OrgId              openapi_types.UUID `json:"orgId"`
+		Status             *string            `json:"status,omitempty"`
+		UpdatedAt          time.Time          `json:"updatedAt"`
+		VerificationRecord struct {
+			Name  string                                                                `json:"name"`
+			Type  DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType `json:"type"`
+			Value string                                                                `json:"value"`
+		} `json:"verificationRecord"`
+		VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 	} `json:"emailDomain"`
 } {
 	return r.JSON200
@@ -430847,17 +431512,19 @@ type VerifyEmailDomainResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		EmailDomain struct {
-			CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-			CreatedAt              time.Time          `json:"createdAt"`
-			Domain                 string             `json:"domain"`
-			Id                     openapi_types.UUID `json:"id"`
-			OrgId                  openapi_types.UUID `json:"orgId"`
-			Status                 *string            `json:"status,omitempty"`
-			UpdatedAt              time.Time          `json:"updatedAt"`
-			VerificationCode       string             `json:"verificationCode"`
-			VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-			VerificationRecordName string             `json:"verificationRecordName"`
-			VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+			CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+			CreatedAt          time.Time          `json:"createdAt"`
+			Domain             string             `json:"domain"`
+			Id                 openapi_types.UUID `json:"id"`
+			OrgId              openapi_types.UUID `json:"orgId"`
+			Status             *string            `json:"status,omitempty"`
+			UpdatedAt          time.Time          `json:"updatedAt"`
+			VerificationRecord struct {
+				Name  string                                                                `json:"name"`
+				Type  VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType `json:"type"`
+				Value string                                                                `json:"value"`
+			} `json:"verificationRecord"`
+			VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 		} `json:"emailDomain"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -430909,17 +431576,19 @@ type VerifyEmailDomainResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r VerifyEmailDomainResponse) GetJSON200() *struct {
 	EmailDomain struct {
-		CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-		CreatedAt              time.Time          `json:"createdAt"`
-		Domain                 string             `json:"domain"`
-		Id                     openapi_types.UUID `json:"id"`
-		OrgId                  openapi_types.UUID `json:"orgId"`
-		Status                 *string            `json:"status,omitempty"`
-		UpdatedAt              time.Time          `json:"updatedAt"`
-		VerificationCode       string             `json:"verificationCode"`
-		VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-		VerificationRecordName string             `json:"verificationRecordName"`
-		VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+		CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+		CreatedAt          time.Time          `json:"createdAt"`
+		Domain             string             `json:"domain"`
+		Id                 openapi_types.UUID `json:"id"`
+		OrgId              openapi_types.UUID `json:"orgId"`
+		Status             *string            `json:"status,omitempty"`
+		UpdatedAt          time.Time          `json:"updatedAt"`
+		VerificationRecord struct {
+			Name  string                                                                `json:"name"`
+			Type  VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType `json:"type"`
+			Value string                                                                `json:"value"`
+		} `json:"verificationRecord"`
+		VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 	} `json:"emailDomain"`
 } {
 	return r.JSON200
@@ -458191,6 +458860,368 @@ func (r GetOrgWideSecretValueTrackingStatusResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetOrgWideSecretValueTrackingStatusResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetOrganizationSsoSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		SsoSettings struct {
+			// AuthEnforced Whether members must sign in through the organization's SAML or OIDC provider. Can only be turned on after someone has signed in through the active SAML or OIDC configuration.
+			AuthEnforced bool `json:"authEnforced"`
+
+			// BypassOrgAuthEnabled Whether organization admins can still sign in with a password at /login/admin while SSO is enforced.
+			BypassOrgAuthEnabled bool `json:"bypassOrgAuthEnabled"`
+
+			// GoogleSsoAuthEnforced Whether members must sign in with Google. Cannot be on at the same time as authEnforced, or while a SAML, OIDC or LDAP configuration is active.
+			GoogleSsoAuthEnforced bool `json:"googleSsoAuthEnforced"`
+
+			// OrgId The ID of the organization the settings belong to.
+			OrgId openapi_types.UUID `json:"orgId"`
+
+			// SsoMfaTrust Whether MFA performed at the identity provider satisfies the organization's MFA requirement: 'none' or 'signal'. Has no effect unless MFA is enforced.
+			SsoMfaTrust GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust `json:"ssoMfaTrust"`
+		} `json:"ssoSettings"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                             `json:"details,omitempty"`
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetOrganizationSsoSettings400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetOrganizationSsoSettings401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                             `json:"details,omitempty"`
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetOrganizationSsoSettings403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetOrganizationSsoSettings404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                  `json:"error"`
+		Message    interface{}                                             `json:"message,omitempty"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetOrganizationSsoSettings422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetOrganizationSsoSettings500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetOrganizationSsoSettingsResponse) GetJSON200() *struct {
+	SsoSettings struct {
+		// AuthEnforced Whether members must sign in through the organization's SAML or OIDC provider. Can only be turned on after someone has signed in through the active SAML or OIDC configuration.
+		AuthEnforced bool `json:"authEnforced"`
+
+		// BypassOrgAuthEnabled Whether organization admins can still sign in with a password at /login/admin while SSO is enforced.
+		BypassOrgAuthEnabled bool `json:"bypassOrgAuthEnabled"`
+
+		// GoogleSsoAuthEnforced Whether members must sign in with Google. Cannot be on at the same time as authEnforced, or while a SAML, OIDC or LDAP configuration is active.
+		GoogleSsoAuthEnforced bool `json:"googleSsoAuthEnforced"`
+
+		// OrgId The ID of the organization the settings belong to.
+		OrgId openapi_types.UUID `json:"orgId"`
+
+		// SsoMfaTrust Whether MFA performed at the identity provider satisfies the organization's MFA requirement: 'none' or 'signal'. Has no effect unless MFA is enforced.
+		SsoMfaTrust GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust `json:"ssoMfaTrust"`
+	} `json:"ssoSettings"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetOrganizationSsoSettingsResponse) GetJSON400() *struct {
+	Details    interface{}                                             `json:"details,omitempty"`
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetOrganizationSsoSettings400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetOrganizationSsoSettingsResponse) GetJSON401() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetOrganizationSsoSettings401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetOrganizationSsoSettingsResponse) GetJSON403() *struct {
+	Details    interface{}                                             `json:"details,omitempty"`
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetOrganizationSsoSettings403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetOrganizationSsoSettingsResponse) GetJSON404() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetOrganizationSsoSettings404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetOrganizationSsoSettingsResponse) GetJSON422() *struct {
+	Error      string                                                  `json:"error"`
+	Message    interface{}                                             `json:"message,omitempty"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetOrganizationSsoSettings422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetOrganizationSsoSettingsResponse) GetJSON500() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetOrganizationSsoSettings500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetOrganizationSsoSettingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOrganizationSsoSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOrganizationSsoSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOrganizationSsoSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateOrganizationSsoSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		SsoSettings struct {
+			// AuthEnforced Whether members must sign in through the organization's SAML or OIDC provider. Can only be turned on after someone has signed in through the active SAML or OIDC configuration.
+			AuthEnforced bool `json:"authEnforced"`
+
+			// BypassOrgAuthEnabled Whether organization admins can still sign in with a password at /login/admin while SSO is enforced.
+			BypassOrgAuthEnabled bool `json:"bypassOrgAuthEnabled"`
+
+			// GoogleSsoAuthEnforced Whether members must sign in with Google. Cannot be on at the same time as authEnforced, or while a SAML, OIDC or LDAP configuration is active.
+			GoogleSsoAuthEnforced bool `json:"googleSsoAuthEnforced"`
+
+			// OrgId The ID of the organization the settings belong to.
+			OrgId openapi_types.UUID `json:"orgId"`
+
+			// SsoMfaTrust Whether MFA performed at the identity provider satisfies the organization's MFA requirement: 'none' or 'signal'. Has no effect unless MFA is enforced.
+			SsoMfaTrust UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust `json:"ssoMfaTrust"`
+		} `json:"ssoSettings"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                `json:"details,omitempty"`
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode UpdateOrganizationSsoSettings400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode UpdateOrganizationSsoSettings401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                `json:"details,omitempty"`
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode UpdateOrganizationSsoSettings403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode UpdateOrganizationSsoSettings404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                     `json:"error"`
+		Message    interface{}                                                `json:"message,omitempty"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode UpdateOrganizationSsoSettings422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode UpdateOrganizationSsoSettings500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateOrganizationSsoSettingsResponse) GetJSON200() *struct {
+	SsoSettings struct {
+		// AuthEnforced Whether members must sign in through the organization's SAML or OIDC provider. Can only be turned on after someone has signed in through the active SAML or OIDC configuration.
+		AuthEnforced bool `json:"authEnforced"`
+
+		// BypassOrgAuthEnabled Whether organization admins can still sign in with a password at /login/admin while SSO is enforced.
+		BypassOrgAuthEnabled bool `json:"bypassOrgAuthEnabled"`
+
+		// GoogleSsoAuthEnforced Whether members must sign in with Google. Cannot be on at the same time as authEnforced, or while a SAML, OIDC or LDAP configuration is active.
+		GoogleSsoAuthEnforced bool `json:"googleSsoAuthEnforced"`
+
+		// OrgId The ID of the organization the settings belong to.
+		OrgId openapi_types.UUID `json:"orgId"`
+
+		// SsoMfaTrust Whether MFA performed at the identity provider satisfies the organization's MFA requirement: 'none' or 'signal'. Has no effect unless MFA is enforced.
+		SsoMfaTrust UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust `json:"ssoMfaTrust"`
+	} `json:"ssoSettings"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateOrganizationSsoSettingsResponse) GetJSON400() *struct {
+	Details    interface{}                                                `json:"details,omitempty"`
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode UpdateOrganizationSsoSettings400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateOrganizationSsoSettingsResponse) GetJSON401() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode UpdateOrganizationSsoSettings401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateOrganizationSsoSettingsResponse) GetJSON403() *struct {
+	Details    interface{}                                                `json:"details,omitempty"`
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode UpdateOrganizationSsoSettings403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateOrganizationSsoSettingsResponse) GetJSON404() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode UpdateOrganizationSsoSettings404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateOrganizationSsoSettingsResponse) GetJSON422() *struct {
+	Error      string                                                     `json:"error"`
+	Message    interface{}                                                `json:"message,omitempty"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode UpdateOrganizationSsoSettings422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdateOrganizationSsoSettingsResponse) GetJSON500() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode UpdateOrganizationSsoSettings500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateOrganizationSsoSettingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateOrganizationSsoSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateOrganizationSsoSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateOrganizationSsoSettingsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -502532,6 +503563,185 @@ func (r OidcCallbackResponse) ContentType() string {
 	return ""
 }
 
+type DeleteOidcConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AllowedEmailDomains    *string            `json:"allowedEmailDomains,omitempty"`
+		AuthorizationEndpoint  *string            `json:"authorizationEndpoint,omitempty"`
+		ConfigurationType      string             `json:"configurationType"`
+		DiscoveryURL           *string            `json:"discoveryURL,omitempty"`
+		Id                     openapi_types.UUID `json:"id"`
+		IsActive               bool               `json:"isActive"`
+		Issuer                 *string            `json:"issuer,omitempty"`
+		JwksUri                *string            `json:"jwksUri,omitempty"`
+		JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
+		ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+		MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
+		MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
+		OrgId                  openapi_types.UUID `json:"orgId"`
+		TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
+		UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteOidcConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteOidcConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteOidcConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteOidcConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteOidcConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteOidcConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteOidcConfigResponse) GetJSON200() *struct {
+	AllowedEmailDomains    *string            `json:"allowedEmailDomains,omitempty"`
+	AuthorizationEndpoint  *string            `json:"authorizationEndpoint,omitempty"`
+	ConfigurationType      string             `json:"configurationType"`
+	DiscoveryURL           *string            `json:"discoveryURL,omitempty"`
+	Id                     openapi_types.UUID `json:"id"`
+	IsActive               bool               `json:"isActive"`
+	Issuer                 *string            `json:"issuer,omitempty"`
+	JwksUri                *string            `json:"jwksUri,omitempty"`
+	JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
+	ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+	MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
+	MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
+	OrgId                  openapi_types.UUID `json:"orgId"`
+	TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
+	UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteOidcConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteOidcConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteOidcConfigResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteOidcConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteOidcConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteOidcConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteOidcConfigResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteOidcConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteOidcConfigResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteOidcConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteOidcConfigResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteOidcConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteOidcConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteOidcConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteOidcConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteOidcConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetOidcConfigResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -502728,6 +503938,7 @@ type UpdateOidcConfigResponse struct {
 		IsActive               bool               `json:"isActive"`
 		Issuer                 *string            `json:"issuer,omitempty"`
 		JwksUri                *string            `json:"jwksUri,omitempty"`
+		JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
 		ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
 		MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
 		MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
@@ -502791,6 +504002,7 @@ func (r UpdateOidcConfigResponse) GetJSON200() *struct {
 	IsActive               bool               `json:"isActive"`
 	Issuer                 *string            `json:"issuer,omitempty"`
 	JwksUri                *string            `json:"jwksUri,omitempty"`
+	JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
 	ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
 	MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
 	MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
@@ -543060,6 +544272,8 @@ func (c *ClientWithResponses) ListDynamicSecretLeasesWithResponse(ctx context.Co
 
 // ListEmailDomainsWithResponse performs a GET /api/v1/email-domains (the `ListEmailDomains` operationId) request.
 //
+// List email domains.
+//
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) ListEmailDomainsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListEmailDomainsResponse, error) {
 	rsp, err := c.ListEmailDomains(ctx, reqEditors...)
@@ -543072,6 +544286,8 @@ func (c *ClientWithResponses) ListEmailDomainsWithResponse(ctx context.Context, 
 // CreateEmailDomainWithBodyWithResponse performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request,
 // with any type of body and a specified content type.
 //
+// Create email domain.
+//
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) CreateEmailDomainWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEmailDomainResponse, error) {
 	rsp, err := c.CreateEmailDomainWithBody(ctx, contentType, body, reqEditors...)
@@ -543083,6 +544299,8 @@ func (c *ClientWithResponses) CreateEmailDomainWithBodyWithResponse(ctx context.
 
 // CreateEmailDomainWithResponse performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create email domain.
 func (c *ClientWithResponses) CreateEmailDomainWithResponse(ctx context.Context, body CreateEmailDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateEmailDomainResponse, error) {
 	rsp, err := c.CreateEmailDomain(ctx, body, reqEditors...)
 	if err != nil {
@@ -543092,6 +544310,8 @@ func (c *ClientWithResponses) CreateEmailDomainWithResponse(ctx context.Context,
 }
 
 // DeleteEmailDomainWithResponse performs a DELETE /api/v1/email-domains/{emailDomainId} (the `DeleteEmailDomain` operationId) request.
+//
+// Delete email domain.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) DeleteEmailDomainWithResponse(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteEmailDomainResponse, error) {
@@ -543103,6 +544323,8 @@ func (c *ClientWithResponses) DeleteEmailDomainWithResponse(ctx context.Context,
 }
 
 // VerifyEmailDomainWithResponse performs a POST /api/v1/email-domains/{emailDomainId}/verify (the `VerifyEmailDomain` operationId) request.
+//
+// Verify email domain.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) VerifyEmailDomainWithResponse(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*VerifyEmailDomainResponse, error) {
@@ -545805,6 +547027,45 @@ func (c *ClientWithResponses) GetOrgWideSecretValueTrackingStatusWithResponse(ct
 		return nil, err
 	}
 	return ParseGetOrgWideSecretValueTrackingStatusResponse(rsp)
+}
+
+// GetOrganizationSsoSettingsWithResponse performs a GET /api/v1/organization/sso-settings (the `GetOrganizationSsoSettings` operationId) request.
+//
+// Get the organization's SSO enforcement settings.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetOrganizationSsoSettingsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOrganizationSsoSettingsResponse, error) {
+	rsp, err := c.GetOrganizationSsoSettings(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOrganizationSsoSettingsResponse(rsp)
+}
+
+// UpdateOrganizationSsoSettingsWithBodyWithResponse performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update the organization's SSO enforcement settings.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateOrganizationSsoSettingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateOrganizationSsoSettingsResponse, error) {
+	rsp, err := c.UpdateOrganizationSsoSettingsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateOrganizationSsoSettingsResponse(rsp)
+}
+
+// UpdateOrganizationSsoSettingsWithResponse performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Update the organization's SSO enforcement settings.
+func (c *ClientWithResponses) UpdateOrganizationSsoSettingsWithResponse(ctx context.Context, body UpdateOrganizationSsoSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationSsoSettingsResponse, error) {
+	rsp, err := c.UpdateOrganizationSsoSettings(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateOrganizationSsoSettingsResponse(rsp)
 }
 
 // ListAvailableOrganizationUsersWithResponse performs a GET /api/v1/organization/users/available (the `ListAvailableOrganizationUsers` operationId) request.
@@ -549707,13 +550968,26 @@ func (c *ClientWithResponses) OidcCallbackWithResponse(ctx context.Context, para
 	return ParseOidcCallbackResponse(rsp)
 }
 
+// DeleteOidcConfigWithResponse performs a DELETE /api/v1/sso/oidc/config (the `DeleteOidcConfig` operationId) request.
+//
+// Delete OIDC config.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteOidcConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeleteOidcConfigResponse, error) {
+	rsp, err := c.DeleteOidcConfig(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteOidcConfigResponse(rsp)
+}
+
 // GetOidcConfigWithResponse performs a GET /api/v1/sso/oidc/config (the `GetOidcConfig` operationId) request.
 //
 // Get OIDC config.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetOidcConfigWithResponse(ctx context.Context, params *GetOidcConfigParams, reqEditors ...RequestEditorFn) (*GetOidcConfigResponse, error) {
-	rsp, err := c.GetOidcConfig(ctx, params, reqEditors...)
+func (c *ClientWithResponses) GetOidcConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOidcConfigResponse, error) {
+	rsp, err := c.GetOidcConfig(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -609657,17 +610931,19 @@ func ParseListEmailDomainsResponse(rsp *http.Response) (*ListEmailDomainsRespons
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			EmailDomains []struct {
-				CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-				CreatedAt              time.Time          `json:"createdAt"`
-				Domain                 string             `json:"domain"`
-				Id                     openapi_types.UUID `json:"id"`
-				OrgId                  openapi_types.UUID `json:"orgId"`
-				Status                 *string            `json:"status,omitempty"`
-				UpdatedAt              time.Time          `json:"updatedAt"`
-				VerificationCode       string             `json:"verificationCode"`
-				VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-				VerificationRecordName string             `json:"verificationRecordName"`
-				VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+				CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+				CreatedAt          time.Time          `json:"createdAt"`
+				Domain             string             `json:"domain"`
+				Id                 openapi_types.UUID `json:"id"`
+				OrgId              openapi_types.UUID `json:"orgId"`
+				Status             *string            `json:"status,omitempty"`
+				UpdatedAt          time.Time          `json:"updatedAt"`
+				VerificationRecord struct {
+					Name  string                                                                `json:"name"`
+					Type  ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordType `json:"type"`
+					Value string                                                                `json:"value"`
+				} `json:"verificationRecord"`
+				VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 			} `json:"emailDomains"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -609771,17 +611047,19 @@ func ParseCreateEmailDomainResponse(rsp *http.Response) (*CreateEmailDomainRespo
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			EmailDomain struct {
-				CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-				CreatedAt              time.Time          `json:"createdAt"`
-				Domain                 string             `json:"domain"`
-				Id                     openapi_types.UUID `json:"id"`
-				OrgId                  openapi_types.UUID `json:"orgId"`
-				Status                 *string            `json:"status,omitempty"`
-				UpdatedAt              time.Time          `json:"updatedAt"`
-				VerificationCode       string             `json:"verificationCode"`
-				VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-				VerificationRecordName string             `json:"verificationRecordName"`
-				VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+				CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+				CreatedAt          time.Time          `json:"createdAt"`
+				Domain             string             `json:"domain"`
+				Id                 openapi_types.UUID `json:"id"`
+				OrgId              openapi_types.UUID `json:"orgId"`
+				Status             *string            `json:"status,omitempty"`
+				UpdatedAt          time.Time          `json:"updatedAt"`
+				VerificationRecord struct {
+					Name  string                                                                `json:"name"`
+					Type  CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType `json:"type"`
+					Value string                                                                `json:"value"`
+				} `json:"verificationRecord"`
+				VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 			} `json:"emailDomain"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -609885,17 +611163,19 @@ func ParseDeleteEmailDomainResponse(rsp *http.Response) (*DeleteEmailDomainRespo
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			EmailDomain struct {
-				CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-				CreatedAt              time.Time          `json:"createdAt"`
-				Domain                 string             `json:"domain"`
-				Id                     openapi_types.UUID `json:"id"`
-				OrgId                  openapi_types.UUID `json:"orgId"`
-				Status                 *string            `json:"status,omitempty"`
-				UpdatedAt              time.Time          `json:"updatedAt"`
-				VerificationCode       string             `json:"verificationCode"`
-				VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-				VerificationRecordName string             `json:"verificationRecordName"`
-				VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+				CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+				CreatedAt          time.Time          `json:"createdAt"`
+				Domain             string             `json:"domain"`
+				Id                 openapi_types.UUID `json:"id"`
+				OrgId              openapi_types.UUID `json:"orgId"`
+				Status             *string            `json:"status,omitempty"`
+				UpdatedAt          time.Time          `json:"updatedAt"`
+				VerificationRecord struct {
+					Name  string                                                                `json:"name"`
+					Type  DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType `json:"type"`
+					Value string                                                                `json:"value"`
+				} `json:"verificationRecord"`
+				VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 			} `json:"emailDomain"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -609999,17 +611279,19 @@ func ParseVerifyEmailDomainResponse(rsp *http.Response) (*VerifyEmailDomainRespo
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			EmailDomain struct {
-				CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-				CreatedAt              time.Time          `json:"createdAt"`
-				Domain                 string             `json:"domain"`
-				Id                     openapi_types.UUID `json:"id"`
-				OrgId                  openapi_types.UUID `json:"orgId"`
-				Status                 *string            `json:"status,omitempty"`
-				UpdatedAt              time.Time          `json:"updatedAt"`
-				VerificationCode       string             `json:"verificationCode"`
-				VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-				VerificationRecordName string             `json:"verificationRecordName"`
-				VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+				CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+				CreatedAt          time.Time          `json:"createdAt"`
+				Domain             string             `json:"domain"`
+				Id                 openapi_types.UUID `json:"id"`
+				OrgId              openapi_types.UUID `json:"orgId"`
+				Status             *string            `json:"status,omitempty"`
+				UpdatedAt          time.Time          `json:"updatedAt"`
+				VerificationRecord struct {
+					Name  string                                                                `json:"name"`
+					Type  VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType `json:"type"`
+					Value string                                                                `json:"value"`
+				} `json:"verificationRecord"`
+				VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 			} `json:"emailDomain"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -627886,6 +629168,240 @@ func ParseGetOrgWideSecretValueTrackingStatusResponse(rsp *http.Response) (*GetO
 			Message    string                                                           `json:"message"`
 			ReqId      string                                                           `json:"reqId"`
 			StatusCode GetOrgWideSecretValueTrackingStatus500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetOrganizationSsoSettingsResponse parses an HTTP response from a GetOrganizationSsoSettingsWithResponse call
+func ParseGetOrganizationSsoSettingsResponse(rsp *http.Response) (*GetOrganizationSsoSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOrganizationSsoSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			SsoSettings struct {
+				// AuthEnforced Whether members must sign in through the organization's SAML or OIDC provider. Can only be turned on after someone has signed in through the active SAML or OIDC configuration.
+				AuthEnforced bool `json:"authEnforced"`
+
+				// BypassOrgAuthEnabled Whether organization admins can still sign in with a password at /login/admin while SSO is enforced.
+				BypassOrgAuthEnabled bool `json:"bypassOrgAuthEnabled"`
+
+				// GoogleSsoAuthEnforced Whether members must sign in with Google. Cannot be on at the same time as authEnforced, or while a SAML, OIDC or LDAP configuration is active.
+				GoogleSsoAuthEnforced bool `json:"googleSsoAuthEnforced"`
+
+				// OrgId The ID of the organization the settings belong to.
+				OrgId openapi_types.UUID `json:"orgId"`
+
+				// SsoMfaTrust Whether MFA performed at the identity provider satisfies the organization's MFA requirement: 'none' or 'signal'. Has no effect unless MFA is enforced.
+				SsoMfaTrust GetOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust `json:"ssoMfaTrust"`
+			} `json:"ssoSettings"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                             `json:"details,omitempty"`
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetOrganizationSsoSettings400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetOrganizationSsoSettings401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                             `json:"details,omitempty"`
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetOrganizationSsoSettings403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetOrganizationSsoSettings404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    interface{}                                             `json:"message,omitempty"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetOrganizationSsoSettings422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetOrganizationSsoSettings500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateOrganizationSsoSettingsResponse parses an HTTP response from a UpdateOrganizationSsoSettingsWithResponse call
+func ParseUpdateOrganizationSsoSettingsResponse(rsp *http.Response) (*UpdateOrganizationSsoSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateOrganizationSsoSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			SsoSettings struct {
+				// AuthEnforced Whether members must sign in through the organization's SAML or OIDC provider. Can only be turned on after someone has signed in through the active SAML or OIDC configuration.
+				AuthEnforced bool `json:"authEnforced"`
+
+				// BypassOrgAuthEnabled Whether organization admins can still sign in with a password at /login/admin while SSO is enforced.
+				BypassOrgAuthEnabled bool `json:"bypassOrgAuthEnabled"`
+
+				// GoogleSsoAuthEnforced Whether members must sign in with Google. Cannot be on at the same time as authEnforced, or while a SAML, OIDC or LDAP configuration is active.
+				GoogleSsoAuthEnforced bool `json:"googleSsoAuthEnforced"`
+
+				// OrgId The ID of the organization the settings belong to.
+				OrgId openapi_types.UUID `json:"orgId"`
+
+				// SsoMfaTrust Whether MFA performed at the identity provider satisfies the organization's MFA requirement: 'none' or 'signal'. Has no effect unless MFA is enforced.
+				SsoMfaTrust UpdateOrganizationSsoSettings200JSONResponseBodySsoSettingsSsoMfaTrust `json:"ssoMfaTrust"`
+			} `json:"ssoSettings"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                `json:"details,omitempty"`
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode UpdateOrganizationSsoSettings400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode UpdateOrganizationSsoSettings401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                `json:"details,omitempty"`
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode UpdateOrganizationSsoSettings403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode UpdateOrganizationSsoSettings404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    interface{}                                                `json:"message,omitempty"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode UpdateOrganizationSsoSettings422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode UpdateOrganizationSsoSettings500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -655877,6 +657393,122 @@ func ParseOidcCallbackResponse(rsp *http.Response) (*OidcCallbackResponse, error
 	return response, nil
 }
 
+// ParseDeleteOidcConfigResponse parses an HTTP response from a DeleteOidcConfigWithResponse call
+func ParseDeleteOidcConfigResponse(rsp *http.Response) (*DeleteOidcConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteOidcConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AllowedEmailDomains    *string            `json:"allowedEmailDomains,omitempty"`
+			AuthorizationEndpoint  *string            `json:"authorizationEndpoint,omitempty"`
+			ConfigurationType      string             `json:"configurationType"`
+			DiscoveryURL           *string            `json:"discoveryURL,omitempty"`
+			Id                     openapi_types.UUID `json:"id"`
+			IsActive               bool               `json:"isActive"`
+			Issuer                 *string            `json:"issuer,omitempty"`
+			JwksUri                *string            `json:"jwksUri,omitempty"`
+			JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
+			ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+			MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
+			MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
+			OrgId                  openapi_types.UUID `json:"orgId"`
+			TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
+			UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteOidcConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteOidcConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteOidcConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteOidcConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteOidcConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteOidcConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetOidcConfigResponse parses an HTTP response from a GetOidcConfigWithResponse call
 func ParseGetOidcConfigResponse(rsp *http.Response) (*GetOidcConfigResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -656019,6 +657651,7 @@ func ParseUpdateOidcConfigResponse(rsp *http.Response) (*UpdateOidcConfigRespons
 			IsActive               bool               `json:"isActive"`
 			Issuer                 *string            `json:"issuer,omitempty"`
 			JwksUri                *string            `json:"jwksUri,omitempty"`
+			JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
 			ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
 			MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
 			MfaClaimName           *string            `json:"mfaClaimName,omitempty"`

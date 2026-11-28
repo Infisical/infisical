@@ -93,6 +93,7 @@ import { QoveryConnectionForm } from "./QoveryConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
 import { RedisConnectionForm } from "./RedisConnectionForm";
 import { RenderConnectionForm } from "./RenderConnectionForm";
+import { Rfc2136ConnectionForm } from "./Rfc2136ConnectionForm";
 import { RundeckConnectionForm } from "./RundeckConnectionForm";
 import { S3CompatibleConnectionForm } from "./S3CompatibleConnectionForm";
 import { SalesforceConnectionForm } from "./SalesforceConnectionForm";
@@ -422,6 +423,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <NutanixPrismCentralConnectionForm onSubmit={onSubmit} />;
       case AppConnection.PowerDns:
         return <PowerDnsConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Rfc2136:
+        return <Rfc2136ConnectionForm onSubmit={onSubmit} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -750,12 +753,16 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         );
       case AppConnection.PowerDns:
         return <PowerDnsConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Rfc2136:
+        return <Rfc2136ConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Venafi:
         return <VenafiConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.VenafiTpp:
         return <VenafiTppConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Netlify:
         return <NetlifyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.AzureEntraId:
+        return <AzureEntraIdConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.MicrosoftIntune:
         return <MicrosoftIntuneConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       default:

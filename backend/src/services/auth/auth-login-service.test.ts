@@ -1,10 +1,11 @@
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 
 import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
+import { AuthMethod } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 
 import { authLoginServiceFactory } from "./auth-login-service";
-import { AuthMethod, ProviderAuthResult } from "./auth-type";
+import { ProviderAuthResult } from "./auth-type";
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({

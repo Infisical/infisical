@@ -1,4 +1,5 @@
 export enum AzureAppConfigurationConnectionMethod {
   OAuth = "oauth",
-  ClientSecret = "client-secret"
+  ClientSecret = "client-secret",
+  ManagedIdentity = "managed-identity"
 }

@@ -3,9 +3,10 @@ import { webcrypto } from "node:crypto";
 import * as x509 from "@peculiar/x509";
 
 import { TableName } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { CrlReason } from "@app/services/certificate/certificate-types";
 
 import { AcmeDnsProvider } from "../acme/acme-certificate-authority-enums";
@@ -378,6 +379,17 @@ describe("DigiCert revokeCertificate", () => {
   });
 });
 
+const TEST_ACTOR = {
+  type: ActorType.USER,
+  id: "user-1",
+  authMethod: AuthMethod.EMAIL,
+  orgId: "org-1",
+  rootOrgId: "org-1",
+  parentOrgId: "org-1",
+  principal: { type: ActorType.USER, id: "user-1", authMethod: AuthMethod.EMAIL },
+  org: { id: "org-1", rootOrgId: "org-1", parentOrgId: "org-1" }
+} as unknown as TActorContext;
+
 describe("DigiCert createCertificateAuthority", () => {
   test("rejects a DNS zone whose connection is not the app its provider needs", async () => {
     const appConnectionDAL = {
@@ -398,14 +410,7 @@ describe("DigiCert createCertificateAuthority", () => {
         name: "digicert-ca",
         projectId: "project-1",
         status: CaStatus.ACTIVE,
-        actor: {
-          type: ActorType.USER,
-          id: "user-1",
-          authMethod: AuthMethod.EMAIL,
-          orgId: "org-1",
-          rootOrgId: "org-1",
-          parentOrgId: "org-1"
-        },
+        actor: TEST_ACTOR,
         configuration: {
           appConnectionId: "digicert-connection",
           organizationId: 777,
@@ -421,14 +426,7 @@ describe("DigiCert createCertificateAuthority", () => {
 });
 
 describe("DigiCert CA DNS zones", () => {
-  const actor = {
-    type: ActorType.USER,
-    id: "user-1",
-    authMethod: AuthMethod.EMAIL,
-    orgId: "org-1",
-    rootOrgId: "org-1",
-    parentOrgId: "org-1"
-  };
+  const actor = TEST_ACTOR;
   const storedZone = {
     provider: AcmeDnsProvider.Cloudflare,
     appConnectionId: "cf-connection",

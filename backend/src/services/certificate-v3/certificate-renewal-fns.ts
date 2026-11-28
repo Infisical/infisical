@@ -743,30 +743,38 @@ export const validateRenewalEligibility = (
 
   const now = new Date();
   if (certificate.notAfter <= now) {
-    errors.push("Certificate is already expired");
+    errors.push("Certificate has already expired. Issue a new certificate instead");
   }
 
   if (certificate.revokedAt) {
-    errors.push("Certificate is revoked and cannot be renewed");
+    errors.push("Certificate is revoked and cannot be renewed. Issue a new certificate instead");
   }
 
   const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
   const isImportedCertificate = certificate.pkiSubscriberId != null && !certificate.profileId;
 
   if (!caSupportsCapability(caType, CaCapability.RENEW_CERTIFICATES)) {
-    errors.push(`CA type ${String(caType)} does not support renewal`);
+    errors.push(
+      `Certificate authority type '${String(caType)}' does not support renewal. Issue a new certificate instead`
+    );
   }
 
   if (isImportedCertificate) {
-    errors.push("Externally imported certificates cannot be renewed");
+    errors.push(
+      "Externally imported certificates cannot be renewed. Issue a new certificate through a certificate profile instead"
+    );
   }
 
   if (ca.status !== CaStatus.ACTIVE) {
-    errors.push(`Certificate Authority is ${ca.status}, must be ${CaStatus.ACTIVE}`);
+    errors.push(
+      ca.status === CaStatus.PENDING_CERTIFICATE && caType === CaType.INTERNAL
+        ? "The issuing certificate authority is pending-certificate. Generate its CA certificate (a root CA) or install a signed one (an intermediate CA) before renewing"
+        : `The issuing certificate authority is ${ca.status}. Enable it before renewing`
+    );
   }
 
   if (certificate.renewedByCertificateId) {
-    errors.push("Certificate has already been renewed");
+    errors.push("Certificate has already been renewed. Renew the certificate that replaced it instead");
   }
 
   const certificateTtlInDays = requestedTtl
@@ -779,7 +787,7 @@ export const validateRenewalEligibility = (
 
     if (proposedCertExpiryDate > caExpiryDate) {
       errors.push(
-        `New certificate would expire (${proposedCertExpiryDate.toISOString()}) after its issuing CA (${caExpiryDate.toISOString()})`
+        `New certificate would expire (${proposedCertExpiryDate.toISOString()}) after its issuing CA (${caExpiryDate.toISOString()}). Request a shorter TTL or renew the CA first`
       );
     }
   }

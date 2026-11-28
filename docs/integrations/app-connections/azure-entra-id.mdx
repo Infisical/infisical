@@ -4,12 +4,12 @@ sidebarTitle: "Azure Entra ID"
 description: "Learn how to configure an Azure Entra ID Connection for Infisical."
 ---
 
-Infisical's Azure Entra ID Connection lets you authenticate with Microsoft Entra ID (formerly Azure Active Directory) using Client Secrets.
+Infisical's Azure Entra ID Connection lets you authenticate with Microsoft Entra ID (formerly Azure Active Directory). Infisical supports two methods for connecting to Azure Entra ID: Client Secret and Managed Identity.
 
 **Prerequisites:**
 
 - Set up an [Azure](https://portal.azure.com) account with an existing Azure Entra ID tenant.
-- Register an App Registration in Azure with the necessary Microsoft Graph API permissions for your use case.
+- An App Registration (for the Client Secret method) or a user-assigned managed identity (for the Managed Identity method) with the necessary Microsoft Graph API permissions for your use case.
 
 <Accordion title="Required Azure Permissions">
   The permissions required for your Azure Entra ID Connection depend on what you intend to use it for.
@@ -30,6 +30,36 @@ Infisical's Azure Entra ID Connection lets you authenticate with Microsoft Entra
   <Note>If you want to configure automatic client secret rotation for this App Connection, you also need to grant either `Application.ReadWrite.OwnedBy` or `Application.ReadWrite.All` permissions.</Note>
 </Accordion>
 
+<Accordion title="Managed Identity Authentication">
+  With managed identity authentication, Infisical connects as a [user-assigned managed identity](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/how-manage-user-assigned-managed-identities) with the Microsoft Graph permissions for your use case, and doesn't store a secret for the connection.
+
+  If you self-host Infisical, set `SITE_URL` to a URL that Azure can reach from the internet, because Azure fetches Infisical's signing keys from it.
+
+  <Steps>
+    <Step>
+      In the Azure portal, go to **Managed Identities** and select **Create**. Choose a subscription, resource group, region, and name, then select **Review + create** and **Create**.
+    </Step>
+    <Step>
+      Open the managed identity and copy the **Client ID** from its **Overview** page. Copy your **Tenant ID** from the **Overview** page of **Microsoft Entra ID**.
+    </Step>
+    <Step>
+      Grant the managed identity the Microsoft Graph `Application.ReadWrite.All` and `Synchronization.ReadWrite.All` permissions from [Azure Cloud Shell](https://shell.azure.com), because the Azure portal can't add API permissions to a managed identity. Sign in as an admin who can grant Microsoft Graph permissions, and replace `<object-principal-id>` with the **Object (principal) ID** from the identity's **Overview** page:
+
+      ```bash
+      IDENTITY_ID=<object-principal-id>
+      PERMISSION=Application.ReadWrite.All
+      GRAPH_ID=$(az ad sp show --id 00000003-0000-0000-c000-000000000000 --query id -o tsv)
+      ROLE_ID=$(az ad sp show --id 00000003-0000-0000-c000-000000000000 --query "appRoles[?value=='$PERMISSION'].id" -o tsv)
+      az rest --method POST \
+        --uri "https://graph.microsoft.com/v1.0/servicePrincipals/$IDENTITY_ID/appRoleAssignments" \
+        --body "{\"principalId\":\"$IDENTITY_ID\",\"resourceId\":\"$GRAPH_ID\",\"appRoleId\":\"$ROLE_ID\"}"
+      ```
+
+      Run the commands once for each permission, changing the value of `PERMISSION`.
+    </Step>
+  </Steps>
+</Accordion>
+
 ## Setup Azure Entra ID connection in Infisical
 
 <Tabs>
@@ -45,19 +75,43 @@ Infisical's Azure Entra ID Connection lets you authenticate with Microsoft Entra
         ![Add Azure Entra ID Connection](/images/app-connections/azure/entra-id/select-entra-id-connection.png)
       </Step>
       <Step title="Create Connection">
-        Fill in the following fields with the credentials from your Azure App Registration:
+        <Tabs>
+          <Tab title="Client Secret">
+            Fill in the following fields with the credentials from your Azure App Registration:
 
-        - **Tenant ID**: The Directory (Tenant) ID of your Azure Entra ID tenant.
-        - **Client ID**: The Application (Client) ID of your registered application.
-        - **Client Secret**: A client secret generated for your registered application.
+            - **Tenant ID**: The Directory (Tenant) ID of your Azure Entra ID tenant.
+            - **Client ID**: The Application (Client) ID of your registered application.
+            - **Client Secret**: A client secret generated for your registered application.
 
-        Click **Connect** to create the connection.
+            Select **Connect to Azure** to create the connection.
 
-        ![Fill in Azure Entra ID Connection Details](/images/app-connections/azure/entra-id/create-app-connection.png)
+            ![Fill in Azure Entra ID Connection Details](/images/app-connections/azure/entra-id/create-app-connection.png)
 
-        <Tip>
-            You can optionally enable **Automatic Credential Rotation** for this connection. See the [Automatic Credential Rotation](#automatic-credential-rotation) section below for details.
-        </Tip>
+            <Tip>
+                You can optionally enable **Automatic Credential Rotation** for this connection. See the [Automatic Credential Rotation](#automatic-credential-rotation) section below for details.
+            </Tip>
+          </Tab>
+          <Tab title="Managed Identity">
+            <Steps>
+              <Step>
+                Select the **Managed Identity** method and enter the **Tenant ID** and **Client ID** of your managed identity. Then select **Configure Federated Credential**. Infisical creates the connection and shows the **Issuer**, **Subject Identifier**, and **Audience** to add to the managed identity.
+              </Step>
+              <Step>
+                In the Azure portal, open your managed identity, go to **Settings** > **Federated credentials**, and select **Add Credential**. Choose the **Other issuer** scenario and fill in the form:
+
+                - **Issuer URL**: the **Issuer** from Infisical
+                - **Subject identifier**: the **Subject Identifier** from Infisical
+                - **Name**: any name, such as `infisical`
+                - **Audience**: the **Audience** from Infisical, which Azure fills in by default
+
+                Then select **Add**.
+              </Step>
+              <Step>
+                Back in Infisical, select **Verify Connection**. If verification fails right after you add the credential, wait a minute for Azure to apply it, then select **Retry Verification**.
+              </Step>
+            </Steps>
+          </Tab>
+        </Tabs>
       </Step>
       <Step title="Connection Created">
         Your **Azure Entra ID Connection** is now available for use with features such as the Azure Entra ID SCIM Secret Sync.
@@ -66,6 +120,10 @@ Infisical's Azure Entra ID Connection lets you authenticate with Microsoft Entra
   </Tab>
   <Tab title="API">
     To create an Azure Entra ID Connection via API, send a request to the [Create Azure Entra ID Connection](/api-reference/endpoints/app-connections/azure-entra-id/create) endpoint.
+
+    <Tip>
+      If you create a connection with the `managed-identity` method, send `tenantId` and `clientId` in `credentials`. The response's `credentials.federatedCredential` holds the values to add to the managed identity's federated credential.
+    </Tip>
 
     ### Sample request
 
@@ -108,7 +166,7 @@ Infisical's Azure Entra ID Connection lets you authenticate with Microsoft Entra
 
 ## Automatic credential rotation
 
-Infisical can automatically rotate the Client Secret of your Azure application on a recurring schedule. When enabled, Infisical will immediately generate a new Client Secret on connection creation and revoke the original one, ensuring that no external party retains access using the credentials you provided.
+When using the **Client Secret** authentication method, Infisical can automatically rotate the Client Secret of your Azure application on a recurring schedule. When enabled, Infisical will immediately generate a new Client Secret on connection creation and revoke the original one, ensuring that no external party retains access using the credentials you provided.
 
 <Steps>
     <Step title="Locate the Key ID of your Client Secret">

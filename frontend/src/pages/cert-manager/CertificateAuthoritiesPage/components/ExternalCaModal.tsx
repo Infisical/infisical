@@ -265,7 +265,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle, onComplete }: Props)
     reset,
     formState: { isSubmitting, isDirty },
     watch,
-    setValue
+    setValue,
+    clearErrors
   } = useForm<FormData>({
     resolver: zodResolver(schema)
   });
@@ -473,6 +474,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle, onComplete }: Props)
       enabled: caType === CaType.ACME
     });
 
+  const { data: availableRfc2136Connections, isPending: isRfc2136Pending } =
+    useListAvailableAppConnections(AppConnection.Rfc2136, currentProject.id, {
+      enabled: caType === CaType.ACME
+    });
+
   const { data: availableAzureConnections, isPending: isAzurePending } =
     useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id, {
       enabled: caType === CaType.AZURE_AD_CS
@@ -532,7 +538,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle, onComplete }: Props)
       ...(availableAzureDNSConnections || []),
       ...(availablePowerDnsConnections || []),
       ...(availableGcpConnections || []),
-      ...(availableUltraDNSConnections || [])
+      ...(availableUltraDNSConnections || []),
+      ...(availableRfc2136Connections || [])
     ];
   }, [
     caType,
@@ -543,6 +550,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle, onComplete }: Props)
     availablePowerDnsConnections,
     availableGcpConnections,
     availableUltraDNSConnections,
+    availableRfc2136Connections,
     availableAzureConnections,
     availableAdcsConnections,
     availableAwsConnections,
@@ -567,6 +575,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle, onComplete }: Props)
         return availableGcpConnections || [];
       case AcmeDnsProvider.UltraDNS:
         return availableUltraDNSConnections || [];
+      case AcmeDnsProvider.Rfc2136:
+        return availableRfc2136Connections || [];
       default:
         return [];
     }
@@ -578,7 +588,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle, onComplete }: Props)
     availableAzureDNSConnections,
     availablePowerDnsConnections,
     availableGcpConnections,
-    availableUltraDNSConnections
+    availableUltraDNSConnections,
+    availableRfc2136Connections
   ]);
 
   const isPending =
@@ -588,7 +599,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle, onComplete }: Props)
       isAzureDNSPending ||
       isPowerDnsPending ||
       isGcpPending ||
-      isUltraDNSPending) &&
+      isUltraDNSPending ||
+      isRfc2136Pending) &&
       caType === CaType.ACME) ||
     (isAzurePending && caType === CaType.AZURE_AD_CS) ||
     (isAdcsPending && caType === CaType.ADCS) ||
@@ -1150,11 +1162,13 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle, onComplete }: Props)
                     zones={zones}
                     isZonesPending={isZonesPending}
                     setValue={setValue}
-                    onDnsSelectionChange={() =>
+                    onDnsSelectionChange={() => {
                       setValue("configuration.dnsProviderConfig.hostedZoneId", "", {
                         shouldDirty: true
-                      })
-                    }
+                      });
+                      // a "required" error from the previous provider is wrong for one whose zone is optional
+                      clearErrors("configuration.dnsProviderConfig.hostedZoneId");
+                    }}
                   />
                 )}
                 {caType === CaType.AZURE_AD_CS && (

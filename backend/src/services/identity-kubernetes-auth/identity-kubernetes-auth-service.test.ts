@@ -1,9 +1,11 @@
-import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { TKubernetesTemplateFields } from "@app/ee/services/identity-auth-template/identity-auth-template-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { ConflictError } from "@app/lib/errors";
 
 import { identityKubernetesAuthServiceFactory } from "./identity-kubernetes-auth-service";
@@ -120,13 +122,15 @@ const createService = ({
       })
     },
     keyStore: { setItemWithExpiryNX: vi.fn() },
-    permissionService: {
+    orgPermissionService: {
       getOrgPermission: vi
         .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
-      getProjectPermission: vi.fn(),
-      getActorGrantAbilities: vi.fn().mockResolvedValue([])
+        .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] })),
+      getGrantPermissions: vi.fn().mockResolvedValue([])
     },
+    projectPermissionService: { getProjectPermission: vi.fn(), getGrantPermissions: vi.fn().mockResolvedValue([]) },
+    secretsPermissionService: { getFolderGrantPermissions: vi.fn().mockResolvedValue([]) },
+    actorGrantsService: { getActorGrants: vi.fn() },
     licenseService: new FakeLicenseService().setPlan(ORG_ID, {
       machineIdentityAuthTemplates: true,
       gateway: true,
@@ -144,7 +148,6 @@ const createService = ({
     gatewayPoolService: { pickHealthyGateway: vi.fn(), runWithPoolFailover: vi.fn() },
     gatewayPoolDAL: { findById: vi.fn().mockResolvedValue(null) },
     orgDAL: {
-      findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: true }),
       findOne: vi.fn(),
       findEffectiveOrgMembership: vi.fn()
     },
@@ -160,10 +163,10 @@ const createService = ({
 };
 
 const baseActor = {
-  actor: "user",
-  actorId: "actor-id",
-  actorAuthMethod: undefined,
-  actorOrgId: ORG_ID
+  actor: {
+    principal: { type: ActorType.USER, id: "actor-id" },
+    org: { id: ORG_ID, shouldUseNewPrivilegeSystem: true }
+  } as unknown as TActorContext
 };
 
 const attachWithTemplate = (service: ReturnType<typeof createService>["service"]) =>

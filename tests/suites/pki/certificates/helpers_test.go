@@ -88,5 +88,5 @@ func withSAN(body api.CreateCertificateJSONRequestBody, names ...string) api.Cre
 	return body
 }
 
-const crossOrgWhy = `[BUG?] An unknown id answers 404 and another organization's id 403 naming the
-	project, which tells a caller the id exists.`
+const crossOrgWhy = `Another organization's id answers exactly like an unknown one, so a caller can't
+	tell that the id exists.`

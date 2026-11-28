@@ -23,7 +23,6 @@ export const useUpdateOIDCConfig = () => {
       clientId,
       clientSecret,
       isActive,
-      organizationId,
       manageGroupMemberships,
       jwtSignatureAlgorithm,
       mfaClaimName,
@@ -56,7 +55,6 @@ export const useUpdateOIDCConfig = () => {
         tokenEndpoint,
         userinfoEndpoint,
         clientId,
-        organizationId,
         clientSecret,
         isActive,
         manageGroupMemberships,
@@ -91,7 +89,6 @@ export const useCreateOIDCConfig = () => {
       clientId,
       clientSecret,
       isActive,
-      organizationId,
       manageGroupMemberships,
       jwtSignatureAlgorithm,
       mfaClaimName,
@@ -126,7 +123,6 @@ export const useCreateOIDCConfig = () => {
         clientId,
         clientSecret,
         isActive,
-        organizationId,
         manageGroupMemberships,
         jwtSignatureAlgorithm,
         mfaClaimName,
@@ -139,6 +135,24 @@ export const useCreateOIDCConfig = () => {
       queryClient.invalidateQueries({ queryKey: oidcConfigKeys.getOIDCConfig(dto.organizationId) });
       queryClient.invalidateQueries({ queryKey: ldapConfigKeys.getLDAPConfig(dto.organizationId) });
       queryClient.invalidateQueries({ queryKey: ssoConfigKeys.getSSOConfig(dto.organizationId) });
+    }
+  });
+};
+
+export const useDeleteOIDCConfig = () => {
+  const queryClient = useQueryClient();
+  return useMutation<object, object, { organizationId: string }>({
+    mutationFn: async () => {
+      const { data } = await apiRequest.delete("/api/v1/sso/oidc/config");
+      return data;
+    },
+    onSuccess(_, { organizationId }) {
+      queryClient.invalidateQueries({ queryKey: oidcConfigKeys.getOIDCConfig(organizationId) });
+      queryClient.invalidateQueries({
+        queryKey: oidcConfigKeys.getOIDCManageGroupMembershipsEnabled(organizationId)
+      });
+      // Deleting the config also turns off SSO enforcement and SCIM on the organization
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
     }
   });
 };

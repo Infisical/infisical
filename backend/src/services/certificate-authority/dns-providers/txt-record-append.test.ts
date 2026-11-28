@@ -26,7 +26,7 @@ vi.mock("@app/services/app-connection/aws/aws-connection-fns", () => ({
 vi.mock("@app/lib/crypto/cryptography", () => ({ crypto: { isFipsModeEnabled: () => false } }));
 vi.mock("@app/lib/config/request", () => ({ request: { get: requestGet, put: requestPut } }));
 vi.mock("@app/services/app-connection/azure-dns/azure-dns-connection-fns", () => ({
-  getAzureDnsAccessToken: vi.fn(async () => "token"),
+  getAzureDnsConnectionAccessToken: vi.fn(async () => "token"),
   validateAzureDnsZoneResourceId: vi.fn()
 }));
 
@@ -47,7 +47,8 @@ const appendToAzure = () =>
     { credentials: { tenantId: "t", clientId: "c", clientSecret: "s" } } as TAzureDnsConnection,
     "/subscriptions/s/resourceGroups/r/providers/Microsoft.Network/dnszones/example.com",
     "_validation-persist",
-    OUR_VALUE
+    OUR_VALUE,
+    { signToken: vi.fn() }
   );
 
 describe("TXT record append for the persistent DNS TXT record", () => {

@@ -4,12 +4,12 @@ import { Knex } from "knex";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -34,6 +34,12 @@ import { CertKeyAlgorithm, CertStatus, CrlReason, TAltNameType } from "@app/serv
 import { validateDnsProviderAppConnection } from "../acme/acme-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
+import {
+  caAppConnectionNotFoundError,
+  caNotFoundError,
+  duplicateCaNameError,
+  externalCaNotSavedError
+} from "../certificate-authority-errors";
 import { createDistinguishedName, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { DNS_TXT_RECORD_PROVIDERS, TDnsZoneLookupDeps } from "../dns-providers/dns-txt-records";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
@@ -184,7 +190,7 @@ export const DigiCertCertificateAuthorityFns = ({
   }: {
     dnsZones: TCreateDigiCertCertificateAuthorityDTO["configuration"]["dnsZones"];
     projectId: string;
-    actor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
     if (!dnsZones) return undefined;
 
@@ -261,7 +267,7 @@ export const DigiCertCertificateAuthorityFns = ({
   const $assertCanUseStoredDnsZoneConnections = async (
     dnsZones: TDigiCertDnsZone[],
     projectId: string,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const appConnectionIds = [...new Set(dnsZones.map(({ appConnectionId }) => appConnectionId))];
     await Promise.all(
@@ -297,13 +303,13 @@ export const DigiCertCertificateAuthorityFns = ({
     name: string;
     projectId: string;
     configuration: TCreateDigiCertCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
     const { appConnectionId, organizationId, productNameId, purpose, verifiedContact, dnsZones } = configuration;
 
     const appConnection = await appConnectionDAL.findById(appConnectionId);
     if (!appConnection) {
-      throw new NotFoundError({ message: `DigiCert app connection with ID '${appConnectionId}' not found` });
+      throw caAppConnectionNotFoundError(appConnectionId, AppConnection.DigiCert);
     }
     if (appConnection.app !== AppConnection.DigiCert) {
       throw new BadRequestError({
@@ -368,16 +374,14 @@ export const DigiCertCertificateAuthorityFns = ({
         // 23505 = unique_violation — same CA name in the same project
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
         if ((error as any)?.error?.code === "23505") {
-          throw new BadRequestError({
-            message: "Certificate authority with the same name already exists in your project"
-          });
+          throw duplicateCaNameError(name);
         }
         throw error;
       }
     });
 
     if (!caEntity.externalCa?.id) {
-      throw new BadRequestError({ message: "Failed to create external certificate authority" });
+      throw externalCaNotSavedError(name);
     }
 
     return castDbEntryToDigiCertCertificateAuthority(caEntity);
@@ -393,7 +397,7 @@ export const DigiCertCertificateAuthorityFns = ({
     id: string;
     status?: CaStatus;
     configuration?: TUpdateDigiCertCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
     name?: string;
   }) => {
     let dnsZonesToStore: TDigiCertDnsZone[] | undefined;
@@ -401,7 +405,7 @@ export const DigiCertCertificateAuthorityFns = ({
       const { appConnectionId, organizationId, productNameId, purpose, verifiedContact, dnsZones } = configuration;
       const appConnection = await appConnectionDAL.findById(appConnectionId);
       if (!appConnection) {
-        throw new NotFoundError({ message: `DigiCert app connection with ID '${appConnectionId}' not found` });
+        throw caAppConnectionNotFoundError(appConnectionId, AppConnection.DigiCert);
       }
       if (appConnection.app !== AppConnection.DigiCert) {
         throw new BadRequestError({
@@ -409,7 +413,11 @@ export const DigiCertCertificateAuthorityFns = ({
         });
       }
 
-      const ca = castDbEntryToDigiCertCertificateAuthority(await certificateAuthorityDAL.findByIdWithAssociatedCa(id));
+      const caEntity = await certificateAuthorityDAL.findByIdWithAssociatedCa(id);
+      if (!caEntity) {
+        throw caNotFoundError(id);
+      }
+      const ca = castDbEntryToDigiCertCertificateAuthority(caEntity);
 
       const digicertConnection = await appConnectionService.validateAppConnectionUsageById(
         appConnection.app as AppConnection,

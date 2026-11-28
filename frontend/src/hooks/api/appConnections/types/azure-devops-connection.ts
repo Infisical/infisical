@@ -1,10 +1,12 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { TAzureFederatedCredential } from "@app/hooks/api/appConnections/types/azure-federated-credential";
 import { TRootAppConnection } from "@app/hooks/api/appConnections/types/root-connection";
 
 export enum AzureDevOpsConnectionMethod {
   OAuth = "oauth",
   AccessToken = "access-token",
-  ClientSecret = "client-secret"
+  ClientSecret = "client-secret",
+  ManagedIdentity = "managed-identity"
 }
 
 export type TAzureDevOpsConnection = TRootAppConnection & {
@@ -32,6 +34,15 @@ export type TAzureDevOpsConnection = TRootAppConnection & {
           tenantId: string;
           clientId: string;
           orgName: string;
+        };
+      }
+    | {
+        method: AzureDevOpsConnectionMethod.ManagedIdentity;
+        credentials: {
+          clientId: string;
+          tenantId: string;
+          orgName: string;
+          federatedCredential?: TAzureFederatedCredential;
         };
       }
   );

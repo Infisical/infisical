@@ -10,9 +10,9 @@ import {
 } from "@app/ee/services/secret-rotation-v2/hp-ilo-rotation";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { ApiDocsTags, SecretRotations } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerSecretRotationEndpoints } from "./secret-rotation-v2-endpoints";
 
@@ -54,7 +54,7 @@ export const registerHpIloRotationRouter = async (server: FastifyZodProvider) =>
 
       const result = await server.services.secretRotationV2.reconcileLocalAccountRotation(
         { rotationId, type: SecretRotation.HpIloLocalAccount },
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({

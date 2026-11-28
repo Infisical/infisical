@@ -3,11 +3,11 @@ import { z } from "zod";
 import { AccessScope, GroupsSchema, TemporaryPermissionMode } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { OrgGroupsOrderBy } from "@app/services/membership-group/membership-group-types";
 
 /**
@@ -75,10 +75,10 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
     },
     handler: async (req) => {
       const { memberships, totalCount } = await server.services.membershipGroup.listMemberships({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Organization,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         data: {
           limit: req.query.limit,
@@ -147,9 +147,9 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
       const { group } = await server.services.membershipGroup.createMembership({
         scopeData: {
           scope: AccessScope.Organization,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
-        permission: req.permission,
+        actor: req.actor,
         data: {
           groupId: req.params.groupId,
           roles: req.body.roles
@@ -157,15 +157,15 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
       });
 
       const { membership: full } = await server.services.membershipGroup.getMembershipByGroupId({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Organization, orgId: req.permission.orgId },
+        actor: req.actor,
+        scopeData: { scope: AccessScope.Organization, orgId: req.actor.orgId },
         selector: { groupId: req.params.groupId }
       });
 
       // this endpoint is only possible in suborg
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.LINK_GROUP_TO_SUB_ORG,
           metadata: {
@@ -218,8 +218,8 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
     },
     handler: async (req) => {
       const { membership } = await server.services.membershipGroup.getMembershipByGroupId({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Organization, orgId: req.permission.orgId },
+        actor: req.actor,
+        scopeData: { scope: AccessScope.Organization, orgId: req.actor.orgId },
         selector: { groupId: req.params.groupId }
       });
 
@@ -276,21 +276,21 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
     },
     handler: async (req) => {
       const { group } = await server.services.membershipGroup.updateMembership({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Organization, orgId: req.permission.orgId },
+        actor: req.actor,
+        scopeData: { scope: AccessScope.Organization, orgId: req.actor.orgId },
         selector: { groupId: req.params.groupId },
         data: { roles: req.body.roles }
       });
 
       const { membership: full } = await server.services.membershipGroup.getMembershipByGroupId({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Organization, orgId: req.permission.orgId },
+        actor: req.actor,
+        scopeData: { scope: AccessScope.Organization, orgId: req.actor.orgId },
         selector: { groupId: req.params.groupId }
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.UPDATE_GROUP_ORG_MEMBERSHIP,
           metadata: {
@@ -350,15 +350,15 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
     },
     handler: async (req) => {
       const { membership, group } = await server.services.membershipGroup.deleteMembership({
-        scopeData: { scope: AccessScope.Organization, orgId: req.permission.orgId },
-        permission: req.permission,
+        scopeData: { scope: AccessScope.Organization, orgId: req.actor.orgId },
+        actor: req.actor,
         selector: { groupId: req.params.groupId }
       });
 
       // this endpoint is only possible in suborg
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.UNLINK_GROUP_FROM_SUB_ORG,
           metadata: {
@@ -372,7 +372,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
         groupMembership: {
           ...membership,
           groupId: req.params.groupId,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         }
       };
     }

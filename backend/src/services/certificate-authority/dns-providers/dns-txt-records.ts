@@ -24,6 +24,7 @@ import {
   TPowerDnsConnection,
   TPowerDnsConnectionConfig
 } from "@app/services/app-connection/powerdns/powerdns-connection-types";
+import { TRfc2136Connection } from "@app/services/app-connection/rfc2136/rfc2136-connection-types";
 import { listUltraDNSZones } from "@app/services/app-connection/ultradns/ultradns-connection-fns";
 import { TUltraDNSConnection } from "@app/services/app-connection/ultradns/ultradns-connection-types";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
@@ -34,6 +35,7 @@ import { cloudflareInsertTxtRecord } from "../acme/dns-providers/cloudflare";
 import { dnsMadeEasyInsertTxtRecord } from "../acme/dns-providers/dns-made-easy";
 import { gcpCloudDnsInsertTxtRecord, validateGcpCloudDnsZone } from "../acme/dns-providers/gcp-cloud-dns";
 import { powerDnsInsertTxtRecord } from "../acme/dns-providers/powerdns";
+import { rfc2136InsertTxtRecord, validateRfc2136Zone } from "../acme/dns-providers/rfc2136";
 import { ultraDNSInsertTxtRecord } from "../acme/dns-providers/ultradns";
 import { route53AppendTxtRecord, route53GetHostedZone } from "./route53";
 
@@ -120,9 +122,16 @@ export const DNS_TXT_RECORD_PROVIDERS: Record<AcmeDnsProvider, TDnsTxtRecordProv
     }
   },
   [AcmeDnsProvider.AzureDNS]: {
-    getZone: async (connection, zoneId) => findZone(await listAzureDnsZones(connection as TAzureDnsConnection), zoneId),
-    upsertTxtRecord: (connection, record) =>
-      azureDnsAppendTxtRecord(connection as TAzureDnsConnection, record.zoneId, toRelativeName(record), record.value)
+    getZone: async (connection, zoneId, { oidcIssuerService }) =>
+      findZone(await listAzureDnsZones(connection as TAzureDnsConnection, oidcIssuerService), zoneId),
+    upsertTxtRecord: (connection, record, { oidcIssuerService }) =>
+      azureDnsAppendTxtRecord(
+        connection as TAzureDnsConnection,
+        record.zoneId,
+        toRelativeName(record),
+        record.value,
+        oidcIssuerService
+      )
   },
   [AcmeDnsProvider.PowerDns]: {
     getZone: async (connection, zoneId, { gatewayV2Service, gatewayPoolService }) =>
@@ -150,6 +159,19 @@ export const DNS_TXT_RECORD_PROVIDERS: Record<AcmeDnsProvider, TDnsTxtRecordProv
     },
     upsertTxtRecord: (connection, { zoneId, fqdn, value }, deps) =>
       gcpCloudDnsInsertTxtRecord(connection as TGcpConnection, deps, zoneId, fqdn, value, deps.keyStore)
+  },
+  [AcmeDnsProvider.Rfc2136]: {
+    getZone: async (_connection, zoneId) => {
+      if (!zoneId.trim()) throw new Error("enter the zone name, such as example.com.");
+      validateRfc2136Zone(zoneId);
+      const zoneName = toZoneName(zoneId.trim());
+      return { id: zoneName, name: zoneName };
+    },
+    upsertTxtRecord: (connection, { zoneId, fqdn, value }, { gatewayV2Service, gatewayPoolService }) =>
+      rfc2136InsertTxtRecord(connection as TRfc2136Connection, zoneId, fqdn, value, {
+        gatewayV2Service,
+        gatewayPoolService
+      })
   },
   [AcmeDnsProvider.UltraDNS]: {
     getZone: async (connection, zoneId) => findZone(await listUltraDNSZones(connection as TUltraDNSConnection), zoneId),

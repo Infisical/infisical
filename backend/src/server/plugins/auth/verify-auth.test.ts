@@ -1,8 +1,8 @@
 import type { FastifyReply, FastifyRequest, HookHandlerDoneFunction } from "fastify";
 import { describe, expect, test, vi } from "vitest";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { verifyAuth } from "./verify-auth";
 
@@ -15,7 +15,7 @@ const makeReq = (auth: FakeAuth | undefined, opts?: { orgId?: string; method?: s
     auth,
     method: opts?.method ?? "GET",
     url: "/api/v1/secrets",
-    permission: { orgId: opts?.orgId },
+    actor: { orgId: opts?.orgId },
     shouldForwardWritesToPrimaryInstance: false
   }) as unknown as FastifyRequest;
 

@@ -6,7 +6,8 @@ import { Knex } from "knex";
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
+import { AuthMethod } from "@app/lib/auth/actor-types";
+import { ProviderAuthResult } from "@app/services/auth/auth-type";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
 import { loginUser, selectOrg } from "../../testUtils/auth";
@@ -159,6 +160,72 @@ describe("Auth SSO session binding", () => {
     }
   });
 
+  test("A password session gets 401 on every route once its org starts enforcing SSO", async () => {
+    const get = (url: string) =>
+      testServer.inject({ method: "GET", url, headers: { authorization: `Bearer ${jwtAuthToken}` } });
+    expect((await get(`/api/v2/organizations/${ORG_A_ID}/memberships`)).statusCode).toBe(200);
+
+    await setAuthEnforced(ORG_A_ID, true);
+    const refusedMemberships = await get(`/api/v2/organizations/${ORG_A_ID}/memberships`);
+    // No permission check on this route, the session itself gets refused.
+    const refusedUser = await get("/api/v1/user");
+
+    expect(refusedMemberships.statusCode).toBe(401);
+    expect(refusedMemberships.json().message).toMatch(/Login with SAML SSO/);
+    expect(refusedUser.statusCode).toBe(401);
+  });
+
+  test("A password session refused by its current org can still switch to an org that does not enforce SSO", async () => {
+    const db = getDb();
+    const [orgC] = await db(TableName.Organization)
+      .insert({ name: "Session Binding Org C", slug: `binding-org-c-${crypto.randomUUID().slice(0, 8)}` })
+      .returning("*");
+    const [membership] = await db(TableName.Membership)
+      .insert({
+        scope: AccessScope.Organization,
+        actorUserId: seedData1.id,
+        scopeOrgId: orgC.id,
+        status: OrgMembershipStatus.Accepted,
+        isActive: true
+      })
+      .returning("*");
+    await db(TableName.MembershipRole).insert({ membershipId: membership.id, role: OrgMembershipRole.Member });
+
+    try {
+      await setAuthEnforced(ORG_A_ID, true);
+      const refused = await testServer.inject({
+        method: "GET",
+        url: "/api/v1/user",
+        headers: { authorization: `Bearer ${jwtAuthToken}` }
+      });
+
+      const { statusCode, payload } = await selectOrg(jwtAuthToken, orgC.id);
+
+      expect(refused.statusCode).toBe(401);
+      expect(statusCode).toBe(200);
+      expect(decode(payload.token)).toMatchObject({ organizationId: orgC.id });
+    } finally {
+      await db(TableName.Membership).where({ id: membership.id }).del();
+      await db(TableName.Organization).where({ id: orgC.id }).del();
+    }
+  });
+
+  test("A password session of an admin the org lets bypass SSO keeps working", async () => {
+    await getDb()(TableName.Organization).where({ id: ORG_A_ID }).update({ bypassOrgAuthEnabled: true });
+    try {
+      await setAuthEnforced(ORG_A_ID, true);
+      const listed = await testServer.inject({
+        method: "GET",
+        url: `/api/v2/organizations/${ORG_A_ID}/memberships`,
+        headers: { authorization: `Bearer ${jwtAuthToken}` }
+      });
+
+      expect(listed.statusCode).toBe(200);
+    } finally {
+      await getDb()(TableName.Organization).where({ id: ORG_A_ID }).update({ bypassOrgAuthEnabled: false });
+    }
+  });
+
   test("A session another org's IdP issued stops working once the org starts enforcing SSO", async () => {
     const { userId, tokens } = await loginThroughOrgBIdp();
     await addMemberToOrgA(userId);
@@ -174,7 +241,7 @@ describe("Auth SSO session binding", () => {
     await setAuthEnforced(ORG_A_ID, true);
     const refused = await listMemberships();
 
-    expect(refused.statusCode).toBe(403);
+    expect(refused.statusCode).toBe(401);
     expect(refused.json().message).toMatch(/another organization's identity provider/);
   });
 
@@ -210,12 +277,12 @@ describe("Auth SSO session binding", () => {
       expect((await readProject()).statusCode).toBe(200);
 
       await setAuthEnforced(ORG_A_ID, true);
-      // The project permission is still cached; enforcement must apply on the very next request.
-      const markerKeys = await testRedis.keys(`*project-permission-marker:${projectId}:*`);
-      expect(markerKeys.length).toBeGreaterThan(0);
+      // Grants are still cached, but enforcement has to kick in on the very next request anyway.
+      const cachedKeys = await testRedis.keys(`*access-control:actor-grants:v2:data:${projectId}:*`);
+      expect(cachedKeys.length).toBeGreaterThan(0);
       const refused = await readProject();
 
-      expect(refused.statusCode).toBe(403);
+      expect(refused.statusCode).toBe(401);
       expect(refused.json().message).toMatch(/another organization's identity provider/);
     } finally {
       await setAuthEnforced(ORG_A_ID, false);
@@ -288,7 +355,7 @@ describe("Auth SSO session binding", () => {
       await setAuthEnforced(ORG_A_ID, true);
       const refused = await listSubOrgMemberships();
 
-      expect(refused.statusCode).toBe(403);
+      expect(refused.statusCode).toBe(401);
       expect(refused.json().message).toMatch(/another organization's identity provider/);
     });
 
@@ -299,7 +366,7 @@ describe("Auth SSO session binding", () => {
       await setAuthEnforced(ORG_A_ID, true);
       const refused = await listSubOrgMemberships();
 
-      expect(refused.statusCode).toBe(403);
+      expect(refused.statusCode).toBe(401);
       expect(refused.json().message).toMatch(/another organization's identity provider/);
     });
 
@@ -338,7 +405,7 @@ describe("Auth SSO session binding", () => {
         await setRootOrgRole(OrgMembershipRole.Member);
         const refused = await readProject();
 
-        expect(refused.statusCode).toBe(403);
+        expect(refused.statusCode).toBe(401);
         expect(refused.json().message).toMatch(/another organization's identity provider/);
       } finally {
         await setAuthEnforced(ORG_A_ID, false);

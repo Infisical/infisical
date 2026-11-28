@@ -1,12 +1,8 @@
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { TActorInput } from "@app/lib/types";
 
 export type TExportCertManagerProjectDTO = {
   sourceProjectId: string;
-  actor: ActorType;
-  actorId: string;
-  actorOrgId: string;
-  actorAuthMethod: ActorAuthMethod;
-};
+} & TActorInput;
 
 export type TExportCertManagerProjectResult = {
   sourceProjectId: string;

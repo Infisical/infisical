@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { AccessScopeData, TemporaryPermissionMode } from "@app/db/schemas";
-import { OrgServiceActor } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 
 export interface TMembershipUserScopeFactory {
   onCreateMembershipUserGuard: (
@@ -37,7 +37,7 @@ export type TMembershipReservation = {
 };
 
 export type TCreateMembershipUserDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   data: {
     usernames: string[];
@@ -55,7 +55,7 @@ export type TCreateMembershipUserDTO = {
 };
 
 export type TUpdateMembershipUserDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     userId: string;
@@ -74,7 +74,7 @@ export type TUpdateMembershipUserDTO = {
 };
 
 export type TListMembershipUserDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   data: {
     limit?: number;
@@ -85,7 +85,7 @@ export type TListMembershipUserDTO = {
 };
 
 export type TDeleteMembershipUserDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     userId: string;
@@ -93,7 +93,7 @@ export type TDeleteMembershipUserDTO = {
 };
 
 export type TGetMembershipUserByUserIdDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     userId: string;
@@ -101,6 +101,6 @@ export type TGetMembershipUserByUserIdDTO = {
 };
 
 export type TListAvailableUsersDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
 };

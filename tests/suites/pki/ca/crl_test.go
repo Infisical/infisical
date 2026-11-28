@@ -119,8 +119,8 @@ func TestInternalCA_Crl(t *testing.T) {
 
 	t.Run("should refuse another organization the CA's CRLs", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, `[BUG?] An unknown id answers 404 and another organization's id 403 naming the
-			project, which tells a caller the id exists.`)
+		spec.Why(t, `Another organization's id answers exactly like an unknown one, so a caller can't
+			tell that the id exists.`)
 
 		// Setup
 		owner, other := h.NewTenant(t), h.NewTenant(t)
@@ -131,7 +131,7 @@ func TestInternalCA_Crl(t *testing.T) {
 
 		// Assert
 		require.NoError(t, err)
-		require.Equalf(t, http.StatusForbidden, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
-		require.Equal(t, "This project does not belong to your selected organization.", apierr.Message(res.Body))
+		require.Equalf(t, http.StatusNotFound, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
+		require.Equal(t, "Certificate authority with ID '"+ca.ID.String()+"' not found. List your organization's certificate authorities with GET /api/v1/cert-manager/ca to find the right ID.", apierr.Message(res.Body))
 	})
 }

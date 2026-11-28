@@ -1,8 +1,8 @@
-import { TGenericPermission } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 
 import { AgentVaultServiceType } from "../agent-vault/agent-vault-enums";
 
-export type TAgentVaultHookScoped = { projectId: string; ctx: TGenericPermission };
+export type TAgentVaultHookScoped = { projectId: string; ctx: TActorContext };
 
 export type TCreateHookDTO = TAgentVaultHookScoped & {
   name: string;

@@ -16,14 +16,14 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { ProjectType, TableName } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -59,6 +59,16 @@ import {
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
+import {
+  awsInstanceCredentialsMissingError,
+  awsTransientError,
+  caAppConnectionNotFoundError,
+  caNotFoundError,
+  duplicateCaNameError,
+  externalCaNotSavedError,
+  isAwsInstanceCredentialsMissing,
+  isAwsTransientError
+} from "../certificate-authority-errors";
 import { createDistinguishedName, extractDnParts, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import {
@@ -193,10 +203,25 @@ type TAwsPcaCertificateAuthorityFnsDeps = {
   instanceConfigService: TInstanceConfigService;
 };
 
-/**
- * Creates an ACMPCAClient from an app connection ID by decrypting credentials
- * and resolving AWS configuration.
- */
+const buildPcaClient = async (
+  connection: TAwsConnection,
+  region: AWSRegion,
+  instanceConfigService: TInstanceConfigService
+) => {
+  const awsConfig = await getAwsConnectionConfig(
+    { ...connection, projectType: ProjectType.CertificateManager },
+    instanceConfigService,
+    region
+  );
+
+  return new ACMPCAClient({
+    sha256: CustomAWSHasher,
+    useFipsEndpoint: crypto.isFipsModeEnabled(),
+    credentials: awsConfig.credentials,
+    region: awsConfig.region
+  });
+};
+
 const createPcaClient = async ({
   appConnectionId,
   region,
@@ -212,22 +237,11 @@ const createPcaClient = async ({
 }) => {
   const appConnection = await appConnectionDAL.findById(appConnectionId);
   if (!appConnection) {
-    throw new NotFoundError({ message: `App connection with ID '${appConnectionId}' not found` });
+    throw caAppConnectionNotFoundError(appConnectionId, AppConnection.AWS);
   }
 
   const decryptedConnection = (await decryptAppConnection(appConnection, kmsDataKeyService)) as TAwsConnection;
-  const awsConfig = await getAwsConnectionConfig(
-    { ...decryptedConnection, projectType: ProjectType.CertificateManager },
-    instanceConfigService,
-    region
-  );
-
-  return new ACMPCAClient({
-    sha256: CustomAWSHasher,
-    useFipsEndpoint: crypto.isFipsModeEnabled(),
-    credentials: awsConfig.credentials,
-    region: awsConfig.region
-  });
+  return buildPcaClient(decryptedConnection, region, instanceConfigService);
 };
 
 /**
@@ -311,6 +325,72 @@ const describeCaForIssuance = async (pcaClient: ACMPCAClient, certificateAuthori
   return { signingAlgorithm, usageMode: describeResult.CertificateAuthority?.UsageMode };
 };
 
+// Setup checks the CA before saving it, so an error AWS returns (from STS AssumeRole or DescribeCertificateAuthority)
+// is the caller's configuration to fix and becomes a 400, as does a missing instance credential, except throttling and
+// AWS-side faults, which become a 500 so the caller retries. Other errors without AWS's response metadata come from
+// Infisical itself and are rethrown.
+const assertPrivateCaActiveForSetup = async ({
+  connection,
+  certificateAuthorityArn,
+  region,
+  instanceConfigService
+}: {
+  connection: TAwsConnection;
+  certificateAuthorityArn: string;
+  region: AWSRegion;
+  instanceConfigService: TInstanceConfigService;
+}) => {
+  let describeResult;
+  let pcaClient: Awaited<ReturnType<typeof buildPcaClient>> | undefined;
+  try {
+    pcaClient = await buildPcaClient(connection, region, instanceConfigService);
+    describeResult = await pcaClient.send(
+      new DescribeCertificateAuthorityCommand({
+        CertificateAuthorityArn: certificateAuthorityArn
+      })
+    );
+  } catch (error) {
+    const logMessage = `AWS Private CA setup check failed [region=${region}] [certificateAuthorityArn=${certificateAuthorityArn}]`;
+    if (isAwsInstanceCredentialsMissing(error)) {
+      logger.warn(error, logMessage);
+      throw awsInstanceCredentialsMissingError("AWS connection");
+    }
+    if (!(error instanceof Error) || !("$metadata" in error)) throw error;
+    logger.warn(error, logMessage);
+    if (isAwsTransientError(error)) throw awsTransientError(pcaClient ? "AWS Private CA" : "AWS STS", error);
+    if (error.name === "ResourceNotFoundException") {
+      throw new BadRequestError({
+        message: `AWS Private CA has no certificate authority '${certificateAuthorityArn}' in region '${region}'. Check the ARN and the region.`
+      });
+    }
+    if (
+      [
+        "AccessDenied",
+        "AccessDeniedException",
+        "UnrecognizedClientException",
+        "InvalidClientTokenId",
+        "ExpiredToken",
+        "ExpiredTokenException",
+        "NotAuthorized",
+        "SignatureDoesNotMatch"
+      ].includes(error.name)
+    ) {
+      throw new BadRequestError({
+        message: `AWS refused the AWS connection's credentials while checking certificate authority '${certificateAuthorityArn}' (${error.name}). Check that the credentials are valid, that Infisical can assume the connection's role, and that it can call acm-pca:DescribeCertificateAuthority in region '${region}'.`
+      });
+    }
+    throw new BadRequestError({
+      message: `Could not check certificate authority '${certificateAuthorityArn}' with AWS Private CA in region '${region}' (${error.name}). Check the ARN, the region and the AWS connection, then try again.`
+    });
+  }
+
+  if (describeResult.CertificateAuthority?.Status !== CertificateAuthorityStatus.ACTIVE) {
+    throw new BadRequestError({
+      message: `AWS Private CA '${certificateAuthorityArn}' is not ACTIVE (current status: ${describeResult.CertificateAuthority?.Status || "unknown"})`
+    });
+  }
+};
+
 export const castDbEntryToAwsPcaCertificateAuthority = (
   ca: Awaited<ReturnType<TCertificateAuthorityDALFactory["findByIdWithAssociatedCa"]>>
 ): TAwsPcaCertificateAuthority => {
@@ -374,13 +454,13 @@ export const AwsPcaCertificateAuthorityFns = ({
     name: string;
     projectId: string;
     configuration: TCreateAwsPcaCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
     const { appConnectionId, certificateAuthorityArn, region } = configuration;
 
     const appConnection = await appConnectionDAL.findById(appConnectionId);
     if (!appConnection) {
-      throw new NotFoundError({ message: `App connection with ID '${appConnectionId}' not found` });
+      throw caAppConnectionNotFoundError(appConnectionId, AppConnection.AWS);
     }
 
     if (appConnection.app !== AppConnection.AWS) {
@@ -389,31 +469,19 @@ export const AwsPcaCertificateAuthorityFns = ({
       });
     }
 
-    await appConnectionService.validateAppConnectionUsageById(
+    const connection = (await appConnectionService.validateAppConnectionUsageById(
       appConnection.app as AppConnection,
       { connectionId: appConnectionId, projectId },
       actor
-    );
+    )) as TAwsConnection;
 
     // Verify the CA exists and is ACTIVE in AWS
-    const pcaClient = await createPcaClient({
-      appConnectionId,
+    await assertPrivateCaActiveForSetup({
+      connection,
+      certificateAuthorityArn,
       region,
-      appConnectionDAL,
-      kmsDataKeyService,
       instanceConfigService
     });
-    const describeResult = await pcaClient.send(
-      new DescribeCertificateAuthorityCommand({
-        CertificateAuthorityArn: certificateAuthorityArn
-      })
-    );
-
-    if (describeResult.CertificateAuthority?.Status !== CertificateAuthorityStatus.ACTIVE) {
-      throw new BadRequestError({
-        message: `AWS Private CA '${certificateAuthorityArn}' is not ACTIVE (current status: ${describeResult.CertificateAuthority?.Status || "unknown"})`
-      });
-    }
 
     const caEntity = await certificateAuthorityDAL.transaction(async (tx) => {
       try {
@@ -444,16 +512,14 @@ export const AwsPcaCertificateAuthorityFns = ({
       } catch (error) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
         if ((error as any)?.error?.code === "23505") {
-          throw new BadRequestError({
-            message: "Certificate authority with the same name already exists in your project"
-          });
+          throw duplicateCaNameError(name);
         }
         throw error;
       }
     });
 
     if (!caEntity.externalCa?.id) {
-      throw new BadRequestError({ message: "Failed to create external certificate authority" });
+      throw externalCaNotSavedError(name);
     }
 
     return castDbEntryToAwsPcaCertificateAuthority(caEntity);
@@ -469,7 +535,7 @@ export const AwsPcaCertificateAuthorityFns = ({
     id: string;
     status?: CaStatus;
     configuration: TUpdateAwsPcaCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
     name?: string;
   }) => {
     // Validated before the transaction since the decrypt goes through KMS Core and the describe call hits AWS.
@@ -478,7 +544,7 @@ export const AwsPcaCertificateAuthorityFns = ({
 
       const appConnection = await appConnectionDAL.findById(appConnectionId);
       if (!appConnection) {
-        throw new NotFoundError({ message: `App connection with ID '${appConnectionId}' not found` });
+        throw caAppConnectionNotFoundError(appConnectionId, AppConnection.AWS);
       }
 
       if (appConnection.app !== AppConnection.AWS) {
@@ -489,34 +555,22 @@ export const AwsPcaCertificateAuthorityFns = ({
 
       const ca = await certificateAuthorityDAL.findById(id);
       if (!ca) {
-        throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+        throw caNotFoundError(id);
       }
 
-      await appConnectionService.validateAppConnectionUsageById(
+      const connection = (await appConnectionService.validateAppConnectionUsageById(
         appConnection.app as AppConnection,
         { connectionId: appConnectionId, projectId: ca.projectId },
         actor
-      );
+      )) as TAwsConnection;
 
       // Verify the new CA exists and is ACTIVE in AWS
-      const pcaClient = await createPcaClient({
-        appConnectionId,
+      await assertPrivateCaActiveForSetup({
+        connection,
+        certificateAuthorityArn,
         region,
-        appConnectionDAL,
-        kmsDataKeyService,
         instanceConfigService
       });
-      const describeResult = await pcaClient.send(
-        new DescribeCertificateAuthorityCommand({
-          CertificateAuthorityArn: certificateAuthorityArn
-        })
-      );
-
-      if (describeResult.CertificateAuthority?.Status !== CertificateAuthorityStatus.ACTIVE) {
-        throw new BadRequestError({
-          message: `AWS Private CA '${certificateAuthorityArn}' is not ACTIVE (current status: ${describeResult.CertificateAuthority?.Status || "unknown"})`
-        });
-      }
     }
 
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {

@@ -21,7 +21,10 @@ export type TRoute53Record = {
   comment?: string;
 };
 
-const buildClient = async (connection: TAwsConnectionConfig, instanceConfigService: TInstanceConfigService) => {
+export const buildRoute53Client = async (
+  connection: TAwsConnectionConfig,
+  instanceConfigService: TInstanceConfigService
+) => {
   // Route 53 is a global service — the region passed here only affects the signer, not the data plane.
   // us-east-1 is AWS's canonical region for global services.
   const config = await getAwsConnectionConfig(
@@ -44,7 +47,7 @@ const changeRecord = async (
   record: TRoute53Record,
   instanceConfigService: TInstanceConfigService
 ) => {
-  const route53Client = await buildClient(connection, instanceConfigService);
+  const route53Client = await buildRoute53Client(connection, instanceConfigService);
   const defaultComment = `${action === "UPSERT" ? "Upsert" : "Delete"} ${record.type} record for ${record.name}`;
   const command = new ChangeResourceRecordSetsCommand({
     HostedZoneId: hostedZoneId,
@@ -85,7 +88,7 @@ export const route53GetHostedZone = async (
   hostedZoneId: string,
   instanceConfigService: TInstanceConfigService
 ) => {
-  const route53Client = await buildClient(connection, instanceConfigService);
+  const route53Client = await buildRoute53Client(connection, instanceConfigService);
   return route53Client.send(new GetHostedZoneCommand({ Id: hostedZoneId }));
 };
 
@@ -95,7 +98,7 @@ export const route53AppendTxtRecord = async (
   record: { name: string; value: string; ttl: number },
   instanceConfigService: TInstanceConfigService
 ) => {
-  const route53Client = await buildClient(connection, instanceConfigService);
+  const route53Client = await buildRoute53Client(connection, instanceConfigService);
   const { ResourceRecordSets } = await route53Client.send(
     new ListResourceRecordSetsCommand({
       HostedZoneId: hostedZoneId,

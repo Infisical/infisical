@@ -1,10 +1,10 @@
 import { z } from "zod";
 
 import { ApiDocsTags, INSTANCE_DEPLOYMENT_AWS_METADATA } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { getInstanceAwsAccountId } from "@app/lib/aws/instance-aws-account";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerInstanceRouter = async (server: FastifyZodProvider) => {
   // Authenticated, unlike /api/status: the AWS account ID helps an outsider enumerate IAM roles in that account.

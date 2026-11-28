@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 
+import { PermissionDeniedError, RuleViolationError } from "@app/domains/lib/errors";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -80,6 +81,20 @@ describe("toOauthTokenError", () => {
 
     expect(mapped.oauthErrorCode).toBe(OauthTokenErrorCode.InvalidRequest);
     expect(mapped.statusCode).toBe(400);
+  });
+
+  // getOrgPermission refuses non-members with the domain error, which must map like the HTTP one, not to
+  // server_error.
+  test("maps the domain's permission refusal and rule violation like their HTTP counterparts", () => {
+    const refused = toOauthTokenError(
+      new PermissionDeniedError({ message: "You are not a member of this organization with ID 8f2c." }),
+      OauthGrantType.TokenExchange
+    );
+    const invalid = toOauthTokenError(new RuleViolationError({ message: "Invalid actor provided" }));
+
+    expect([refused.oauthErrorCode, refused.statusCode]).toEqual([OauthTokenErrorCode.InvalidRequest, 400]);
+    expect(refused.message).toBe("You are not a member of this organization with ID 8f2c.");
+    expect(invalid.oauthErrorCode).toBe(OauthTokenErrorCode.InvalidRequest);
   });
 
   // jsonwebtoken raises these out of validateRefreshToken. An expired or malformed refresh token is the

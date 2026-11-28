@@ -85,6 +85,32 @@ export const DnsZoneField = ({ control, name, provider, connectionId }: Props) =
     );
   }
 
+  if (provider === AcmeDnsProvider.Rfc2136) {
+    return (
+      <Controller
+        control={control}
+        name={name}
+        render={({ field, fieldState: { error } }) => (
+          <Field className="mb-4">
+            <FieldLabel>
+              Zone <span className="text-danger">*</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md">
+                  The zone name on your DNS server. {DIGICERT_ZONE_TOOLTIP}
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <Input {...field} placeholder="example.com" isError={Boolean(error)} />
+            <FieldError errors={[error]} />
+          </Field>
+        )}
+      />
+    );
+  }
+
   if (provider === AcmeDnsProvider.GcpCloudDns) {
     return (
       <GcpCloudDnsZoneFields

@@ -16,16 +16,15 @@ import {
   SecretTagsSchema,
   UsersSchema
 } from "@app/db/schemas";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { AwsHoneyTokenRowConfigSchema } from "@app/ee/services/honey-token/honey-token-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import {
   SanitizedProxiedServiceBaseSchema,
   SanitizedProxiedServiceCredentialSchema
 } from "@app/ee/services/proxied-service/proxied-service-schemas";
 import { SECRET_CHANGE_POLICIES } from "@app/lib/api-docs";
+import { UnpackedPermissionSchema } from "@app/lib/casl/permission-schemas";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
-
-import { UnpackedPermissionSchema } from "./sanitizedSchema/permission";
 
 // sometimes the return data must be santizied to avoid leaking important values
 // always prefer pick over omit in zod

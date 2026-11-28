@@ -33,6 +33,31 @@ func policyName(t *testing.T, tn *harness.Tenant, policy pki.Policy) string {
 	return res.JSON200.CertificatePolicy.Name
 }
 
+// profileSlugs and policyNames list what the tenant holds, so a refused create can check it saved nothing.
+func profileSlugs(t *testing.T, tn *harness.Tenant) []string {
+	t.Helper()
+	res, err := tn.Admin.API.ListCertificateProfilesWithResponse(t.Context(), nil)
+	require.NoError(t, err)
+	require.NotNilf(t, res.JSON200, "listing profiles returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	slugs := []string{}
+	for _, p := range res.JSON200.CertificateProfiles {
+		slugs = append(slugs, p.Slug)
+	}
+	return slugs
+}
+
+func policyNames(t *testing.T, tn *harness.Tenant) []string {
+	t.Helper()
+	res, err := tn.Admin.API.ListCertificatePoliciesWithResponse(t.Context(), nil)
+	require.NoError(t, err)
+	require.NotNilf(t, res.JSON200, "listing policies returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	names := []string{}
+	for _, p := range res.JSON200.CertificatePolicies {
+		names = append(names, p.Name)
+	}
+	return names
+}
+
 // listedSet is a profile holding five certificates, issued one after another so their
 // creation times never tie: one revoked, one deleted, and one whose common name only it
 // contains. A second profile holds one more, which no list of the first may return.

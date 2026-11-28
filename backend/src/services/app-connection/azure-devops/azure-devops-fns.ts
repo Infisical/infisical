@@ -13,9 +13,15 @@ import {
   getAppConnectionMethodName
 } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
+import {
+  getAzureManagedIdentityAccessToken,
+  getCachedAzureManagedIdentityAccessToken,
+  isAzureAccessTokenValid
+} from "../shared/azure/azure-managed-identity-fns";
 import { AzureDevOpsConnectionMethod } from "./azure-devops-enums";
 import {
   ExchangeCodeAzureResponse,
@@ -35,7 +41,8 @@ export const getAzureDevopsConnectionListItem = ({
     methods: Object.values(AzureDevOpsConnectionMethod) as [
       AzureDevOpsConnectionMethod.OAuth,
       AzureDevOpsConnectionMethod.AccessToken,
-      AzureDevOpsConnectionMethod.ClientSecret
+      AzureDevOpsConnectionMethod.ClientSecret,
+      AzureDevOpsConnectionMethod.ManagedIdentity
     ],
     oauthClientId: INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID
   };
@@ -45,7 +52,8 @@ export const getAzureDevopsConnection = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
   kmsDataKeyService: TKmsDataKeyService,
-  instanceConfigService: TInstanceConfigService
+  instanceConfigService: TInstanceConfigService,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
@@ -138,8 +146,7 @@ export const getAzureDevopsConnection = async (
 
       const { accessToken, expiresAt, clientId, clientSecret, tenantId: clientTenantId } = clientSecretCredentials;
 
-      // Check if token is still valid (with 5 minute buffer)
-      if (accessToken && expiresAt && expiresAt > currentTime + 300000) {
+      if (isAzureAccessTokenValid({ accessToken, expiresAt })) {
         return accessToken;
       }
 
@@ -170,6 +177,12 @@ export const getAzureDevopsConnection = async (
 
       return clientData.access_token;
 
+    case AzureDevOpsConnectionMethod.ManagedIdentity:
+      return getCachedAzureManagedIdentityAccessToken(
+        { appConnection, scope: "https://app.vssps.visualstudio.com/.default" },
+        { appConnectionDAL, kmsDataKeyService, oidcIssuerService }
+      );
+
     default:
       throw new BadRequestError({ message: `Unsupported connection method` });
   }
@@ -177,9 +190,10 @@ export const getAzureDevopsConnection = async (
 
 export const validateAzureDevOpsConnectionCredentials = async (
   config: TAzureDevOpsConnectionConfig,
-  instanceConfigService: TInstanceConfigService
+  instanceConfigService: TInstanceConfigService,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
-  const { credentials: inputCredentials, method } = config;
+  const { credentials: inputCredentials, method, orgId, projectId, connection } = config;
 
   const { INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID, INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET } =
     await instanceConfigService.getOverridableEnv();
@@ -383,6 +397,60 @@ export const validateAzureDevOpsConnectionCredentials = async (
             message: "Failed to validate Azure DevOps client credentials"
           });
         }
+      }
+
+    case AzureDevOpsConnectionMethod.ManagedIdentity:
+      const {
+        tenantId: managedIdentityTenantId,
+        clientId: managedIdentityClientId,
+        orgName: managedIdentityOrgName
+      } = inputCredentials as { tenantId: string; clientId: string; orgName: string };
+
+      // A new connection has no ID yet, so Azure cannot trust its subject. Verifying it after create runs the
+      // exchange once the customer has added the federated credential.
+      if (!connection) {
+        return {
+          tenantId: managedIdentityTenantId,
+          clientId: managedIdentityClientId,
+          orgName: managedIdentityOrgName
+        };
+      }
+
+      try {
+        const managedIdentityToken = await getAzureManagedIdentityAccessToken(
+          {
+            appConnection: { ...connection, orgId, projectId },
+            tenantId: managedIdentityTenantId,
+            clientId: managedIdentityClientId,
+            scope: "https://app.vssps.visualstudio.com/.default"
+          },
+          oidcIssuerService
+        );
+
+        await request.get(
+          `${IntegrationUrls.AZURE_DEVOPS_API_URL}/${encodeURIComponent(managedIdentityOrgName)}/_apis/projects?api-version=7.2-preview.2&$top=1`,
+          {
+            headers: {
+              Authorization: `Bearer ${managedIdentityToken.accessToken}`
+            }
+          }
+        );
+
+        return {
+          tenantId: managedIdentityTenantId,
+          clientId: managedIdentityClientId,
+          orgName: managedIdentityOrgName,
+          ...managedIdentityToken
+        };
+      } catch (e: unknown) {
+        if (e instanceof AxiosError) {
+          throw new BadRequestError({
+            message: `Failed to authenticate with Azure DevOps using the managed identity: ${
+              (e?.response?.data as { error_description?: string })?.error_description || e.message
+            }`
+          });
+        }
+        throw e;
       }
 
     default:

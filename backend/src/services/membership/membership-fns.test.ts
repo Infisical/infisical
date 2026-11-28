@@ -2,9 +2,11 @@ import knex, { Knex } from "knex";
 import { vi } from "vitest";
 
 import { ProjectType } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { PgSqlLock } from "@app/keystore/keystore";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 
-import { assertProductWillRetainAdmin, resolveMembershipRoleSlugs } from "./membership-fns";
+import { assertProductWillRetainAdmin, buildMemberActorContext, resolveMembershipRoleSlugs } from "./membership-fns";
 
 describe("product admin retention", () => {
   const buildTx = (adminCount: number, removingAdmins = 1) => {
@@ -136,5 +138,85 @@ describe("resolveMembershipRoleSlugs", () => {
         { role: "admin", isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 1) }
       ])
     ).toEqual([]);
+  });
+});
+
+describe("buildMemberActorContext", () => {
+  const arrange = () => {
+    const toContext = async ({ principal }: { principal: unknown }) => ({ principal, org: { id: "org-1" } });
+    const actorContextService = { forPrincipal: vi.fn(toContext), forSession: vi.fn(toContext) };
+    const deps = {
+      actorContextService,
+      userDAL: { findById: vi.fn().mockResolvedValue({ id: "user-2", username: "target" }) },
+      identityDAL: { findById: vi.fn().mockResolvedValue({ id: "identity-1", name: "bot" }) }
+    } as unknown as Parameters<typeof buildMemberActorContext>[0];
+    return { deps, actorContextService };
+  };
+  const requester = {
+    principal: { type: ActorType.USER, id: "user-1", authMethod: AuthMethod.EMAIL },
+    org: { id: "org-1" }
+  } as unknown as TActorContext;
+
+  test("should check a user target against the org's sign-in policy with the requester's sign-in method", async () => {
+    // Setup
+    const { deps, actorContextService } = arrange();
+
+    // Action
+    const actor = await buildMemberActorContext(deps, {
+      target: { type: ActorType.USER, id: "user-2" },
+      orgId: "org-1",
+      requester
+    });
+
+    // Assert
+    expect(actorContextService.forSession).toHaveBeenCalledTimes(1);
+    expect(actor.principal).toMatchObject({ id: "user-2", authMethod: AuthMethod.EMAIL });
+  });
+
+  test("should carry a delegated OAuth requester's scopes to an identity target", async () => {
+    // Setup
+    const { deps } = arrange();
+    const oauth = { clientId: "client", scopes: ["secrets:read"] };
+    const delegated = { ...requester, principal: { ...requester.principal, oauth } } as unknown as TActorContext;
+
+    // Action
+    const actor = await buildMemberActorContext(deps, {
+      target: { type: ActorType.IDENTITY, id: "identity-1" },
+      orgId: "org-1",
+      requester: delegated
+    });
+
+    // Assert
+    expect(actor.principal).toMatchObject({ type: ActorType.IDENTITY, id: "identity-1", oauth });
+  });
+
+  test("should check a user target with the sign-in method a queued job stored", async () => {
+    // Setup
+    const { deps, actorContextService } = arrange();
+
+    // Action
+    await buildMemberActorContext(deps, {
+      target: { type: ActorType.USER, id: "user-2" },
+      orgId: "org-1",
+      authMethod: AuthMethod.GOOGLE
+    });
+
+    // Assert
+    expect(actorContextService.forSession.mock.calls[0][0].principal).toMatchObject({ authMethod: AuthMethod.GOOGLE });
+  });
+
+  test.each([
+    ["a user target with no sign-in method", { type: ActorType.USER, id: "user-2" }],
+    ["an identity target", { type: ActorType.IDENTITY, id: "identity-1" }]
+  ] as const)("should not check %s against the sign-in policy", async (_case, target) => {
+    // Setup
+    const { deps, actorContextService } = arrange();
+
+    // Action
+    await buildMemberActorContext(deps, { target, orgId: "org-1" });
+
+    // Assert
+    expect(actorContextService.forSession).not.toHaveBeenCalled();
+    expect(actorContextService.forPrincipal).toHaveBeenCalledTimes(1);
   });
 });

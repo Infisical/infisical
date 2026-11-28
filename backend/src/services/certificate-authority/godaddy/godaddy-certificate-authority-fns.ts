@@ -3,12 +3,12 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
@@ -31,6 +31,7 @@ import { CertKeyAlgorithm, CertStatus, CrlReason } from "@app/services/certifica
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
+import { caNotFoundError, duplicateCaNameError, externalCaNotSavedError } from "../certificate-authority-errors";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { createGoDaddyApiClient } from "./godaddy-api-client";
@@ -209,7 +210,7 @@ export const GoDaddyCertificateAuthorityFns = ({
     name: string;
     projectId: string;
     configuration: TCreateGoDaddyCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
     const { appConnectionId, productType } = configuration;
 
@@ -258,16 +259,14 @@ export const GoDaddyCertificateAuthorityFns = ({
         // 23505 = unique_violation — same CA name in the same project
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
         if ((error as any)?.error?.code === "23505") {
-          throw new BadRequestError({
-            message: "Certificate authority with the same name already exists in your project"
-          });
+          throw duplicateCaNameError(name);
         }
         throw error;
       }
     });
 
     if (!caEntity.externalCa?.id) {
-      throw new BadRequestError({ message: "Failed to create external certificate authority" });
+      throw externalCaNotSavedError(name);
     }
 
     return castDbEntryToGoDaddyCertificateAuthority(caEntity);
@@ -283,7 +282,7 @@ export const GoDaddyCertificateAuthorityFns = ({
     id: string;
     status?: CaStatus;
     configuration?: TUpdateGoDaddyCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
     name?: string;
   }) => {
     // Validated before the transaction: the connection check decrypts through KMS Core, which takes its own connection.
@@ -301,7 +300,7 @@ export const GoDaddyCertificateAuthorityFns = ({
 
       const ca = await certificateAuthorityDAL.findById(id);
       if (!ca) {
-        throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+        throw caNotFoundError(id);
       }
 
       await appConnectionService.validateAppConnectionUsageById(

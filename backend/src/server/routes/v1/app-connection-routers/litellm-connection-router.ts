@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,7 +9,6 @@ import {
   SanitizedLiteLLMConnectionSchema,
   UpdateLiteLLMConnectionSchema
 } from "@app/services/app-connection/litellm";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -52,7 +52,7 @@ export const registerLiteLLMConnectionRouter = async (server: FastifyZodProvider
         query: { search }
       } = req;
 
-      const users = await server.services.appConnection.litellm.listUsers(connectionId, req.permission, search);
+      const users = await server.services.appConnection.litellm.listUsers(connectionId, req.actor, search);
       return { users };
     }
   });
@@ -84,7 +84,7 @@ export const registerLiteLLMConnectionRouter = async (server: FastifyZodProvider
         query: { search }
       } = req;
 
-      const teams = await server.services.appConnection.litellm.listTeams(connectionId, req.permission, search);
+      const teams = await server.services.appConnection.litellm.listTeams(connectionId, req.actor, search);
       return { teams };
     }
   });
@@ -112,7 +112,7 @@ export const registerLiteLLMConnectionRouter = async (server: FastifyZodProvider
         params: { connectionId }
       } = req;
 
-      const models = await server.services.appConnection.litellm.listModels(connectionId, req.permission);
+      const models = await server.services.appConnection.litellm.listModels(connectionId, req.actor);
       return { models };
     }
   });

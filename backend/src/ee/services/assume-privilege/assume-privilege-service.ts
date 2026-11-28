@@ -1,79 +1,89 @@
-import { ForbiddenError, subject } from "@casl/ability";
-
-import { ActionProjectType } from "@app/db/schemas";
+import type { TActorContextService } from "@app/domains/platform/organizations/ce/module";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { ActorType } from "@app/services/auth/auth-type";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { buildMemberActorContext } from "@app/services/membership/membership-fns";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import {
-  ProjectPermissionIdentityActions,
-  ProjectPermissionMemberActions,
-  ProjectPermissionSub
-} from "../permission/project-permission";
 import { TAssumePrivilegeServiceFactory } from "./assume-privilege-types";
 
 type TAssumePrivilegeServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectPermissionService: TProjectPermissionService;
+  actorContextService: TActorContextService;
   userDAL: Pick<TUserDALFactory, "findById">;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
 };
 
 export const assumePrivilegeServiceFactory = ({
-  permissionService,
-  userDAL
+  projectPermissionService,
+  actorContextService,
+  userDAL,
+  identityDAL
 }: TAssumePrivilegeServiceFactoryDep): TAssumePrivilegeServiceFactory => {
-  const $getMemberSubject = async (userId: string) => {
+  const $getMemberEmail = async (userId: string) => {
     const user = await requestMemoize(requestMemoKeys.userFindById(userId), () => userDAL.findById(userId));
-    return subject(ProjectPermissionSub.Member, { userEmail: user?.email ?? undefined });
+    return user?.email ?? undefined;
   };
 
   const assumeProjectPrivileges: TAssumePrivilegeServiceFactory["assumeProjectPrivileges"] = async ({
     targetActorType,
     targetActorId,
     projectId,
-    actorPermissionDetails,
+    actor,
     tokenVersionId
   }) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actorPermissionDetails.type,
-      actorId: actorPermissionDetails.id,
-      projectId,
-      actorAuthMethod: actorPermissionDetails.authMethod,
-      actorOrgId: actorPermissionDetails.orgId,
-      actionProjectType: ActionProjectType.Any
-    });
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
 
     if (targetActorType === ActorType.USER) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionMemberActions.AssumePrivileges,
-        ProjectPermissionSub.Member
-      );
+      permission.assert({
+        action: ProjectPermissionMemberActions.AssumePrivileges,
+        subject: ProjectPermissionSub.Member
+      });
     } else {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.AssumePrivileges,
-        subject(ProjectPermissionSub.Identity, { identityId: targetActorId })
-      );
+      permission.assert({
+        action: ProjectPermissionIdentityActions.AssumePrivileges,
+        subject: ProjectPermissionSub.Identity,
+        fields: { identityId: targetActorId }
+      });
     }
 
-    // check entity is  part of project
-    await permissionService.getProjectPermission({
-      actor: targetActorType,
-      actorId: targetActorId,
-      projectId,
-      actorAuthMethod: actorPermissionDetails.authMethod,
-      actorOrgId: actorPermissionDetails.orgId,
-      actionProjectType: ActionProjectType.Any
-    });
+    // check entity is part of project. Only membership is read, so the principal needs no profile. User targets are
+    // checked against the org's sign-in policy using the requester's sign-in method.
+    const targetActor =
+      targetActorType === ActorType.USER
+        ? await actorContextService.forSession({
+            principal: {
+              type: ActorType.USER,
+              id: targetActorId,
+              username: "",
+              email: null,
+              authMethod: actor.principal.type === ActorType.USER ? actor.principal.authMethod : null,
+              isSuperAdmin: false
+            },
+            orgId: actor.org.id
+          })
+        : await actorContextService.forPrincipal({
+            principal: { type: ActorType.IDENTITY, id: targetActorId, name: "", isInstanceAdmin: false },
+            orgId: actor.org.id
+          });
+    await projectPermissionService.getProjectPermission({ actor: targetActor, projectId });
 
     if (targetActorType === ActorType.USER) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionMemberActions.AssumePrivileges,
-        await $getMemberSubject(targetActorId)
-      );
+      permission.assert({
+        action: ProjectPermissionMemberActions.AssumePrivileges,
+        subject: ProjectPermissionSub.Member,
+        fields: { userEmail: await $getMemberEmail(targetActorId) }
+      });
     }
 
     const appCfg = getConfig();
@@ -83,7 +93,7 @@ export const assumePrivilegeServiceFactory = ({
         actorType: targetActorType,
         actorId: targetActorId,
         projectId,
-        requesterId: actorPermissionDetails.id
+        requesterId: actor.principal.id
       },
       appCfg.AUTH_SECRET,
       { expiresIn: "1hr" }
@@ -95,7 +105,6 @@ export const assumePrivilegeServiceFactory = ({
   const verifyAssumePrivilegeToken: TAssumePrivilegeServiceFactory["verifyAssumePrivilegeToken"] = async (
     token,
     tokenVersionId,
-    actorAuthMethod,
     actorOrgId
   ) => {
     const appCfg = getConfig();
@@ -110,28 +119,34 @@ export const assumePrivilegeServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Invalid token version" });
     }
 
-    const requesterPermission = await permissionService.getProjectPermission({
-      actor: ActorType.USER,
-      actorId: decodedToken.requesterId,
-      projectId: decodedToken.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
+    const requester = await buildMemberActorContext(
+      { actorContextService, userDAL, identityDAL },
+      { target: { type: ActorType.USER, id: decodedToken.requesterId }, orgId: actorOrgId }
+    );
+    const requesterPermission = await projectPermissionService.getProjectPermission({
+      actor: requester,
+      projectId: decodedToken.projectId
     });
 
     if (decodedToken.actorType === ActorType.USER) {
-      ForbiddenError.from(requesterPermission.permission).throwUnlessCan(
-        ProjectPermissionMemberActions.AssumePrivileges,
-        await $getMemberSubject(decodedToken.actorId)
-      );
+      requesterPermission.assert({
+        action: ProjectPermissionMemberActions.AssumePrivileges,
+        subject: ProjectPermissionSub.Member,
+        fields: { userEmail: await $getMemberEmail(decodedToken.actorId) }
+      });
     } else {
-      ForbiddenError.from(requesterPermission.permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.AssumePrivileges,
-        subject(ProjectPermissionSub.Identity, { identityId: decodedToken.actorId })
-      );
+      requesterPermission.assert({
+        action: ProjectPermissionIdentityActions.AssumePrivileges,
+        subject: ProjectPermissionSub.Identity,
+        fields: { identityId: decodedToken.actorId }
+      });
     }
 
-    return decodedToken;
+    const actorName =
+      decodedToken.actorType === ActorType.USER
+        ? ((await userDAL.findById(decodedToken.actorId))?.username ?? "")
+        : ((await identityDAL.findById(decodedToken.actorId))?.name ?? "");
+    return { ...decodedToken, actorName };
   };
 
   return {

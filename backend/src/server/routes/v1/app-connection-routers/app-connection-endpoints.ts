@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AppConnections } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { startsWithVowel } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -12,7 +13,6 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnectionInput, TAppConnectionScope } from "@app/services/app-connection/app-connection-types";
 import { TCreateAppConnectionCredentialRotationSchema } from "@app/services/app-connection/credential-rotation/app-connection-credential-rotation-types";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 type TAppConnectionCreateSchema<I extends TAppConnectionInput> = z.ZodType<{
@@ -114,11 +114,11 @@ export const buildListAppConnectionsRoute = (
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = resolveScope ? resolveScope(req).projectId : (req.query as { projectId?: string }).projectId;
-      const appConnections = await server.services.appConnection.listAppConnections(req.permission, app, projectId);
+      const appConnections = await server.services.appConnection.listAppConnections(req.actor, app, projectId);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.GET_APP_CONNECTIONS,
@@ -176,13 +176,13 @@ export const buildListAvailableAppConnectionsRoute = (
       const { projectId } = req.query;
       const appConnections = await server.services.appConnection.listAvailableAppConnectionsForUser(
         app,
-        req.permission,
+        req.actor,
         projectId
       );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.GET_AVAILABLE_APP_CONNECTIONS_DETAILS,
@@ -231,13 +231,13 @@ export const buildGetAppConnectionRoute = (
       const appConnection = await server.services.appConnection.findAppConnectionById(
         app,
         connectionId,
-        req.permission,
+        req.actor,
         resolveScope?.(req)
       );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: appConnection.projectId ?? undefined,
         event: {
           type: EventType.GET_APP_CONNECTION,
@@ -297,12 +297,12 @@ export const buildGetAppConnectionByNameRoute = (
           connectionName,
           projectId
         },
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: appConnection.projectId ?? undefined,
         event: {
           type: EventType.GET_APP_CONNECTION,
@@ -372,12 +372,12 @@ export const buildCreateAppConnectionRoute = <I extends TAppConnectionInput>(
           isAutoRotationEnabled: isAutoRotationEnabled ?? false,
           configuration
         },
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.CREATE_APP_CONNECTION,
@@ -395,7 +395,7 @@ export const buildCreateAppConnectionRoute = <I extends TAppConnectionInput>(
         .sendPostHogEvents({
           event: PostHogEventTypes.AppConnectionCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             appConnectionId: appConnection.id,
             app,
@@ -466,13 +466,13 @@ export const buildUpdateAppConnectionRoute = <I extends TAppConnectionInput>(
           rotation: rotation ?? undefined,
           configuration
         },
-        req.permission,
+        req.actor,
         resolveScope?.(req)
       );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: appConnection.projectId ?? undefined,
         event: {
           type: EventType.UPDATE_APP_CONNECTION,
@@ -490,7 +490,7 @@ export const buildUpdateAppConnectionRoute = <I extends TAppConnectionInput>(
         .sendPostHogEvents({
           event: PostHogEventTypes.AppConnectionUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { appConnectionId: connectionId, app }
         })
         .catch(() => {});
@@ -533,13 +533,13 @@ export const buildDeleteAppConnectionRoute = (
       const appConnection = await server.services.appConnection.deleteAppConnection(
         app,
         connectionId,
-        req.permission,
+        req.actor,
         resolveScope?.(req)
       );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: appConnection.projectId ?? undefined,
         event: {
           type: EventType.DELETE_APP_CONNECTION,
@@ -553,7 +553,7 @@ export const buildDeleteAppConnectionRoute = (
         .sendPostHogEvents({
           event: PostHogEventTypes.AppConnectionDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             appConnectionId: connectionId,
             app
@@ -598,20 +598,20 @@ export const buildRotateAppConnectionCredentialsRoute = (
 
       await server.services.appConnection.triggerCredentialRotation(
         { app, connectionId },
-        req.permission,
+        req.actor,
         resolveScope?.(req)
       );
 
       const appConnection = await server.services.appConnection.findAppConnectionById(
         app,
         connectionId,
-        req.permission,
+        req.actor,
         resolveScope?.(req)
       );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: appConnection.projectId ?? undefined,
         event: {
           type: EventType.ROTATE_APP_CONNECTION_CREDENTIALS,
@@ -709,12 +709,12 @@ export const registerAppConnectionEndpoints = <I extends TAppConnectionInput>({
   //     const projects = await server.services.appConnection.findAppConnectionUsageById(
   //       app,
   //       connectionId,
-  //       req.permission
+  //       req.actor
   //     );
   //
   //     await server.services.auditLog.createAuditLog({
   //       ...req.auditLogInfo,
-  //       orgId: req.permission.orgId,
+  //       orgId: req.actor.orgId,
   //       event: {
   //         type: EventType.GET_APP_CONNECTION_USAGE,
   //         metadata: {

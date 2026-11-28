@@ -1,6 +1,6 @@
 import { EventResultStatus, TEvent } from "@app/domains/platform/events/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { TRevokedProjectAccess } from "@app/services/membership/project-access-revoke-service";
 
 import { ACTORS_PER_RECONCILE_TX, orgAccessReconcileConsumerFactory } from "./org-access-reconcile-consumer";

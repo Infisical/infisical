@@ -3,9 +3,9 @@ import { z } from "zod";
 import { PkiSigningOperationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { SigningOperationStatus } from "@app/services/signer/signer-enums";
 import { SigningActivityRange } from "@app/services/signer/signer-types";
 
@@ -42,10 +42,7 @@ export const registerSignerOperationsRouter = async (server: FastifyZodProvider)
       server.services.pkiSigner.getActivityTrend({
         ...req.query,
         projectId: req.internalCertManagerProjectId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       })
   });
 
@@ -81,10 +78,7 @@ export const registerSignerOperationsRouter = async (server: FastifyZodProvider)
       const result = await server.services.pkiSigner.listOperations({
         signerId: req.params.signerId,
         ...req.query,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -129,10 +123,7 @@ export const registerSignerOperationsRouter = async (server: FastifyZodProvider)
       const result = await server.services.pkiSigner.getOperationById({
         signerId: req.params.signerId,
         operationId: req.params.operationId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
