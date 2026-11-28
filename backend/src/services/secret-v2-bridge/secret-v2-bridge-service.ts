@@ -22,7 +22,7 @@ import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/c
 import { utcDayStamp } from "@app/lib/dates";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, throwIfClientDisconnected } from "@app/lib/errors";
-import { diff, groupBy, takeDistinctKeyScanWindow } from "@app/lib/fn";
+import { diff, groupBy, removeTrailingSlash, takeDistinctKeyScanWindow } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
@@ -267,12 +267,32 @@ export const secretV2BridgeServiceFactory = ({
 
     const referencesFolderGroupByPath = groupBy(referredFolders.filter(Boolean), (i) => `${i?.envId}-${i?.path}`);
 
-    // Find only references that have valid folders (don't throw for missing paths)
-    const validReferences = validEnvironmentReferences.filter((el) => {
-      const folderId =
-        referencesFolderGroupByPath[`${referencesEnvironmentGroupBySlug[el.environment][0].id}-${el.secretPath}`]?.[0]
-          ?.id;
-      return folderId;
+    // Pair each valid reference with its resolved folderId so permission checks never confuse
+    // same-named secrets across different folders or environments.
+    const validReferences: Array<{
+      folderId: string;
+      environment: string;
+      secretPath: string;
+      secretKey: string;
+    }> = [];
+    const seenFolderKeyPairs = new Set<string>();
+
+    validEnvironmentReferences.forEach((el) => {
+      const envId = referencesEnvironmentGroupBySlug[el.environment][0].id;
+      const normalizedPath = removeTrailingSlash(el.secretPath);
+      const folder = referencesFolderGroupByPath[`${envId}-${normalizedPath}`]?.[0];
+      if (!folder) return;
+
+      const pairKey = `${folder.id}\0${el.secretKey}`;
+      if (seenFolderKeyPairs.has(pairKey)) return;
+      seenFolderKeyPairs.add(pairKey);
+
+      validReferences.push({
+        folderId: folder.id,
+        environment: el.environment,
+        secretPath: folder.path ?? normalizedPath,
+        secretKey: el.secretKey
+      });
     });
 
     if (validReferences.length === 0) return;
@@ -281,48 +301,39 @@ export const secretV2BridgeServiceFactory = ({
       {
         $complex: {
           operator: "or",
-          value: validReferences
-            .map((el) => {
-              const folderGroup =
-                referencesFolderGroupByPath[
-                  `${referencesEnvironmentGroupBySlug[el.environment][0].id}-${el.secretPath}`
-                ];
-              if (!folderGroup || !folderGroup[0]) return null;
-
-              const folderId = folderGroup[0].id;
-
-              return {
-                operator: "and",
-                value: [
-                  {
-                    operator: "eq",
-                    field: "folderId",
-                    value: folderId
-                  },
-                  {
-                    operator: "eq",
-                    field: `${TableName.SecretV2}.key` as "key",
-                    value: el.secretKey
-                  }
-                ]
-              };
-            })
-            .filter((query) => query !== null) as Array<{
-            operator: "and";
-            value: Array<{
-              operator: "eq";
-              field: "folderId" | "key";
-              value: string;
-            }>;
-          }>
+          value: validReferences.map((el) => ({
+            operator: "and",
+            value: [
+              {
+                operator: "eq",
+                field: "folderId",
+                value: el.folderId
+              },
+              {
+                operator: "eq",
+                field: `${TableName.SecretV2}.key` as "key",
+                value: el.secretKey
+              }
+            ]
+          }))
         }
       },
       { tx }
     );
 
+    const validReferencesByFolderId = new Map<string, Map<string, (typeof validReferences)[number]>>();
+    validReferences.forEach((ref) => {
+      let byKey = validReferencesByFolderId.get(ref.folderId);
+      if (!byKey) {
+        byKey = new Map();
+        validReferencesByFolderId.set(ref.folderId, byKey);
+      }
+      byKey.set(ref.secretKey, ref);
+    });
+
     // Only check permissions for secrets that actually exist
     referredSecrets.forEach((secret) => {
-      const reference = validReferences.find((ref) => ref.secretKey === secret.key);
+      const reference = validReferencesByFolderId.get(secret.folderId)?.get(secret.key);
       if (reference) {
         SecretReadAccess.assert(permission, ProjectPermissionSecretActions.DescribeSecret, {
           environment: reference.environment,
@@ -741,14 +752,6 @@ export const secretV2BridgeServiceFactory = ({
             blindIndexes: await blindIndexer.generateBlindIndexes(Buffer.from(secretValue))
           }
         : {};
-
-    if (secretValue) {
-      const { nestedReferences, localReferences } = getAllSecretReferences(secretValue);
-      const allSecretReferences = nestedReferences.concat(
-        localReferences.map((el) => ({ secretKey: el, secretPath, environment }))
-      );
-      await $validateSecretReferences(projectId, permission, allSecretReferences);
-    }
 
     // The secret and its reminder are one change: the reminder is checked before anything is written, then
     // written in the secret's transaction, so either both land or neither does.
