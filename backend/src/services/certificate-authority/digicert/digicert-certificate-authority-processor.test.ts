@@ -151,3 +151,59 @@ describe("processDigiCertPendingValidationRequest reissue", () => {
     expect(result.status).toBe(CertificateRequestStatus.ISSUED);
   });
 });
+
+describe("processDigiCertPendingValidationRequest pending message", () => {
+  test("keeps the automatic domain validation failures in the message after each check", async () => {
+    const { deps } = buildDeps();
+    const request = buildRequest();
+    const metadata = JSON.parse(request.metadata as string) as { digicert: Record<string, unknown> };
+    metadata.digicert.domainValidationFailures = ["Couldn't validate example.com automatically: Authentication error"];
+    const client = {
+      getOrder: vi.fn().mockResolvedValue({ id: ORDER_ID, status: "pending", certificate: { id: 1 } }),
+      checkValidation: vi.fn().mockResolvedValue({ order_status: "pending" })
+    };
+
+    await processDigiCertPendingValidationRequest(
+      deps,
+      { ...request, metadata: JSON.stringify(metadata) },
+      buildClientCache(client)
+    );
+
+    expect(deps.certificateRequestDAL.setPendingMessage).toHaveBeenCalledWith(
+      request.id,
+      expect.stringContaining(
+        "When the order was placed: Couldn't validate example.com automatically: Authentication error"
+      )
+    );
+  });
+
+  test("keeps the automatic domain validation failures when the order times out", async () => {
+    const { deps } = buildDeps();
+    const request = buildRequest(new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString());
+    const metadata = JSON.parse(request.metadata as string) as { digicert: Record<string, unknown> };
+    metadata.digicert.domainValidationFailures = ["Couldn't validate example.com automatically: Authentication error"];
+    const client = {
+      getOrder: vi.fn().mockResolvedValue({
+        id: ORDER_ID,
+        status: "reissue_pending",
+        certificate: { id: PREVIOUS_CERTIFICATE_ID }
+      }),
+      checkValidation: vi.fn().mockResolvedValue({ order_status: "reissue_pending" })
+    };
+
+    await processDigiCertPendingValidationRequest(
+      deps,
+      { ...request, metadata: JSON.stringify(metadata) },
+      buildClientCache(client)
+    );
+
+    expect(deps.certificateRequestService.updateCertificateRequestStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: CertificateRequestStatus.FAILED,
+        errorMessage: expect.stringContaining(
+          "Submit a new request to reissue again. When the order was placed: Couldn't validate example.com automatically: Authentication error"
+        ) as string
+      })
+    );
+  });
+});

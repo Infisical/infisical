@@ -52,7 +52,7 @@ const resolveZone = async (client: TDnsUpdateClient, zone: string, name: string,
   if (zone) {
     if (!isDnsNameInZone(name, zone)) {
       throw new Error(
-        `The challenge record '${name}' is not inside zone '${zone}'. Enter the zone that contains it on the certificate authority, or leave the zone empty to detect it from the DNS server.`
+        `The TXT record '${name}' is not inside zone '${zone}'. Enter the zone that contains it on the certificate authority, or leave the zone empty to detect it from the DNS server.`
       );
     }
     return normalizeDnsName(zone);
@@ -189,14 +189,14 @@ export const waitForPublicNameservers = async (
   const laggingList = [...pending.keys()].join("', '");
   if (!getConfig().isCloud) {
     logger.warn(
-      `RFC 2136 nameservers still do not serve the challenge record, continuing [zone=${zone}] [name=${name}] [nameservers=${laggingList}]`
+      `RFC 2136 nameservers still do not serve the TXT record, continuing [zone=${zone}] [name=${name}] [nameservers=${laggingList}]`
     );
     return;
   }
   const [subject, verb, object] =
     pending.size === 1 ? ["Nameserver", "doesn't", "it receives"] : ["Nameservers", "don't", "they receive"];
   throw new Error(
-    `${subject} '${laggingList}' still ${verb} serve the challenge record '${name}' after ${NAMESERVER_WAIT_MS / 1000} seconds. Check that ${object} updates from your primary server (NOTIFY and zone transfers).`
+    `${subject} '${laggingList}' still ${verb} serve the TXT record '${name}' after ${NAMESERVER_WAIT_MS / 1000} seconds. Check that ${object} updates from your primary server (NOTIFY and zone transfers).`
   );
 };
 

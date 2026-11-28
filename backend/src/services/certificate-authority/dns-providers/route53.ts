@@ -1,4 +1,9 @@
-import { ChangeResourceRecordSetsCommand, Route53Client } from "@aws-sdk/client-route-53";
+import {
+  ChangeResourceRecordSetsCommand,
+  GetHostedZoneCommand,
+  ListResourceRecordSetsCommand,
+  Route53Client
+} from "@aws-sdk/client-route-53";
 
 import { ProjectType } from "@app/db/schemas";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
@@ -77,3 +82,59 @@ export const route53DeleteRecord = (
   record: TRoute53Record,
   instanceConfigService: TInstanceConfigService
 ) => changeRecord(connection, hostedZoneId, "DELETE", record, instanceConfigService);
+
+export const route53GetHostedZone = async (
+  connection: TAwsConnectionConfig,
+  hostedZoneId: string,
+  instanceConfigService: TInstanceConfigService
+) => {
+  const route53Client = await buildRoute53Client(connection, instanceConfigService);
+  return route53Client.send(new GetHostedZoneCommand({ Id: hostedZoneId }));
+};
+
+export const route53AppendTxtRecord = async (
+  connection: TAwsConnectionConfig,
+  hostedZoneId: string,
+  record: { name: string; value: string; ttl: number },
+  instanceConfigService: TInstanceConfigService,
+  abortSignal?: AbortSignal
+) => {
+  const route53Client = await buildRoute53Client(connection, instanceConfigService);
+  const { ResourceRecordSets } = await route53Client.send(
+    new ListResourceRecordSetsCommand({
+      HostedZoneId: hostedZoneId,
+      StartRecordName: record.name,
+      StartRecordType: "TXT",
+      MaxItems: 1
+    }),
+    { abortSignal }
+  );
+  const existing = ResourceRecordSets?.find(
+    (recordSet) => recordSet.Type === "TXT" && recordSet.Name?.toLowerCase() === `${record.name.toLowerCase()}.`
+  );
+  const existingValues = (existing?.ResourceRecords ?? []).flatMap((resourceRecord) =>
+    resourceRecord.Value ? [resourceRecord.Value] : []
+  );
+  if (existingValues.includes(record.value)) return;
+
+  await route53Client.send(
+    new ChangeResourceRecordSetsCommand({
+      HostedZoneId: hostedZoneId,
+      ChangeBatch: {
+        Comment: `Upsert TXT record for ${record.name}`,
+        Changes: [
+          {
+            Action: "UPSERT",
+            ResourceRecordSet: {
+              Name: record.name,
+              Type: "TXT",
+              TTL: existing?.TTL ?? record.ttl,
+              ResourceRecords: [...existingValues, record.value].map((value) => ({ Value: value }))
+            }
+          }
+        ]
+      }
+    }),
+    { abortSignal }
+  );
+};

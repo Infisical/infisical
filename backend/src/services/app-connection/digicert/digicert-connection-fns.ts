@@ -241,12 +241,15 @@ type TDigiCertProductsResponse = {
   }[];
 };
 
+const DIGICERT_PRODUCT_LIST_TIMEOUT_MS = 20_000;
+
 export const listDigiCertProducts = async (appConnection: TDigiCertConnection): Promise<TDigiCertProduct[]> => {
   const { apiKey } = appConnection.credentials;
   const baseUrl = getDigiCertApiBaseUrl(appConnection.credentials);
 
   try {
     const { data } = await request.get<TDigiCertProductsResponse>(`${baseUrl}/product`, {
+      timeout: DIGICERT_PRODUCT_LIST_TIMEOUT_MS,
       headers: {
         [DIGICERT_AUTH_HEADER]: apiKey,
         "Content-Type": "application/json"

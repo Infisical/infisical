@@ -152,7 +152,7 @@ export const ultraDNSInsertTxtRecord = async (
 
         if (!isConfirmed) {
           throw new Error(
-            `UltraDNS did not confirm the challenge record after ${MAX_ATTEMPTS} attempts${
+            `UltraDNS did not confirm the TXT record after ${MAX_ATTEMPTS} attempts${
               lastError ? `: ${getUltraDNSErrorMessage(lastError)}` : ""
             }`
           );

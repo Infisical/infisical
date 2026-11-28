@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import * as x509 from "@peculiar/x509";
+import { Knex } from "knex";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
@@ -12,7 +13,11 @@ import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { DIGICERT_CS_PRODUCT_NAME_IDS } from "@app/services/app-connection/digicert/digicert-connection-fns";
+import {
+  DIGICERT_CS_PRODUCT_NAME_IDS,
+  listDigiCertProducts
+} from "@app/services/app-connection/digicert/digicert-connection-fns";
+import { TDigiCertConnection } from "@app/services/app-connection/digicert/digicert-connection-types";
 import {
   DigiCertExternalMetadataSchema,
   TDigiCertExternalMetadata
@@ -26,6 +31,7 @@ import {
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertStatus, CrlReason, TAltNameType } from "@app/services/certificate/certificate-types";
 
+import { ACME_DNS_PROVIDER_APP_CONNECTION_MAP } from "../acme/acme-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
 import {
@@ -35,6 +41,7 @@ import {
   externalCaNotSavedError
 } from "../certificate-authority-errors";
 import { createDistinguishedName, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
+import { DNS_TXT_RECORD_PROVIDERS, TDnsZoneLookupDeps } from "../dns-providers/dns-txt-records";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import {
   DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS,
@@ -46,7 +53,8 @@ import {
   DIGICERT_MAX_CERTIFICATE_VALIDITY_DAYS,
   DigiCertOrderStatus,
   DigiCertPollOutcome,
-  DigiCertRevocationRequestStatus
+  DigiCertRevocationRequestStatus,
+  DigiCertProductType
 } from "./digicert-certificate-authority-enums";
 import { DigiCertCaPurpose, DigiCertCertificateRequestMetadataSchema } from "./digicert-certificate-authority-schemas";
 import {
@@ -58,6 +66,7 @@ import {
   TCreateDigiCertCertificateAuthorityDTO,
   TDigiCertCertificateAuthority,
   TDigiCertCertificateRequestMetadata,
+  TDigiCertDnsZone,
   TPlaceOrderResponse,
   TReissueOrderRequest,
   TUpdateDigiCertCertificateAuthorityDTO
@@ -66,14 +75,17 @@ import { digiCertCodeSigningFns } from "./digicert-code-signing-fns";
 
 export { castDbEntryToDigiCertCertificateAuthority, getDigiCertClientCredentials };
 
-type TDigiCertCertificateAuthorityFnsDeps = {
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+type TDigiCertCertificateAuthorityFnsDeps = Omit<TDnsZoneLookupDeps, "appConnectionDAL" | "kmsDataKeyService"> & {
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "findExistingIdsForKeyShare">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   certificateAuthorityDAL: Pick<
     TCertificateAuthorityDALFactory,
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
-  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
+  externalCertificateAuthorityDAL: Pick<
+    TExternalCertificateAuthorityDALFactory,
+    "create" | "update" | "findDigiCertConfigurationForUpdate"
+  >;
   certificateDAL: Pick<
     TCertificateDALFactory,
     "create" | "findById" | "transaction" | "updateById" | "findOneLiveFirst"
@@ -83,6 +95,12 @@ type TDigiCertCertificateAuthorityFnsDeps = {
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
 };
+
+export type TDigiCertBeforeOrderHook = (order: {
+  digicertCa: TDigiCertCertificateAuthority;
+  client: TDigiCertApiClient;
+  dnsNames: string[];
+}) => Promise<void>;
 
 const assertPurposeMatchesProduct = (purpose: DigiCertCaPurpose | undefined, productNameId: string): void => {
   const effectivePurpose = purpose ?? DigiCertCaPurpose.Ssl;
@@ -95,6 +113,36 @@ const assertPurposeMatchesProduct = (purpose: DigiCertCaPurpose | undefined, pro
   if (effectivePurpose === DigiCertCaPurpose.Ssl && isCsProduct) {
     throw new BadRequestError({
       message: `Product '${productNameId}' is a code-signing product but this CA is configured for SSL`
+    });
+  }
+};
+
+const assertDnsZonesAllowedForPurpose = (
+  purpose: DigiCertCaPurpose | undefined,
+  dnsZones: { hostedZoneId: string }[] | undefined
+): void => {
+  if (purpose === DigiCertCaPurpose.CodeSigning && dnsZones?.length) {
+    throw new BadRequestError({
+      message:
+        "DNS zones can only be linked to an SSL DigiCert certificate authority. Remove the DNS zones to use code signing."
+    });
+  }
+};
+
+const assertTlsProductForDnsZones = async (digicertConnection: TDigiCertConnection, productNameId: string) => {
+  let products: Awaited<ReturnType<typeof listDigiCertProducts>>;
+  try {
+    products = await listDigiCertProducts(digicertConnection);
+  } catch (error) {
+    logger.warn(
+      `DigiCert product list unavailable, saving DNS zones without checking the product type [productNameId=${productNameId}]: ${(error as Error)?.message}`
+    );
+    return;
+  }
+  const product = products.find(({ nameId }) => nameId === productNameId);
+  if (product && product.type !== DigiCertProductType.Ssl) {
+    throw new BadRequestError({
+      message: `DNS zones can only be linked to a DigiCert certificate authority that issues TLS certificates, and product '${productNameId}' isn't a TLS product. Remove the DNS zones or pick a TLS product.`
     });
   }
 };
@@ -131,8 +179,106 @@ export const DigiCertCertificateAuthorityFns = ({
   certificateBodyDAL,
   certificateSecretDAL,
   kmsDataKeyService,
-  kmsKeyService
+  kmsKeyService,
+  instanceConfigService,
+  oidcIssuerService,
+  gatewayV2Service,
+  gatewayPoolService
 }: TDigiCertCertificateAuthorityFnsDeps) => {
+  const dnsZoneLookupDeps: TDnsZoneLookupDeps = {
+    appConnectionDAL,
+    kmsDataKeyService,
+    instanceConfigService,
+    oidcIssuerService,
+    gatewayV2Service,
+    gatewayPoolService
+  };
+
+  const $resolveDnsZones = async ({
+    dnsZones,
+    projectId,
+    actor
+  }: {
+    dnsZones: TCreateDigiCertCertificateAuthorityDTO["configuration"]["dnsZones"];
+    projectId: string;
+    actor: TActorContext;
+  }) => {
+    if (!dnsZones) return undefined;
+
+    const resolvedZones: TDigiCertDnsZone[] = await Promise.all(
+      dnsZones.map(async (zone) => {
+        const connection = await appConnectionService.validateAppConnectionUsageById(
+          ACME_DNS_PROVIDER_APP_CONNECTION_MAP[zone.provider],
+          { connectionId: zone.appConnectionId, projectId },
+          actor
+        );
+
+        let dnsZone: { id: string; name: string } | undefined;
+        try {
+          dnsZone = await DNS_TXT_RECORD_PROVIDERS[zone.provider].getZone(
+            connection,
+            zone.hostedZoneId,
+            dnsZoneLookupDeps
+          );
+        } catch (error) {
+          throw new BadRequestError({
+            message: `App connection with ID '${zone.appConnectionId}' couldn't use DNS zone '${zone.hostedZoneId}': ${(error as Error)?.message ?? "Unknown error"}`
+          });
+        }
+        if (!dnsZone) {
+          throw new BadRequestError({
+            message: `DNS zone '${zone.hostedZoneId}' wasn't found through App connection with ID '${zone.appConnectionId}'. Check the zone ID and that the connection can see the zone.`
+          });
+        }
+
+        return {
+          provider: zone.provider,
+          appConnectionId: connection.id,
+          hostedZoneId: dnsZone.id,
+          zoneName: dnsZone.name
+        };
+      })
+    );
+
+    const duplicateZone = resolvedZones.find(
+      ({ zoneName }, index) => resolvedZones.findIndex((zone) => zone.zoneName === zoneName) !== index
+    );
+    if (duplicateZone) {
+      throw new BadRequestError({
+        message: `DNS zone '${duplicateZone.zoneName}' is linked more than once. Link each zone once.`
+      });
+    }
+
+    return resolvedZones;
+  };
+
+  const $lockDnsZoneConnections = async (dnsZones: TDigiCertDnsZone[] | undefined, tx: Knex) => {
+    if (!dnsZones?.length) return;
+    const appConnectionIds = [...new Set(dnsZones.map(({ appConnectionId }) => appConnectionId))].sort();
+    const lockedConnectionIds = await appConnectionDAL.findExistingIdsForKeyShare(appConnectionIds, tx);
+    const deletedAppConnectionId = appConnectionIds.find((id) => !lockedConnectionIds.includes(id));
+    if (deletedAppConnectionId) {
+      throw new NotFoundError({
+        message: `App connection with ID '${deletedAppConnectionId}' was deleted while the certificate authority was being saved. Link the DNS zone with an existing connection.`
+      });
+    }
+  };
+
+  const $assertCanUseStoredDnsZoneConnections = async (
+    dnsZones: TDigiCertDnsZone[],
+    projectId: string,
+    actor: TActorContext
+  ) => {
+    const connectionsToCheck = new Map(
+      dnsZones.map(({ appConnectionId, provider }) => [appConnectionId, ACME_DNS_PROVIDER_APP_CONNECTION_MAP[provider]])
+    );
+    await Promise.all(
+      [...connectionsToCheck].map(([appConnectionId, app]) =>
+        appConnectionService.validateAppConnectionUsageById(app, { connectionId: appConnectionId, projectId }, actor)
+      )
+    );
+  };
+
   const codeSigningFns = digiCertCodeSigningFns({
     appConnectionDAL,
     certificateAuthorityDAL,
@@ -155,7 +301,7 @@ export const DigiCertCertificateAuthorityFns = ({
     configuration: TCreateDigiCertCertificateAuthorityDTO["configuration"];
     actor: TActorContext;
   }) => {
-    const { appConnectionId, organizationId, productNameId, purpose, verifiedContact } = configuration;
+    const { appConnectionId, organizationId, productNameId, purpose, verifiedContact, dnsZones } = configuration;
 
     const appConnection = await appConnectionDAL.findById(appConnectionId);
     if (!appConnection) {
@@ -167,13 +313,17 @@ export const DigiCertCertificateAuthorityFns = ({
       });
     }
 
-    await appConnectionService.validateAppConnectionUsageById(
+    const digicertConnection = await appConnectionService.validateAppConnectionUsageById(
       appConnection.app as AppConnection,
       { connectionId: appConnectionId, projectId },
       actor
     );
 
     assertPurposeMatchesProduct(purpose, productNameId);
+    assertDnsZonesAllowedForPurpose(purpose, dnsZones);
+    if (dnsZones?.length) {
+      await assertTlsProductForDnsZones(digicertConnection as TDigiCertConnection, productNameId);
+    }
 
     if (purpose === DigiCertCaPurpose.CodeSigning) {
       await codeSigningFns.assertCsOrgValidatedOrContactProvided({
@@ -184,7 +334,10 @@ export const DigiCertCertificateAuthorityFns = ({
       });
     }
 
+    const resolvedDnsZones = await $resolveDnsZones({ dnsZones, projectId, actor });
+
     const caEntity = await certificateAuthorityDAL.transaction(async (tx) => {
+      await $lockDnsZoneConnections(resolvedDnsZones, tx);
       try {
         const ca = await certificateAuthorityDAL.create(
           {
@@ -205,7 +358,8 @@ export const DigiCertCertificateAuthorityFns = ({
               organizationId,
               productNameId,
               purpose: purpose ?? DigiCertCaPurpose.Ssl,
-              ...(verifiedContact ? { verifiedContact } : {})
+              ...(verifiedContact ? { verifiedContact } : {}),
+              ...(resolvedDnsZones ? { dnsZones: resolvedDnsZones } : {})
             }
           },
           tx
@@ -242,8 +396,11 @@ export const DigiCertCertificateAuthorityFns = ({
     actor: TActorContext;
     name?: string;
   }) => {
+    let dnsZonesToStore: TDigiCertDnsZone[] | undefined;
+    let accountSwitchCheckedConnectionIds: string[] | undefined;
+    let hasCheckedTlsProduct = false;
     if (configuration) {
-      const { appConnectionId, organizationId, productNameId, purpose, verifiedContact } = configuration;
+      const { appConnectionId, organizationId, productNameId, purpose, verifiedContact, dnsZones } = configuration;
       const appConnection = await appConnectionDAL.findById(appConnectionId);
       if (!appConnection) {
         throw caAppConnectionNotFoundError(appConnectionId, AppConnection.DigiCert);
@@ -254,18 +411,28 @@ export const DigiCertCertificateAuthorityFns = ({
         });
       }
 
-      const ca = await certificateAuthorityDAL.findById(id);
-      if (!ca) {
+      const caEntity = await certificateAuthorityDAL.findByIdWithAssociatedCa(id);
+      if (!caEntity) {
         throw caNotFoundError(id);
       }
+      const ca = castDbEntryToDigiCertCertificateAuthority(caEntity);
 
-      await appConnectionService.validateAppConnectionUsageById(
+      const digicertConnection = await appConnectionService.validateAppConnectionUsageById(
         appConnection.app as AppConnection,
         { connectionId: appConnectionId, projectId: ca.projectId },
         actor
       );
 
       assertPurposeMatchesProduct(purpose, productNameId);
+      assertDnsZonesAllowedForPurpose(purpose, dnsZones);
+      const keepsStoredDnsZones =
+        !dnsZones &&
+        (purpose ?? DigiCertCaPurpose.Ssl) === DigiCertCaPurpose.Ssl &&
+        Boolean(ca.configuration.dnsZones?.length);
+      hasCheckedTlsProduct = Boolean(dnsZones?.length || keepsStoredDnsZones);
+      if (hasCheckedTlsProduct) {
+        await assertTlsProductForDnsZones(digicertConnection as TDigiCertConnection, productNameId);
+      }
 
       if (purpose === DigiCertCaPurpose.CodeSigning) {
         await codeSigningFns.assertCsOrgValidatedOrContactProvided({
@@ -275,11 +442,45 @@ export const DigiCertCertificateAuthorityFns = ({
           verifiedContact
         });
       }
+
+      const changesDigiCertAccount =
+        appConnection.id !== ca.configuration.appConnectionId || organizationId !== ca.configuration.organizationId;
+      if (changesDigiCertAccount && !dnsZones && (purpose ?? DigiCertCaPurpose.Ssl) === DigiCertCaPurpose.Ssl) {
+        await $assertCanUseStoredDnsZoneConnections(ca.configuration.dnsZones ?? [], ca.projectId, actor);
+        accountSwitchCheckedConnectionIds = (ca.configuration.dnsZones ?? []).map(
+          ({ appConnectionId: zoneConnectionId }) => zoneConnectionId
+        );
+      }
+
+      dnsZonesToStore = await $resolveDnsZones({ dnsZones, projectId: ca.projectId, actor });
     }
 
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
+        await $lockDnsZoneConnections(dnsZonesToStore, tx);
         const { appConnectionId, organizationId, productNameId, purpose, verifiedContact } = configuration;
+        if (!dnsZonesToStore && (purpose ?? DigiCertCaPurpose.Ssl) === DigiCertCaPurpose.Ssl) {
+          const lockedConfiguration = await externalCertificateAuthorityDAL.findDigiCertConfigurationForUpdate(id, tx);
+          dnsZonesToStore = lockedConfiguration?.dnsZones;
+          const switchesLockedAccount =
+            appConnectionId.toLowerCase() !== lockedConfiguration?.appConnectionId?.toLowerCase() ||
+            organizationId !== lockedConfiguration?.organizationId;
+          const checkedConnectionIds = accountSwitchCheckedConnectionIds ?? [];
+          const hasUncheckedZoneConnection = Boolean(
+            dnsZonesToStore?.some(
+              ({ appConnectionId: zoneConnectionId }) => !checkedConnectionIds.includes(zoneConnectionId)
+            )
+          );
+          if (
+            (switchesLockedAccount && hasUncheckedZoneConnection) ||
+            (!hasCheckedTlsProduct && Boolean(dnsZonesToStore?.length))
+          ) {
+            throw new BadRequestError({
+              message:
+                "The DNS zones on this certificate authority changed while it was being saved. Reload it and save again."
+            });
+          }
+        }
         await externalCertificateAuthorityDAL.update(
           {
             caId: id,
@@ -291,7 +492,8 @@ export const DigiCertCertificateAuthorityFns = ({
               organizationId,
               productNameId,
               purpose: purpose ?? DigiCertCaPurpose.Ssl,
-              ...(verifiedContact ? { verifiedContact } : {})
+              ...(verifiedContact ? { verifiedContact } : {}),
+              ...(dnsZonesToStore ? { dnsZones: dnsZonesToStore } : {})
             }
           },
           tx
@@ -462,7 +664,8 @@ export const DigiCertCertificateAuthorityFns = ({
     keyAlgorithm = CertKeyAlgorithm.RSA_2048,
     csr,
     ttl,
-    renewalOfOrderId
+    renewalOfOrderId,
+    onBeforeOrder
   }: {
     caId: string;
     commonName: string;
@@ -472,6 +675,7 @@ export const DigiCertCertificateAuthorityFns = ({
     csr?: string;
     ttl: string;
     renewalOfOrderId?: number;
+    onBeforeOrder?: TDigiCertBeforeOrderHook;
   }): Promise<{
     metadata: TDigiCertCertificateRequestMetadata;
     privateKey: string;
@@ -491,6 +695,12 @@ export const DigiCertCertificateAuthorityFns = ({
     });
 
     const validityDays = parseTtlToDays(ttl);
+
+    await onBeforeOrder?.({
+      digicertCa,
+      client,
+      dnsNames: [certificate.common_name, ...(certificate.dns_names ?? [])]
+    });
 
     const baseOrderPayload = {
       certificate,
@@ -553,12 +763,14 @@ export const DigiCertCertificateAuthorityFns = ({
     csr,
     ttl,
     originalCertificateId,
+    onBeforeOrder,
     onBeforeSubmit
   }: {
     caId: string;
     orderId: number;
     ttl: string;
     originalCertificateId: string;
+    onBeforeOrder?: TDigiCertBeforeOrderHook;
     onBeforeSubmit?: (prepared: { metadata: TDigiCertCertificateRequestMetadata; privateKey: string }) => Promise<void>;
     commonName: string;
     altNames?: string[];
@@ -642,6 +854,22 @@ export const DigiCertCertificateAuthorityFns = ({
         previousCertificateId
       }
     };
+    if (onBeforeOrder && digicertCa.configuration.dnsZones?.length) {
+      await onBeforeOrder({
+        digicertCa,
+        client,
+        dnsNames: [certificate.common_name, ...(certificate.dns_names ?? [])]
+      });
+      const orderAfterValidation = await $getOrderForCa(client, digicertCa.configuration, orderId);
+      if (
+        orderAfterValidation.status?.toLowerCase() !== DigiCertOrderStatus.Issued ||
+        orderAfterValidation.certificate?.id !== previousCertificateId
+      ) {
+        throw new BadRequestError({
+          message: `DigiCert order ${orderId} changed while its domains were being validated, so it wasn't reissued. Check the order's current certificate in DigiCert CertCentral.`
+        });
+      }
+    }
     await onBeforeSubmit?.({ metadata, privateKey: privateKeyPem });
 
     const reissueResponse = await client.reissueOrder(orderId, reissuePayload);

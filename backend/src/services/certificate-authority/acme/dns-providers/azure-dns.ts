@@ -48,6 +48,66 @@ export const azureDnsInsertTxtRecord = async (
   }
 };
 
+type TAzureTxtRecordSet = {
+  etag?: string;
+  properties?: { TTL?: number; metadata?: Record<string, string>; TXTRecords?: { value: string[] }[] };
+};
+
+export const azureDnsAppendTxtRecord = async (
+  connection: TAzureDnsConnection,
+  hostedZoneId: string,
+  recordName: string,
+  value: string,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">,
+  abortSignal?: AbortSignal
+) => {
+  validateAzureDnsZoneResourceId(hostedZoneId);
+  const unquotedValue = value.replaceAll('"', "");
+  const recordUrl = `https://management.azure.com${hostedZoneId}/TXT/${encodeURIComponent(recordName)}?api-version=2018-05-01`;
+
+  try {
+    const accessToken = await getAzureDnsConnectionAccessToken(connection, oidcIssuerService);
+    const headers = { Authorization: `Bearer ${accessToken}`, Accept: "application/json" };
+
+    let existing: TAzureTxtRecordSet | undefined;
+    try {
+      existing = (await request.get<TAzureTxtRecordSet>(recordUrl, { headers, signal: abortSignal })).data;
+    } catch (error) {
+      if (!isAxiosError(error) || error.response?.status !== 404) throw error;
+    }
+
+    const existingRecords = existing?.properties?.TXTRecords ?? [];
+    if (existingRecords.some((record) => record.value.join("") === unquotedValue)) return;
+
+    await request.put(
+      recordUrl,
+      {
+        properties: {
+          ...(existing?.properties?.metadata ? { metadata: existing.properties.metadata } : {}),
+          TTL: existing?.properties?.TTL ?? 60,
+          TXTRecords: [...existingRecords, { value: [unquotedValue] }]
+        }
+      },
+      {
+        headers: {
+          ...headers,
+          "Content-Type": "application/json",
+          ...(existing?.etag ? { "If-Match": existing.etag } : {}),
+          ...(existing ? {} : { "If-None-Match": "*" })
+        },
+        signal: abortSignal
+      }
+    );
+  } catch (error) {
+    if (isAxiosError(error)) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const errorMessage = (error.response?.data?.error?.message || error.message || "Unknown error") as string;
+      throw new Error(typeof errorMessage === "string" ? errorMessage : String(errorMessage));
+    }
+    throw error;
+  }
+};
+
 export const azureDnsDeleteTxtRecord = async (
   connection: TAzureDnsConnection,
   hostedZoneId: string,

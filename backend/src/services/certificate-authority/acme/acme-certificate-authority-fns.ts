@@ -274,7 +274,7 @@ const waitForDnsPropagation = async (
   }
 };
 
-const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppConnection> = {
+export const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppConnection> = {
   [AcmeDnsProvider.Route53]: AppConnection.AWS,
   [AcmeDnsProvider.Cloudflare]: AppConnection.Cloudflare,
   [AcmeDnsProvider.DNSMadeEasy]: AppConnection.DNSMadeEasy,
@@ -285,7 +285,11 @@ const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppConnectio
   [AcmeDnsProvider.Rfc2136]: AppConnection.Rfc2136
 };
 
-const validateDnsProviderAppConnection = (provider: AcmeDnsProvider, dnsAppConnectionId: string, app: string) => {
+export const validateDnsProviderAppConnection = (
+  provider: AcmeDnsProvider,
+  dnsAppConnectionId: string,
+  app: string
+) => {
   const requiredApp = ACME_DNS_PROVIDER_APP_CONNECTION_MAP[provider];
   if (app !== requiredApp) {
     throw new BadRequestError({

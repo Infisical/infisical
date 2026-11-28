@@ -80,8 +80,12 @@ import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "./certificate-authority-fns";
 import { assertCaSupportsCustomExtensions } from "./certificate-authority-maps";
-import { DigiCertCertificateAuthorityFns } from "./digicert/digicert-certificate-authority-fns";
+import {
+  DigiCertCertificateAuthorityFns,
+  TDigiCertBeforeOrderHook
+} from "./digicert/digicert-certificate-authority-fns";
 import { TDigiCertCertificateRequestMetadata } from "./digicert/digicert-certificate-authority-types";
+import { appendDomainValidationFailures, digiCertDomainValidationFactory } from "./digicert/digicert-domain-validation";
 import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
 import { GoDaddyCertificateAuthorityFns } from "./godaddy/godaddy-certificate-authority-fns";
 import { VenafiTppCertificateAuthorityFns } from "./venafi-tpp/venafi-tpp-certificate-authority-fns";
@@ -163,9 +167,12 @@ export type TIssueCertificateFromProfileJobData = {
 
 type TCertificateIssuanceQueueFactoryDep = {
   certificateAuthorityDAL: TCertificateAuthorityDALFactory;
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById" | "findExistingIdsForKeyShare">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
+  externalCertificateAuthorityDAL: Pick<
+    TExternalCertificateAuthorityDALFactory,
+    "create" | "update" | "findOne" | "findDigiCertConfigurationForUpdate"
+  >;
   certificateDAL: TCertificateDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "findById">;
   kmsDataKeyService: TKmsDataKeyService;
@@ -314,7 +321,21 @@ export const certificateIssuanceQueueFactory = ({
     certificateBodyDAL,
     certificateSecretDAL,
     kmsDataKeyService,
-    kmsKeyService
+    kmsKeyService,
+    instanceConfigService,
+    oidcIssuerService,
+    gatewayV2Service,
+    gatewayPoolService
+  });
+
+  const digicertDomainValidation = digiCertDomainValidationFactory({
+    appConnectionDAL,
+    kmsDataKeyService,
+    instanceConfigService,
+    oidcIssuerService,
+    gatewayV2Service,
+    gatewayPoolService,
+    keyStore
   });
 
   const godaddyFns = GoDaddyCertificateAuthorityFns({
@@ -921,13 +942,32 @@ export const certificateIssuanceQueueFactory = ({
           const { cipherTextBlob } = await kmsEncryptor({ plainText: Buffer.from(privateKey) });
           return cipherTextBlob;
         };
+        let domainValidationFailures: string[] = [];
         const withRenewalMetadata = (metadata: TDigiCertCertificateRequestMetadata) => ({
           ...metadata,
           digicert: {
             ...metadata.digicert,
-            ...(isRenewal && originalCertificateId ? { isRenewal: true, originalCertificateId } : {})
+            ...(isRenewal && originalCertificateId ? { isRenewal: true, originalCertificateId } : {}),
+            ...(domainValidationFailures.length ? { domainValidationFailures } : {})
           }
         });
+
+        const validateDomainsBeforeOrder: TDigiCertBeforeOrderHook = async (order) => {
+          domainValidationFailures = await digicertDomainValidation.validateDomainsBeforeOrder({
+            ...order,
+            onProgress: setPending,
+            isCancelled
+          });
+          if (await isCancelled()) throw new CertificateRequestCancelledError();
+          await setPending("Submitting the request to DigiCert");
+        };
+        const withDomainValidationFailures = (error: unknown) => {
+          if (error instanceof Error) {
+            // eslint-disable-next-line no-param-reassign
+            error.message = appendDomainValidationFailures(error.message, domainValidationFailures);
+          }
+          return error;
+        };
 
         const isReissue = Boolean(
           externalConfiguration?.reissue && renewalOfOrderId !== undefined && originalCertificateId
@@ -943,6 +983,7 @@ export const certificateIssuanceQueueFactory = ({
                   orderId: renewalOfOrderId,
                   ttl,
                   originalCertificateId,
+                  onBeforeOrder: validateDomainsBeforeOrder,
                   onBeforeSubmit: async ({ metadata, privateKey }) => {
                     encryptedPrivateKey = privateKey ? await encryptPrivateKey(privateKey) : undefined;
                     const transitioned = await certificateRequestDAL.transitionToPendingValidation(
@@ -957,7 +998,8 @@ export const certificateIssuanceQueueFactory = ({
                   }
                 })
                 .catch(async (error: unknown) => {
-                  if (!isReissueHandedOff || error instanceof BadRequestError) throw error;
+                  if (!isReissueHandedOff || error instanceof BadRequestError)
+                    throw withDomainValidationFailures(error);
                   logger.warn(
                     error,
                     `DigiCert did not confirm the reissue, leaving it to the order poller [certificateRequestId=${certificateRequestId}] [orderId=${renewalOfOrderId}]`
@@ -967,11 +1009,16 @@ export const certificateIssuanceQueueFactory = ({
                   );
                   return null;
                 })
-            : await digicertFns.orderCertificate({
-                ...digicertRequest,
-                ttl,
-                ...(renewalOfOrderId !== undefined && { renewalOfOrderId })
-              });
+            : await digicertFns
+                .orderCertificate({
+                  ...digicertRequest,
+                  ttl,
+                  ...(renewalOfOrderId !== undefined && { renewalOfOrderId }),
+                  onBeforeOrder: validateDomainsBeforeOrder
+                })
+                .catch((error: unknown) => {
+                  throw withDomainValidationFailures(error);
+                });
 
         if (!digicertResult) {
           certificateExistsAfterThisJob = false;
@@ -1052,7 +1099,12 @@ export const certificateIssuanceQueueFactory = ({
           }
         } else {
           certificateExistsAfterThisJob = false;
-          await setPending(`DigiCert is processing the request — order #${digicertResult.metadata.digicert.orderId}`);
+          await setPending(
+            [
+              `DigiCert is processing the request — order #${digicertResult.metadata.digicert.orderId}`,
+              ...domainValidationFailures
+            ].join(". ")
+          );
           logger.info(
             `DigiCert order placed, awaiting validation [certificateRequestId=${certificateRequestId}] [orderId=${digicertResult.metadata.digicert.orderId}]`
           );

@@ -82,6 +82,13 @@ export type TDigiCertVerifiedContact = {
   telephone: string;
 };
 
+export type TDigiCertDnsZone = {
+  provider: AcmeDnsProvider;
+  appConnectionId: string;
+  hostedZoneId: string;
+  zoneName: string;
+};
+
 export type TDigiCertCertificateAuthority = {
   id: string;
   projectId: string;
@@ -95,6 +102,7 @@ export type TDigiCertCertificateAuthority = {
     productNameId: string;
     purpose?: DigiCertCaPurpose;
     verifiedContact?: TDigiCertVerifiedContact;
+    dnsZones?: TDigiCertDnsZone[];
   };
 };
 

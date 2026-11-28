@@ -3448,6 +3448,7 @@ export const registerRoutes = async (
     appConnectionCredentialRotationService,
     identityUaDAL,
     gitHubAppDAL,
+    externalCertificateAuthorityDAL,
     keyStore,
     oidcIssuerService
   });
@@ -4149,7 +4150,11 @@ export const registerRoutes = async (
     certificateBodyDAL,
     certificateSecretDAL,
     kmsDataKeyService,
-    kmsKeyService
+    kmsKeyService,
+    instanceConfigService,
+    oidcIssuerService,
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const pamAccessApprovalResource = pamAccessApprovalResourceFactory({

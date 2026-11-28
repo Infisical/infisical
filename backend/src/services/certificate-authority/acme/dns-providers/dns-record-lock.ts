@@ -12,11 +12,11 @@ export type TDnsRecordLockKeyStore = Pick<TKeyStoreFactory, "acquireLock">;
 type TDnsRecordLock = Awaited<ReturnType<TDnsRecordLockKeyStore["acquireLock"]>>;
 
 // polls one attempt at a time so an aborted order stops waiting instead of taking the lock later
-const acquireDnsRecordLock = async (
+export const acquireDnsRecordLock = async (
   keyStore: TDnsRecordLockKeyStore,
   resource: string,
   lockTtlMs: number,
-  abortSignal?: AbortSignal
+  { abortSignal, isCancelled }: { abortSignal?: AbortSignal; isCancelled?: () => Promise<boolean> } = {}
 ): Promise<TDnsRecordLock | null> => {
   const maxAttempts = Math.ceil(lockTtlMs / DNS_RECORD_LOCK_RETRY_DELAY_MS) + 6;
 
@@ -25,6 +25,8 @@ const acquireDnsRecordLock = async (
     // eslint-disable-next-line no-await-in-loop
     const lock = await keyStore.acquireLock([resource], lockTtlMs, { retryCount: 0 }).catch(() => null);
     if (lock) return lock;
+    // eslint-disable-next-line no-await-in-loop
+    if (await isCancelled?.()) return null;
     if (attempt < maxAttempts) {
       // eslint-disable-next-line no-await-in-loop
       await delay(DNS_RECORD_LOCK_RETRY_DELAY_MS + Math.floor(Math.random() * DNS_RECORD_LOCK_RETRY_JITTER_MS));
@@ -56,7 +58,7 @@ export const withDnsRecordLock = async <T>(
     keyStore,
     KeyStorePrefixes.AcmeDnsRecordLock(connectionId, zoneId, name),
     lockTtlMs,
-    abortSignal
+    { abortSignal }
   );
 
   if (!lock) {

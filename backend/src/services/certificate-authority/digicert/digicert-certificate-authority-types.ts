@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-import { CodeSigningOrderStatus } from "./digicert-certificate-authority-enums";
+import {
+  CodeSigningOrderStatus,
+  DigiCertDomainValidationStatus,
+  DigiCertDomainValidationType
+} from "./digicert-certificate-authority-enums";
 import {
   CreateDigiCertCertificateAuthoritySchema,
   DigiCertCertificateAuthoritySchema,
@@ -9,6 +13,8 @@ import {
 } from "./digicert-certificate-authority-schemas";
 
 export type TDigiCertCertificateAuthority = z.infer<typeof DigiCertCertificateAuthoritySchema>;
+
+export type TDigiCertDnsZone = NonNullable<TDigiCertCertificateAuthority["configuration"]["dnsZones"]>[number];
 
 export type TCreateDigiCertCertificateAuthorityDTO = z.infer<typeof CreateDigiCertCertificateAuthoritySchema>;
 
@@ -141,4 +147,27 @@ export type TCodeSigningOrderInfo = {
 
 export type TOrganizationValidationsResponse = {
   validations?: { type: string; status?: string; validated_until?: string }[];
+};
+
+export type TDigiCertDomain = {
+  id: number;
+  name: string;
+  is_active: boolean;
+  dcv_approval_method?: string;
+  organization?: { id?: number };
+  validations?: {
+    type: DigiCertDomainValidationType;
+    status: DigiCertDomainValidationStatus;
+    validated_until?: string;
+  }[];
+};
+
+export type TDigiCertDomainsResponse = {
+  domains?: TDigiCertDomain[];
+  page?: { total?: number };
+};
+
+export type TDigiCertDomainDcvResponse = {
+  id?: number;
+  dcv_token?: { privacy_uri?: string };
 };

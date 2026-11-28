@@ -68,6 +68,7 @@ import { AdcsFields } from "./ExternalCaFields/AdcsFields";
 import { AwsAcmPublicCaFields } from "./ExternalCaFields/AwsAcmPublicCaFields";
 import { AwsPcaFields } from "./ExternalCaFields/AwsPcaFields";
 import { AzureAdCsFields } from "./ExternalCaFields/AzureAdCsFields";
+import { DigiCertDnsZonesSection } from "./ExternalCaFields/DigiCertDnsZonesSection";
 import { DigiCertFields } from "./ExternalCaFields/DigiCertFields";
 import { ExternalCaHeader } from "./ExternalCaFields/ExternalCaHeader";
 import { GoDaddyFields } from "./ExternalCaFields/GoDaddyFields";
@@ -75,6 +76,17 @@ import { FormData, schema } from "./ExternalCaFields/schema";
 import { VenafiTppFields } from "./ExternalCaFields/VenafiTppFields";
 
 const UNCHANGED_CREDENTIAL_SENTINEL = "__INFISICAL_UNCHANGED__";
+
+type TDnsZoneLink = { provider: AcmeDnsProvider; appConnectionId: string; hostedZoneId: string };
+
+const areSameDnsZones = (savedZones: TDnsZoneLink[], submittedZones: TDnsZoneLink[]) =>
+  savedZones.length === submittedZones.length &&
+  savedZones.every(
+    (zone, index) =>
+      zone.provider === submittedZones[index].provider &&
+      zone.appConnectionId === submittedZones[index].appConnectionId &&
+      zone.hostedZoneId === submittedZones[index].hostedZoneId
+  );
 
 type ExternalCaConfigurationPayload =
   | {
@@ -101,6 +113,7 @@ type ExternalCaConfigurationPayload =
         jobTitle?: string;
         telephone?: string;
       };
+      dnsZones?: { provider: AcmeDnsProvider; appConnectionId: string; hostedZoneId: string }[];
     }
   | { appConnectionId: string; dnsAppConnectionId: string; hostedZoneId: string; region: string }
   | { appConnectionId: string; policyDN: string }
@@ -341,7 +354,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle, onComplete }: Props)
             organizationId: 0,
             productNameId: "",
             purpose: DigiCertCaPurpose.Ssl,
-            verifiedContact: undefined
+            verifiedContact: undefined,
+            dnsZones: []
           }
         };
       case CaType.AWS_ACM_PUBLIC_CA:
@@ -754,7 +768,12 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle, onComplete }: Props)
             organizationId: ca.configuration.organizationId,
             productNameId: ca.configuration.productNameId,
             purpose: ca.configuration.purpose ?? DigiCertCaPurpose.Ssl,
-            verifiedContact: ca.configuration.verifiedContact
+            verifiedContact: ca.configuration.verifiedContact,
+            dnsZones: (ca.configuration.dnsZones ?? []).map((zone) => ({
+              provider: zone.provider,
+              appConnection: { id: zone.appConnectionId, name: "" },
+              hostedZoneId: zone.hostedZoneId
+            }))
           }
         });
       } else if (ca.type === CaType.AWS_ACM_PUBLIC_CA && availableConnections?.length) {
@@ -917,6 +936,12 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle, onComplete }: Props)
       };
     } else if (type === CaType.DIGICERT && "digicertConnection" in formConfiguration) {
       const purposeForPayload = formConfiguration.purpose ?? DigiCertCaPurpose.Ssl;
+      const submittedDnsZones = (formConfiguration.dnsZones ?? []).map((zone) => ({
+        provider: zone.provider,
+        appConnectionId: zone.appConnection.id,
+        hostedZoneId: zone.hostedZoneId
+      }));
+      const savedDnsZones = ca?.type === CaType.DIGICERT ? ca.configuration.dnsZones : undefined;
       configPayload = {
         appConnectionId: formConfiguration.digicertConnection.id,
         organizationId: formConfiguration.organizationId,
@@ -926,6 +951,10 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle, onComplete }: Props)
         formConfiguration.csRequiresContact &&
         formConfiguration.verifiedContact
           ? { verifiedContact: formConfiguration.verifiedContact }
+          : {}),
+        ...(purposeForPayload === DigiCertCaPurpose.Ssl &&
+        !(savedDnsZones && areSameDnsZones(savedDnsZones, submittedDnsZones))
+          ? { dnsZones: submittedDnsZones }
           : {})
       };
     } else if (type === CaType.AWS_ACM_PUBLIC_CA && "awsConnection" in formConfiguration) {
@@ -1178,6 +1207,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle, onComplete }: Props)
                     csRequiresContact={csRequiresContact}
                   />
                 )}
+                {caType === CaType.DIGICERT &&
+                  digicertPurpose === DigiCertCaPurpose.Ssl &&
+                  Boolean(digicertProductNameId) && (
+                    <DigiCertDnsZonesSection control={control} setValue={setValue} />
+                  )}
                 {caType === CaType.AWS_ACM_PUBLIC_CA && (
                   <AwsAcmPublicCaFields
                     control={control}

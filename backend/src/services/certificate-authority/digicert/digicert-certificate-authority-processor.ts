@@ -37,6 +37,7 @@ import {
   TDigiCertCertificateAuthorityFns
 } from "./digicert-certificate-authority-fns";
 import { DigiCertCertificateRequestMetadataSchema } from "./digicert-certificate-authority-schemas";
+import { appendDomainValidationFailures, DOMAIN_VALIDATION_FAILURES_PREFIX } from "./digicert-domain-validation";
 
 export type TDigiCertCertificateRequestServiceDep = {
   updateCertificateRequestStatus: (args: TUpdateCertificateRequestStatusDTO) => Promise<unknown>;
@@ -57,6 +58,7 @@ export type TDigiCertOrderMetadata = {
     isRenewal?: boolean;
     originalCertificateId?: string;
     previousCertificateId?: number;
+    domainValidationFailures?: string[];
   };
 };
 
@@ -233,7 +235,11 @@ export const processDigiCertPendingValidationRequest = async (
       status: CertificateRequestStatus.FAILED,
       operation: parsed.digicert.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
       originalCertificateId: parsed.digicert.originalCertificateId,
-      errorMessage: `DigiCert order ${orderStatus}`
+      errorMessage: appendDomainValidationFailures(
+        `DigiCert order ${orderStatus}`,
+        parsed.digicert.domainValidationFailures,
+        DOMAIN_VALIDATION_FAILURES_PREFIX
+      )
     });
     logger.info(`DigiCert order terminal state [certificateRequestId=${request.id}] [status=${orderStatus}]`);
     return {
@@ -259,7 +265,11 @@ export const processDigiCertPendingValidationRequest = async (
       status: CertificateRequestStatus.FAILED,
       operation: parsed.digicert.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
       originalCertificateId: parsed.digicert.originalCertificateId,
-      errorMessage
+      errorMessage: appendDomainValidationFailures(
+        errorMessage,
+        parsed.digicert.domainValidationFailures,
+        DOMAIN_VALIDATION_FAILURES_PREFIX
+      )
     });
     logger.info(`DigiCert validation timed out [certificateRequestId=${request.id}]`);
     return { status: CertificateRequestStatus.FAILED, orderStatus: "timeout", reason: "timeout" };
@@ -278,9 +288,15 @@ export const processDigiCertPendingValidationRequest = async (
 
   try {
     const validationDetail = lastCheckStatus && lastCheckStatus !== orderStatus ? `, ${lastCheckStatus}` : "";
+    const domainValidationFailures = parsed.digicert.domainValidationFailures ?? [];
     await deps.certificateRequestDAL.setPendingMessage(
       request.id,
-      `DigiCert is processing the request — order #${parsed.digicert.orderId} (status: ${orderStatus}${validationDetail})`
+      [
+        `DigiCert is processing the request — order #${parsed.digicert.orderId} (status: ${orderStatus}${validationDetail})`,
+        ...(domainValidationFailures.length
+          ? [`${DOMAIN_VALIDATION_FAILURES_PREFIX} ${domainValidationFailures.join(". ")}`]
+          : [])
+      ].join(". ")
     );
   } catch (error) {
     logger.warn(error, `Failed to update DigiCert pendingMessage [certificateRequestId=${request.id}]`);

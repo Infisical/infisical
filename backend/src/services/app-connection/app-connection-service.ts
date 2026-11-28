@@ -47,6 +47,7 @@ import {
   TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM,
   validateAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
+import { TExternalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/external-certificate-authority-dal";
 import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
@@ -258,6 +259,10 @@ export type TAppConnectionServiceFactoryDep = {
   appConnectionCredentialRotationService: TAppConnectionCredentialRotationServiceFactory;
   identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne" | "upsertConnectionLink">;
+  externalCertificateAuthorityDAL: Pick<
+    TExternalCertificateAuthorityDALFactory,
+    "hasDigiCertCaLinkingDnsZoneConnection"
+  >;
   keyStore: Pick<
     TKeyStoreFactory,
     "setItemWithExpiryNX" | "deleteItem" | "getItem" | "setItemWithExpiry" | "acquireLock"
@@ -385,6 +390,7 @@ export const appConnectionServiceFactory = ({
   appConnectionCredentialRotationService,
   identityUaDAL,
   gitHubAppDAL,
+  externalCertificateAuthorityDAL,
   keyStore,
   oidcIssuerService
 }: TAppConnectionServiceFactoryDep) => {
@@ -1235,7 +1241,19 @@ export const appConnectionServiceFactory = ({
     // managed separately (the app via the GitHub Apps settings page, the installation on GitHub).
 
     try {
-      const deletedAppConnection = await appConnectionDAL.deleteById(connectionId);
+      const deletedAppConnection = await appConnectionDAL.transaction(async (tx) => {
+        await appConnectionDAL.lockByIdForUpdate(connectionId, tx);
+
+        if (await externalCertificateAuthorityDAL.hasDigiCertCaLinkingDnsZoneConnection(appConnection.id, tx)) {
+          throw new BadRequestError({
+            message:
+              "Cannot delete this App Connection because one or more DigiCert certificate authorities validate domains in DNS zones linked through it. Remove those DNS zones from the certificate authorities first."
+          });
+        }
+
+        await tx.raw("SET CONSTRAINTS ALL IMMEDIATE");
+        return appConnectionDAL.deleteById(connectionId, tx);
+      });
 
       return addAppConnectionFederatedCredential(await decryptAppConnection(deletedAppConnection, kmsDataKeyService));
     } catch (err) {

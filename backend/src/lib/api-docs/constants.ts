@@ -3320,6 +3320,13 @@ export const CertificateAuthorities = {
       eabHmacKey: `The External Account Binding (EAB) HMAC key for the ACME Certificate Authority. Required if the ACME provider uses EAB.`,
       dnsResolver: `An optional custom DNS resolver IP address to use for verifying DNS propagation during ACME challenges. Must be a valid IP address (e.g. 8.8.8.8). When not set, the system default DNS resolver is used.`
     },
+    DIGICERT: {
+      dnsZones: `The DNS zones (up to 20) whose domains are validated with DigiCert before each order, renewal and reissue. A domain DigiCert has no active validation for, for the CA's organization, is validated at the apex of the most specific linked zone that contains it: the domain is set to the persistent DNS TXT method and a persistent DNS TXT record is written at _validation-persist.<zone>, which is never removed. If validation can't finish, the order is still placed and waits for validation in CertCentral. Domains in no linked zone are not touched. Rejected unless the CA issues TLS certificates (an SSL product, not code signing, document signing, secure email or verified mark). On update, leaving it out keeps the linked zones unless the purpose changes to code signing, and an empty list unlinks them all.`,
+      dnsZoneProvider: `The DNS provider that hosts the zone.`,
+      dnsZoneAppConnectionId: `The ID of the App Connection used to write the persistent DNS TXT record in the zone. It must be the App Connection type the DNS provider uses (AWS for Route 53, GCP for Google Cloud DNS) and needs permission to read the zone and its TXT records and to create TXT records. For Route 53: route53:GetHostedZone, route53:ListResourceRecordSets and route53:ChangeResourceRecordSets.`,
+      dnsZoneHostedZoneId: `The ID of the zone in the DNS provider. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}. For DNS Server (RFC 2136), use the zone name, such as example.com. The zone ID is stored and returned as the DNS provider reports it (for Route 53, without the /hostedzone/ prefix).`,
+      dnsZoneName: `The domain name of the zone, read from the DNS provider when the zone is linked.`
+    },
     AWS_PCA: {
       appConnectionId: `The ID of the AWS App Connection to use for authenticating with AWS Private Certificate Authority (PCA). This connection must have permissions to issue, get, and revoke certificates from the specified PCA.`,
       certificateAuthorityArn: `The ARN of the AWS Private Certificate Authority to use for issuing certificates.`,

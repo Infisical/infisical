@@ -4,7 +4,7 @@ import { AcmeDnsProvider, CaStatus, CaType, GoDaddyProductType } from "@app/hook
 import { DigiCertCaPurpose } from "@app/hooks/api/ca/types";
 import { slugSchema } from "@app/lib/schemas";
 
-import { REQUIRED_EAB_DIRECTORIES } from "./constants";
+import { DIGICERT_MAX_DNS_ZONES, REQUIRED_EAB_DIRECTORIES } from "./constants";
 
 const baseSchema = z.object({
   type: z.nativeEnum(CaType),
@@ -103,6 +103,30 @@ const digicertConfigurationSchema = z
         jobTitle: z.string().trim().max(64).optional(),
         telephone: z.string().trim().max(32).optional()
       })
+      .optional(),
+    dnsZones: z
+      .array(
+        z
+          .object({
+            provider: z.nativeEnum(AcmeDnsProvider),
+            appConnection: z
+              .object({ id: z.string(), name: z.string() })
+              .refine(({ id }) => Boolean(id), { message: "DNS App Connection is required" }),
+            hostedZoneId: z.string().trim().max(1024)
+          })
+          .superRefine(({ provider, hostedZoneId }, ctx) => {
+            if (hostedZoneId) return;
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["hostedZoneId"],
+              message:
+                provider === AcmeDnsProvider.ROUTE53
+                  ? "Hosted Zone ID is required"
+                  : "Zone is required"
+            });
+          })
+      )
+      .max(DIGICERT_MAX_DNS_ZONES)
       .optional()
   })
   .superRefine((cfg, ctx) => {
@@ -131,6 +155,21 @@ const digicertConfigurationSchema = z
         message: "Email must be valid"
       });
     }
+  })
+  .superRefine((cfg, ctx) => {
+    if (cfg.purpose === DigiCertCaPurpose.CodeSigning) return;
+    cfg.dnsZones?.forEach((zone, index) => {
+      const firstIndex = cfg.dnsZones?.findIndex(
+        (other) => other.provider === zone.provider && other.hostedZoneId === zone.hostedZoneId
+      );
+      if (zone.hostedZoneId && firstIndex !== index) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["dnsZones", index, "hostedZoneId"],
+          message: "This zone is already linked. Link each zone once."
+        });
+      }
+    });
   });
 
 const awsAcmPublicCaConfigurationSchema = z.object({
