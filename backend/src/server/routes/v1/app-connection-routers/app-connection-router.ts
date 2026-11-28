@@ -100,6 +100,10 @@ import {
   SanitizedDaytonaConnectionSchema
 } from "@app/services/app-connection/daytona";
 import { DbtConnectionListItemSchema, SanitizedDbtConnectionSchema } from "@app/services/app-connection/dbt";
+import {
+  DenoDeployConnectionListItemSchema,
+  SanitizedDenoDeployConnectionSchema
+} from "@app/services/app-connection/deno-deploy";
 import { DevinConnectionListItemSchema, SanitizedDevinConnectionSchema } from "@app/services/app-connection/devin";
 import {
   DigiCertConnectionListItemSchema,
@@ -410,6 +414,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedPowerDnsConnectionSchema.options,
   ...SanitizedSpaceliftConnectionSchema.options,
   ...SanitizedDaytonaConnectionSchema.options,
+  ...SanitizedDenoDeployConnectionSchema.options,
   ...SanitizedStripeConnectionSchema.options,
   ...SanitizedKeeperConnectionSchema.options,
   ...SanitizedHpeIloConnectionSchema.options,
@@ -513,6 +518,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   PowerDnsConnectionListItemSchema,
   SpaceliftConnectionListItemSchema,
   DaytonaConnectionListItemSchema,
+  DenoDeployConnectionListItemSchema,
   StripeConnectionListItemSchema,
   KeeperConnectionListItemSchema,
   HpeIloConnectionListItemSchema,

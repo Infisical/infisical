@@ -22,6 +22,7 @@ import { ConvexSyncDestinationSchema } from "./convex-sync-destination-schema";
 import { CoolifySyncDestinationSchema } from "./coolify-sync-destination-schema";
 import { DatabricksSyncDestinationSchema } from "./databricks-sync-destination-schema";
 import { DaytonaSyncDestinationSchema } from "./daytona-sync-destination-schema";
+import { DenoDeploySyncDestinationSchema } from "./deno-deploy-sync-destination-schema";
 import { DevinSyncDestinationSchema } from "./devin-sync-destination-schema";
 import { DigitalOceanAppPlatformSyncDestinationSchema } from "./digital-ocean-app-platform-sync-destination-schema";
 import { ExternalInfisicalSyncDestinationSchema } from "./external-infisical-sync-destination-schema";
@@ -110,6 +111,7 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   QoverySyncDestinationSchema,
   Cloud66SyncDestinationSchema,
   DaytonaSyncDestinationSchema,
+  DenoDeploySyncDestinationSchema,
   KeeperSyncDestinationSchema,
   SpaceliftSyncDestinationSchema,
   JenkinsSyncDestinationSchema,

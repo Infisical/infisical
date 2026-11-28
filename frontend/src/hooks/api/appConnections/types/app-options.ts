@@ -387,6 +387,10 @@ export type TServiceNowConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.ServiceNow;
 };
 
+export type TDenoDeployConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.DenoDeploy;
+};
+
 export type TS3CompatibleConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.S3Compatible;
 };
@@ -509,6 +513,7 @@ export type TAppConnectionOption =
   | TSpaceliftConnectionOption
   | TDaytonaConnectionOption
   | TServiceNowConnectionOption
+  | TDenoDeployConnectionOption
   | TS3CompatibleConnectionOption
   | TJiraConnectionOption
   | TClickHouseConnectionOption
@@ -611,6 +616,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Spacelift]: TSpaceliftConnectionOption;
   [AppConnection.Daytona]: TDaytonaConnectionOption;
   [AppConnection.ServiceNow]: TServiceNowConnectionOption;
+  [AppConnection.DenoDeploy]: TDenoDeployConnectionOption;
   [AppConnection.S3Compatible]: TS3CompatibleConnectionOption;
   [AppConnection.Jira]: TJiraConnectionOption;
   [AppConnection.ClickHouse]: TClickHouseConnectionOption;

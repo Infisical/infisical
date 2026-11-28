@@ -15,6 +15,12 @@ export type TSecretPayload = {
   secretMetadata?: TSecretMap[string]["secretMetadata"];
 };
 
+// defineProperty, not assignment: a secret named "__proto__" must stay an own key instead of
+// replacing the map's prototype.
+export const setSecretMapEntry = (map: TSecretMap, key: string, entry: TSecretMap[string]) => {
+  Object.defineProperty(map, key, { value: entry, enumerable: true, writable: true, configurable: true });
+};
+
 export type TSecretSyncPayload = {
   secrets: TSecretPayload[];
   environment: string;
@@ -149,7 +155,7 @@ export const createSecretSyncPayload = (
     const map: TSecretMap = {};
 
     for (const [destinationKey, [entry]] of grouped) {
-      map[destinationKey] = toSecretMapEntry(entry);
+      setSecretMapEntry(map, destinationKey, toSecretMapEntry(entry));
     }
 
     return map;
@@ -184,7 +190,7 @@ export const createSecretSyncPayload = (
     const map: TSecretMap = {};
 
     for (const [name, [entry]] of grouped) {
-      map[name] = toSecretMapEntry(entry);
+      setSecretMapEntry(map, name, toSecretMapEntry(entry));
     }
 
     return map;

@@ -23,6 +23,7 @@ import { CloudflareWorkersSyncDestinationSection } from "./CloudflareWorkersSync
 import { ConvexSyncDestinationSection } from "./ConvexSyncDestinationSection";
 import { CoolifySyncDestinationSection } from "./CoolifySyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
+import { DenoDeploySyncDestinationSection } from "./DenoDeploySyncDestinationSection";
 import { DevinSyncDestinationSection } from "./DevinSyncDestinationSection";
 import { DigitalOceanAppPlatformSyncDestinationSection } from "./DigitalOceanAppPlatformSyncDestinationSection";
 import { ExternalInfisicalSyncDestinationSection } from "./ExternalInfisicalSyncDestinationSection";
@@ -225,6 +226,9 @@ export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
       break;
     case SecretSync.Daytona:
       // The connection is the whole destination; it is already shown above.
+      break;
+    case SecretSync.DenoDeploy:
+      DestinationComponents = <DenoDeploySyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.Keeper:
       DestinationComponents = <KeeperSyncDestinationSection secretSync={secretSync} />;

@@ -72,6 +72,7 @@ import {
   isValidCoolifyEnvVarName
 } from "./coolify";
 import { DAYTONA_SYNC_LIST_OPTION, DaytonaSyncFns } from "./daytona";
+import { DENO_DEPLOY_SYNC_LIST_OPTION, DenoDeploySyncFns } from "./deno-deploy";
 import { DEVIN_SYNC_LIST_OPTION, DevinSyncFns } from "./devin";
 import {
   DIGITAL_OCEAN_APP_PLATFORM_SYNC_LIST_OPTION,
@@ -103,7 +104,7 @@ import { RailwaySyncFns } from "./railway/railway-sync-fns";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
 import { RUNDECK_SYNC_LIST_OPTION, RundeckSyncFns } from "./rundeck";
 import { SECRET_SYNC_NAME_MAP, SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
-import { getKeyWithSchema, getMirroredFolder, TSecretSyncPayload } from "./secret-sync-payload";
+import { getKeyWithSchema, getMirroredFolder, setSecretMapEntry, TSecretSyncPayload } from "./secret-sync-payload";
 import { SNOWFLAKE_SYNC_LIST_OPTION, SnowflakeSyncFns } from "./snowflake";
 import { SPACELIFT_SYNC_LIST_OPTION, SpaceliftSyncFns } from "./spacelift";
 import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
@@ -168,6 +169,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Cloud66]: CLOUD66_SYNC_LIST_OPTION,
   [SecretSync.Spacelift]: SPACELIFT_SYNC_LIST_OPTION,
   [SecretSync.Daytona]: DAYTONA_SYNC_LIST_OPTION,
+  [SecretSync.DenoDeploy]: DENO_DEPLOY_SYNC_LIST_OPTION,
   [SecretSync.Keeper]: KEEPER_SYNC_LIST_OPTION,
   [SecretSync.Jenkins]: JENKINS_SYNC_LIST_OPTION,
   [SecretSync.Coolify]: COOLIFY_SYNC_LIST_OPTION
@@ -270,7 +272,7 @@ const stripSchema = (unprocessedSecretMap: TSecretMap, environment: string, sche
     }
 
     const strippedKey = key.slice(prefix.length, key.length - suffix.length);
-    strippedMap[strippedKey] = value;
+    setSecretMapEntry(strippedMap, strippedKey, value);
   }
 
   return strippedMap;
@@ -376,7 +378,7 @@ const filterForSchema = (secretMap: TSecretMap, environment: string, schema?: st
 
   for (const [key, value] of Object.entries(secretMap)) {
     if (matchesSchema(key, environment, schema)) {
-      filteredMap[key] = value;
+      setSecretMapEntry(filteredMap, key, value);
     }
   }
 
@@ -553,6 +555,8 @@ export const SecretSyncFns = {
         return SpaceliftSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Daytona:
         return DaytonaSyncFns.syncSecrets(secretSync, payload);
+      case SecretSync.DenoDeploy:
+        return DenoDeploySyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Keeper:
         return KeeperSyncFns.syncSecrets(secretSync, payload);
       default:
@@ -772,6 +776,9 @@ export const SecretSyncFns = {
       case SecretSync.Daytona:
         secretMap = await DaytonaSyncFns.getSecrets();
         break;
+      case SecretSync.DenoDeploy:
+        secretMap = await DenoDeploySyncFns.getSecrets(secretSync);
+        break;
       case SecretSync.Keeper:
         secretMap = await KeeperSyncFns.getSecrets(secretSync);
         break;
@@ -949,6 +956,8 @@ export const SecretSyncFns = {
         return SpaceliftSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Daytona:
         return DaytonaSyncFns.removeSecrets(secretSync, payload);
+      case SecretSync.DenoDeploy:
+        return DenoDeploySyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Keeper:
         return KeeperSyncFns.removeSecrets(secretSync, payload);
       default:
@@ -967,11 +976,11 @@ export const parseSyncErrorMessage = (err: unknown): string => {
   if (err instanceof SecretSyncError) {
     const innerError: Record<string, unknown> | string | undefined =
       err.error instanceof AxiosError
-        ? (err.error.response?.data as Record<string, unknown>)
+        ? ((err.error.response?.data as Record<string, unknown> | undefined) ?? err.error.message)
         : (err.error as Error)?.message;
     errorMessage = JSON.stringify({
       secretKey: err.secretKey,
-      message: err.message || undefined,
+      message: err.message || (typeof innerError === "string" ? innerError : undefined) || "An unknown error occurred.",
       error: innerError
     });
   } else if (err instanceof AxiosError) {

@@ -140,6 +140,11 @@ import {
 import { DatadogConnectionMethod, getDatadogConnectionListItem, validateDatadogConnectionCredentials } from "./datadog";
 import { DaytonaConnectionMethod, getDaytonaConnectionListItem, validateDaytonaConnectionCredentials } from "./daytona";
 import { DbtConnectionMethod, getDbtConnectionListItem, validateDbtConnectionCredentials } from "./dbt";
+import {
+  DenoDeployConnectionMethod,
+  getDenoDeployConnectionListItem,
+  validateDenoDeployConnectionCredentials
+} from "./deno-deploy";
 import { DevinConnectionMethod, getDevinConnectionListItem, validateDevinConnectionCredentials } from "./devin";
 import {
   DigiCertConnectionMethod,
@@ -566,6 +571,7 @@ export const listAppConnectionOptions = async (
     getPowerDnsConnectionListItem(),
     getSpaceliftConnectionListItem(),
     getDaytonaConnectionListItem(),
+    getDenoDeployConnectionListItem(),
     getStripeConnectionListItem({
       INF_APP_CONNECTION_STRIPE_OAUTH_CLIENT_ID,
       INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL
@@ -870,6 +876,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.PowerDns]: validatePowerDnsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Spacelift]: validateSpaceliftConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Daytona]: validateDaytonaConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.DenoDeploy]: validateDenoDeployConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Stripe]: ((config: TAppConnectionConfig) =>
       validateStripeConnectionCredentials(
         config as TStripeConnectionConfig,
@@ -977,6 +984,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case TeamCityConnectionMethod.AccessToken:
     case AzureDevOpsConnectionMethod.AccessToken:
     case FlyioConnectionMethod.AccessToken:
+    case DenoDeployConnectionMethod.AccessToken:
     case HasuraCloudConnectionMethod.AccessToken:
       return "Access Token";
     case Auth0ConnectionMethod.ClientCredentials:
@@ -1267,6 +1275,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.PowerDns]: platformManagedCredentialsNotSupported,
   [AppConnection.Spacelift]: platformManagedCredentialsNotSupported,
   [AppConnection.Daytona]: platformManagedCredentialsNotSupported,
+  [AppConnection.DenoDeploy]: platformManagedCredentialsNotSupported,
   [AppConnection.Stripe]: platformManagedCredentialsNotSupported,
   [AppConnection.Keeper]: platformManagedCredentialsNotSupported,
   [AppConnection.HpeIloRedFish]: platformManagedCredentialsNotSupported,
