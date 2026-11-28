@@ -77,7 +77,7 @@ export const RequestAccessLine = ({
       : WRITE_ACTIONS.filter((entry) => denied(entry.secret));
   if (!missing.length) return null;
   return (
-    <Alert band tone="info">
+    <Alert tone="info">
       <Icon name="lock" />
       <AlertDescription>
         You don&apos;t have permission to {listVerbs(missing.map((entry) => entry.verb))} secrets in

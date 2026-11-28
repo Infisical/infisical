@@ -40,7 +40,7 @@ export const PendingApprovalsLine = ({
     setDismissed(signature);
   };
   return (
-    <Alert band tone="info" onDismiss={dismiss}>
+    <Alert tone="info" onDismiss={dismiss}>
       <Icon name="inbox" />
       <AlertDescription className={styles.approvalsText}>
         {toReview > 0 && (
