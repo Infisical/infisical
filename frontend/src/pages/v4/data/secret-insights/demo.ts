@@ -366,8 +366,8 @@ const orgProjects = (scenario: Scenario) => {
   if (scenario === "empty")
     return { projects: [], totalProjects: 0, projectsWithIssues: 0, offset: 0, limit: 100 };
   if (scenario === "stress") {
-    const projects = repeat(100, (index) =>
-      orgProject(
+    const projects = repeat(100, (index) => ({
+      ...orgProject(
         index,
         index === 0 ? "payments-api" : `stress-project-${index}`,
         index % 5 === 0
@@ -383,8 +383,9 @@ const orgProjects = (scenario: Scenario) => {
               staleSecrets: 3000 - index * 11
             }
           : {}
-      )
-    );
+      ),
+      totalSecrets: 1_284_000 - index * 9_731
+    }));
     return { projects, totalProjects: 340, projectsWithIssues: 212, offset: 0, limit: 100 };
   }
   return {
