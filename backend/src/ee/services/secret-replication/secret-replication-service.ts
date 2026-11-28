@@ -80,7 +80,7 @@ type TSecretReplicationServiceFactoryDep = {
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
   queueService: Pick<TQueueServiceFactory, "start" | "listen" | "queue" | "stopJobById">;
   secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicy">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "deleteItem">;
   secretTagDAL: Pick<
     TSecretTagDALFactory,
     | "findManyTagsById"
@@ -280,6 +280,15 @@ export const secretReplicationServiceFactory = ({
       ? destinationReplicatedSecretImports.filter(({ id }) => pickOnlyImportIds?.includes(id))
       : destinationReplicatedSecretImports;
     if (!destinationReplicatedSecretImports.length) return;
+    await Promise.all(
+      destinationReplicatedSecretImports.map(({ id }) =>
+        keyStore.setItemWithExpiry(
+          KeyStorePrefixes.SecretImportReplicationRunning(id),
+          KeyStoreTtls.SecretImportReplicationRunningInSeconds,
+          1
+        )
+      )
+    );
 
     if (shouldUseSecretV2Bridge) {
       const { secretManager: projectCipher, blindIndexer } = await prepareSecretWriteCiphers({
@@ -647,6 +656,8 @@ export const secretReplicationServiceFactory = ({
               replicationStatus: (err as Error)?.message.slice(0, 500),
               isReplicationSuccess: false
             });
+          } finally {
+            await keyStore.deleteItem(KeyStorePrefixes.SecretImportReplicationRunning(destinationSecretImport.id));
           }
         }
         /*  eslint-enable no-await-in-loop */
@@ -874,6 +885,8 @@ export const secretReplicationServiceFactory = ({
             replicationStatus: (err as Error)?.message.slice(0, 500),
             isReplicationSuccess: false
           });
+        } finally {
+          await keyStore.deleteItem(KeyStorePrefixes.SecretImportReplicationRunning(destinationSecretImport.id));
         }
       }
       /*  eslint-enable no-await-in-loop */

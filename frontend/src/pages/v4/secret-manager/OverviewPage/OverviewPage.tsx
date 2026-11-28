@@ -1361,15 +1361,17 @@ export const OverviewPage = () => {
     secrets: sourceSecrets,
     state: sourceState,
     missing: (entry) =>
-      entry.source.project === projectId &&
-      Boolean(folderTree) &&
-      !Object.values(folderTree ?? {}).some(
-        (environment) =>
-          environment.slug === entry.source.environment &&
-          environment.folders.some(
-            (folder) => normalizeFolderPath(folder.path) === normalizeFolderPath(entry.source.path)
-          )
-      ),
+      Boolean(entry.sourceMissing) ||
+      (entry.source.project === projectId &&
+        Boolean(folderTree) &&
+        !Object.values(folderTree ?? {}).some(
+          (environment) =>
+            environment.slug === entry.source.environment &&
+            environment.folders.some(
+              (folder) =>
+                normalizeFolderPath(folder.path) === normalizeFolderPath(entry.source.path)
+            )
+        )),
     ownKeys: (entry) =>
       new Set(
         resources

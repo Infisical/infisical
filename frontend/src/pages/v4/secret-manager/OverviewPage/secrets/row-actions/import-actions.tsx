@@ -48,12 +48,11 @@ export function ImportActions({
       onClose();
       return;
     }
-    const timestamp = new Date().toISOString();
     onApply(
       (current) =>
         current.map((resource) =>
           resource.id === resync.id && resource.kind === "import"
-            ? { ...resource, replicationStatus: "succeeded", lastReplicated: timestamp }
+            ? { ...resource, replicationRunning: true }
             : resource
         ),
       { title: "Resync of replicated secrets started" }

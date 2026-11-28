@@ -455,7 +455,8 @@ export const useResourceApply = ({
         if (from.kind === "import" && to.kind === "import") {
           if (
             from.lastReplicated !== to.lastReplicated ||
-            from.replicationStatus !== to.replicationStatus
+            from.replicationStatus !== to.replicationStatus ||
+            (!from.replicationRunning && to.replicationRunning)
           )
             return record(
               to.environment,
