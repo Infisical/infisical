@@ -2462,7 +2462,7 @@ export const OverviewPage = () => {
                             ))
                           )}
                         </colgroup>
-                        <TableHeader>
+                        <TableHeader ground="paper">
                           <TableRow>
                             <TableHead pin="start" selection divider={false}>
                               <span className={styles.iconSlot}>
