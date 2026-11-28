@@ -514,6 +514,7 @@ export const rotateSecretsFns = async ({
 
     if (!secretRotation.isAutoRotationEnabled) {
       logger.info(`secretRotationV2Queue: Skipping Rotation - Auto-Rotation Disabled Since Queue ${logDetails}`);
+      return;
     }
 
     if (new Date(secretRotation.lastRotatedAt).getTime() >= new Date(queuedAt).getTime()) {
